@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Page } from "./social.js";
 
 export interface ChatMessageDto {
   id: string;
@@ -9,6 +10,9 @@ export interface ChatMessageDto {
   deleted: boolean;
   createdAt: string;
 }
+
+/** Response shape for `GET /rooms/:idOrSlug/messages` — a page plus the chat room id so callers can join realtime immediately. */
+export type ChatHistoryDto = Page<ChatMessageDto> & { chatRoomId: string };
 
 // ---- zod ----
 

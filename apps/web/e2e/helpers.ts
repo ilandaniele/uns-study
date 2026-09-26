@@ -49,3 +49,16 @@ export async function checkoutCurrent(context: BrowserContext): Promise<void> {
     headers: { Origin: "http://localhost:3000" },
   });
 }
+
+/** Reads the signed-in user's id via `GET /me` using the context's session cookie. */
+export async function getMyUserId(context: BrowserContext): Promise<string> {
+  const res = await context.request.get(`${API_URL}/api/v1/me`, {
+    headers: { Origin: "http://localhost:3000" },
+  });
+  if (!res.ok()) {
+    throw new Error(`GET /me failed: ${res.status()} ${await res.text()}`);
+  }
+  const body = (await res.json()) as { user: { id: string } | null };
+  if (!body.user) throw new Error("GET /me returned an anonymous session");
+  return body.user.id;
+}

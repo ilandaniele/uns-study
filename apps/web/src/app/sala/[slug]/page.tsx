@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
+import { AdSlot } from "@/components/AdSlot";
+import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
 import { ExtendBanner } from "@/features/room/ExtendBanner";
 import { Legend } from "@/features/room/Legend";
 import { RoomMap } from "@/features/room/RoomMap";
@@ -16,7 +18,10 @@ import { useSeatActions } from "@/features/room/useSeatActions";
 import { PeopleList } from "@/features/people/PeopleList";
 import { useOccupants } from "@/features/people/useOccupants";
 import { usePeople } from "@/features/people/usePeople";
+import { trackEvent } from "@/lib/analytics";
 import { getShowIdentityPreference, hasChosenIdentityVisibility, setShowIdentityPreference } from "@/lib/identity-prefs";
+import { useQrContext } from "@/lib/qr-context";
+import { getSocket } from "@/lib/socket";
 import { useMediaQuery } from "@/lib/use-media-query";
 
 export default function RoomPage() {
@@ -27,6 +32,12 @@ export default function RoomPage() {
   const { map, me, connected, loading, error, refetch } = useRoomState(slug);
   const { bySeatId: occupantsBySeatId, refetch: refetchOccupants } = useOccupants(slug);
   const { people } = usePeople(slug);
+  const { highlightTableCode, qrToken } = useQrContext();
+  const socket = getSocket();
+
+  useEffect(() => {
+    trackEvent("room_view", { roomSlug: slug });
+  }, [slug]);
 
   const handleChanged = useCallback(() => {
     refetch();
@@ -85,10 +96,21 @@ export default function RoomPage() {
   async function handleCheckIn() {
     if (!selectedSeat) return;
     const showIdentity = hasChosenIdentityVisibility() ? getShowIdentityPreference() : false;
-    const result = await checkIn(selectedSeat.id, showIdentity);
+    const result = await checkIn(selectedSeat.id, showIdentity, { qrToken });
     if (result) {
+      trackEvent("check_in", { roomSlug: slug, seatId: selectedSeat.id });
       setShowIdentityPrompt(true);
     }
+  }
+
+  async function handleMarkFree(seatId: string) {
+    const ok = await markFree(seatId, { qrToken });
+    if (ok) trackEvent("observation", { roomSlug: slug, seatId, status: "FREE" });
+  }
+
+  async function handleMarkOccupied(seatId: string) {
+    const ok = await markOccupied(seatId, { qrToken });
+    if (ok) trackEvent("observation", { roomSlug: slug, seatId, status: "OCCUPIED" });
   }
 
   async function handleIdentityChoice(showIdentity: boolean) {
@@ -121,8 +143,8 @@ export default function RoomPage() {
       onIdentityChoice={handleIdentityChoice}
       onClose={closeDetail}
       onCheckIn={() => void handleCheckIn()}
-      onMarkFree={() => void markFree(selectedSeat.id)}
-      onMarkOccupied={() => void markOccupied(selectedSeat.id)}
+      onMarkFree={() => void handleMarkFree(selectedSeat.id)}
+      onMarkOccupied={() => void handleMarkOccupied(selectedSeat.id)}
       onExtend={() => void extend()}
       onCheckOut={() => void checkOut()}
     />
@@ -147,6 +169,7 @@ export default function RoomPage() {
           <p className="text-xs text-slate-500">{connected ? "Datos en vivo" : "Reconectando…"}</p>
         </div>
         <SummaryCounters summary={map.summary} />
+        <AnnouncementsBanner roomSlug={slug} socket={socket} />
         <Legend />
         {isDesktop ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-3">
@@ -161,18 +184,33 @@ export default function RoomPage() {
         ) : null}
       </section>
 
-      <section className="order-2 h-[70vh] overflow-hidden rounded-2xl border border-slate-200 bg-white md:order-2 md:h-[80vh]">
-        {isDesktop ? (
-          <div className="flex h-full w-full items-center justify-center">
-            <RoomMap map={map} mySeatId={mySeatId} selectedSeatId={selectedSeatId} onSelectSeat={handleSelectSeat} />
-          </div>
-        ) : (
-          <TransformWrapper minScale={0.5} maxScale={4} initialScale={1} limitToBounds>
-            <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }} contentStyle={{ width: "100%", height: "100%" }}>
-              <RoomMap map={map} mySeatId={mySeatId} selectedSeatId={selectedSeatId} onSelectSeat={handleSelectSeat} />
-            </TransformComponent>
-          </TransformWrapper>
-        )}
+      <section className="order-2 flex flex-col gap-3 md:order-2">
+        <div className="h-[70vh] overflow-hidden rounded-2xl border border-slate-200 bg-white md:h-[80vh]">
+          {isDesktop ? (
+            <div className="flex h-full w-full items-center justify-center">
+              <RoomMap
+                map={map}
+                mySeatId={mySeatId}
+                selectedSeatId={selectedSeatId}
+                onSelectSeat={handleSelectSeat}
+                highlightTableCode={highlightTableCode}
+              />
+            </div>
+          ) : (
+            <TransformWrapper minScale={0.5} maxScale={4} initialScale={1} limitToBounds>
+              <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }} contentStyle={{ width: "100%", height: "100%" }}>
+                <RoomMap
+                  map={map}
+                  mySeatId={mySeatId}
+                  selectedSeatId={selectedSeatId}
+                  onSelectSeat={handleSelectSeat}
+                  highlightTableCode={highlightTableCode}
+                />
+              </TransformComponent>
+            </TransformWrapper>
+          )}
+        </div>
+        <AdSlot placement="room-bottom" />
       </section>
 
       {isDesktop ? (

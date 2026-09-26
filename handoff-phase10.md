@@ -69,7 +69,40 @@ Shared helpers created by B1 FIRST-NEEDED? No — to avoid collisions: `apps/api
 - **C3 admin/rankings/QR/PWA/ads/nav** (`apps/web/src/app/admin/**`, `apps/web/src/app/ranking/**`, `apps/web/src/app/q/[token]/**`, `apps/web/src/features/admin/**`, `apps/web/src/features/rankings/**`, `apps/web/src/components/**` incl. Header.tsx + new BottomNav, `apps/web/src/app/manifest.ts`, `apps/web/public/**`, `apps/web/src/app/layout.tsx`): Header/nav enable Sala, Personas, Chat, Ranking, Perfil (+ Admin when roles); mobile bottom nav per mockup. `/ranking` tabs Hoy/Semana/Mes/Histórico × Tiempo estudiado/Racha/Colaboración. `/admin` (guard by /me roles): live room view, reports queue + detail with evidence (fetch signed URL on click), user search + detail + actions form, audit log, announcements CRUD, QR codes list/generate with printable QR (use `qrcode` npm to render SVG) linking `<APP_URL>/q/<token>`, stats (Fresh Seat Coverage). `/q/[token]` → resolve → redirect `/sala/<slug>?table=<code>&source=qr&qr=<token>`; room page highlights that table and passes qrToken on actions (edit apps/web/src/app/sala/[slug]/page.tsx minimal + useSeatActions: C3 owns qr param plumbing — coordinate: C1 also edits useSeatActions; C3 must only ADD a `qrToken` option param). Announcements banner on room page (below counters). PWA: `manifest.ts`, generated icons (192/512 PNG + maskable, generate via script with `sharp` or commit simple SVG→PNG), `public/sw.js` offline shell (network-first for navigation, cache static; never cache /api), register only in production; offline banner "Sin conexión — mostrando el último estado conocido" when `navigator.onLine` false. Ads: `<AdSlot placement="room-bottom"|"community-feed" />` renders nothing unless `NEXT_PUBLIC_ADSENSE_CLIENT`; place room-bottom below map only (never in map/seat controls). GA4 loader only if `NEXT_PUBLIC_GA_ID` (consent-free minimal: `anonymize_ip`), events: check_in, observation, room_view.
 
 ## Status
-- [x] A  - [x] B1 - [x] B2 - [x] B3 - [x] B4 - [x] wire modules - [ ] C1 - [ ] C2 - [ ] C3 - [ ] security review - [ ] E2E social - [ ] final verify + commit
+- [x] A  - [x] B1 - [x] B2 - [x] B3 - [x] B4 - [x] wire modules - [x] C1 - [x] C2 - [x] C3 - [ ] security review - [x] E2E social - [x] final verify + commit
+
+### Final integrator notes
+- Fixed a chat contract gap: `GET /rooms/:idOrSlug/messages` now returns `ChatHistoryDto`
+  (`Page<ChatMessageDto> & { chatRoomId }`); `useRoomChat` joins `chat:join` immediately instead of
+  waiting for the first message.
+- Mounted `AnnouncementsBanner`, `AdSlot("room-bottom")`, and QR highlight/`qrToken` plumbing
+  (`useQrContext`, `RoomMap.highlightTableCode`, `StudyTable.highlighted`) on `/sala/[slug]`, plus
+  `trackEvent` calls for `room_view`/`check_in`/`observation`.
+- `AdSlot` now renders a real `adsbygoogle.js` unit (via `next/script`) instead of a placeholder
+  div, gated on `NEXT_PUBLIC_ADSENSE_CLIENT` + a per-placement slot env.
+- Added `/comunidad` (public announcements feed with a `community-feed` ad slot after the first
+  item) and a "Comunidad" Header link.
+- Fixed admin reports copy ("Cuenta eliminada" instead of "Usuario eliminado") to match the API's
+  intent for a deleted reporter/reported account.
+- **Found and fixed a real build bug**: `packages/contracts/src/index.ts` (and its sibling files)
+  re-exported with explicit `.js` extensions (`export * from "./chat.js"` etc.); this typechecks
+  and works under `tsx`/`vitest`/`tsup`, but Next 16's Turbopack production build could not resolve
+  `.js` specifiers to the `.ts` source files through the workspace package boundary, so
+  `pnpm --filter @uns/web build` failed outright (pre-existing, not caused by phase-10 work — this
+  is the first time anyone ran that build). Fixed by dropping the extensions inside
+  `packages/contracts/src` re-exports (`moduleResolution: "Bundler"` allows this). No behavior
+  change; typecheck/lint/test all stayed green.
+- Extended `apps/web/e2e` with `05-profile-privacy`, `06-chat-realtime`, `07-dm`,
+  `08-report-no-photo`, `10-pwa-manifest` (all green). Item 09 (QR deep link) is covered only at
+  the unit level (`qr-context.test.ts`, `qr.service.test.ts`) per the blueprint, since exercising
+  it end-to-end needs an `ADMIN_EMAILS` restart.
+- **Known pre-existing flake, not fixed**: `02-checkin-realtime.spec.ts` passes reliably alone or
+  as the first realtime test in a run, but fails deterministically when run after
+  `01-anonymous-map.spec.ts` in the same Playwright worker — the second visitor's socket briefly
+  sees the seat go `OCCUPIED` then immediately `UNKNOWN` again (a `seat:state-changed` +
+  `room:summary-changed` pair consistent with `ExpirationJob`, not `DailyResetJob`). Root cause
+  not confirmed (no leaked ACTIVE check-ins found in the DB at rest); flagged for follow-up, out of
+  scope for this batch (checkins/expiration domain, not C1–C3).
 
 ### A notes (exports other builders import)
 

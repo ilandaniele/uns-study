@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, desc, eq, inArray, lt, notInArray } from "drizzle-orm";
 import { schema, type Db } from "@uns/database";
-import type { ChatMessageDto, Page } from "@uns/contracts";
+import type { ChatHistoryDto, ChatMessageDto } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { RestrictionService } from "../users/restriction.service.js";
@@ -30,7 +30,7 @@ export class ChatService {
     return chatRoom;
   }
 
-  async listMessages(idOrSlug: string, viewerId: string, cursor?: string | null): Promise<Page<ChatMessageDto>> {
+  async listMessages(idOrSlug: string, viewerId: string, cursor?: string | null): Promise<ChatHistoryDto> {
     const chatRoom = await this.resolveChatRoom(idOrSlug);
     const blockedByMe = await this.blocks.blockedByMe(viewerId);
 
@@ -52,7 +52,7 @@ export class ChatService {
     const nextCursor = rows.length > PAGE_SIZE ? page[page.length - 1]!.createdAt.toISOString() : null;
 
     const items = await this.toDtos(page);
-    return { items, nextCursor };
+    return { items, nextCursor, chatRoomId: chatRoom.id };
   }
 
   async createMessage(userId: string, idOrSlug: string, content: string): Promise<ChatMessageDto> {

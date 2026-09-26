@@ -55,7 +55,7 @@ export function ReportsList() {
           >
             <span className="font-semibold text-slate-800">{REPORT_REASON_LABELS[report.reason]}</span>
             <span className="text-slate-500">
-              {report.reporter?.name ?? "Usuario eliminado"} → {report.reported?.name ?? "Usuario eliminado"} ·{" "}
+              {report.reporter?.name ?? "Cuenta eliminada"} → {report.reported?.name ?? "Cuenta eliminada"} ·{" "}
               {new Date(report.createdAt).toLocaleString("es-AR")}
             </span>
           </Link>

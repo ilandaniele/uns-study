@@ -1,6 +1,6 @@
 "use client";
 
-import { SocketEvents, type ChatMessageDto, type Page } from "@uns/contracts";
+import { SocketEvents, type ChatHistoryDto, type ChatMessageDto, type Page } from "@uns/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { apiDelete, apiFetch, apiPost, ApiRequestError } from "@/lib/api";
 import { getSocket, joinChat, leaveChat } from "@/lib/socket";
@@ -36,15 +36,13 @@ export function useRoomChat(roomSlug: string, blockedIds: Set<string>): UseRoomC
 
   useEffect(() => {
     let cancelled = false;
-    apiFetch<Page<ChatMessageDto>>(`/api/v1/rooms/${roomSlug}/messages`)
+    apiFetch<ChatHistoryDto>(`/api/v1/rooms/${roomSlug}/messages`)
       .then((page) => {
         if (cancelled) return;
         const ascending = [...page.items].reverse();
         setMessages(ascending);
         setNextCursor(page.nextCursor);
-        // Only known once at least one message exists (see lib/socket.ts joinChat docs); a
-        // message sent later via `send` also picks this up from its response.
-        setChatRoomId(ascending[0]?.chatRoomId ?? null);
+        setChatRoomId(page.chatRoomId);
         setError(null);
       })
       .catch(() => {

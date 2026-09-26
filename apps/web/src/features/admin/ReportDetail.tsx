@@ -60,8 +60,8 @@ export function ReportDetail({ reportId }: { reportId: string }) {
       <div>
         <h2 className="text-lg font-semibold text-slate-900">{REPORT_REASON_LABELS[report.reason]}</h2>
         <p className="text-sm text-slate-500">
-          {report.reporter?.name ?? "Usuario eliminado"} ({report.reporter?.email ?? "—"}) reportó a{" "}
-          {report.reported?.name ?? "Usuario eliminado"} ({report.reported?.email ?? "—"})
+          {report.reporter?.name ?? "Cuenta eliminada"} ({report.reporter?.email ?? "—"}) reportó a{" "}
+          {report.reported?.name ?? "Cuenta eliminada"} ({report.reported?.email ?? "—"})
         </p>
         <p className="text-xs text-slate-400">
           {report.context} · {new Date(report.createdAt).toLocaleString("es-AR")}

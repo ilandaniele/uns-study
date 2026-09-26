@@ -11,9 +11,11 @@ export interface RoomMapProps {
   mySeatId: string | null;
   selectedSeatId: string | null;
   onSelectSeat: (seat: SeatDto) => void;
+  /** Table code to highlight (e.g. from a scanned QR deep link), see `useQrContext`. */
+  highlightTableCode?: string | null;
 }
 
-export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat }: RoomMapProps) {
+export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlightTableCode = null }: RoomMapProps) {
   const tableById = useMemo(() => new Map(map.tables.map((table) => [table.id, table])), [map.tables]);
 
   return (
@@ -33,7 +35,11 @@ export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat }: RoomMap
       </text>
 
       {map.tables.map((table) =>
-        table.type === "WALL_BAR" ? <WallBar key={table.id} table={table} /> : <StudyTable key={table.id} table={table} />,
+        table.type === "WALL_BAR" ? (
+          <WallBar key={table.id} table={table} />
+        ) : (
+          <StudyTable key={table.id} table={table} highlighted={highlightTableCode !== null && table.code === highlightTableCode} />
+        ),
       )}
 
       {map.seats.map((seat) => {

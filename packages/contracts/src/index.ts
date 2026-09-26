@@ -1,11 +1,11 @@
 import { z } from "zod";
 
-export * from "./profiles.js";
-export * from "./social.js";
-export * from "./chat.js";
-export * from "./moderation.js";
-export * from "./rankings.js";
-export * from "./qr.js";
+export * from "./profiles";
+export * from "./social";
+export * from "./chat";
+export * from "./moderation";
+export * from "./rankings";
+export * from "./qr";
 
 // ---- Domain enums ----
 

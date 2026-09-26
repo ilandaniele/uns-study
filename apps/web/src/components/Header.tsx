@@ -8,6 +8,7 @@ import { useAdminAccess } from "@/features/admin/useAdminAccess";
 const NAV_ITEMS: { label: string; href: string }[] = [
   { label: "Sala", href: "/sala/principal" },
   { label: "Personas", href: "/personas" },
+  { label: "Comunidad", href: "/comunidad" },
   { label: "Chat", href: "/chat" },
   { label: "Ranking", href: "/ranking" },
   { label: "Perfil", href: "/perfil" },
