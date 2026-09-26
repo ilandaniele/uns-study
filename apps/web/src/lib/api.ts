@@ -1,6 +1,12 @@
 import type { ApiError, ApiErrorCode } from "@uns/contracts";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+/**
+ * Base URL for REST calls to the API. Empty/unset `NEXT_PUBLIC_API_URL` means "same origin" — the
+ * web app is expected to proxy `/api/*` to the API (see `next.config.ts` + `API_PROXY_TARGET`),
+ * so cookies stay first-party even though the API runs on a different host. Local dev keeps
+ * pointing straight at the API by setting `NEXT_PUBLIC_API_URL=http://localhost:4000`.
+ */
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 /** Thrown by `apiFetch` when the API responds with the `{ error }` shape. */
 export class ApiRequestError extends Error {

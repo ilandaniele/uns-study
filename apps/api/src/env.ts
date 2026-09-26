@@ -49,6 +49,15 @@ export const env = {
   upstashUrl: process.env.UPSTASH_REDIS_REST_URL ?? "",
   upstashToken: process.env.UPSTASH_REDIS_REST_TOKEN ?? "",
   ipHashSalt: ipHashSalt(),
+  // Number of reverse-proxy hops in front of the API (Express `trust proxy`), so `req.ip` /
+  // `@Ip()` see the real client IP. 1 for a single proxy (Railway); 2 for Vercel's rewrite proxy
+  // fronting Render (Vercel -> Render's own proxy -> app).
+  trustProxyHops: num("TRUST_PROXY_HOPS", 1),
+  // Better Auth cookies default to `SameSite=Lax; Secure` in production, which only works when the
+  // web app proxies `/api/auth/*` and `/api/v1/*` to this API (same-origin from the browser's
+  // point of view). Set to `true` to restore the old cross-site `SameSite=None; Secure` behaviour
+  // (web and API on different domains, no proxy).
+  crossSiteCookies: bool("CROSS_SITE_COOKIES", false),
   presenceDevBypass: bool("PRESENCE_DEV_BYPASS", false),
   presenceMaxAgeS: num("PRESENCE_MAX_AGE_S", 120),
   presenceMaxAccuracyM: num("PRESENCE_MAX_ACCURACY_M", 100),

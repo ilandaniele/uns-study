@@ -3,6 +3,7 @@ import type { Auth } from "../auth/auth.instance.js";
 import type { Socket } from "socket.io";
 import type { RoomStateService } from "../rooms/room-state.service.js";
 import { RoomRealtimeGateway, resolveSocketUserId } from "./room-realtime.gateway.js";
+import { signSocketToken } from "./socket-token.js";
 
 function mockAuth(getSession: (...args: unknown[]) => Promise<unknown>): Auth {
   return { api: { getSession } } as unknown as Auth;
@@ -11,19 +12,32 @@ function mockAuth(getSession: (...args: unknown[]) => Promise<unknown>): Auth {
 describe("resolveSocketUserId", () => {
   it("returns the user id when the session cookie is valid", async () => {
     const auth = mockAuth(async () => ({ user: { id: "u1" } }));
-    await expect(resolveSocketUserId(auth, { cookie: "session=abc" })).resolves.toBe("u1");
+    await expect(resolveSocketUserId(auth, { headers: { cookie: "session=abc" } })).resolves.toBe("u1");
   });
 
   it("returns null when there is no session", async () => {
     const auth = mockAuth(async () => null);
-    await expect(resolveSocketUserId(auth, {})).resolves.toBeNull();
+    await expect(resolveSocketUserId(auth, { headers: {} })).resolves.toBeNull();
   });
 
   it("returns null instead of throwing when the auth call fails", async () => {
     const auth = mockAuth(async () => {
       throw new Error("boom");
     });
-    await expect(resolveSocketUserId(auth, {})).resolves.toBeNull();
+    await expect(resolveSocketUserId(auth, { headers: {} })).resolves.toBeNull();
+  });
+
+  it("resolves the user id from a valid handshake.auth.token, without touching the session cookie", async () => {
+    const auth = mockAuth(() => {
+      throw new Error("should not be called");
+    });
+    const { token } = signSocketToken("u2"); // uses the same default (env) secret as the gateway
+    await expect(resolveSocketUserId(auth, { headers: {}, auth: { token } })).resolves.toBe("u2");
+  });
+
+  it("falls back to the session cookie when the token is invalid", async () => {
+    const auth = mockAuth(async () => ({ user: { id: "u3" } }));
+    await expect(resolveSocketUserId(auth, { headers: {}, auth: { token: "garbage" } })).resolves.toBe("u3");
   });
 });
 

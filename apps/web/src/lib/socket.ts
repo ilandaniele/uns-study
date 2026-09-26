@@ -1,20 +1,48 @@
 import { SocketEvents } from "@uns/contracts";
 import { io, type Socket } from "socket.io-client";
+import { apiFetch, ApiRequestError } from "./api";
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? "http://localhost:4000";
 
 let socket: Socket | null = null;
 
+interface RealtimeTokenDto {
+  token: string;
+  expiresAt: number;
+}
+
+/**
+ * Fetches a short-lived Socket.IO auth token via the same-origin REST API (`GET
+ * /api/v1/realtime/token`, works behind the web app's proxy). The socket itself connects straight
+ * to `NEXT_PUBLIC_SOCKET_URL` — Socket.IO can't be routed through Vercel's rewrites — so it can't
+ * rely on the session cookie in production and needs this token instead. Returns `null` for
+ * anonymous visitors, who connect without one.
+ */
+async function fetchSocketToken(): Promise<string | null> {
+  try {
+    const { token } = await apiFetch<RealtimeTokenDto>("/api/v1/realtime/token");
+    return token;
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 401) return null;
+    console.error("[socket] failed to fetch realtime token", err);
+    return null;
+  }
+}
+
 /**
  * Lazily creates a single shared Socket.IO connection for the browser session.
- * `withCredentials` forwards the Better Auth session cookie so the API can resolve
- * `socket.data.userId` on the handshake (required for chat/DM channels).
+ * `auth` is a function so Socket.IO calls it again before every (re)connection attempt, fetching a
+ * fresh token each time (tokens are TTL-limited to 5 minutes). `withCredentials` is kept for local
+ * dev, where the socket and API share an origin and the session cookie is also readable there.
  */
 export function getSocket(): Socket {
   if (!socket) {
     socket = io(SOCKET_URL, {
       withCredentials: true,
       autoConnect: true,
+      auth: (cb) => {
+        void fetchSocketToken().then((token) => cb(token ? { token } : {}));
+      },
     });
   }
   return socket;

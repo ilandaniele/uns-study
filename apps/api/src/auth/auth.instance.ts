@@ -29,8 +29,16 @@ export function buildAuth(db: Db) {
     socialProviders: useGoogle
       ? { google: { clientId: env.googleClientId, clientSecret: env.googleClientSecret } }
       : undefined,
+    // In production the web app proxies /api/auth + /api/v1 to this API (see apps/web/next.config.ts
+    // + API_PROXY_TARGET), so the session cookie is first-party from the browser's point of view —
+    // `Lax` is enough and avoids Safari/iOS blocking third-party `SameSite=None` cookies. Set
+    // CROSS_SITE_COOKIES=true to fall back to the old cross-site behaviour when web/API aren't proxied.
     advanced: env.isProduction
-      ? { defaultCookieAttributes: { sameSite: "none", secure: true } }
+      ? {
+          defaultCookieAttributes: env.crossSiteCookies
+            ? { sameSite: "none", secure: true }
+            : { sameSite: "lax", secure: true },
+        }
       : undefined,
   });
 }

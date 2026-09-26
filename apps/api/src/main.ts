@@ -18,7 +18,7 @@ async function bootstrap() {
 
   // CORS must be registered before the Better Auth handler so its routes/preflight get headers too.
   const httpAdapter = app.getHttpAdapter().getInstance();
-  httpAdapter.set("trust proxy", 1); // behind Railway's proxy — @Ip() must see the real client IP
+  httpAdapter.set("trust proxy", env.trustProxyHops); // behind a reverse proxy — @Ip() must see the real client IP
   httpAdapter.use(cors({ origin: env.webOrigins, credentials: true }));
 
   // CSRF guard for state-changing /api/v1 requests. Better Auth's own routes (/api/auth/*)

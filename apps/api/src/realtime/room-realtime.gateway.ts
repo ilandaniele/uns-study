@@ -15,6 +15,7 @@ import { SocketEvents, type ChatMessageDto, type DirectMessageDto, type RoomSumm
 import { AUTH } from "../auth/auth.tokens.js";
 import type { Auth } from "../auth/auth.instance.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
+import { verifySocketToken } from "./socket-token.js";
 import { env } from "../env.js";
 
 function roomChannel(roomId: string): string {
@@ -37,13 +38,25 @@ const chatPayloadSchema = z.object({ roomId: z.string().uuid() });
 const MAX_JOINED_ROOMS_PER_SOCKET = 5;
 
 /**
- * Resolves the authenticated user id (if any) for a raw Socket.IO handshake, via the same Better
- * Auth session cookie used by HTTP requests. Never rejects — anonymous sockets stay anonymous.
+ * Resolves the authenticated user id (if any) for a raw Socket.IO handshake. Tries the signed
+ * `handshake.auth.token` first (issued by `GET /api/v1/realtime/token` — required in production
+ * since the socket server isn't behind the web app's same-origin proxy and can't read its session
+ * cookie), then falls back to the Better Auth session cookie used by HTTP requests (works locally,
+ * where the socket and API share an origin). Never rejects — anonymous sockets stay anonymous.
  * Exported standalone so it can be unit-tested against a mocked `Auth` without a real socket.
  */
-export async function resolveSocketUserId(auth: Auth, handshakeHeaders: IncomingHttpHeaders): Promise<string | null> {
+export async function resolveSocketUserId(
+  auth: Auth,
+  handshake: { headers: IncomingHttpHeaders; auth?: unknown },
+): Promise<string | null> {
+  const token = (handshake.auth as { token?: unknown } | undefined)?.token;
+  if (typeof token === "string") {
+    const userId = verifySocketToken(token);
+    if (userId) return userId;
+  }
+
   try {
-    const session = await auth.api.getSession({ headers: fromNodeHeaders(handshakeHeaders) });
+    const session = await auth.api.getSession({ headers: fromNodeHeaders(handshake.headers) });
     return session?.user?.id ?? null;
   } catch {
     return null;
@@ -66,7 +79,7 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
   /** Anonymous connections are allowed; joining a room map is opt-in via `room:join`. Authed
    *  sockets are additionally auto-joined to their private `user:{userId}` channel for DMs. */
   async handleConnection(socket: Socket): Promise<void> {
-    const userId = await resolveSocketUserId(this.auth, socket.handshake.headers);
+    const userId = await resolveSocketUserId(this.auth, socket.handshake);
     socket.data.userId = userId;
     if (userId) socket.join(userChannel(userId));
   }
