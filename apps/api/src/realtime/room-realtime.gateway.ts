@@ -71,14 +71,17 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
     if (userId) socket.join(userChannel(userId));
   }
 
+  /** Returns an ack (`{ joined }`) once the socket is subscribed, so the client can re-fetch its
+   *  snapshot strictly after joining and never miss an event emitted in between. */
   @SubscribeMessage(SocketEvents.RoomJoin)
-  onJoin(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): void {
+  onJoin(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): { joined: boolean } {
     const parsed = roomPayloadSchema.safeParse(body);
-    if (!parsed.success) return;
+    if (!parsed.success) return { joined: false };
     const channel = roomChannel(parsed.data.roomId);
     const joinedRooms = [...socket.rooms].filter((r) => r !== socket.id);
-    if (joinedRooms.length >= MAX_JOINED_ROOMS_PER_SOCKET && !socket.rooms.has(channel)) return;
-    socket.join(channel);
+    if (joinedRooms.length >= MAX_JOINED_ROOMS_PER_SOCKET && !socket.rooms.has(channel)) return { joined: false };
+    void socket.join(channel);
+    return { joined: true };
   }
 
   @SubscribeMessage(SocketEvents.RoomLeave)

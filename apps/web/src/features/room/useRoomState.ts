@@ -1,9 +1,10 @@
 "use client";
 
-import { SocketEvents, type MeDto, type RoomMapDto, type SeatDto, type SeatStateChangedEvent } from "@uns/contracts";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { SocketEvents, type MeDto, type RoomMapDto, type SeatStateChangedEvent } from "@uns/contracts";
+import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
+import { applySeatEvent, mergeSnapshot } from "./seat-merge";
 
 export interface RoomState {
   map: RoomMapDto | null;
@@ -17,6 +18,11 @@ export interface RoomState {
 /**
  * Loads the room map + current user, then keeps seat/summary state in sync via Socket.IO.
  * `MY_SEAT` is derived client-side: the seat of the caller's own active check-in.
+ *
+ * Ordering: the room channel is joined first and the map is re-fetched only after the server
+ * acknowledges the join, so no `seat:state-changed` can fall in the gap between the snapshot and
+ * the subscription. Snapshots and events are merged by `lastUpdatedAt` (see `seat-merge.ts`) so
+ * whichever arrives last cannot roll a seat back to an older state.
  */
 export function useRoomState(slug: string): RoomState {
   const [map, setMap] = useState<RoomMapDto | null>(null);
@@ -24,7 +30,6 @@ export function useRoomState(slug: string): RoomState {
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const roomIdRef = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -32,9 +37,8 @@ export function useRoomState(slug: string): RoomState {
         apiFetch<RoomMapDto>(`/api/v1/rooms/${slug}/map`),
         apiFetch<MeDto>(`/api/v1/me`),
       ]);
-      setMap(mapDto);
+      setMap((prev) => mergeSnapshot(prev, mapDto));
       setMe(meDto);
-      roomIdRef.current = mapDto.room.id;
       setError(null);
     } catch {
       setError("No pudimos cargar el mapa de la sala.");
@@ -51,27 +55,11 @@ export function useRoomState(slug: string): RoomState {
   useEffect(() => {
     const socket = getSocket();
 
-    const joinRoom = () => {
-      setConnected(true);
-      if (roomIdRef.current) {
-        socket.emit(SocketEvents.RoomJoin, { roomId: roomIdRef.current });
-      }
-      void load();
-    };
-
-    const onConnect = () => joinRoom();
+    const onConnect = () => setConnected(true);
     const onDisconnect = () => setConnected(false);
 
     const onSeatStateChanged = (event: SeatStateChangedEvent) => {
-      setMap((prev) => {
-        if (!prev || event.roomId !== prev.room.id) return prev;
-        const seats: SeatDto[] = prev.seats.map((seat) =>
-          seat.id === event.seatId
-            ? { ...seat, status: event.status, confidence: event.confidence, lastUpdatedAt: event.lastUpdatedAt }
-            : seat,
-        );
-        return { ...prev, seats };
-      });
+      setMap((prev) => applySeatEvent(prev, event));
     };
 
     const onSummaryChanged = (summary: RoomMapDto["summary"]) => {
@@ -86,7 +74,8 @@ export function useRoomState(slug: string): RoomState {
     socket.on(SocketEvents.RoomSummaryChanged, onSummaryChanged);
     socket.on(SocketEvents.RoomDailyReset, onDailyReset);
 
-    if (socket.connected) joinRoom();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync with a socket that connected before mount
+    if (socket.connected) setConnected(true);
 
     return () => {
       socket.off("connect", onConnect);
@@ -97,12 +86,13 @@ export function useRoomState(slug: string): RoomState {
     };
   }, [load]);
 
-  // Re-join the room if the map finishes loading after the socket already connected.
+  // (Re-)join the room channel whenever the room is known and the socket is (re)connected, then
+  // re-sync from REST once the server confirms the subscription.
+  const roomId = map?.room.id;
   useEffect(() => {
-    if (map && connected) {
-      getSocket().emit(SocketEvents.RoomJoin, { roomId: map.room.id });
-    }
-  }, [map?.room.id, connected]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!roomId || !connected) return;
+    getSocket().emit(SocketEvents.RoomJoin, { roomId }, () => void load());
+  }, [roomId, connected, load]);
 
   return { map, me, connected, loading, error, refetch: load };
 }
