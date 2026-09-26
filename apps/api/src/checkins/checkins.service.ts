@@ -6,6 +6,8 @@ import { DB } from "../database/database.module.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { PresenceService } from "../presence/presence.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
+import { StudySessionService } from "../rankings/study-session.service.js";
+import { QrService } from "../qr/qr.service.js";
 import { ApiErrors } from "../common/api-error.js";
 
 const UNIQUE_VIOLATION = "23505";
@@ -18,6 +20,8 @@ export interface CreateCheckInInput {
   seatId: string;
   location: LocationInput;
   showIdentity: boolean;
+  /** Optional QR token scanned at the table; invalid/missing tokens are silently ignored. */
+  qrToken?: string | null;
 }
 
 @Injectable()
@@ -27,6 +31,8 @@ export class CheckInService {
     @Inject(RoomStateService) private readonly roomState: RoomStateService,
     @Inject(PresenceService) private readonly presence: PresenceService,
     @Inject(SecurityEventService) private readonly securityEvents: SecurityEventService,
+    @Inject(StudySessionService) private readonly studySessions: StudySessionService,
+    @Inject(QrService) private readonly qr: QrService,
   ) {}
 
   async getActiveCheckIn(userId: string): Promise<CheckInDto | null> {
@@ -83,6 +89,7 @@ export class CheckInService {
             .update(schema.checkIns)
             .set({ status: "COMPLETED", endedAt: now, updatedAt: now })
             .where(eq(schema.checkIns.id, existing.id));
+          await this.studySessions.recordFromCheckIn(tx, existing, now);
         }
 
         const [created] = await tx
@@ -123,11 +130,13 @@ export class CheckInService {
     }
 
     const seatsToRecompute = previousSeatId ? [input.seatId, previousSeatId] : [input.seatId];
+    const qrVerified = await this.qr.isValidForTable(input.qrToken, input.roomId, seat.tableId);
     const changes = await this.roomState.recomputeSeats(seatsToRecompute, {
       roomId: input.roomId,
       now,
       eventType: "CHECK_IN",
       actingUserId: input.userId,
+      seatMetadata: qrVerified ? { [input.seatId]: { qrVerified: true } } : undefined,
     });
 
     const [checkInRow] = await this.db.select().from(schema.checkIns).where(eq(schema.checkIns.id, createdId)).limit(1);
@@ -152,17 +161,22 @@ export class CheckInService {
 
   async checkOut(userId: string): Promise<{ roomId: string; changes: SeatStateChange[] } | null> {
     const now = new Date();
-    const [existing] = await this.db
-      .select()
-      .from(schema.checkIns)
-      .where(and(eq(schema.checkIns.userId, userId), eq(schema.checkIns.status, "ACTIVE")))
-      .limit(1);
-    if (!existing) return null;
+    const existing = await this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .select()
+        .from(schema.checkIns)
+        .where(and(eq(schema.checkIns.userId, userId), eq(schema.checkIns.status, "ACTIVE")))
+        .limit(1);
+      if (!row) return null;
 
-    await this.db
-      .update(schema.checkIns)
-      .set({ status: "COMPLETED", endedAt: now, updatedAt: now })
-      .where(eq(schema.checkIns.id, existing.id));
+      await tx
+        .update(schema.checkIns)
+        .set({ status: "COMPLETED", endedAt: now, updatedAt: now })
+        .where(eq(schema.checkIns.id, row.id));
+      await this.studySessions.recordFromCheckIn(tx, row, now);
+      return row;
+    });
+    if (!existing) return null;
 
     const changes = await this.roomState.recomputeSeats([existing.seatId], {
       roomId: existing.roomId,

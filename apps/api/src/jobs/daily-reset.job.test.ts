@@ -6,9 +6,15 @@ import { freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { PresenceService } from "../presence/presence.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
+import { ReputationService } from "../reputation/reputation.service.js";
+import { StudySessionService } from "../rankings/study-session.service.js";
+import { QrService } from "../qr/qr.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
+import type { Auth } from "../auth/auth.instance.js";
 import { DailyResetJob, resetInstantFor } from "./daily-reset.job.js";
+
+const mockAuth = { api: { getSession: async () => null } } as unknown as Auth;
 
 describe("DailyResetJob", () => {
   let db: Db;
@@ -22,10 +28,11 @@ describe("DailyResetJob", () => {
     db = await freshDb();
     const roomState = new RoomStateService(db);
     const presence = new PresenceService();
-    const security = new SecurityEventService(db);
-    checkIns = new CheckInService(db, roomState, presence, security);
-    const gateway = new RoomRealtimeGateway(roomState);
-    job = new DailyResetJob(db, gateway);
+    const security = new SecurityEventService(db, new ReputationService(db));
+    const studySessions = new StudySessionService(db);
+    checkIns = new CheckInService(db, roomState, presence, security, studySessions, new QrService(db));
+    const gateway = new RoomRealtimeGateway(roomState, mockAuth);
+    job = new DailyResetJob(db, gateway, studySessions);
 
     const room = await getRoom(db);
     roomId = room.id;
@@ -59,6 +66,18 @@ describe("DailyResetJob", () => {
 
     const events = await db.select().from(schema.seatStateEvents);
     expect(events.length).toBeGreaterThan(0); // events are kept, not deleted
+  });
+
+  it("records exactly one study session per active check-in it expires", async () => {
+    const { checkIn } = await checkIns.checkIn({ userId: "u1", roomId, seatId, location, showIdentity: false });
+    await db.update(schema.checkIns).set({ startedAt: new Date(Date.now() - 45 * 60_000) }).where(eq(schema.checkIns.id, checkIn.id));
+
+    const room = await getRoom(db);
+    const after = new Date(resetInstantFor(room, new Date()).getTime() + 60_000);
+    await job.runReset(roomId, after);
+
+    const sessions = await db.select().from(schema.studySessions).where(eq(schema.studySessions.checkInId, checkIn.id));
+    expect(sessions).toHaveLength(1);
   });
 
   it("a second run the same day is a no-op", async () => {

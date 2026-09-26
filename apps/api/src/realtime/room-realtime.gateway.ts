@@ -7,9 +7,13 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from "@nestjs/websockets";
+import { fromNodeHeaders } from "better-auth/node";
+import type { IncomingHttpHeaders } from "node:http";
 import type { Server, Socket } from "socket.io";
 import { z } from "zod";
-import { SocketEvents, type RoomSummary, type SeatStateChangedEvent } from "@uns/contracts";
+import { SocketEvents, type ChatMessageDto, type DirectMessageDto, type RoomSummary, type SeatStateChangedEvent } from "@uns/contracts";
+import { AUTH } from "../auth/auth.tokens.js";
+import type { Auth } from "../auth/auth.instance.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { env } from "../env.js";
 
@@ -17,23 +21,54 @@ function roomChannel(roomId: string): string {
   return `room:${roomId}`;
 }
 
+function userChannel(userId: string): string {
+  return `user:${userId}`;
+}
+
+function chatChannel(chatRoomId: string): string {
+  return `chat:${chatRoomId}`;
+}
+
 const roomPayloadSchema = z.object({ roomId: z.string().uuid() });
+const chatPayloadSchema = z.object({ roomId: z.string().uuid() });
 
 /** Per-socket cap on how many room channels can be joined at once — a socket has no business
  *  watching more than a handful of rooms in this MVP. */
 const MAX_JOINED_ROOMS_PER_SOCKET = 5;
 
-/** Socket.IO notifications for room state. PostgreSQL remains canonical — sockets never carry coordinates. */
+/**
+ * Resolves the authenticated user id (if any) for a raw Socket.IO handshake, via the same Better
+ * Auth session cookie used by HTTP requests. Never rejects — anonymous sockets stay anonymous.
+ * Exported standalone so it can be unit-tested against a mocked `Auth` without a real socket.
+ */
+export async function resolveSocketUserId(auth: Auth, handshakeHeaders: IncomingHttpHeaders): Promise<string | null> {
+  try {
+    const session = await auth.api.getSession({ headers: fromNodeHeaders(handshakeHeaders) });
+    return session?.user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Socket.IO notifications for room state, chat and DMs. PostgreSQL remains canonical — sockets
+ *  never carry coordinates and never mutate state. */
 @Injectable()
 @WebSocketGateway({ cors: { origin: env.webOrigins, credentials: true } })
 export class RoomRealtimeGateway implements OnGatewayConnection {
   @WebSocketServer()
   server!: Server;
 
-  constructor(@Inject(RoomStateService) private readonly roomState: RoomStateService) {}
+  constructor(
+    @Inject(RoomStateService) private readonly roomState: RoomStateService,
+    @Inject(AUTH) private readonly auth: Auth,
+  ) {}
 
-  handleConnection(_socket: Socket): void {
-    // Anonymous connections are allowed; joining a room is opt-in via `room:join`.
+  /** Anonymous connections are allowed; joining a room map is opt-in via `room:join`. Authed
+   *  sockets are additionally auto-joined to their private `user:{userId}` channel for DMs. */
+  async handleConnection(socket: Socket): Promise<void> {
+    const userId = await resolveSocketUserId(this.auth, socket.handshake.headers);
+    socket.data.userId = userId;
+    if (userId) socket.join(userChannel(userId));
   }
 
   @SubscribeMessage(SocketEvents.RoomJoin)
@@ -51,6 +86,22 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
     const parsed = roomPayloadSchema.safeParse(body);
     if (!parsed.success) return;
     socket.leave(roomChannel(parsed.data.roomId));
+  }
+
+  /** `roomId` here is the chat room id (`ChatMessageDto.chatRoomId`), not the map room id. Requires auth. */
+  @SubscribeMessage(SocketEvents.ChatJoin)
+  onChatJoin(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): void {
+    if (!socket.data.userId) return;
+    const parsed = chatPayloadSchema.safeParse(body);
+    if (!parsed.success) return;
+    socket.join(chatChannel(parsed.data.roomId));
+  }
+
+  @SubscribeMessage(SocketEvents.ChatLeave)
+  onChatLeave(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): void {
+    const parsed = chatPayloadSchema.safeParse(body);
+    if (!parsed.success) return;
+    socket.leave(chatChannel(parsed.data.roomId));
   }
 
   /** Emits `seat:state-changed` per changed seat, then a refreshed `room:summary-changed`. */
@@ -73,5 +124,20 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
 
   emitDailyReset(roomId: string): void {
     this.server?.to(roomChannel(roomId)).emit(SocketEvents.RoomDailyReset, { roomId });
+  }
+
+  emitChatMessage(chatRoomId: string, message: ChatMessageDto): void {
+    this.server?.to(chatChannel(chatRoomId)).emit(SocketEvents.ChatMessageCreated, message);
+  }
+
+  emitChatDeleted(chatRoomId: string, messageId: string): void {
+    this.server?.to(chatChannel(chatRoomId)).emit(SocketEvents.ChatMessageDeleted, { chatRoomId, messageId });
+  }
+
+  /** Notifies both participants' private `user:{userId}` channels. */
+  emitDm(userIds: string[], message: DirectMessageDto): void {
+    for (const userId of userIds) {
+      this.server?.to(userChannel(userId)).emit(SocketEvents.DmMessageCreated, message);
+    }
   }
 }

@@ -8,30 +8,38 @@ import { RoomStateService } from "../rooms/room-state.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
 import { AbusePolicyService } from "../security/abuse-policy.service.js";
 import { TurnstileService } from "../security/turnstile.service.js";
+import { ReputationService } from "../reputation/reputation.service.js";
+import { QrService } from "../qr/qr.service.js";
+import { StudySessionService } from "../rankings/study-session.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";
 import { ObservationService } from "./observations.service.js";
 
 async function build(db: Db) {
   const roomState = new RoomStateService(db);
   const presence = new PresenceService();
-  const security = new SecurityEventService(db);
+  const reputation = new ReputationService(db);
+  const security = new SecurityEventService(db, reputation);
   const abusePolicy = new AbusePolicyService(db, new TurnstileService());
-  const checkIns = new CheckInService(db, roomState, presence, security);
-  const observations = new ObservationService(db, roomState, presence, security, abusePolicy);
-  return { observations, checkIns };
+  const studySessions = new StudySessionService(db);
+  const qr = new QrService(db);
+  const checkIns = new CheckInService(db, roomState, presence, security, studySessions, qr);
+  const observations = new ObservationService(db, roomState, presence, security, abusePolicy, qr, reputation);
+  return { observations, checkIns, qr, reputation };
 }
 
 describe("ObservationService", () => {
   let db: Db;
   let observations: ObservationService;
   let checkIns: CheckInService;
+  let qr: QrService;
+  let reputation: ReputationService;
   let roomId: string;
   let seatIds: string[];
   let location: { latitude: number; longitude: number; accuracy: number; capturedAt: string };
 
   beforeEach(async () => {
     db = await freshDb();
-    ({ observations, checkIns } = await build(db));
+    ({ observations, checkIns, qr, reputation } = await build(db));
     const room = await getRoom(db);
     roomId = room.id;
     location = { latitude: room.latitude, longitude: room.longitude, accuracy: 10, capturedAt: new Date().toISOString() };
@@ -99,5 +107,34 @@ describe("ObservationService", () => {
     await expect(observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "FREE", location })).rejects.toMatchObject({
       code: "OWN_SEAT_OBSERVATION",
     });
+  });
+
+  it("a valid QR token for the seat's table gives the observation 1.5x confidence weight", async () => {
+    const [seat] = await db.select().from(schema.seats).where(eq(schema.seats.id, seatIds[0]!));
+    const [table] = await db.select().from(schema.roomTables).where(eq(schema.roomTables.id, seat!.tableId));
+    const code = await qr.create(roomId, table!.code);
+
+    await observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "FREE", location, qrToken: code.token });
+
+    const [obs] = await db.select().from(schema.seatObservations).where(eq(schema.seatObservations.seatId, seatIds[0]!));
+    expect(obs?.qrVerified).toBe(true);
+    expect(obs?.confidenceWeight).toBeCloseTo(1.5, 5);
+  });
+
+  it("an invalid QR token is ignored, not an error, and keeps the default weight", async () => {
+    await observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "FREE", location, qrToken: "not-a-real-token" });
+
+    const [obs] = await db.select().from(schema.seatObservations).where(eq(schema.seatObservations.seatId, seatIds[0]!));
+    expect(obs?.qrVerified).toBe(false);
+    expect(obs?.confidenceWeight).toBeCloseTo(1, 5);
+  });
+
+  it("a user with spam_score >= 5 gets half confidence weight on their observations", async () => {
+    for (let i = 0; i < 5; i++) await reputation.incrementSpamScore("u1");
+
+    await observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "FREE", location });
+
+    const [obs] = await db.select().from(schema.seatObservations).where(eq(schema.seatObservations.seatId, seatIds[0]!));
+    expect(obs?.confidenceWeight).toBeCloseTo(0.5, 5);
   });
 });

@@ -6,6 +6,7 @@ import { and, eq, isNull, lt, or } from "drizzle-orm";
 import { schema, type Db } from "@uns/database";
 import { DB } from "../database/database.module.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
+import { StudySessionService } from "../rankings/study-session.service.js";
 
 /** Computes the UTC instant of `room`'s next-or-most-recent daily reset (`daily_reset_time`, local tz) at/around `now`. */
 export function resetInstantFor(room: { timezone: string; dailyResetTime: string }, now: Date): Date {
@@ -23,6 +24,7 @@ export class DailyResetJob {
   constructor(
     @Inject(DB) private readonly db: Db,
     @Inject(RoomRealtimeGateway) private readonly realtime: RoomRealtimeGateway,
+    @Inject(StudySessionService) private readonly studySessions: StudySessionService,
   ) {}
 
   @Cron("0 * * * * *") // every minute
@@ -57,10 +59,19 @@ export class DailyResetJob {
         .returning({ id: schema.rooms.id });
       if (claimed.length === 0) return false; // another instance already reset this room today
 
+      const activeCheckIns = await tx
+        .select()
+        .from(schema.checkIns)
+        .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE")));
+
       await tx
         .update(schema.checkIns)
         .set({ status: "EXPIRED", endedAt: now, updatedAt: now })
         .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE")));
+
+      for (const checkIn of activeCheckIns) {
+        await this.studySessions.recordFromCheckIn(tx, checkIn, now);
+      }
 
       await tx
         .update(schema.seatObservations)

@@ -3,6 +3,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { schema, type Db } from "@uns/database";
 import { DB } from "../database/database.module.js";
 import { env } from "../env.js";
+import { ReputationService } from "../reputation/reputation.service.js";
 
 export interface RecordSecurityEventInput {
   userId?: string | null;
@@ -18,7 +19,10 @@ export function hashIp(ip: string): string {
 
 @Injectable()
 export class SecurityEventService {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(
+    @Inject(DB) private readonly db: Db,
+    @Inject(ReputationService) private readonly reputation: ReputationService,
+  ) {}
 
   async record(input: RecordSecurityEventInput): Promise<void> {
     await this.db.insert(schema.securityEvents).values({
@@ -27,5 +31,10 @@ export class SecurityEventService {
       ipHash: input.ip ? hashIp(input.ip) : null,
       metadata: input.metadata ?? null,
     });
+    // Every security event nudges the author's spam_score, which in turn lowers the confidence
+    // weight of their future observations (see ReputationService.observationWeight).
+    if (input.userId) {
+      await this.reputation.incrementSpamScore(input.userId, 1);
+    }
   }
 }

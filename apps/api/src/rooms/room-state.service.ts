@@ -27,7 +27,15 @@ export class RoomStateService {
    */
   async recomputeSeats(
     seatIds: string[],
-    opts: { roomId: string; now?: Date; eventType: string; actingUserId?: string | null; tx?: Db } = {
+    opts: {
+      roomId: string;
+      now?: Date;
+      eventType: string;
+      actingUserId?: string | null;
+      tx?: Db;
+      /** Extra per-seat metadata merged into that seat's `seat_state_events` row, e.g. `{ qrVerified: true }`. */
+      seatMetadata?: Record<string, Record<string, unknown>>;
+    } = {
       roomId: "",
       eventType: "RECOMPUTE",
     },
@@ -41,7 +49,13 @@ export class RoomStateService {
   private async recomputeSeatsLocked(
     db: Db,
     seatIds: string[],
-    opts: { roomId: string; now?: Date; eventType: string; actingUserId?: string | null },
+    opts: {
+      roomId: string;
+      now?: Date;
+      eventType: string;
+      actingUserId?: string | null;
+      seatMetadata?: Record<string, Record<string, unknown>>;
+    },
   ): Promise<SeatStateChange[]> {
     const now = opts.now ?? new Date();
     const changes: SeatStateChange[] = [];
@@ -114,7 +128,7 @@ export class RoomStateService {
           eventType: opts.eventType,
           oldStatus: previous?.status ?? null,
           newStatus: result.status,
-          metadata: { confidence: result.confidence, sourceSummary: result.sourceSummary },
+          metadata: { confidence: result.confidence, sourceSummary: result.sourceSummary, ...(opts.seatMetadata?.[seatId] ?? {}) },
           createdAt: now,
         });
         changes.push({ seatId, status: result.status, confidence: result.confidence, lastUpdatedAt: now });

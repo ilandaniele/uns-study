@@ -11,6 +11,7 @@ import { SecurityEventService } from "../security/security-event.service.js";
 import { AbusePolicyService } from "../security/abuse-policy.service.js";
 import { TurnstileService } from "../security/turnstile.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
+import { RestrictionService } from "../users/restriction.service.js";
 import { ObservationService } from "./observations.service.js";
 
 @Controller("observations")
@@ -23,6 +24,7 @@ export class ObservationsController {
     @Inject(AbusePolicyService) private readonly abusePolicy: AbusePolicyService,
     @Inject(TurnstileService) private readonly turnstile: TurnstileService,
     @Inject(RoomRealtimeGateway) private readonly realtime: RoomRealtimeGateway,
+    @Inject(RestrictionService) private readonly restrictions: RestrictionService,
   ) {}
 
   @Post()
@@ -31,6 +33,8 @@ export class ObservationsController {
     @Body(new ZodBodyPipe(observationRequestSchema)) body: z.infer<typeof observationRequestSchema>,
     @Ip() ip: string,
   ) {
+    await this.restrictions.assertNot(user.id, ["RESTRICT_OBSERVATIONS", "SUSPENDED", "BANNED"]);
+
     const limits = await this.abusePolicy.observationLimits(user.id);
     const limit = await this.rateLimit.check(`observation:${user.id}`, limits.perMinuteLimit, 60);
     if (!limit.allowed) {
@@ -55,6 +59,7 @@ export class ObservationsController {
       status: body.status,
       location: body.location,
       ip,
+      qrToken: body.qrToken,
     });
     await this.realtime.broadcastSeatChanges(roomId, changes);
     return { ok: true };

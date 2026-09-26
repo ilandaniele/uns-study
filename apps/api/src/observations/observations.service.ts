@@ -7,9 +7,13 @@ import { RoomStateService, type SeatStateChange } from "../rooms/room-state.serv
 import { PresenceService } from "../presence/presence.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
 import { AbusePolicyService } from "../security/abuse-policy.service.js";
+import { QrService } from "../qr/qr.service.js";
+import { ReputationService } from "../reputation/reputation.service.js";
 import { ApiErrors } from "../common/api-error.js";
 
 const SPREAD_WINDOW_MIN = 10;
+/** A QR-verified observation counts for 1.5x its base (reputation) confidence weight. */
+const QR_VERIFIED_FACTOR = 1.5;
 
 export interface CreateObservationInput {
   userId: string;
@@ -18,6 +22,8 @@ export interface CreateObservationInput {
   status: "FREE" | "OCCUPIED";
   location: LocationInput;
   ip?: string | null;
+  /** Optional QR token scanned at the table; invalid/missing tokens are silently ignored. */
+  qrToken?: string | null;
 }
 
 @Injectable()
@@ -28,6 +34,8 @@ export class ObservationService {
     @Inject(PresenceService) private readonly presence: PresenceService,
     @Inject(SecurityEventService) private readonly securityEvents: SecurityEventService,
     @Inject(AbusePolicyService) private readonly abusePolicy: AbusePolicyService,
+    @Inject(QrService) private readonly qr: QrService,
+    @Inject(ReputationService) private readonly reputation: ReputationService,
   ) {}
 
   async observe(input: CreateObservationInput): Promise<{ roomId: string; changes: SeatStateChange[] }> {
@@ -72,6 +80,10 @@ export class ObservationService {
     const minutes = input.status === "FREE" ? FREE_OBS_MINUTES : OCCUPIED_OBS_MINUTES;
     const expiresAt = new Date(now.getTime() + minutes * 60_000);
 
+    const qrVerified = await this.qr.isValidForTable(input.qrToken, input.roomId, seat.tableId);
+    const reputationWeight = await this.reputation.observationWeight(input.userId);
+    const confidenceWeight = reputationWeight * (qrVerified ? QR_VERIFIED_FACTOR : 1);
+
     await this.db.transaction(async (tx) => {
       // Duplicate observation by the same user on the same seat replaces the previous one.
       await tx
@@ -91,8 +103,8 @@ export class ObservationService {
         seatId: input.seatId,
         observedStatus: input.status,
         presenceVerified: true,
-        qrVerified: false,
-        confidenceWeight: 1,
+        qrVerified,
+        confidenceWeight,
         observedAt: now,
         expiresAt,
       });

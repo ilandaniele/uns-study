@@ -10,18 +10,42 @@ import { ObservationsModule } from "./observations/observations.module.js";
 import { JobsModule } from "./jobs/jobs.module.js";
 import { HealthController } from "./health.controller.js";
 import { UsersModule } from "./users/users.module.js";
+import { ProfilesModule } from "./profiles/profiles.module.js";
+import { StudyModule } from "./study/study.module.js";
+import { ChatModule } from "./chat/chat.module.js";
+import { DmModule } from "./dm/dm.module.js";
+import { BlocksModule } from "./blocks/blocks.module.js";
+import { ReportsModule } from "./reports/reports.module.js";
+import { StorageModule } from "./storage/storage.module.js";
+import { AdminModule } from "./admin/admin.module.js";
+import { AnnouncementsModule } from "./announcements/announcements.module.js";
+import { RankingsModule } from "./rankings/rankings.module.js";
+import { QrModule } from "./qr/qr.module.js";
+import { ReputationModule } from "./reputation/reputation.module.js";
 
 @Module({
   imports: [
     DatabaseModule,
     SecurityModule,
     UsersModule,
+    ReputationModule,
     RealtimeModule,
     RoomsModule,
     AuthModule,
     PresenceModule,
     CheckInsModule,
     ObservationsModule,
+    BlocksModule,
+    StorageModule,
+    StudyModule,
+    ProfilesModule,
+    ChatModule,
+    DmModule,
+    AnnouncementsModule,
+    ReportsModule,
+    AdminModule,
+    RankingsModule,
+    QrModule,
     JobsModule,
   ],
   controllers: [HealthController],

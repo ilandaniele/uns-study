@@ -11,6 +11,7 @@ import { SecurityEventService } from "../security/security-event.service.js";
 import { AbusePolicyService } from "../security/abuse-policy.service.js";
 import { TurnstileService } from "../security/turnstile.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
+import { RestrictionService } from "../users/restriction.service.js";
 import { CheckInService } from "./checkins.service.js";
 
 @Controller("checkins")
@@ -23,6 +24,7 @@ export class CheckInsController {
     @Inject(AbusePolicyService) private readonly abusePolicy: AbusePolicyService,
     @Inject(TurnstileService) private readonly turnstile: TurnstileService,
     @Inject(RoomRealtimeGateway) private readonly realtime: RoomRealtimeGateway,
+    @Inject(RestrictionService) private readonly restrictions: RestrictionService,
   ) {}
 
   @Post()
@@ -31,6 +33,8 @@ export class CheckInsController {
     @Body(new ZodBodyPipe(checkInRequestSchema)) body: z.infer<typeof checkInRequestSchema>,
     @Ip() ip: string,
   ) {
+    await this.restrictions.assertNot(user.id, ["SUSPENDED", "BANNED"]);
+
     const limit = await this.rateLimit.check(`checkin:${user.id}`, 5, 60);
     if (!limit.allowed) {
       await this.securityEvents.record({ userId: user.id, eventType: "RATE_LIMITED", ip, metadata: { bucket: "checkin" } });
@@ -53,6 +57,7 @@ export class CheckInsController {
       seatId: body.seatId,
       location: body.location,
       showIdentity: body.showIdentity,
+      qrToken: body.qrToken,
     });
     await this.realtime.broadcastSeatChanges(body.roomId, changes);
     return checkIn;
@@ -72,6 +77,8 @@ export class CheckInsController {
     @CurrentUser() user: RequestUser,
     @Body(new ZodBodyPipe(extendRequestSchema)) body: z.infer<typeof extendRequestSchema>,
   ) {
+    await this.restrictions.assertNot(user.id, ["SUSPENDED", "BANNED"]);
+
     const limit = await this.rateLimit.check(`extend:${user.id}`, 5, 60);
     if (!limit.allowed) throw ApiErrors.rateLimited();
 

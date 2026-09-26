@@ -5,6 +5,7 @@ import { schema, type Db } from "@uns/database";
 import { DB } from "../database/database.module.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
+import { StudySessionService } from "../rankings/study-session.service.js";
 
 const SWEEP_INTERVAL_MS = 30_000;
 // Look back further than the sweep interval so a missed/delayed tick still catches every
@@ -18,6 +19,7 @@ export class ExpirationJob {
     @Inject(DB) private readonly db: Db,
     @Inject(RoomStateService) private readonly roomState: RoomStateService,
     @Inject(RoomRealtimeGateway) private readonly realtime: RoomRealtimeGateway,
+    @Inject(StudySessionService) private readonly studySessions: StudySessionService,
   ) {}
 
   @Interval(SWEEP_INTERVAL_MS)
@@ -28,16 +30,26 @@ export class ExpirationJob {
   /** Exposed for tests: runs one sweep against `now` and returns the seats it changed, by room. */
   async runSweep(now: Date = new Date()): Promise<Map<string, SeatStateChange[]>> {
     const expiredCheckIns = await this.db
-      .select({ id: schema.checkIns.id, seatId: schema.checkIns.seatId, roomId: schema.checkIns.roomId, userId: schema.checkIns.userId })
+      .select({
+        id: schema.checkIns.id,
+        seatId: schema.checkIns.seatId,
+        roomId: schema.checkIns.roomId,
+        userId: schema.checkIns.userId,
+        startedAt: schema.checkIns.startedAt,
+        expiresAt: schema.checkIns.expiresAt,
+      })
       .from(schema.checkIns)
       .where(and(eq(schema.checkIns.status, "ACTIVE"), lte(schema.checkIns.expiresAt, now)));
 
-    for (const checkIn of expiredCheckIns) {
-      await this.db
-        .update(schema.checkIns)
-        .set({ status: "EXPIRED", endedAt: now, updatedAt: now })
-        .where(eq(schema.checkIns.id, checkIn.id));
-    }
+    await this.db.transaction(async (tx) => {
+      for (const checkIn of expiredCheckIns) {
+        await tx
+          .update(schema.checkIns)
+          .set({ status: "EXPIRED", endedAt: now, updatedAt: now })
+          .where(eq(schema.checkIns.id, checkIn.id));
+        await this.studySessions.recordFromCheckIn(tx, checkIn, now);
+      }
+    });
 
     const recentlyExpiredObservations = await this.db
       .select({ seatId: schema.seatObservations.seatId, roomId: schema.seatObservations.roomId })

@@ -6,13 +6,17 @@ import { freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { PresenceService } from "../presence/presence.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
+import { ReputationService } from "../reputation/reputation.service.js";
+import { StudySessionService } from "../rankings/study-session.service.js";
+import { QrService } from "../qr/qr.service.js";
 import { CheckInService } from "./checkins.service.js";
 
 async function build(db: Db) {
   const roomState = new RoomStateService(db);
   const presence = new PresenceService();
-  const security = new SecurityEventService(db);
-  return new CheckInService(db, roomState, presence, security);
+  const security = new SecurityEventService(db, new ReputationService(db));
+  const studySessions = new StudySessionService(db);
+  return new CheckInService(db, roomState, presence, security, studySessions, new QrService(db));
 }
 
 describe("CheckInService", () => {
@@ -102,6 +106,25 @@ describe("CheckInService", () => {
 
   it("checkOut is a no-op when there is nothing active", async () => {
     expect(await svc.checkOut("u1")).toBeNull();
+  });
+
+  it("checking out records exactly one study session for a check-in long enough to count", async () => {
+    const { checkIn } = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await db.update(schema.checkIns).set({ startedAt: new Date(Date.now() - 30 * 60_000) }).where(eq(schema.checkIns.id, checkIn.id));
+
+    await svc.checkOut("u1");
+    const sessions = await db.select().from(schema.studySessions).where(eq(schema.studySessions.checkInId, checkIn.id));
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]?.verifiedMinutes).toBeGreaterThanOrEqual(29);
+  });
+
+  it("moving seats records a study session for the seat left behind, exactly once", async () => {
+    const { checkIn } = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await db.update(schema.checkIns).set({ startedAt: new Date(Date.now() - 20 * 60_000) }).where(eq(schema.checkIns.id, checkIn.id));
+
+    await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[1]!, location, showIdentity: false });
+    const sessions = await db.select().from(schema.studySessions).where(eq(schema.studySessions.checkInId, checkIn.id));
+    expect(sessions).toHaveLength(1);
   });
 
   it("extends the check-in 60 minutes from now", async () => {
