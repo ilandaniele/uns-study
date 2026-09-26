@@ -27,4 +27,13 @@ export const ApiErrors = {
     new ApiException("OWN_SEAT_OBSERVATION", "Ya tenés un check-in activo en este asiento, usá 'Me voy' en vez de observar.", 409),
   turnstileRequired: () =>
     new ApiException("TURNSTILE_REQUIRED", "Confirmá que sos una persona para continuar.", 403),
+  forbidden: (message = "No tenés permiso para hacer esto.") => new ApiException("FORBIDDEN", message, 403),
+  notFound: (message = "No encontrado.") => new ApiException("NOT_FOUND", message, 404),
+  blocked: () => new ApiException("BLOCKED", "No podés interactuar con este usuario.", 403),
+  dmNotAllowed: () => new ApiException("DM_NOT_ALLOWED", "Este usuario no acepta mensajes directos.", 403),
+  restricted: (message = "Tu cuenta tiene una restricción activa que te impide hacer esto.") =>
+    new ApiException("RESTRICTED", message, 403),
+  storageUnavailable: () =>
+    new ApiException("STORAGE_UNAVAILABLE", "El almacenamiento de evidencia no está disponible en este momento.", 503),
+  invalidQr: () => new ApiException("INVALID_QR", "Código QR inválido o vencido.", 404),
 };

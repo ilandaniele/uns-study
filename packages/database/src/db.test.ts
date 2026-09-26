@@ -6,6 +6,7 @@ import { seedInitialRoom } from "./seed.js";
 import { checkIns } from "./schema/checkins.js";
 import { user } from "./schema/auth.js";
 import { rooms, seatCurrentState, seats } from "./schema/rooms.js";
+import { chatRooms } from "./schema/chat.js";
 
 async function freshDb(): Promise<Db> {
   const db = createDb({ pgliteDir: "memory://" });
@@ -40,6 +41,16 @@ describe("migrate + seed", () => {
 
     const rows = await db.select().from(rooms);
     expect(rows).toHaveLength(1);
+  });
+
+  it("seeds a single #sala-principal chat room, idempotently", async () => {
+    await seedInitialRoom(db);
+    await seedInitialRoom(db);
+
+    const rows = await db.select().from(chatRooms);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.slug).toBe("sala-principal");
+    expect(rows[0]?.name).toBe("#sala-principal");
   });
 
   it("rejects a second ACTIVE check-in for the same user via the partial unique index", async () => {

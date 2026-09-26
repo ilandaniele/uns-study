@@ -1,0 +1,41 @@
+import { describe, expect, it } from "vitest";
+import { displayName, type DisplayNameProfile } from "./display-name.js";
+
+function profile(overrides: Partial<DisplayNameProfile>): DisplayNameProfile {
+  return { firstName: null, lastName: null, nickname: null, identityMode: "HIDDEN", ...overrides };
+}
+
+describe("displayName", () => {
+  it("returns 'Usuario anónimo' when there is no profile", () => {
+    expect(displayName(null, null, "María")).toBe("Usuario anónimo");
+  });
+
+  it("returns 'Usuario anónimo' when identityMode is HIDDEN", () => {
+    expect(displayName(profile({ identityMode: "HIDDEN", firstName: "María" }), null, "María")).toBe("Usuario anónimo");
+  });
+
+  it("FIRST_NAME returns the first name", () => {
+    expect(displayName(profile({ identityMode: "FIRST_NAME", firstName: "María" }), null, "x")).toBe("María");
+  });
+
+  it("FIRST_NAME falls back to nickname, then 'Usuario anónimo'", () => {
+    expect(displayName(profile({ identityMode: "FIRST_NAME", nickname: "Mafe" }), null, "x")).toBe("Mafe");
+    expect(displayName(profile({ identityMode: "FIRST_NAME" }), null, "x")).toBe("Usuario anónimo");
+  });
+
+  it("FULL_NAME returns 'first last'", () => {
+    expect(displayName(profile({ identityMode: "FULL_NAME", firstName: "María", lastName: "Fernández" }), null, "x")).toBe(
+      "María Fernández",
+    );
+  });
+
+  it("NICKNAME returns the nickname", () => {
+    expect(displayName(profile({ identityMode: "NICKNAME", nickname: "Mafe" }), null, "x")).toBe("Mafe");
+  });
+
+  it("NICKNAME_AND_NAME returns 'nickname (first)'", () => {
+    expect(
+      displayName(profile({ identityMode: "NICKNAME_AND_NAME", nickname: "Mafe", firstName: "María" }), null, "x"),
+    ).toBe("Mafe (María)");
+  });
+});

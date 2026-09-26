@@ -2,8 +2,14 @@ import type { Db } from "./client.js";
 import { createDb } from "./client.js";
 import { generateRoomLayout } from "./layout.js";
 import { roomTables, rooms, seatCurrentState, seats } from "./schema/rooms.js";
+import { chatRooms } from "./schema/chat.js";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+
+export const INITIAL_CHAT_ROOM = {
+  slug: "sala-principal",
+  name: "#sala-principal",
+};
 
 export const INITIAL_ROOM = {
   slug: "principal",
@@ -111,6 +117,14 @@ export async function seedInitialRoom(db: Db): Promise<void> {
       .values({ seatId: seatRow.id, status: "UNKNOWN", confidence: 0 })
       .onConflictDoNothing({ target: seatCurrentState.seatId });
   }
+
+  await db
+    .insert(chatRooms)
+    .values({ roomId: room.id, slug: INITIAL_CHAT_ROOM.slug, name: INITIAL_CHAT_ROOM.name })
+    .onConflictDoUpdate({
+      target: [chatRooms.roomId, chatRooms.slug],
+      set: { name: INITIAL_CHAT_ROOM.name, updatedAt: new Date() },
+    });
 }
 
 async function main() {

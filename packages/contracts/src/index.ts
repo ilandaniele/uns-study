@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+export * from "./profiles.js";
+export * from "./social.js";
+export * from "./chat.js";
+export * from "./moderation.js";
+export * from "./rankings.js";
+export * from "./qr.js";
+
 // ---- Domain enums ----
 
 export type SeatStatus = "UNKNOWN" | "FREE" | "OCCUPIED" | "UNCERTAIN";
@@ -98,6 +105,9 @@ export interface CheckInDto {
 export interface MeDto {
   user: { id: string; name: string; email: string; image: string | null } | null;
   activeCheckIn: CheckInDto | null;
+  roles: ("ADMIN" | "MODERATOR")[];
+  restrictions: { type: string; until: string | null }[];
+  profileCompleted: boolean;
 }
 
 // ---- Socket events ----
@@ -108,6 +118,12 @@ export const SocketEvents = {
   SeatStateChanged: "seat:state-changed",
   RoomSummaryChanged: "room:summary-changed",
   RoomDailyReset: "room:daily-reset",
+  ChatJoin: "chat:join",
+  ChatLeave: "chat:leave",
+  ChatMessageCreated: "chat:message-created",
+  ChatMessageDeleted: "chat:message-deleted",
+  DmMessageCreated: "dm:message-created",
+  AnnouncementChanged: "room:announcement-changed",
 } as const;
 
 export interface SeatStateChangedEvent {
@@ -169,7 +185,14 @@ export type ApiErrorCode =
   | "RATE_LIMITED"
   | "VALIDATION_ERROR"
   | "OWN_SEAT_OBSERVATION"
-  | "TURNSTILE_REQUIRED";
+  | "TURNSTILE_REQUIRED"
+  | "FORBIDDEN"
+  | "NOT_FOUND"
+  | "BLOCKED"
+  | "DM_NOT_ALLOWED"
+  | "RESTRICTED"
+  | "STORAGE_UNAVAILABLE"
+  | "INVALID_QR";
 
 export interface ApiError {
   error: {

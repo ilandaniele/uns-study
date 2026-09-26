@@ -9,11 +9,13 @@ import { CheckInsModule } from "./checkins/checkins.module.js";
 import { ObservationsModule } from "./observations/observations.module.js";
 import { JobsModule } from "./jobs/jobs.module.js";
 import { HealthController } from "./health.controller.js";
+import { UsersModule } from "./users/users.module.js";
 
 @Module({
   imports: [
     DatabaseModule,
     SecurityModule,
+    UsersModule,
     RealtimeModule,
     RoomsModule,
     AuthModule,

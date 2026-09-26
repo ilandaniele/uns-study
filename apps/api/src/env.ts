@@ -53,4 +53,8 @@ export const env = {
   presenceMaxAgeS: num("PRESENCE_MAX_AGE_S", 120),
   presenceMaxAccuracyM: num("PRESENCE_MAX_ACCURACY_M", 100),
   turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY ?? "",
+  adminEmails: (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean),
 };
