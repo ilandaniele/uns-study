@@ -50,6 +50,22 @@ describe("DmService", () => {
     await expect(svc.sendMessage(conversation.id, "u1", "de nuevo")).rejects.toMatchObject({ code: "BLOCKED" });
   });
 
+  it("rejects sending after the recipient disables direct messages mid-conversation", async () => {
+    const conversation = await svc.getOrCreateConversation("u1", "u2");
+    await svc.sendMessage(conversation.id, "u1", "hola");
+
+    await db.insert(schema.userPrivacySettings).values({ userId: "u2", allowDirectMessages: false });
+    await expect(svc.sendMessage(conversation.id, "u1", "de nuevo")).rejects.toMatchObject({ code: "DM_NOT_ALLOWED" });
+  });
+
+  it("hides the other user's avatar when they haven't opted into showAvatar", async () => {
+    await db.insert(schema.userProfiles).values({ userId: "u2", avatarUrl: "https://example.test/a.png" });
+    await db.insert(schema.userPrivacySettings).values({ userId: "u2", showAvatar: false });
+
+    const conversation = await svc.getOrCreateConversation("u1", "u2");
+    expect(conversation.otherUser.avatarUrl).toBeNull();
+  });
+
   it("rejects a non-participant with 403 and an unknown conversation with 404", async () => {
     const conversation = await svc.getOrCreateConversation("u1", "u2");
     await expect(svc.listMessages(conversation.id, "u3")).rejects.toMatchObject({ code: "FORBIDDEN" });

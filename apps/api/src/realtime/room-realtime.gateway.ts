@@ -140,4 +140,9 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
       this.server?.to(userChannel(userId)).emit(SocketEvents.DmMessageCreated, message);
     }
   }
+
+  /** Forcibly disconnects every live socket for a user — used on SUSPEND/BAN so the session revocation takes effect immediately. */
+  disconnectUser(userId: string): void {
+    this.server?.in(userChannel(userId)).disconnectSockets(true);
+  }
 }

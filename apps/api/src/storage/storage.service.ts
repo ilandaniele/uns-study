@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Injectable } from "@nestjs/common";
-import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "../env.js";
 
@@ -52,11 +52,16 @@ export class StorageService {
       ContentType: contentType,
       ContentLength: contentLength,
     });
-    const uploadUrl = await getSignedUrl(this.getClient(), command, { expiresIn: PUT_EXPIRY_SECONDS });
+    // Restrict the signature to cover content-type/content-length so a caller can't swap them
+    // out after presigning (e.g. uploading a much larger or differently-typed file).
+    const uploadUrl = await getSignedUrl(this.getClient(), command, {
+      expiresIn: PUT_EXPIRY_SECONDS,
+      signableHeaders: new Set(["content-type", "content-length"]),
+    });
     return {
       objectKey,
       uploadUrl,
-      headers: { "Content-Type": contentType },
+      headers: { "Content-Type": contentType, "Content-Length": String(contentLength) },
       expiresAt: new Date(Date.now() + PUT_EXPIRY_SECONDS * 1000).toISOString(),
     };
   }
@@ -65,6 +70,11 @@ export class StorageService {
   async presignGet(objectKey: string): Promise<string> {
     const command = new GetObjectCommand({ Bucket: env.r2Bucket, Key: objectKey });
     return getSignedUrl(this.getClient(), command, { expiresIn: GET_EXPIRY_SECONDS });
+  }
+
+  /** Deletes an object — used when a completed upload fails validation, or by the pending-attachment sweep. */
+  async deleteObject(objectKey: string): Promise<void> {
+    await this.getClient().send(new DeleteObjectCommand({ Bucket: env.r2Bucket, Key: objectKey }));
   }
 
   /** Verifies the object was actually uploaded; returns `null` if it doesn't exist. */

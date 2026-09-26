@@ -8,7 +8,7 @@ import { RestrictionService } from "../users/restriction.service.js";
 import { RolesService } from "../users/roles.service.js";
 import { BlocksService } from "../blocks/blocks.service.js";
 import { RoomsService } from "../rooms/rooms.service.js";
-import { displayName } from "../users/display-name.js";
+import { displayName, visibleAvatarUrl } from "../users/display-name.js";
 
 const PAGE_SIZE = 50;
 
@@ -115,7 +115,7 @@ export class ChatService {
         author: {
           userId: row.userId,
           displayName: displayName(profileById.get(row.userId) ?? null, privacyById.get(row.userId) ?? null, fallbackName),
-          avatarUrl: profileById.get(row.userId)?.avatarUrl ?? null,
+          avatarUrl: visibleAvatarUrl(profileById.get(row.userId) ?? null, privacyById.get(row.userId) ?? null),
         },
         content: deleted ? null : row.content,
         deleted,

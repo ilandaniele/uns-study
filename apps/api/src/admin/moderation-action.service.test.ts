@@ -14,7 +14,7 @@ import type { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { ModerationActionService } from "./moderation-action.service.js";
 
 function fakeGateway(): RoomRealtimeGateway {
-  return { broadcastSeatChanges: vi.fn(async () => undefined) } as unknown as RoomRealtimeGateway;
+  return { broadcastSeatChanges: vi.fn(async () => undefined), disconnectUser: vi.fn() } as unknown as RoomRealtimeGateway;
 }
 
 describe("ModerationActionService", () => {
@@ -87,6 +87,7 @@ describe("ModerationActionService", () => {
     const active = await checkIns.getActiveCheckIn("target");
     expect(active).toBeNull();
     expect(gateway.broadcastSeatChanges).toHaveBeenCalled();
+    expect(gateway.disconnectUser).toHaveBeenCalledWith("target");
 
     const [restriction] = await db
       .select()

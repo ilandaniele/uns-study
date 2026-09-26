@@ -29,8 +29,8 @@ export const REPORT_EVIDENCE_MIME = ["image/jpeg", "image/png", "image/webp", "i
 
 export interface AdminReportDto {
   id: string;
-  reporter: { userId: string; name: string; email: string };
-  reported: { userId: string; name: string; email: string };
+  reporter: { userId: string; name: string; email: string } | null;
+  reported: { userId: string; name: string; email: string } | null;
   reason: ReportReason;
   description: string | null;
   context: ReportContext;
@@ -69,9 +69,9 @@ export interface AnnouncementDto {
 export const createReportSchema = z.object({
   reason: z.enum(["SPAM", "HARASSMENT", "INAPPROPRIATE_BEHAVIOR", "IMPERSONATION", "SEAT_TROLLING", "OFFENSIVE_CONTENT", "OTHER"]),
   description: z.string().trim().max(1000).optional(),
-  roomId: z.string().optional(),
+  roomId: z.string().uuid().optional(),
   context: z.enum(["PROFILE", "CHAT", "DM"]),
-  contextMessageId: z.string().optional(),
+  contextMessageId: z.string().uuid().optional(),
 });
 
 export const attachmentRequestSchema = z.object({

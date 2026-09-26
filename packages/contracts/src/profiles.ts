@@ -112,3 +112,7 @@ export const studyStartSchema = z.object({
 export const updateCheckInIdentitySchema = z.object({
   showIdentity: z.boolean(),
 });
+
+export const deleteAccountSchema = z.object({
+  confirm: z.literal("ELIMINAR"),
+});

@@ -10,6 +10,7 @@ import { ReputationService } from "../reputation/reputation.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";
 import { QrService } from "../qr/qr.service.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
+import { RestrictionService } from "../users/restriction.service.js";
 import { StudyService } from "./study.service.js";
 
 async function build(db: Db) {
@@ -17,7 +18,7 @@ async function build(db: Db) {
   const presence = new PresenceService();
   const security = new SecurityEventService(db, new ReputationService(db));
   const checkIns = new CheckInService(db, roomState, presence, security, new StudySessionService(db), new QrService(db));
-  const study = new StudyService(db);
+  const study = new StudyService(db, new RestrictionService(db));
   return { study, checkIns };
 }
 
@@ -69,5 +70,12 @@ describe("StudyService", () => {
 
   it("getActiveStatusForUser returns null when there's no active status", async () => {
     expect(await study.getActiveStatusForUser("u2")).toBeNull();
+  });
+
+  it("rejects starting Study Mode when the caller is suspended", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await db.insert(schema.userRestrictions).values({ userId: "u1", type: "SUSPENDED", reason: "test" });
+
+    await expect(study.start("u1", roomId, { lookingForGroup: false })).rejects.toMatchObject({ code: "RESTRICTED" });
   });
 });

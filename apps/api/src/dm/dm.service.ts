@@ -6,7 +6,7 @@ import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { BlocksService } from "../blocks/blocks.service.js";
-import { displayName } from "../users/display-name.js";
+import { displayName, visibleAvatarUrl } from "../users/display-name.js";
 
 const PAGE_SIZE = 50;
 
@@ -114,6 +114,10 @@ export class DmService {
     if (await this.blocks.isBlockedEitherDirection(senderId, recipientId)) throw ApiErrors.blocked();
     await this.restrictions.assertNot(senderId, ["MUTE_CHAT", "SUSPENDED", "BANNED"]);
 
+    // The recipient may have disabled DMs after the conversation was created — re-check on every send.
+    const [recipientPrivacy] = await this.db.select().from(schema.userPrivacySettings).where(eq(schema.userPrivacySettings.userId, recipientId));
+    if (recipientPrivacy && !recipientPrivacy.allowDirectMessages) throw ApiErrors.dmNotAllowed();
+
     const [row] = await this.db.insert(schema.directMessages).values({ conversationId, senderId, content }).returning();
     if (!row) throw new Error("Failed to insert direct message");
 
@@ -175,7 +179,7 @@ export class DmService {
       otherUser: {
         userId: otherId,
         displayName: displayName(profile ?? null, privacy ?? null, otherUser?.name ?? "Usuario"),
-        avatarUrl: profile?.avatarUrl ?? null,
+        avatarUrl: visibleAvatarUrl(profile ?? null, privacy ?? null),
       },
       lastMessage: lastMessageRow ? toMessageDto(lastMessageRow) : null,
       unread: unreadRows.length,

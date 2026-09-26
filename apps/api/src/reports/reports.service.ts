@@ -11,6 +11,7 @@ import {
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { RateLimitService } from "../security/rate-limit.service.js";
+import { RestrictionService } from "../users/restriction.service.js";
 import { RolesService } from "../users/roles.service.js";
 import { StorageService } from "../storage/storage.service.js";
 
@@ -33,13 +34,28 @@ export class ReportsService {
   constructor(
     @Inject(DB) private readonly db: Db,
     @Inject(RateLimitService) private readonly rateLimit: RateLimitService,
+    @Inject(RestrictionService) private readonly restrictions: RestrictionService,
     @Inject(RolesService) private readonly roles: RolesService,
     @Inject(StorageService) private readonly storage: StorageService,
   ) {}
 
   async createReport(input: CreateReportInput): Promise<ReportCreatedDto> {
+    await this.restrictions.assertNot(input.reporterId, ["SUSPENDED", "BANNED"]);
+
     if (input.reporterId === input.reportedUserId) {
       throw ApiErrors.validation("No podés reportarte a vos mismo.");
+    }
+
+    const [reportedUser] = await this.db.select({ id: schema.user.id }).from(schema.user).where(eq(schema.user.id, input.reportedUserId)).limit(1);
+    if (!reportedUser) throw ApiErrors.notFound("Usuario no encontrado.");
+
+    if (input.roomId) {
+      const [room] = await this.db.select({ id: schema.rooms.id }).from(schema.rooms).where(eq(schema.rooms.id, input.roomId)).limit(1);
+      if (!room) throw ApiErrors.roomNotFound();
+    }
+
+    if (input.contextMessageId) {
+      await this.assertContextMessage(input.context, input.contextMessageId, input.reportedUserId);
     }
 
     const isModerator = await this.roles.hasRole(input.reporterId, ["ADMIN", "MODERATOR"]);
@@ -121,16 +137,50 @@ export class ReportsService {
 
     const head = await this.storage.head(attachment.objectKey);
     if (!head || head.contentLength === null || head.contentLength <= 0) {
+      await this.rejectAttachment(attachment.id, attachment.objectKey);
       throw ApiErrors.validation("El archivo no se subió correctamente.");
     }
     if (head.contentLength > REPORT_EVIDENCE_MAX_BYTES) {
+      await this.rejectAttachment(attachment.id, attachment.objectKey);
       throw ApiErrors.validation("El archivo supera el tamaño máximo permitido.");
     }
     if (head.contentType && head.contentType !== attachment.contentType) {
+      await this.rejectAttachment(attachment.id, attachment.objectKey);
       throw ApiErrors.validation("El tipo de archivo no coincide con lo declarado.");
     }
 
     await this.db.update(schema.userReportAttachments).set({ status: "UPLOADED" }).where(eq(schema.userReportAttachments.id, attachmentId));
+  }
+
+  /** A HEAD mismatch means the object doesn't actually match what was declared — delete both the
+   *  (possibly bogus) object and the attachment row rather than leaving a dangling PENDING one. */
+  private async rejectAttachment(attachmentId: string, objectKey: string): Promise<void> {
+    await this.storage.deleteObject(objectKey);
+    await this.db.delete(schema.userReportAttachments).where(eq(schema.userReportAttachments.id, attachmentId));
+  }
+
+  /** `contextMessageId` must point to a real message authored by the reported user, in the store matching `context`. */
+  private async assertContextMessage(context: ReportContext, messageId: string, reportedUserId: string): Promise<void> {
+    if (context === "CHAT") {
+      const [message] = await this.db
+        .select({ id: schema.chatMessages.id })
+        .from(schema.chatMessages)
+        .where(and(eq(schema.chatMessages.id, messageId), eq(schema.chatMessages.userId, reportedUserId)))
+        .limit(1);
+      if (!message) throw ApiErrors.validation("El mensaje reportado no existe.");
+      return;
+    }
+    if (context === "DM") {
+      const [message] = await this.db
+        .select({ id: schema.directMessages.id })
+        .from(schema.directMessages)
+        .where(and(eq(schema.directMessages.id, messageId), eq(schema.directMessages.senderId, reportedUserId)))
+        .limit(1);
+      if (!message) throw ApiErrors.validation("El mensaje reportado no existe.");
+      return;
+    }
+    // PROFILE context has no associated message; a contextMessageId here is meaningless.
+    throw ApiErrors.validation("contextMessageId no es válido para este contexto.");
   }
 
   private async getOwnedReport(reportId: string, reporterId: string) {

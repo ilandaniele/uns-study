@@ -101,4 +101,13 @@ describe("ChatService", () => {
     expect(audit[0]?.action).toBe("CHAT_MESSAGE_DELETED");
     expect(audit[0]?.actorId).toBe("mod1");
   });
+
+  it("hides the author's avatar when they haven't opted into showAvatar", async () => {
+    await db.insert(schema.userProfiles).values({ userId: "u1", avatarUrl: "https://example.test/a.png" });
+    await db.insert(schema.userPrivacySettings).values({ userId: "u1", showAvatar: false });
+    await svc.createMessage("u1", "principal", "hola");
+
+    const page = await svc.listMessages("principal", "u1");
+    expect(page.items[0]?.author.avatarUrl).toBeNull();
+  });
 });

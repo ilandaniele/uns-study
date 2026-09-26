@@ -3,7 +3,7 @@ import { and, eq, inArray, or } from "drizzle-orm";
 import { schema, type Db } from "@uns/database";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
-import { displayName } from "../users/display-name.js";
+import { displayName, visibleAvatarUrl } from "../users/display-name.js";
 
 export interface BlockedUserDto {
   userId: string;
@@ -72,7 +72,7 @@ export class BlocksService {
     return rows.map((r) => ({
       userId: r.blockedId,
       displayName: displayName(r.profile, privacyByUser.get(r.blockedId) ?? null, r.name),
-      avatarUrl: r.profile?.avatarUrl ?? null,
+      avatarUrl: visibleAvatarUrl(r.profile, privacyByUser.get(r.blockedId) ?? null),
       blockedAt: r.createdAt.toISOString(),
     }));
   }

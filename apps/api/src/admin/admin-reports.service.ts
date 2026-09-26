@@ -90,9 +90,14 @@ export class AdminReportsService {
     return url;
   }
 
+  /** `reporterId`/`reportedUserId` are null once the account has been deleted; the DTO surfaces `null` so the UI can show "Cuenta eliminada". */
   private async toDto(row: typeof schema.userReports.$inferSelect): Promise<AdminReportDto> {
-    const [reporter] = await this.db.select().from(schema.user).where(eq(schema.user.id, row.reporterId)).limit(1);
-    const [reported] = await this.db.select().from(schema.user).where(eq(schema.user.id, row.reportedUserId)).limit(1);
+    const reporter = row.reporterId
+      ? (await this.db.select().from(schema.user).where(eq(schema.user.id, row.reporterId)).limit(1))[0]
+      : undefined;
+    const reported = row.reportedUserId
+      ? (await this.db.select().from(schema.user).where(eq(schema.user.id, row.reportedUserId)).limit(1))[0]
+      : undefined;
     const attachments = await this.db
       .select()
       .from(schema.userReportAttachments)
@@ -101,8 +106,8 @@ export class AdminReportsService {
 
     return {
       id: row.id,
-      reporter: { userId: row.reporterId, name: reporter?.name ?? "", email: reporter?.email ?? "" },
-      reported: { userId: row.reportedUserId, name: reported?.name ?? "", email: reported?.email ?? "" },
+      reporter: row.reporterId ? { userId: row.reporterId, name: reporter?.name ?? "", email: reporter?.email ?? "" } : null,
+      reported: row.reportedUserId ? { userId: row.reportedUserId, name: reported?.name ?? "", email: reported?.email ?? "" } : null,
       reason: row.reason,
       description: row.description,
       context: row.context,

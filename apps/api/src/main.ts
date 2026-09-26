@@ -9,6 +9,7 @@ import { AppModule } from "./app.module.js";
 import { AUTH } from "./auth/auth.tokens.js";
 import type { Auth } from "./auth/auth.instance.js";
 import { ApiExceptionFilter } from "./common/api-exception.filter.js";
+import { csrfMiddleware } from "./common/csrf.middleware.js";
 import { env } from "./env.js";
 
 async function bootstrap() {
@@ -19,6 +20,10 @@ async function bootstrap() {
   const httpAdapter = app.getHttpAdapter().getInstance();
   httpAdapter.set("trust proxy", 1); // behind Railway's proxy — @Ip() must see the real client IP
   httpAdapter.use(cors({ origin: env.webOrigins, credentials: true }));
+
+  // CSRF guard for state-changing /api/v1 requests. Better Auth's own routes (/api/auth/*)
+  // already validate `trustedOrigins`, so this only needs to cover Nest's routes.
+  httpAdapter.use(csrfMiddleware(env.webOrigins));
 
   // Better Auth owns its own body parsing; it must run before Nest's global JSON body parser.
   const auth = app.get<Auth>(AUTH);

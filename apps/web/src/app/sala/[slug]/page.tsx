@@ -1,8 +1,9 @@
 "use client";
 
 import type { SeatDto } from "@uns/contracts";
+import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
 import { ExtendBanner } from "@/features/room/ExtendBanner";
 import { Legend } from "@/features/room/Legend";
@@ -12,6 +13,9 @@ import { SummaryCounters } from "@/features/room/SummaryCounters";
 import { checkInExpiryStatus } from "@/features/room/format";
 import { useRoomState } from "@/features/room/useRoomState";
 import { useSeatActions } from "@/features/room/useSeatActions";
+import { PeopleList } from "@/features/people/PeopleList";
+import { useOccupants } from "@/features/people/useOccupants";
+import { usePeople } from "@/features/people/usePeople";
 import { getShowIdentityPreference, hasChosenIdentityVisibility, setShowIdentityPreference } from "@/lib/identity-prefs";
 import { useMediaQuery } from "@/lib/use-media-query";
 
@@ -21,8 +25,26 @@ export default function RoomPage() {
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
   const { map, me, connected, loading, error, refetch } = useRoomState(slug);
-  const { pending, actionError, turnstileRequired, submitTurnstileToken, checkIn, markFree, markOccupied, extend, checkOut } =
-    useSeatActions(map, refetch);
+  const { bySeatId: occupantsBySeatId, refetch: refetchOccupants } = useOccupants(slug);
+  const { people } = usePeople(slug);
+
+  const handleChanged = useCallback(() => {
+    refetch();
+    refetchOccupants();
+  }, [refetch, refetchOccupants]);
+
+  const {
+    pending,
+    actionError,
+    turnstileRequired,
+    submitTurnstileToken,
+    checkIn,
+    markFree,
+    markOccupied,
+    extend,
+    checkOut,
+    updateIdentity,
+  } = useSeatActions(map, handleChanged);
 
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
   const [showIdentityPrompt, setShowIdentityPrompt] = useState(false);
@@ -69,9 +91,11 @@ export default function RoomPage() {
     }
   }
 
-  function handleIdentityChoice(showIdentity: boolean) {
+  async function handleIdentityChoice(showIdentity: boolean) {
     setShowIdentityPreference(showIdentity);
     setShowIdentityPrompt(false);
+    await updateIdentity(showIdentity);
+    refetchOccupants();
   }
 
   if (loading) {
@@ -88,6 +112,7 @@ export default function RoomPage() {
       table={selectedTable}
       me={me}
       isMySeat={selectedSeat.id === mySeatId}
+      occupant={occupantsBySeatId.get(selectedSeat.id) ?? null}
       pending={pending}
       actionError={actionError}
       turnstileRequired={turnstileRequired}
@@ -123,6 +148,17 @@ export default function RoomPage() {
         </div>
         <SummaryCounters summary={map.summary} />
         <Legend />
+        {isDesktop ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-900">Personas en la sala</h2>
+              <Link href="/personas" className="text-xs font-semibold text-primary hover:underline">
+                Ver todas
+              </Link>
+            </div>
+            <PeopleList people={people} limit={5} />
+          </div>
+        ) : null}
       </section>
 
       <section className="order-2 h-[70vh] overflow-hidden rounded-2xl border border-slate-200 bg-white md:order-2 md:h-[80vh]">

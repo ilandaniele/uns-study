@@ -4,6 +4,7 @@ import { schema, type Db } from "@uns/database";
 import type { StudyStatusDto } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
+import { RestrictionService } from "../users/restriction.service.js";
 
 const RECENT_PRESENCE_WINDOW_MIN = 60;
 
@@ -16,7 +17,10 @@ export interface StartStudyInput {
 /** Study Mode ("Modo Estudio"): a lightweight status row users toggle on top of their check-in. */
 @Injectable()
 export class StudyService {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(
+    @Inject(DB) private readonly db: Db,
+    @Inject(RestrictionService) private readonly restrictions: RestrictionService,
+  ) {}
 
   /** Throws `PRESENCE_REJECTED` unless the user has an active check-in in `roomId`, or started one there in the last hour. */
   async assertRecentPresence(userId: string, roomId: string): Promise<void> {
@@ -42,6 +46,7 @@ export class StudyService {
   }
 
   async start(userId: string, roomId: string, input: StartStudyInput): Promise<StudyStatusDto> {
+    await this.restrictions.assertNot(userId, ["SUSPENDED", "BANNED"]);
     await this.assertRecentPresence(userId, roomId);
 
     const now = new Date();

@@ -38,12 +38,8 @@ export const userReports = pgTable(
   "user_reports",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    reporterId: text("reporter_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    reportedUserId: text("reported_user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+    reporterId: text("reporter_id").references(() => user.id, { onDelete: "set null" }),
+    reportedUserId: text("reported_user_id").references(() => user.id, { onDelete: "set null" }),
     roomId: uuid("room_id").references(() => rooms.id, { onDelete: "set null" }),
     reason: reportReasonEnum("reason").notNull(),
     description: text("description"),

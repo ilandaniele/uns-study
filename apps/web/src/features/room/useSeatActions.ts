@@ -2,9 +2,14 @@
 
 import type { CheckInDto, RoomMapDto } from "@uns/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { apiDelete, apiPost, ApiRequestError } from "@/lib/api";
+import { apiDelete, apiFetch, apiPost, ApiRequestError } from "@/lib/api";
 import { describeActionError } from "@/lib/errors";
 import { getFreshLocation } from "@/lib/geolocation";
+
+/** Extra, optional options threaded through presence-sensitive writes. `qrToken` is supplied by C3's QR flow; unset it's a no-op. */
+export interface SeatActionOptions {
+  qrToken?: string | null;
+}
 
 export interface UseSeatActionsResult {
   pending: boolean;
@@ -12,11 +17,13 @@ export interface UseSeatActionsResult {
   /** True while the API is waiting for a Cloudflare Turnstile token to retry the last action. */
   turnstileRequired: boolean;
   clearError: () => void;
-  checkIn: (seatId: string, showIdentity: boolean) => Promise<CheckInDto | null>;
-  markFree: (seatId: string) => Promise<boolean>;
-  markOccupied: (seatId: string) => Promise<boolean>;
+  checkIn: (seatId: string, showIdentity: boolean, options?: SeatActionOptions) => Promise<CheckInDto | null>;
+  markFree: (seatId: string, options?: SeatActionOptions) => Promise<boolean>;
+  markOccupied: (seatId: string, options?: SeatActionOptions) => Promise<boolean>;
   extend: () => Promise<boolean>;
   checkOut: () => Promise<boolean>;
+  /** PATCH `/checkins/current/identity` — toggles "Mostrar mi identidad" on the caller's current check-in. */
+  updateIdentity: (showIdentity: boolean) => Promise<CheckInDto | null>;
   /** Retries the last action (check-in/observation) with a solved Turnstile token. */
   submitTurnstileToken: (token: string) => void;
 }
@@ -70,29 +77,50 @@ export function useSeatActions(map: RoomMapDto | null, onChanged: () => void): U
   }, [run]);
 
   const checkIn = useCallback(
-    (seatId: string, showIdentity: boolean) =>
+    (seatId: string, showIdentity: boolean, options?: SeatActionOptions) =>
       run(async (turnstileToken) => {
         const location = await getFreshLocation();
-        return apiPost<CheckInDto>("/api/v1/checkins", { roomId: map?.room.id, seatId, location, showIdentity, turnstileToken });
+        return apiPost<CheckInDto>("/api/v1/checkins", {
+          roomId: map?.room.id,
+          seatId,
+          location,
+          showIdentity,
+          qrToken: options?.qrToken ?? undefined,
+          turnstileToken,
+        });
       }),
     [map?.room.id, run],
   );
 
   const markFree = useCallback(
-    (seatId: string) =>
+    (seatId: string, options?: SeatActionOptions) =>
       run(async (turnstileToken) => {
         const location = await getFreshLocation();
-        await apiPost("/api/v1/observations", { roomId: map?.room.id, seatId, status: "FREE", location, turnstileToken });
+        await apiPost("/api/v1/observations", {
+          roomId: map?.room.id,
+          seatId,
+          status: "FREE",
+          location,
+          qrToken: options?.qrToken ?? undefined,
+          turnstileToken,
+        });
         return true;
       }).then((v) => v ?? false),
     [map?.room.id, run],
   );
 
   const markOccupied = useCallback(
-    (seatId: string) =>
+    (seatId: string, options?: SeatActionOptions) =>
       run(async (turnstileToken) => {
         const location = await getFreshLocation();
-        await apiPost("/api/v1/observations", { roomId: map?.room.id, seatId, status: "OCCUPIED", location, turnstileToken });
+        await apiPost("/api/v1/observations", {
+          roomId: map?.room.id,
+          seatId,
+          status: "OCCUPIED",
+          location,
+          qrToken: options?.qrToken ?? undefined,
+          turnstileToken,
+        });
         return true;
       }).then((v) => v ?? false),
     [map?.room.id, run],
@@ -117,6 +145,12 @@ export function useSeatActions(map: RoomMapDto | null, onChanged: () => void): U
     [run],
   );
 
+  const updateIdentity = useCallback(
+    (showIdentity: boolean) =>
+      run(() => apiFetch<CheckInDto>("/api/v1/checkins/current/identity", { method: "PATCH", body: JSON.stringify({ showIdentity }) })),
+    [run],
+  );
+
   const submitTurnstileToken = useCallback((token: string) => {
     retryRef.current?.(token);
   }, []);
@@ -131,6 +165,7 @@ export function useSeatActions(map: RoomMapDto | null, onChanged: () => void): U
     markOccupied,
     extend,
     checkOut,
+    updateIdentity,
     submitTurnstileToken,
   };
 }

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "@uns/database";
+import { schema } from "@uns/database";
 import { freshDb, insertUsers } from "../test-utils.js";
 import { BlocksService } from "./blocks.service.js";
 
@@ -37,6 +38,15 @@ describe("BlocksService", () => {
     await svc.block("u1", "u2");
     await svc.unblock("u1", "u2");
     expect(await svc.blockedByMe("u1")).toEqual([]);
+  });
+
+  it("hides the blocked user's avatar when they haven't opted into showAvatar", async () => {
+    await db.insert(schema.userProfiles).values({ userId: "u2", avatarUrl: "https://example.test/a.png" });
+    await db.insert(schema.userPrivacySettings).values({ userId: "u2", showAvatar: false });
+    await svc.block("u1", "u2");
+
+    const list = await svc.listBlocks("u1");
+    expect(list[0]?.avatarUrl).toBeNull();
   });
 
   it("detects a block in either direction", async () => {

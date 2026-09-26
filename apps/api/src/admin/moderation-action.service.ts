@@ -62,6 +62,7 @@ export class ModerationActionService {
 
     if (input.type === "SUSPEND" || input.type === "BAN") {
       await this.db.delete(schema.session).where(eq(schema.session.userId, input.targetUserId));
+      this.realtime.disconnectUser(input.targetUserId);
 
       const result = await this.checkIns.checkOut(input.targetUserId);
       if (result) await this.realtime.broadcastSeatChanges(result.roomId, result.changes);

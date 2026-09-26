@@ -1,11 +1,11 @@
 import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, UseGuards } from "@nestjs/common";
-import { AdminGuard } from "../users/admin.guard.js";
+import { AdminOnlyGuard } from "../users/admin.guard.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { QrService } from "./qr.service.js";
 
-/** Admin CRUD for a room's QR codes. */
+/** Admin CRUD for a room's QR codes — role-sensitive, ADMIN only. */
 @Controller("admin/rooms/:idOrSlug/qr")
-@UseGuards(AdminGuard)
+@UseGuards(AdminOnlyGuard)
 export class AdminQrController {
   constructor(
     @Inject(QrService) private readonly qr: QrService,

@@ -1,6 +1,6 @@
 "use client";
 
-import type { MeDto, SeatDto, TableDto } from "@uns/contracts";
+import type { MeDto, SeatDto, SeatOccupantDto, TableDto } from "@uns/contracts";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { IdentityPrompt } from "./IdentityPrompt";
@@ -12,6 +12,8 @@ export interface SeatDetailProps {
   table: TableDto | null;
   me: MeDto | null;
   isMySeat: boolean;
+  /** The occupant who chose to be identified for this seat, if any (from `GET /rooms/:id/occupants`). */
+  occupant?: SeatOccupantDto | null;
   pending: boolean;
   actionError: string | null;
   /** True while the API is waiting for a solved Turnstile challenge to retry the last action. */
@@ -33,6 +35,7 @@ export function SeatDetail({
   table,
   me,
   isMySeat,
+  occupant,
   pending,
   actionError,
   turnstileRequired,
@@ -59,6 +62,14 @@ export function SeatDetail({
           <p className="mt-1 text-sm font-medium">
             <StatusDot status={seat.status} isMySeat={isMySeat} /> {isMySeat ? "Tu lugar" : statusLabel(seat.status)}
           </p>
+          {!isMySeat && occupant ? (
+            <p className="mt-0.5 text-sm text-slate-600">
+              <Link href={`/u/${occupant.userId}`} className="font-medium text-primary hover:underline">
+                {occupant.displayName}
+              </Link>{" "}
+              está acá
+            </p>
+          ) : null}
           {recency ? <p className="text-xs text-slate-500">{recency}</p> : null}
           {seat.confidence > 0 ? (
             <p className="text-xs text-slate-400">{confidenceWording(seat.confidence)}</p>

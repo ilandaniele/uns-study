@@ -1,0 +1,30 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+/** Shows a small banner while `navigator.onLine` is false. Purely informational — the PWA's
+ *  cached shell keeps working, but live seat/chat data can't refresh until reconnected. */
+export function OfflineBanner() {
+  const [offline, setOffline] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing to a browser API not available during SSR/first render
+    setOffline(!navigator.onLine);
+    const onOnline = () => setOffline(false);
+    const onOffline = () => setOffline(true);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, []);
+
+  if (!offline) return null;
+
+  return (
+    <div className="bg-amber-500 px-4 py-1.5 text-center text-xs font-semibold text-white">
+      Sin conexión — mostrando el último estado conocido
+    </div>
+  );
+}

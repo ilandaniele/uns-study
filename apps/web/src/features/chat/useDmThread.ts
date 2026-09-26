@@ -1,0 +1,103 @@
+"use client";
+
+import { SocketEvents, type DirectMessageDto, type Page } from "@uns/contracts";
+import { useCallback, useEffect, useState } from "react";
+import { apiFetch, apiPost, ApiRequestError } from "@/lib/api";
+import { getSocket } from "@/lib/socket";
+
+export interface UseDmThreadResult {
+  /** Ascending (oldest first). */
+  messages: DirectMessageDto[];
+  loading: boolean;
+  loadingMore: boolean;
+  hasMore: boolean;
+  error: string | null;
+  sendError: string | null;
+  loadMore: () => void;
+  send: (content: string) => Promise<void>;
+}
+
+/** Loads + paginates a DM thread and keeps it live via `dm:message-created`; marks it read on load and on new messages. */
+export function useDmThread(conversationId: string): UseDmThreadResult {
+  const [messages, setMessages] = useState<DirectMessageDto[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+
+  const markRead = useCallback(() => {
+    void apiPost(`/api/v1/conversations/${conversationId}/read`).catch(() => {
+      // best-effort; unread counts will just settle on the next successful call
+    });
+  }, [conversationId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch<Page<DirectMessageDto>>(`/api/v1/conversations/${conversationId}/messages`)
+      .then((page) => {
+        if (cancelled) return;
+        setMessages([...page.items].reverse());
+        setNextCursor(page.nextCursor);
+        setError(null);
+        markRead();
+      })
+      .catch(() => {
+        if (!cancelled) setError("No pudimos cargar la conversación.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId, markRead]);
+
+  const loadMore = useCallback(() => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    apiFetch<Page<DirectMessageDto>>(`/api/v1/conversations/${conversationId}/messages?cursor=${encodeURIComponent(nextCursor)}`)
+      .then((page) => {
+        setMessages((prev) => [...[...page.items].reverse(), ...prev]);
+        setNextCursor(page.nextCursor);
+      })
+      .catch(() => setError("No pudimos cargar mensajes anteriores."))
+      .finally(() => setLoadingMore(false));
+  }, [conversationId, nextCursor, loadingMore]);
+
+  useEffect(() => {
+    const socket = getSocket();
+    const onDm = (message: DirectMessageDto) => {
+      if (message.conversationId !== conversationId) return;
+      setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
+      markRead();
+    };
+    socket.on(SocketEvents.DmMessageCreated, onDm);
+    return () => {
+      socket.off(SocketEvents.DmMessageCreated, onDm);
+    };
+  }, [conversationId, markRead]);
+
+  const send = useCallback(
+    async (content: string) => {
+      setSendError(null);
+      try {
+        const dto = await apiPost<DirectMessageDto>(`/api/v1/conversations/${conversationId}/messages`, { content });
+        setMessages((prev) => (prev.some((m) => m.id === dto.id) ? prev : [...prev, dto]));
+      } catch (err) {
+        if (err instanceof ApiRequestError && err.code === "BLOCKED") {
+          setSendError("No podés escribirle a esta persona.");
+        } else if (err instanceof ApiRequestError && err.code === "RESTRICTED") {
+          setSendError("No podés enviar mensajes en este momento.");
+        } else if (err instanceof ApiRequestError && err.code === "RATE_LIMITED") {
+          setSendError("Demasiados mensajes seguidos. Esperá un momento.");
+        } else {
+          setSendError("No pudimos enviar el mensaje.");
+        }
+      }
+    },
+    [conversationId],
+  );
+
+  return { messages, loading, loadingMore, hasMore: nextCursor !== null, error, sendError, loadMore, send };
+}

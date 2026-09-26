@@ -1,0 +1,94 @@
+"use client";
+
+import type { PublicProfileDto } from "@uns/contracts";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { DeleteAccountDialog } from "@/features/profile/DeleteAccountDialog";
+import { PrivacyToggles } from "@/features/profile/PrivacyToggles";
+import { ProfileForm } from "@/features/profile/ProfileForm";
+import { StudyModeControl } from "@/features/profile/StudyModeControl";
+import { useMyProfile } from "@/features/profile/useMyProfile";
+import { apiFetch, apiPost } from "@/lib/api";
+import { signOut, useSession } from "@/lib/auth-client";
+
+const ROOM_SLUG = "principal";
+
+export default function PerfilPage() {
+  const router = useRouter();
+  const { data: session, isPending: sessionPending } = useSession();
+  const { profile, privacy, loading, error, saving, saveProfile, savePrivacy } = useMyProfile();
+  const [studyStatus, setStudyStatus] = useState<PublicProfileDto["studyStatus"]>(null);
+  const [roomId, setRoomId] = useState<string | null>(null);
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    void apiFetch<{ id: string }>(`/api/v1/rooms/${ROOM_SLUG}`).then((room) => setRoomId(room.id));
+  }, []);
+
+  useEffect(() => {
+    if (!session?.user) return;
+    void apiFetch<PublicProfileDto>(`/api/v1/profiles/${session.user.id}`).then((pub) => setStudyStatus(pub.studyStatus));
+  }, [session?.user]);
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      await apiPost("/api/v1/me/delete", { confirm: "ELIMINAR" });
+      await signOut();
+      router.push("/");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  if (sessionPending || loading) {
+    return <main className="p-6 text-center text-slate-500">Cargando…</main>;
+  }
+
+  if (!session?.user || error || !profile || !privacy) {
+    return <main className="p-6 text-center text-slate-600">{error ?? "Iniciá sesión para ver tu perfil."}</main>;
+  }
+
+  return (
+    <main className="mx-auto flex max-w-2xl flex-col gap-8 p-4 pb-16">
+      <div>
+        <h1 className="text-xl font-bold text-slate-900">Mi perfil</h1>
+        <p className="text-sm text-slate-500">{profile.email}</p>
+      </div>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-4">
+        <h2 className="mb-3 text-base font-semibold text-slate-900">Datos</h2>
+        <ProfileForm profile={profile} saving={saving} onSave={saveProfile} />
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-4">
+        <h2 className="mb-1 text-base font-semibold text-slate-900">Privacidad</h2>
+        <p className="mb-2 text-xs text-slate-500">Todo está oculto por defecto. Activá sólo lo que quieras compartir.</p>
+        <PrivacyToggles privacy={privacy} saving={saving} onChange={(patch) => void savePrivacy(patch)} />
+      </section>
+
+      {roomId ? (
+        <section className="rounded-2xl border border-slate-200 bg-white p-4">
+          <h2 className="mb-3 text-base font-semibold text-slate-900">Modo Estudio</h2>
+          <StudyModeControl roomId={roomId} initialStatus={studyStatus} />
+        </section>
+      ) : null}
+
+      <section className="rounded-2xl border border-red-200 bg-red-50 p-4">
+        <h2 className="mb-2 text-base font-semibold text-red-800">Zona peligrosa</h2>
+        <button
+          type="button"
+          onClick={() => setShowDelete(true)}
+          className="rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+        >
+          Eliminar cuenta
+        </button>
+      </section>
+
+      {showDelete ? (
+        <DeleteAccountDialog pending={deleting} onConfirm={() => void handleDelete()} onCancel={() => setShowDelete(false)} />
+      ) : null}
+    </main>
+  );
+}

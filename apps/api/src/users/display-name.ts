@@ -46,3 +46,17 @@ export function displayName(
       return ANONYMOUS;
   }
 }
+
+/** Minimal shape needed to gate a profile's avatar on the owner's privacy setting. */
+export interface AvatarProfile {
+  avatarUrl: string | null;
+}
+export interface AvatarPrivacy {
+  showAvatar: boolean;
+}
+
+/** Returns the profile's `avatarUrl`, or `null` when the owner hasn't opted into `showAvatar`. */
+export function visibleAvatarUrl(profile: AvatarProfile | null, privacy: AvatarPrivacy | null): string | null {
+  if (!profile || !privacy?.showAvatar) return null;
+  return profile.avatarUrl;
+}

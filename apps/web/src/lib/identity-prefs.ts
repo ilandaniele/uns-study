@@ -1,4 +1,7 @@
-// Identity visibility choice, stored locally only (TODO: persist server-side once profiles ship).
+// Remembered "show identity" preference, used only to pre-fill the *next* check-in's `showIdentity`
+// field before the identity prompt is shown. The actual current check-in's visibility is now
+// canonical server-side (`PATCH /checkins/current/identity`, see `useSeatActions.updateIdentity`) —
+// this local value is just a convenience default, not a source of truth.
 const STORAGE_KEY = "uns-study:show-identity";
 
 export function hasChosenIdentityVisibility(): boolean {

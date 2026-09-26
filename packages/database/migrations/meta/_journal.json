@@ -15,6 +15,13 @@
       "when": 1790392780652,
       "tag": "0001_dazzling_mach_iv",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790394897028,
+      "tag": "0002_blushing_yellowjacket",
+      "breakpoints": true
     }
   ]
 }

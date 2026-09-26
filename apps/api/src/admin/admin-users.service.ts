@@ -4,24 +4,35 @@ import { schema, type Db } from "@uns/database";
 import type { AdminUserDto, ModerationActionType } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
+import { RolesService } from "../users/roles.service.js";
 import { ModerationActionService } from "./moderation-action.service.js";
+
+const ADMIN_ONLY_ACTIONS: ModerationActionType[] = ["SUSPEND", "BAN", "LIFT"];
 
 const SEARCH_LIMIT = 20;
 const RECENT_SECURITY_EVENTS = 10;
+const SEARCH_QUERY_MAX_LENGTH = 100;
+
+/** Escapes `ILIKE` wildcards (`%`, `_`) and the escape character itself (`\`) so user input is matched literally. */
+function escapeLikePattern(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
 
 @Injectable()
 export class AdminUsersService {
   constructor(
     @Inject(DB) private readonly db: Db,
     @Inject(ModerationActionService) private readonly moderation: ModerationActionService,
+    @Inject(RolesService) private readonly roles: RolesService,
   ) {}
 
   async search(q: string | undefined) {
-    const rows = q
+    const query = q?.slice(0, SEARCH_QUERY_MAX_LENGTH);
+    const rows = query
       ? await this.db
           .select()
           .from(schema.user)
-          .where(or(ilike(schema.user.name, `%${q}%`), ilike(schema.user.email, `%${q}%`)))
+          .where(or(ilike(schema.user.name, `%${escapeLikePattern(query)}%`), ilike(schema.user.email, `%${escapeLikePattern(query)}%`)))
           .limit(SEARCH_LIMIT)
       : await this.db.select().from(schema.user).limit(SEARCH_LIMIT);
     return rows.map((u) => ({ userId: u.id, name: u.name, email: u.email, createdAt: u.createdAt.toISOString() }));
@@ -71,8 +82,19 @@ export class AdminUsersService {
     targetUserId: string,
     input: { type: ModerationActionType; reason: string; until?: string | null; reportId?: string },
   ): Promise<void> {
+    if (targetUserId === actorId) throw ApiErrors.forbidden("No podés aplicar una acción de moderación sobre vos mismo.");
+
     const [target] = await this.db.select().from(schema.user).where(eq(schema.user.id, targetUserId)).limit(1);
     if (!target) throw ApiErrors.notFound("Usuario no encontrado.");
+
+    const targetIsStaff = await this.roles.hasRole(targetUserId, ["ADMIN", "MODERATOR"]);
+    if (targetIsStaff) throw ApiErrors.forbidden("No podés aplicar una acción de moderación sobre otro moderador o administrador.");
+
+    if (ADMIN_ONLY_ACTIONS.includes(input.type)) {
+      const actorIsAdmin = await this.roles.hasRole(actorId, ["ADMIN"]);
+      if (!actorIsAdmin) throw ApiErrors.forbidden("Necesitás permisos de administrador para hacer esto.");
+    }
+
     await this.moderation.apply({ actorId, targetUserId, ...input });
   }
 }
