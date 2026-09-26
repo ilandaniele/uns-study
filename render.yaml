@@ -22,11 +22,14 @@ services:
       - key: IP_HASH_SALT
         generateValue: true
       - key: DATABASE_URL
-        sync: false
-      - key: UPSTASH_REDIS_REST_URL
-        sync: false
-      - key: UPSTASH_REDIS_REST_TOKEN
-        sync: false
+        fromDatabase:
+          name: uns-study-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: uns-study-kv
+          property: connectionString
       - key: ADMIN_EMAILS
         value: ilan.daniele@gmail.com
       - key: DB_AUTO_MIGRATE
@@ -37,3 +40,18 @@ services:
         value: "2"
       - key: PRESENCE_DEV_BYPASS
         value: "false"
+
+  - type: keyvalue
+    name: uns-study-kv
+    plan: free
+    region: virginia
+    maxmemoryPolicy: noeviction
+    ipAllowList: []
+
+databases:
+  - name: uns-study-db
+    plan: free
+    region: virginia
+    databaseName: uns_study
+    user: uns_study
+    postgresMajorVersion: "16"

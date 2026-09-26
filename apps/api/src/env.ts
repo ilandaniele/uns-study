@@ -48,6 +48,7 @@ export const env = {
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
   upstashUrl: process.env.UPSTASH_REDIS_REST_URL ?? "",
   upstashToken: process.env.UPSTASH_REDIS_REST_TOKEN ?? "",
+  redisUrl: process.env.REDIS_URL ?? "",
   ipHashSalt: ipHashSalt(),
   // Number of reverse-proxy hops in front of the API (Express `trust proxy`), so `req.ip` /
   // `@Ip()` see the real client IP. 1 for a single proxy (Railway); 2 for Vercel's rewrite proxy
