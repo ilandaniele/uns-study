@@ -2,21 +2,19 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "@uns/database";
 import { schema } from "@uns/database";
 import { eq } from "drizzle-orm";
-import { freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
+import { freshDb, getRoom, insertUsers } from "../test-utils.js";
 import { StudySessionService, type CheckInForSession } from "./study-session.service.js";
 
 describe("StudySessionService", () => {
   let db: Db;
   let svc: StudySessionService;
   let roomId: string;
-  let seatId: string;
 
   beforeEach(async () => {
     db = await freshDb();
     svc = new StudySessionService(db);
     const room = await getRoom(db);
     roomId = room.id;
-    seatId = (await getSeats(db))[0]!.id;
     await insertUsers(db, ["u1"]);
   });
 

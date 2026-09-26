@@ -84,7 +84,8 @@ For local testing away from the room, set `PRESENCE_DEV_BYPASS=true` (refused wh
 
 ## Deploy
 
-- **API (Railway)**: build `pnpm install && pnpm --filter @uns/api build`, start
+- **CI**: `.github/workflows/ci.yml` runs lint, typecheck, tests and both builds on push/PR.
+- **API (Railway)**: service root = repo root, config file `apps/api/railway.json` (build, pre-deploy migrate+seed, start, healthcheck). build `pnpm install && pnpm --filter @uns/api build`, start
   `pnpm --filter @uns/api start`. Workspace packages are bundled into `apps/api/dist` by tsup.
   Pre-deploy: `pnpm db:migrate && pnpm db:seed` with `DATABASE_URL` set (keep
   `DB_AUTO_MIGRATE=false` in production). Required in production: `DATABASE_URL`,
