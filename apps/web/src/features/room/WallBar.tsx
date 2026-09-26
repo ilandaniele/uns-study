@@ -1,0 +1,33 @@
+import type { TableDto } from "@uns/contracts";
+
+export function WallBar({ table }: { table: TableDto }) {
+  const cx = table.x + table.width / 2;
+  const cy = table.y + table.height / 2;
+
+  return (
+    <g transform={`rotate(${table.rotation} ${cx} ${cy})`}>
+      <rect
+        x={table.x}
+        y={table.y}
+        width={table.width}
+        height={table.height}
+        rx={8}
+        fill="#d7e6f5"
+        stroke="#7fa8cf"
+        strokeWidth={1.5}
+      />
+      <text
+        x={cx}
+        y={cy}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize={20}
+        fontWeight={700}
+        fill="#2c5478"
+        transform={`rotate(90 ${cx} ${cy})`}
+      >
+        {table.label}
+      </text>
+    </g>
+  );
+}

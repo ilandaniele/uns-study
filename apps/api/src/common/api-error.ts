@@ -1,0 +1,30 @@
+import { HttpException } from "@nestjs/common";
+import type { ApiErrorCode, PresenceRejectReason } from "@uns/contracts";
+
+/** Thrown by domain services / controllers; rendered as `{ error: { code, message, reason? } }`. */
+export class ApiException extends HttpException {
+  constructor(
+    public readonly code: ApiErrorCode,
+    message: string,
+    status: number,
+    public readonly reason?: PresenceRejectReason,
+  ) {
+    super({ error: { code, message, ...(reason ? { reason } : {}) } }, status);
+  }
+}
+
+export const ApiErrors = {
+  unauthenticated: () => new ApiException("UNAUTHENTICATED", "Iniciá sesión para continuar.", 401),
+  presenceRejected: (reason: PresenceRejectReason, message: string) =>
+    new ApiException("PRESENCE_REJECTED", message, 403, reason),
+  seatTaken: () => new ApiException("SEAT_TAKEN", "El asiento ya está ocupado.", 409),
+  seatNotFound: () => new ApiException("SEAT_NOT_FOUND", "Asiento no encontrado.", 404),
+  roomNotFound: () => new ApiException("SEAT_NOT_FOUND", "Sala no encontrada.", 404),
+  noActiveCheckIn: () => new ApiException("NO_ACTIVE_CHECKIN", "No tenés un check-in activo.", 404),
+  rateLimited: () => new ApiException("RATE_LIMITED", "Demasiados intentos, esperá un momento.", 429),
+  validation: (message = "Datos inválidos.") => new ApiException("VALIDATION_ERROR", message, 400),
+  ownSeatObservation: () =>
+    new ApiException("OWN_SEAT_OBSERVATION", "Ya tenés un check-in activo en este asiento, usá 'Me voy' en vez de observar.", 409),
+  turnstileRequired: () =>
+    new ApiException("TURNSTILE_REQUIRED", "Confirmá que sos una persona para continuar.", 403),
+};

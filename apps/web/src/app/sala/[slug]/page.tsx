@@ -1,0 +1,153 @@
+"use client";
+
+import type { SeatDto } from "@uns/contracts";
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
+import { ExtendBanner } from "@/features/room/ExtendBanner";
+import { Legend } from "@/features/room/Legend";
+import { RoomMap } from "@/features/room/RoomMap";
+import { SeatDetail } from "@/features/room/SeatDetail";
+import { SummaryCounters } from "@/features/room/SummaryCounters";
+import { checkInExpiryStatus } from "@/features/room/format";
+import { useRoomState } from "@/features/room/useRoomState";
+import { useSeatActions } from "@/features/room/useSeatActions";
+import { getShowIdentityPreference, hasChosenIdentityVisibility, setShowIdentityPreference } from "@/lib/identity-prefs";
+import { useMediaQuery } from "@/lib/use-media-query";
+
+export default function RoomPage() {
+  const params = useParams<{ slug: string }>();
+  const slug = params.slug;
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+
+  const { map, me, connected, loading, error, refetch } = useRoomState(slug);
+  const { pending, actionError, turnstileRequired, submitTurnstileToken, checkIn, markFree, markOccupied, extend, checkOut } =
+    useSeatActions(map, refetch);
+
+  const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
+  const [showIdentityPrompt, setShowIdentityPrompt] = useState(false);
+
+  // Ticks every 30s so the "¿Seguís acá?" banner's minutes-left stays fresh.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const activeCheckIn = me?.activeCheckIn ?? null;
+  const expiryStatus = activeCheckIn ? checkInExpiryStatus(activeCheckIn.expiresAt, now) : null;
+
+  useEffect(() => {
+    // The active check-in expired locally (expiresAt passed); refetch /me so MY_SEAT clears
+    // once the server has processed the expiration too.
+    if (activeCheckIn && !expiryStatus) {
+      refetch();
+    }
+  }, [activeCheckIn, expiryStatus, refetch]);
+
+  const mySeatId = activeCheckIn?.seatId ?? null;
+  const selectedSeat = map?.seats.find((seat) => seat.id === selectedSeatId) ?? null;
+  const selectedTable = selectedSeat ? map?.tables.find((t) => t.id === selectedSeat.tableId) ?? null : null;
+
+  function handleSelectSeat(seat: SeatDto) {
+    const isSame = seat.id === selectedSeatId;
+    setSelectedSeatId(isSame ? null : seat.id);
+    setShowIdentityPrompt(false);
+  }
+
+  function closeDetail() {
+    setSelectedSeatId(null);
+    setShowIdentityPrompt(false);
+  }
+
+  async function handleCheckIn() {
+    if (!selectedSeat) return;
+    const showIdentity = hasChosenIdentityVisibility() ? getShowIdentityPreference() : false;
+    const result = await checkIn(selectedSeat.id, showIdentity);
+    if (result) {
+      setShowIdentityPrompt(true);
+    }
+  }
+
+  function handleIdentityChoice(showIdentity: boolean) {
+    setShowIdentityPreference(showIdentity);
+    setShowIdentityPrompt(false);
+  }
+
+  if (loading) {
+    return <main className="p-6 text-center text-slate-500">Cargando sala…</main>;
+  }
+
+  if (error || !map) {
+    return <main className="p-6 text-center text-red-600">{error ?? "No encontramos esa sala."}</main>;
+  }
+
+  const detail = selectedSeat ? (
+    <SeatDetail
+      seat={selectedSeat}
+      table={selectedTable}
+      me={me}
+      isMySeat={selectedSeat.id === mySeatId}
+      pending={pending}
+      actionError={actionError}
+      turnstileRequired={turnstileRequired}
+      onTurnstileToken={submitTurnstileToken}
+      showIdentityPrompt={showIdentityPrompt}
+      onIdentityChoice={handleIdentityChoice}
+      onClose={closeDetail}
+      onCheckIn={() => void handleCheckIn()}
+      onMarkFree={() => void markFree(selectedSeat.id)}
+      onMarkOccupied={() => void markOccupied(selectedSeat.id)}
+      onExtend={() => void extend()}
+      onCheckOut={() => void checkOut()}
+    />
+  ) : null;
+
+  return (
+    <main className="mx-auto flex max-w-7xl flex-col gap-4 p-4 md:grid md:grid-cols-[260px_1fr_320px] md:items-start">
+      {expiryStatus?.shouldPromptExtend ? (
+        <div className="order-0 md:col-span-3">
+          <ExtendBanner
+            minutesLeft={expiryStatus.minutesLeft}
+            pending={pending}
+            onExtend={() => void extend()}
+            onCheckOut={() => void checkOut()}
+          />
+        </div>
+      ) : null}
+
+      <section className="order-1 flex flex-col gap-4 md:order-1">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">{map.room.name}</h1>
+          <p className="text-xs text-slate-500">{connected ? "Datos en vivo" : "Reconectando…"}</p>
+        </div>
+        <SummaryCounters summary={map.summary} />
+        <Legend />
+      </section>
+
+      <section className="order-2 h-[70vh] overflow-hidden rounded-2xl border border-slate-200 bg-white md:order-2 md:h-[80vh]">
+        {isDesktop ? (
+          <div className="flex h-full w-full items-center justify-center">
+            <RoomMap map={map} mySeatId={mySeatId} selectedSeatId={selectedSeatId} onSelectSeat={handleSelectSeat} />
+          </div>
+        ) : (
+          <TransformWrapper minScale={0.5} maxScale={4} initialScale={1} limitToBounds>
+            <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }} contentStyle={{ width: "100%", height: "100%" }}>
+              <RoomMap map={map} mySeatId={mySeatId} selectedSeatId={selectedSeatId} onSelectSeat={handleSelectSeat} />
+            </TransformComponent>
+          </TransformWrapper>
+        )}
+      </section>
+
+      {isDesktop ? (
+        <section className="order-3 rounded-2xl border border-slate-200 bg-white">
+          {detail ?? <p className="p-4 text-sm text-slate-500">Elegí un lugar en el mapa para ver los detalles.</p>}
+        </section>
+      ) : detail ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 max-h-[70vh] overflow-y-auto rounded-t-2xl border-t border-slate-200 bg-white shadow-2xl">
+          {detail}
+        </div>
+      ) : null}
+    </main>
+  );
+}

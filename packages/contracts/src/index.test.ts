@@ -1,0 +1,66 @@
+import { describe, expect, it } from "vitest";
+import {
+  checkInRequestSchema,
+  locationInputSchema,
+  observationRequestSchema,
+  presenceValidateSchema,
+  extendRequestSchema,
+} from "./index.js";
+
+const validLocation = {
+  latitude: -38.702,
+  longitude: -62.269,
+  accuracy: 20,
+  capturedAt: new Date().toISOString(),
+};
+
+describe("locationInputSchema", () => {
+  it("accepts a valid location", () => {
+    expect(locationInputSchema.safeParse(validLocation).success).toBe(true);
+  });
+
+  it("rejects out-of-range latitude", () => {
+    expect(
+      locationInputSchema.safeParse({ ...validLocation, latitude: 200 }).success,
+    ).toBe(false);
+  });
+});
+
+describe("checkInRequestSchema", () => {
+  it("defaults showIdentity to false", () => {
+    const parsed = checkInRequestSchema.parse({
+      roomId: "room-1",
+      seatId: "seat-1",
+      location: validLocation,
+    });
+    expect(parsed.showIdentity).toBe(false);
+  });
+});
+
+describe("observationRequestSchema", () => {
+  it("requires status to be FREE or OCCUPIED", () => {
+    const result = observationRequestSchema.safeParse({
+      roomId: "room-1",
+      seatId: "seat-1",
+      status: "MAYBE",
+      location: validLocation,
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("extendRequestSchema", () => {
+  it("requires location", () => {
+    expect(extendRequestSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe("presenceValidateSchema", () => {
+  it("accepts a valid payload", () => {
+    const result = presenceValidateSchema.safeParse({
+      roomId: "room-1",
+      ...validLocation,
+    });
+    expect(result.success).toBe(true);
+  });
+});

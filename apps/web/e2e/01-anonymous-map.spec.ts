@@ -1,0 +1,20 @@
+import { expect, test } from "@playwright/test";
+import { ROOM_SLUG, seatLocator } from "./helpers";
+
+test("anonymous visitor sees the room map and is prompted to log in to collaborate", async ({ page }) => {
+  await page.goto(`/sala/${ROOM_SLUG}`);
+
+  const seats = page.locator('g[role="button"][aria-label*="asiento"]');
+  await expect(seats).toHaveCount(108);
+
+  await expect(page.getByText("lugares en total")).toBeVisible();
+  await expect(page.getByText("Libres")).toBeVisible();
+  await expect(page.getByText("Ocupados")).toBeVisible();
+
+  await expect(page.getByText("Reservar")).toHaveCount(0);
+
+  const seat = seatLocator(page, "M12", 4);
+  await seat.click();
+
+  await expect(page.getByText("Iniciá sesión para colaborar.")).toBeVisible();
+});

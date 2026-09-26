@@ -1,0 +1,44 @@
+import { sql } from "drizzle-orm";
+import { boolean, index, pgEnum, pgTable, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { rooms, seats } from "./rooms.js";
+import { user } from "./auth.js";
+
+export const checkInStatusEnum = pgEnum("check_in_status", ["ACTIVE", "COMPLETED", "EXPIRED", "CANCELLED"]);
+
+export const checkIns = pgTable(
+  "check_ins",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    seatId: uuid("seat_id")
+      .notNull()
+      .references(() => seats.id, { onDelete: "cascade" }),
+    status: checkInStatusEnum("status").notNull().default("ACTIVE"),
+    showIdentity: boolean("show_identity").notNull().default(false),
+    presenceVerified: boolean("presence_verified").notNull().default(false),
+    locationAccuracyM: real("location_accuracy_m"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // One active self check-in per user / per seat.
+    uniqueIndex("uq_checkin_active_user")
+      .on(table.userId)
+      .where(sql`status = 'ACTIVE'`),
+    uniqueIndex("uq_checkin_active_seat")
+      .on(table.seatId)
+      .where(sql`status = 'ACTIVE'`),
+    index("idx_check_ins_user_status").on(table.userId, table.status),
+    index("idx_check_ins_seat_status").on(table.seatId, table.status),
+    index("idx_check_ins_room_status").on(table.roomId, table.status),
+    index("idx_check_ins_expires_at").on(table.expiresAt),
+  ],
+);

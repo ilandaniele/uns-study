@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@theme {
+  --color-free: #16a34a;
+  --color-occupied: #dc2626;
+  --color-uncertain: #d97706;
+  --color-unknown: #9ca3af;
+  --color-my-seat: #2563eb;
+  --color-primary: #2563eb;
+  --color-primary-dark: #1d4ed8;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: #f8fafc;
+  color: #0f172a;
+}

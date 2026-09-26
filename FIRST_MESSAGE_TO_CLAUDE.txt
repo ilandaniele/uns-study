@@ -1,0 +1,7 @@
+Read `CLAUDE.md` and every project specification file it references before making architectural decisions.
+
+Start implementing the MVP from the current repository. If the repository is empty, scaffold the Turborepo/pnpm monorepo and follow the phase order in `08_IMPLEMENTATION_PLAN.md`.
+
+Do not implement later social/chat/reporting/ranking/AdSense features yet except for harmless scaffolding. Prioritize the complete occupancy vertical slice: 108-seat room map -> auth -> server-side presence validation -> self check-in -> Socket.IO realtime -> observations -> expiration -> daily reset -> basic anti-abuse.
+
+Before editing, give me a concise plan and the exact files you will create/change. Then implement continuously, running targeted checks after each phase. Do not stop after only explaining what to do unless you need a credential or a decision that cannot safely be inferred.
