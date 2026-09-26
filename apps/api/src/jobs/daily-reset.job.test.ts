@@ -70,10 +70,13 @@ describe("DailyResetJob", () => {
 
   it("records exactly one study session per active check-in it expires", async () => {
     const { checkIn } = await checkIns.checkIn({ userId: "u1", roomId, seatId, location, showIdentity: false });
-    await db.update(schema.checkIns).set({ startedAt: new Date(Date.now() - 45 * 60_000) }).where(eq(schema.checkIns.id, checkIn.id));
-
     const room = await getRoom(db);
     const after = new Date(resetInstantFor(room, new Date()).getTime() + 60_000);
+    // Times relative to the simulated reset instant, not wall-clock, so the test is TZ/time-of-day independent.
+    await db
+      .update(schema.checkIns)
+      .set({ startedAt: new Date(after.getTime() - 45 * 60_000), expiresAt: new Date(after.getTime() + 15 * 60_000) })
+      .where(eq(schema.checkIns.id, checkIn.id));
     await job.runReset(roomId, after);
 
     const sessions = await db.select().from(schema.studySessions).where(eq(schema.studySessions.checkInId, checkIn.id));
