@@ -33,10 +33,15 @@ RUN pnpm --filter @uns/api build
 FROM base AS runtime
 ENV NODE_ENV=production
 
+# pnpm (shamefully-hoist=false) keeps each package's deps as symlinks in that package's own
+# node_modules, pointing into the root node_modules/.pnpm store: both levels must ship.
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json ./package.json
 COPY --from=deps /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=deps /app/packages/database/package.json ./packages/database/package.json
+COPY --from=deps /app/packages/database/node_modules ./packages/database/node_modules
+COPY --from=deps /app/apps/api/package.json ./apps/api/package.json
+COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 # `db:migrate` / `db:seed` run via `tsx` against TypeScript sources directly (no build step for
 # `@uns/database`), so the migrator/seed source and the SQL migrations themselves must ship too.
@@ -48,4 +53,6 @@ USER node
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "pnpm db:migrate && pnpm db:seed && node apps/api/dist/main.js"]
+# Run tsx straight from the package's bin dir: no pnpm/corepack download at boot.
+WORKDIR /app/packages/database
+CMD ["sh", "-c", "./node_modules/.bin/tsx src/migrate.ts && ./node_modules/.bin/tsx src/seed.ts && cd /app && exec node apps/api/dist/main.js"]
