@@ -97,10 +97,13 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 - [x] P0 scaffold  - [x] P1 DB/seed  - [x] P2 map  - [x] P3 auth  - [x] P4 presence  - [x] P5 check-in  - [x] P6 realtime  - [x] P7 observations  - [x] P8 expiry/reset  - [x] P9 anti-abuse
 - [x] Security review (Fable) findings fixed  - [x] Playwright E2E 4/4  - [x] API dist bundles workspace packages  - [x] PGlite single-process lock
 
-## Deployment state (2026-09-26)
+## Deployment state (2026-09-27)
 - GitHub: private repo `ilandaniele/uns-study`, CI green.
-- Web: Vercel project `uns-study`, production https://uns-study.vercel.app (auto-deploys on push to main). `NEXT_PUBLIC_API_URL`/`NEXT_PUBLIC_SOCKET_URL` still point to localhost until the API is deployed.
-- API: not deployed yet (Railway login + Neon/Upstash credentials needed).
+- Web: Vercel project `uns-study`, https://uns-study.vercel.app (auto-deploy on push to main). `/api/auth/*` and `/api/v1/*` are rewritten to the API (`API_PROXY_TARGET`), so auth cookies are first-party. Socket.IO connects straight to the API host (defaults to `API_PROXY_TARGET` at build, see next.config.ts).
+- API: Render Blueprint `uns-study` (render.yaml) -> web service `uns-study-api` (https://uns-study-api.onrender.com, free plan, sleeps when idle), Render Postgres `uns-study-db` (free, expires after 30 days -> move to Neon project `uns-study` by setting DATABASE_URL), Render Key Value `uns-study-kv` (rate limits via REDIS_URL). Start command runs migrate + seed.
+- Admin: `ADMIN_EMAILS=ilan.daniele@gmail.com`; the ADMIN role is granted on the first `/me` after that account signs up.
+- Room coordinates confirmed: -38.70138372483678, -62.270139753196005, radius 120 m, max accuracy 100 m.
+- Unused but created: Neon project `uns-study` (Sao Paulo), Upstash Redis `uns-study` (Sao Paulo).
 
 ## Next (blocked on Ilan)
 - Real credentials: Neon `DATABASE_URL`, Google OAuth client, Upstash Redis, Turnstile keys.
