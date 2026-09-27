@@ -35,7 +35,7 @@ Root scripts: `dev`, `build`, `lint`, `typecheck`, `test`, `db:generate`, `db:mi
   - `user_room_presence` (user_id, room_id, presence_verified, first_seen_at, last_seen_at, active) PK(user_id, room_id)
   - `study_status` (user_id, room_id, subject, message, looking_for_group, active, started_at, updated_at) PK(user_id, room_id) — scaffold only.
   - Later tables (profiles, privacy, reputation, qr, blocks, reports, chat) NOT now.
-- Seed (`pnpm db:seed`, idempotent upsert by slug/code): room slug `principal`, name `Sala de Estudio Principal`, lat `-38.7020`, lng `-62.2690` (placeholder UNS Bahía Blanca — TODO confirm), radius 120 m, tz `America/Argentina/Buenos_Aires`, reset `04:00`. Geometry from `generateRoomLayout()` (pure, in `src/layout.ts`, unit-tested: 12 MAIN_TABLE, 4 WALL_BAR, 108 seats, codes `M01-S01`..`M12-S08`, `B01-S01`..`B04-S03`). viewBox `0 0 1000 1600`: back/windows at top y≈0, entrance at bottom. M01..M06 left column bottom→top (M01 near entrance), M07..M12 right column bottom→top. Tables horizontal ~300x90; seats 1-4 above table left→right, 5-8 below right→left. Bars vertical against side walls: B01 left-bottom, B02 right-bottom, B03 left-top, B04 right-top, 3 seats each stacked vertically. One `seat_current_state` row per seat, UNKNOWN, confidence 0.
+- Seed (`pnpm db:seed`, idempotent upsert by slug/code): room slug `principal`, name `Sala de Estudio UNS`, lat `-38.70138372483678`, lng `-62.270139753196005` (confirmed), radius 120 m, tz `America/Argentina/Buenos_Aires`, reset `04:00`. Geometry from `generateRoomLayout()` (pure, in `src/layout.ts`, unit-tested: 12 MAIN_TABLE, 4 WALL_BAR, 108 seats, codes `M01-S01`..`M12-S08`, `B01-S01`..`B04-S03`). viewBox `0 0 1000 1600`: back/windows at top y≈0, entrance at bottom. M01..M06 left column bottom→top (M01 near entrance), M07..M12 right column bottom→top. Tables horizontal ~300x90; seats 1-4 above table left→right, 5-8 below right→left. Bars vertical against side walls: B01 left-bottom, B02 right-bottom, B03 left-top, B04 right-top, 3 seats each stacked vertically. One `seat_current_state` row per seat, UNKNOWN, confidence 0.
 
 ## Contracts package (`@uns/contracts`)
 ```ts
@@ -104,7 +104,7 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 
 ## Next (blocked on Ilan)
 - Real credentials: Neon `DATABASE_URL`, Google OAuth client, Upstash Redis, Turnstile keys.
-- Confirm real room coordinates (seed uses placeholder -38.7020, -62.2690) and geofence radius.
+- Room coordinates confirmed (2026-09-27). Geofence radius 120 m — tune after real-device tests.
 - Deploy: Vercel (apps/web) + Railway (apps/api); see README "Deploy".
 - Beta launch point reached per 08_IMPLEMENTATION_PLAN.md; later phases (profiles, chat, reports, rankings, QR, ads) not started.
 

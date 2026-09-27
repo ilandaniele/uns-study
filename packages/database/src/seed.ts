@@ -15,9 +15,9 @@ export const INITIAL_ROOM = {
   slug: "principal",
   name: "Sala de Estudio UNS",
   description: null as string | null,
-  // Placeholder coordinates (UNS Bahía Blanca) — TODO confirm exact location.
-  latitude: -38.702,
-  longitude: -62.269,
+  // Sala de estudio, UNS Bahía Blanca (confirmed by the project owner).
+  latitude: -38.70138372483678,
+  longitude: -62.270139753196005,
   geofenceRadiusM: 120,
   timezone: "America/Argentina/Buenos_Aires",
   dailyResetTime: "04:00",

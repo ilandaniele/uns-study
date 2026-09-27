@@ -4,8 +4,8 @@ import { randomBytes } from "node:crypto";
 export const API_URL = "http://localhost:4000";
 export const ROOM_SLUG = "principal";
 
-/** Coordinates inside the seeded room's geofence (see handoff.md seed: lat -38.7020, lng -62.2690). */
-export const IN_GEOFENCE_LOCATION = { latitude: -38.702, longitude: -62.269, accuracy: 20 };
+/** Coordinates of the seeded room (see packages/database/src/seed.ts INITIAL_ROOM). */
+export const IN_GEOFENCE_LOCATION = { latitude: -38.70138372483678, longitude: -62.270139753196005, accuracy: 20 };
 
 function randomEmail(): string {
   return `e2e-${randomBytes(6).toString("hex")}@example.test`;
