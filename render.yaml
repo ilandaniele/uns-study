@@ -32,6 +32,10 @@ services:
           property: connectionString
       - key: ADMIN_EMAILS
         value: ilan.daniele@gmail.com
+      # Google OAuth client "Sala de Estudio UNS (web)" in GCP project sala-de-estudio-uns.
+      # The client ID is public; GOOGLE_CLIENT_SECRET is set by hand in the Render dashboard.
+      - key: GOOGLE_CLIENT_ID
+        value: 1032351199989-q4i4g9vsn7unkemt09in1md9omp4hh0o.apps.googleusercontent.com
       - key: DB_AUTO_MIGRATE
         value: "false"
       - key: ROOM_RESET_TIMEZONE

@@ -129,6 +129,18 @@ export default function LoginPage() {
           </button>
         </>
       ) : null}
+
+      <p className="mt-6 text-center text-xs text-slate-500">
+        Al continuar aceptás los{" "}
+        <a href="/terminos" className="underline">
+          términos
+        </a>{" "}
+        y la{" "}
+        <a href="/privacidad" className="underline">
+          política de privacidad
+        </a>
+        .
+      </p>
     </main>
   );
 }
