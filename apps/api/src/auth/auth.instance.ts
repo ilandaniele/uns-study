@@ -9,9 +9,9 @@ export type Auth = ReturnType<typeof buildAuth>;
 /** Builds the Better Auth instance against the shared Drizzle db. Called once at boot. */
 export function buildAuth(db: Db) {
   if (!env.betterAuthSecret) {
-    if (env.isProduction) {
-      throw new Error("BETTER_AUTH_SECRET is required in production.");
-    }
+    // `resolveAppSecrets()` (see `secrets.ts`) resolves/generates this into `process.env` before
+    // `env.ts` is ever imported in `main.ts`'s boot path, so this only fires for entry points that
+    // skip that step (e.g. a test building `Auth` directly without a DB).
     console.warn("[auth] BETTER_AUTH_SECRET not set — using an insecure dev-only fallback secret.");
   }
 

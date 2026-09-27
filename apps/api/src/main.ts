@@ -1,18 +1,47 @@
 import "reflect-metadata";
-import "./env.js"; // loads repo-root .env before anything else reads process.env
 
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
-import { NestFactory } from "@nestjs/core";
-import { toNodeHandler } from "better-auth/node";
-import { AppModule } from "./app.module.js";
-import { AUTH } from "./auth/auth.tokens.js";
-import type { Auth } from "./auth/auth.instance.js";
-import { ApiExceptionFilter } from "./common/api-exception.filter.js";
-import { csrfMiddleware } from "./common/csrf.middleware.js";
-import { env } from "./env.js";
+import { closeDb, createDb, migrate } from "@uns/database";
+import { resolveAppSecrets } from "./secrets.js";
+
+// Load the repo-root `.env` (if present) before anything else reads `process.env` — duplicated
+// from `env.ts` here because `env.ts` must not be imported until *after* `resolveAppSecrets()`
+// below has had a chance to fill in `BETTER_AUTH_SECRET` / `IP_HASH_SALT` (it captures them into
+// plain fields at module-evaluation time).
+const apiDir = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.join(apiDir, "..", "..", "..");
+dotenv.config({ path: path.join(repoRoot, ".env") });
 
 async function bootstrap() {
+  // Resolve (or generate + persist) BETTER_AUTH_SECRET / IP_HASH_SALT before any other module
+  // reads them, so the API never needs hand-typed generated secrets in deployment. Uses a
+  // short-lived db connection of its own since `./database/database.module.js` (and everything
+  // that depends on `env.ts`) can't be imported yet.
+  const secretsDb = createDb({
+    databaseUrl: process.env.DATABASE_URL || undefined,
+    pgliteDir: process.env.PGLITE_DIR || undefined,
+  });
+  const dbAutoMigrate = process.env.DB_AUTO_MIGRATE
+    ? process.env.DB_AUTO_MIGRATE === "true" || process.env.DB_AUTO_MIGRATE === "1"
+    : process.env.NODE_ENV !== "production";
+  if (dbAutoMigrate) await migrate(secretsDb);
+  await resolveAppSecrets(secretsDb);
+  await closeDb(secretsDb);
+
+  // Safe to import anything that reads `env.ts` from here on.
+  const { NestFactory } = await import("@nestjs/core");
+  const { toNodeHandler } = await import("better-auth/node");
+  const { AppModule } = await import("./app.module.js");
+  const { AUTH } = await import("./auth/auth.tokens.js");
+  const { ApiExceptionFilter } = await import("./common/api-exception.filter.js");
+  const { csrfMiddleware } = await import("./common/csrf.middleware.js");
+  const { env } = await import("./env.js");
+  type Auth = import("./auth/auth.instance.js").Auth;
+
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   app.enableShutdownHooks(); // closes the DB (and releases the PGlite lock) on SIGINT/SIGTERM
 

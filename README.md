@@ -96,13 +96,16 @@ For local testing away from the room, set `PRESENCE_DEV_BYPASS=true` (refused wh
   ```bash
   fly secrets set \
     DATABASE_URL="postgres://...neon.tech/...?sslmode=require" \
-    GOOGLE_CLIENT_SECRET="..." \
-    BETTER_AUTH_SECRET="$(openssl rand -hex 32)" \
-    IP_HASH_SALT="$(openssl rand -hex 32)"
+    GOOGLE_CLIENT_SECRET="..."
   ```
   `DATABASE_URL` is the Neon project `sala-estudio-uns`'s **direct** (non-pooled) connection string
   with `sslmode=require` — `packages/database/src/client.ts` enables SSL exactly when the URL
-  contains `sslmode=`. `min_machines_running = 0` and `auto_stop_machines = "stop"` mean the single
+  contains `sslmode=`. `BETTER_AUTH_SECRET` and `IP_HASH_SALT` are **not** Fly secrets: on first boot
+  the API generates and persists them in the `app_secrets` table (see `apps/api/src/secrets.ts`), so
+  there's nothing to hand-type for those two. Setting either as an env var still overrides the stored
+  value, if you ever need that. Rotating a stored secret = delete its `app_secrets` row + restart the
+  machine (rotating `BETTER_AUTH_SECRET` logs everyone out). `min_machines_running = 0` and
+  `auto_stop_machines = "stop"` mean the single
   machine scales to zero when idle and cold-starts on the next request (free-tier friendly, like the
   old Render setup); `RateLimitService` no longer requires Upstash/`REDIS_URL` in production — with
   neither set it now falls back to a Postgres-backed limiter (`rate_limit_hits` table) instead of

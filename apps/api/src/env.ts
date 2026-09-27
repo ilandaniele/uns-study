@@ -25,9 +25,9 @@ const isProduction = process.env.NODE_ENV === "production";
 function ipHashSalt(): string {
   const v = process.env.IP_HASH_SALT ?? "";
   if (!v) {
-    if (isProduction) {
-      throw new Error("IP_HASH_SALT is required in production.");
-    }
+    // `resolveAppSecrets()` (see `secrets.ts`) resolves/generates this into `process.env` before
+    // `env.ts` is ever imported in `main.ts`'s boot path, so this only fires for entry points that
+    // skip that step (e.g. a test importing `env.ts` directly without a DB).
     console.warn("[env] IP_HASH_SALT not set — using an insecure dev-only fallback salt.");
     return "dev-salt-change-me";
   }
