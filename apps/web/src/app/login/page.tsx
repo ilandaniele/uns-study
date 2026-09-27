@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import { signIn, signUp } from "@/lib/auth-client";
 
 type Tab = "signin" | "signup";
@@ -15,6 +16,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [googleEnabled, setGoogleEnabled] = useState(false);
+
+  useEffect(() => {
+    apiFetch<{ google: boolean }>("/api/v1/auth-providers")
+      .then((p) => setGoogleEnabled(p.google))
+      .catch(() => setGoogleEnabled(false));
+  }, []);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -41,7 +49,9 @@ export default function LoginPage() {
 
   async function handleGoogle() {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    await signIn.social({ provider: "google", callbackURL: `${origin}/sala/principal` });
+    setError(null);
+    const result = await signIn.social({ provider: "google", callbackURL: `${origin}/sala/principal` });
+    if (result?.error) setError("No pudimos iniciar sesión con Google. Probá con email y contraseña.");
   }
 
   return (
@@ -104,17 +114,21 @@ export default function LoginPage() {
         </button>
       </form>
 
-      <div className="my-4 flex items-center gap-2 text-xs text-slate-400">
-        <div className="h-px flex-1 bg-slate-200" />o<div className="h-px flex-1 bg-slate-200" />
-      </div>
+      {googleEnabled ? (
+        <>
+          <div className="my-4 flex items-center gap-2 text-xs text-slate-400">
+            <div className="h-px flex-1 bg-slate-200" />o<div className="h-px flex-1 bg-slate-200" />
+          </div>
 
-      <button
-        type="button"
-        onClick={() => void handleGoogle()}
-        className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-      >
-        Continuar con Google
-      </button>
+          <button
+            type="button"
+            onClick={() => void handleGoogle()}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Continuar con Google
+          </button>
+        </>
+      ) : null}
     </main>
   );
 }

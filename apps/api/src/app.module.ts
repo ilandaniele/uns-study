@@ -9,6 +9,7 @@ import { CheckInsModule } from "./checkins/checkins.module.js";
 import { ObservationsModule } from "./observations/observations.module.js";
 import { JobsModule } from "./jobs/jobs.module.js";
 import { HealthController } from "./health.controller.js";
+import { AuthProvidersController } from "./auth-providers.controller.js";
 import { UsersModule } from "./users/users.module.js";
 import { ProfilesModule } from "./profiles/profiles.module.js";
 import { StudyModule } from "./study/study.module.js";
@@ -48,6 +49,6 @@ import { ReputationModule } from "./reputation/reputation.module.js";
     QrModule,
     JobsModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, AuthProvidersController],
 })
 export class AppModule {}
