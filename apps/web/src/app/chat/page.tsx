@@ -40,7 +40,7 @@ function ChatRoom({ currentUserId }: { currentUserId: string }) {
   );
 
   return (
-    <main className="mx-auto flex h-[calc(100vh-57px)] max-w-3xl flex-col">
+    <main className="mx-auto flex h-[calc(100dvh_-_57px_-_56px_-_env(safe-area-inset-bottom))] max-w-3xl flex-col sm:h-[calc(100dvh_-_57px)]">
       <div className="border-b border-slate-200 bg-white px-4 py-3">
         <h1 className="text-lg font-bold text-slate-900">#sala-principal</h1>
         <p className="text-xs text-slate-500">{connected ? "En vivo" : "Reconectando…"}</p>

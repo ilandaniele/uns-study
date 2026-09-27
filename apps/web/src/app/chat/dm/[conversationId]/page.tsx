@@ -46,7 +46,7 @@ function DmThread({ conversationId, currentUserId }: { conversationId: string; c
   const showSeparators = daySeparatorFlags(messages);
 
   return (
-    <main className="mx-auto flex h-[calc(100vh-57px)] max-w-2xl flex-col">
+    <main className="mx-auto flex h-[calc(100dvh_-_57px_-_56px_-_env(safe-area-inset-bottom))] max-w-2xl flex-col sm:h-[calc(100dvh_-_57px)]">
       <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
         <div>
           <Link href="/chat/dm" className="text-xs text-slate-400 hover:underline">

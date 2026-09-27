@@ -25,7 +25,7 @@ export class ApiRequestError extends Error {
 }
 
 /**
- * Thin wrapper around `fetch` for the UNS Study API.
+ * Thin wrapper around `fetch` for the Sala de Estudio UNS API.
  * Always sends cookies (Better Auth session) and parses the shared ApiError shape on failure.
  */
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {

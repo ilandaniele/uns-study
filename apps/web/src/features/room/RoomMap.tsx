@@ -25,12 +25,29 @@ export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlight
       role="img"
       aria-label={`Mapa de ${map.room.name}`}
     >
-      <rect x={4} y={4} width={map.viewBox.width - 8} height={map.viewBox.height - 8} rx={24} fill="#fdfaf4" stroke="#d8cdb8" strokeWidth={4} />
+      <rect
+        x={4}
+        y={4}
+        width={map.viewBox.width - 8}
+        height={map.viewBox.height - 8}
+        rx={24}
+        fill="var(--room-floor)"
+        stroke="var(--room-floor-border)"
+        strokeWidth={4}
+      />
 
-      <text x={map.viewBox.width / 2} y={40} textAnchor="middle" fontSize={22} fontWeight={700} fill="#5b6b7c" letterSpacing={4}>
+      <text x={map.viewBox.width / 2} y={40} textAnchor="middle" fontSize={22} fontWeight={700} fill="var(--room-label)" letterSpacing={4}>
         VENTANAS
       </text>
-      <text x={map.viewBox.width / 2} y={map.viewBox.height - 20} textAnchor="middle" fontSize={22} fontWeight={700} fill="#5b6b7c" letterSpacing={4}>
+      <text
+        x={map.viewBox.width / 2}
+        y={map.viewBox.height - 20}
+        textAnchor="middle"
+        fontSize={22}
+        fontWeight={700}
+        fill="var(--room-label)"
+        letterSpacing={4}
+      >
         ENTRADA
       </text>
 

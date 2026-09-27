@@ -27,7 +27,7 @@ export function DeleteAccountDialog({ pending, onConfirm, onCancel }: DeleteAcco
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder={CONFIRM_WORD}
-          className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm uppercase"
+          className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-base uppercase sm:text-sm"
         />
         <div className="mt-4 flex justify-end gap-2">
           <button type="button" onClick={onCancel} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">

@@ -9,6 +9,7 @@ dist
 coverage
 test-results
 playwright-report
+apps/web/scripts/screenshots.mjs
 *.log
 .DS_Store
 *.tsbuildinfo

@@ -75,7 +75,12 @@ export function SeatDetail({
             <p className="text-xs text-slate-400">{confidenceWording(seat.confidence)}</p>
           ) : null}
         </div>
-        <button type="button" onClick={onClose} aria-label="Cerrar" className="text-slate-400 hover:text-slate-600">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Cerrar"
+          className="flex h-11 w-11 shrink-0 items-center justify-center text-lg text-slate-400 hover:text-slate-600"
+        >
           ✕
         </button>
       </div>
@@ -150,8 +155,8 @@ function ActionButton({
       disabled={disabled}
       className={
         primary
-          ? "rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
-          : "rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          ? "min-h-11 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+          : "min-h-11 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
       }
     >
       {children}

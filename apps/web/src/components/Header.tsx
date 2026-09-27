@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-client";
 import { useAdminAccess } from "@/features/admin/useAdminAccess";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const NAV_ITEMS: { label: string; href: string }[] = [
   { label: "Sala", href: "/sala/principal" },
@@ -23,9 +24,10 @@ export function Header() {
 
   return (
     <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
-      <div className="flex items-center gap-6">
-        <Link href="/sala/principal" className="text-lg font-bold text-primary">
-          UNS Study
+      <div className="flex min-w-0 items-center gap-6">
+        <Link href="/sala/principal" className="shrink-0 text-base font-bold text-primary sm:text-lg">
+          <span className="sm:hidden">Sala UNS</span>
+          <span className="hidden sm:inline">Sala de Estudio UNS</span>
         </Link>
         <nav className="hidden items-center gap-4 text-sm font-medium sm:flex">
           {items.map((item) => (
@@ -40,7 +42,8 @@ export function Header() {
         </nav>
       </div>
 
-      <div className="text-sm">
+      <div className="flex items-center gap-2 text-sm">
+        <ThemeToggle />
         {isPending ? null : session?.user ? (
           <div className="flex items-center gap-3">
             <span className="hidden text-slate-700 sm:inline">{session.user.name ?? session.user.email}</span>

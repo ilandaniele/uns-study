@@ -59,7 +59,7 @@ export function Seat({ seat, tableLabel, tableType, isMySeat, isSelected, onSele
       {isSelected ? (
         <circle r={RADIUS + 4} fill="none" stroke="#2563eb" strokeWidth={2.5} />
       ) : null}
-      <circle r={RADIUS} fill={FILL[visualStatus]} stroke="white" strokeWidth={1.5} />
+      <circle r={RADIUS} fill={FILL[visualStatus]} stroke="var(--seat-stroke)" strokeWidth={1.5} />
       <text
         textAnchor="middle"
         dominantBaseline="central"

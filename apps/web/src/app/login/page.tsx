@@ -46,7 +46,7 @@ export default function LoginPage() {
 
   return (
     <main className="mx-auto flex min-h-[calc(100vh-57px)] max-w-sm flex-col justify-center px-4 py-10">
-      <h1 className="mb-6 text-center text-2xl font-bold text-slate-900">UNS Study</h1>
+      <h1 className="mb-6 text-center text-2xl font-bold text-slate-900">Sala de Estudio UNS</h1>
 
       <div className="mb-4 flex rounded-lg bg-slate-100 p-1 text-sm font-semibold">
         <button
@@ -72,7 +72,7 @@ export default function LoginPage() {
             placeholder="Nombre"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base sm:text-sm"
           />
         ) : null}
         <input
@@ -81,7 +81,7 @@ export default function LoginPage() {
           placeholder="Email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base sm:text-sm"
         />
         <input
           type="password"
@@ -90,7 +90,7 @@ export default function LoginPage() {
           placeholder="Contraseña"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base sm:text-sm"
         />
 
         {error ? <p className="text-sm text-red-600">{error}</p> : null}

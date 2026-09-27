@@ -97,7 +97,7 @@ export function ProfileForm({ profile, saving, onSave }: ProfileFormProps) {
   );
 }
 
-const inputClass = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm";
+const inputClass = "w-full rounded-lg border border-slate-300 px-3 py-2 text-base sm:text-sm";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (

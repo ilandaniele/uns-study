@@ -1,4 +1,4 @@
-# UNS Study
+# Sala de Estudio UNS
 
 Real-time study-room occupancy map for UNS. Anonymous room map -> auth -> geofenced presence
 -> self check-in -> realtime state -> observations -> expiration -> daily reset, plus profiles,

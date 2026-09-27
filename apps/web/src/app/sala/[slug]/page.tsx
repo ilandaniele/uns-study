@@ -3,8 +3,8 @@
 import type { SeatDto } from "@uns/contracts";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { TransformComponent, TransformWrapper, type ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
 import { AdSlot } from "@/components/AdSlot";
 import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
 import { ExtendBanner } from "@/features/room/ExtendBanner";
@@ -57,6 +57,7 @@ export default function RoomPage() {
     updateIdentity,
   } = useSeatActions(map, handleChanged);
 
+  const zoomRef = useRef<ReactZoomPanPinchRef>(null);
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
   const [showIdentityPrompt, setShowIdentityPrompt] = useState(false);
 
@@ -170,7 +171,7 @@ export default function RoomPage() {
         </div>
         <SummaryCounters summary={map.summary} />
         <AnnouncementsBanner roomSlug={slug} socket={socket} />
-        <Legend />
+        {isDesktop ? <Legend /> : null}
         {isDesktop ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-3">
             <div className="mb-2 flex items-center justify-between">
@@ -185,7 +186,7 @@ export default function RoomPage() {
       </section>
 
       <section className="order-2 flex flex-col gap-3 md:order-2">
-        <div className="h-[70vh] overflow-hidden rounded-2xl border border-slate-200 bg-white md:h-[80vh]">
+        <div className="relative h-[70vh] w-full overflow-hidden rounded-2xl border border-slate-200 bg-white md:h-[80vh]">
           {isDesktop ? (
             <div className="flex h-full w-full items-center justify-center">
               <RoomMap
@@ -197,19 +198,30 @@ export default function RoomPage() {
               />
             </div>
           ) : (
-            <TransformWrapper minScale={0.5} maxScale={4} initialScale={1} limitToBounds>
-              <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }} contentStyle={{ width: "100%", height: "100%" }}>
-                <RoomMap
-                  map={map}
-                  mySeatId={mySeatId}
-                  selectedSeatId={selectedSeatId}
-                  onSelectSeat={handleSelectSeat}
-                  highlightTableCode={highlightTableCode}
-                />
-              </TransformComponent>
-            </TransformWrapper>
+            <>
+              <TransformWrapper ref={zoomRef} minScale={0.5} maxScale={4} initialScale={1} limitToBounds>
+                <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }} contentStyle={{ width: "100%", height: "100%" }}>
+                  <RoomMap
+                    map={map}
+                    mySeatId={mySeatId}
+                    selectedSeatId={selectedSeatId}
+                    onSelectSeat={handleSelectSeat}
+                    highlightTableCode={highlightTableCode}
+                  />
+                </TransformComponent>
+              </TransformWrapper>
+              <button
+                type="button"
+                onClick={() => zoomRef.current?.resetTransform()}
+                aria-label="Restablecer zoom"
+                className="absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white text-lg shadow-md"
+              >
+                <span aria-hidden="true">⟲</span>
+              </button>
+            </>
           )}
         </div>
+        {!isDesktop ? <Legend /> : null}
         <AdSlot placement="room-bottom" />
       </section>
 
@@ -218,7 +230,10 @@ export default function RoomPage() {
           {detail ?? <p className="p-4 text-sm text-slate-500">Elegí un lugar en el mapa para ver los detalles.</p>}
         </section>
       ) : detail ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 max-h-[70vh] overflow-y-auto rounded-t-2xl border-t border-slate-200 bg-white shadow-2xl">
+        <div className="fixed inset-x-0 bottom-0 z-40 max-h-[70vh] overflow-y-auto rounded-t-2xl border-t border-slate-200 bg-white pb-safe shadow-2xl">
+          <div className="flex justify-center pt-2">
+            <span aria-hidden="true" className="h-1.5 w-10 rounded-full bg-slate-300" />
+          </div>
           {detail}
         </div>
       ) : null}

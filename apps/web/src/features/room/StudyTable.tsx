@@ -31,11 +31,19 @@ export function StudyTable({ table, highlighted = false }: StudyTableProps) {
         width={table.width}
         height={table.height}
         rx={10}
-        fill="#e7d3b0"
-        stroke="#b08a55"
+        fill="var(--room-table-fill)"
+        stroke="var(--room-table-border)"
         strokeWidth={1.5}
       />
-      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontSize={20} fontWeight={700} fill="#5b4326">
+      <text
+        x={cx}
+        y={cy}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize={20}
+        fontWeight={700}
+        fill="var(--room-table-text)"
+      >
         {table.label}
       </text>
     </g>

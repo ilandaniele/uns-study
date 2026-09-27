@@ -12,8 +12,8 @@ export function WallBar({ table }: { table: TableDto }) {
         width={table.width}
         height={table.height}
         rx={8}
-        fill="#d7e6f5"
-        stroke="#7fa8cf"
+        fill="var(--room-bar-fill)"
+        stroke="var(--room-bar-border)"
         strokeWidth={1.5}
       />
       <text
@@ -23,7 +23,7 @@ export function WallBar({ table }: { table: TableDto }) {
         dominantBaseline="central"
         fontSize={20}
         fontWeight={700}
-        fill="#2c5478"
+        fill="var(--room-bar-text)"
         transform={`rotate(90 ${cx} ${cy})`}
       >
         {table.label}

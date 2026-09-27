@@ -88,7 +88,7 @@ export function ReportForm({ reportedUserId, context, contextMessageId, roomId }
         <select
           value={reason}
           onChange={(event) => setReason(event.target.value as ReportReason)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal"
+          className="rounded-lg border border-slate-300 px-3 py-2 text-base font-normal sm:text-sm"
         >
           {REPORT_REASONS.map((r) => (
             <option key={r} value={r}>
@@ -106,7 +106,7 @@ export function ReportForm({ reportedUserId, context, contextMessageId, roomId }
           maxLength={DESCRIPTION_MAX_LENGTH}
           rows={4}
           placeholder="Contanos qué pasó (opcional)"
-          className="resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal"
+          className="resize-none rounded-lg border border-slate-300 px-3 py-2 text-base font-normal sm:text-sm"
         />
         <span className="text-right text-xs font-normal text-slate-400">
           {description.length}/{DESCRIPTION_MAX_LENGTH}

@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-free: #16a34a;
   --color-occupied: #dc2626;
@@ -10,12 +12,158 @@
   --color-primary-dark: #1d4ed8;
 }
 
+:root {
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
+
+  --room-floor: #fdfaf4;
+  --room-floor-border: #d8cdb8;
+  --room-label: #5b6b7c;
+  --room-table-fill: #e7d3b0;
+  --room-table-border: #b08a55;
+  --room-table-text: #5b4326;
+  --room-bar-fill: #d7e6f5;
+  --room-bar-border: #7fa8cf;
+  --room-bar-text: #2c5478;
+  --seat-stroke: #ffffff;
+}
+
+.dark {
+  --bg: #0b1220;
+  --surface: #131b2c;
+  --surface-2: #1b2436;
+  --border: #2a3650;
+  --border-strong: #3c4a68;
+  --text: #e5eaf3;
+  --text-muted: #a2adc2;
+  --text-faint: #7b869d;
+
+  --room-floor: #17202f;
+  --room-floor-border: #37455f;
+  --room-label: #9fb0c9;
+  --room-table-fill: #3a2f22;
+  --room-table-border: #6b5535;
+  --room-table-text: #ecd9b8;
+  --room-bar-fill: #1e2f43;
+  --room-bar-border: #3f6488;
+  --room-bar-text: #bcdcf7;
+  --seat-stroke: #0b1220;
+}
+
 html,
 body {
   height: 100%;
 }
 
 body {
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+/*
+ * Most of the app was written against fixed slate/white Tailwind utility classes rather than
+ * design tokens. Rather than touch every className string, remap the handful of slate/white
+ * utilities actually used in the codebase to the tokens above when `.dark` is active. New code
+ * should prefer the token-backed classes below (bg-surface, text-muted, border-app, etc.) instead
+ * of ad-hoc slate/white utilities.
+ */
+.dark .bg-white {
+  background-color: var(--surface);
+}
+.dark .bg-slate-50 {
+  background-color: var(--bg);
+}
+.dark .bg-slate-100 {
+  background-color: var(--surface-2);
+}
+.dark .bg-slate-200 {
+  background-color: var(--surface-2);
+}
+.dark .hover\:bg-slate-50:hover {
+  background-color: var(--surface-2);
+}
+.dark .border-slate-200 {
+  border-color: var(--border);
+}
+.dark .border-slate-300 {
+  border-color: var(--border-strong);
+}
+.dark .divide-slate-100 {
+  border-color: var(--border);
+}
+.dark .divide-slate-200 {
+  border-color: var(--border);
+}
+.dark .text-slate-900 {
+  color: var(--text);
+}
+.dark .text-slate-800 {
+  color: var(--text);
+}
+.dark .text-slate-700 {
+  color: var(--text);
+}
+.dark .text-slate-600 {
+  color: var(--text-muted);
+}
+.dark .text-slate-500 {
+  color: var(--text-muted);
+}
+.dark .text-slate-400 {
+  color: var(--text-faint);
+}
+
+.dark .bg-red-50 {
+  background-color: rgb(127 29 29 / 0.35);
+}
+.dark .bg-amber-50 {
+  background-color: rgb(120 53 15 / 0.35);
+}
+.dark .text-red-700,
+.dark .text-red-800 {
+  color: #fca5a5;
+}
+.dark .text-amber-900 {
+  color: #fde68a;
+}
+.dark .border-amber-300 {
+  border-color: #92651a;
+}
+.dark .border-red-200,
+.dark .border-red-300 {
+  border-color: #7f1d1d;
+}
+
+/* Token-backed utility classes for new/updated code. */
+.bg-surface {
+  background-color: var(--surface);
+}
+.bg-app {
+  background-color: var(--bg);
+}
+.border-app {
+  border-color: var(--border);
+}
+.text-main {
+  color: var(--text);
+}
+.text-muted {
+  color: var(--text-muted);
+}
+
+/* iOS safe-area padding for elements pinned to the bottom of the screen. Layered so responsive
+   Tailwind utilities (e.g. `sm:pb-0`) can still override it based on source order/specificity. */
+@layer utilities {
+  .pb-safe {
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+  }
+  .pb-safe-14 {
+    padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
+  }
 }
