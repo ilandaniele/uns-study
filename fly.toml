@@ -1,0 +1,40 @@
+app = "uns-study-api"
+primary_region = "gru"
+
+[build]
+  dockerfile = "Dockerfile.api"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8080"
+  WEB_ORIGIN = "https://uns-study.vercel.app"
+  BETTER_AUTH_URL = "https://uns-study.vercel.app"
+  ADMIN_EMAILS = "ilan.daniele@gmail.com"
+  GOOGLE_CLIENT_ID = "1032351199989-q4i4g9vsn7unkemt09in1md9omp4hh0o.apps.googleusercontent.com"
+  DB_AUTO_MIGRATE = "false"
+  ROOM_RESET_TIMEZONE = "America/Argentina/Buenos_Aires"
+  TRUST_PROXY_HOPS = "2"
+  PRESENCE_DEV_BYPASS = "false"
+
+# Secrets (not set here — `fly secrets set`): DATABASE_URL, GOOGLE_CLIENT_SECRET,
+# BETTER_AUTH_SECRET, IP_HASH_SALT.
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    grace_period = "30s"
+    interval = "15s"
+    method = "GET"
+    path = "/api/v1/health"
+    timeout = "5s"
+
+# 256mb is the spec'd default. `pnpm db:migrate`/`pnpm db:seed` run via `tsx` (esbuild-based) before
+# the server starts on every boot (scale-to-zero); if that OOMs in practice, bump to 512mb.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

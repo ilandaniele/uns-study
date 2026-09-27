@@ -1,0 +1,51 @@
+# syntax=docker/dockerfile:1
+#
+# Builds @uns/api for Fly.io. Multi-stage so the final image only carries what
+# `node apps/api/dist/main.js` and the migrate/seed scripts (`pnpm db:migrate`, `pnpm db:seed`,
+# both `tsx`-run TypeScript against `packages/database`) need at runtime.
+#
+# NOTE: `apps/web`'s `package.json` is kept in the build context (see `.dockerignore`) purely so
+# `pnpm install --frozen-lockfile` sees every workspace importer the lockfile expects; its source,
+# `node_modules` and build output are not needed to build/run the API and are excluded. This does
+# mean the shared `node_modules` installed below includes apps/web's dependencies too — heavier
+# than a fully pruned image (e.g. via `turbo prune`), but simple and correct; revisit if image size
+# becomes a problem.
+
+FROM node:22-slim AS base
+RUN corepack enable
+WORKDIR /app
+
+# ---- deps: install the full workspace (frozen lockfile) ----
+FROM base AS deps
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY packages/contracts/package.json packages/contracts/package.json
+COPY packages/database/package.json packages/database/package.json
+RUN pnpm install --frozen-lockfile
+
+# ---- build: compile @uns/api (tsup bundles @uns/contracts + @uns/database sources in) ----
+FROM deps AS build
+COPY . .
+RUN pnpm --filter @uns/api build
+
+# ---- runtime ----
+FROM base AS runtime
+ENV NODE_ENV=production
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/package.json ./package.json
+COPY --from=deps /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY --from=deps /app/packages/database/package.json ./packages/database/package.json
+COPY --from=build /app/apps/api/dist ./apps/api/dist
+# `db:migrate` / `db:seed` run via `tsx` against TypeScript sources directly (no build step for
+# `@uns/database`), so the migrator/seed source and the SQL migrations themselves must ship too.
+COPY packages/database/src ./packages/database/src
+COPY packages/database/migrations ./packages/database/migrations
+
+# Official Node images ship a non-root `node` user (uid 1000) — use it instead of provisioning one.
+USER node
+
+EXPOSE 8080
+
+CMD ["sh", "-c", "pnpm db:migrate && pnpm db:seed && node apps/api/dist/main.js"]

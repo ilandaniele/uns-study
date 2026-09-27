@@ -4,6 +4,7 @@ export * from "./checkins.js";
 export * from "./observations.js";
 export * from "./presence.js";
 export * from "./security.js";
+export * from "./rate-limit.js";
 export * from "./profiles.js";
 export * from "./moderation.js";
 export * from "./chat.js";

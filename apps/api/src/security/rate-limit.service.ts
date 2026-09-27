@@ -1,8 +1,14 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { and, eq, lt, sql } from "drizzle-orm";
 import IORedis from "ioredis";
+import { schema, type Db } from "@uns/database";
+import { DB } from "../database/database.module.js";
 import { env } from "../env.js";
+
+const CLEANUP_INTERVAL_MS = 10 * 60 * 1000;
+const CLEANUP_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -83,28 +89,92 @@ export class RedisWindow {
 }
 
 /**
+ * Fixed-window-counter limiter backed by Postgres (`rate_limit_hits`), used when neither Upstash
+ * nor `REDIS_URL` is configured — which in production means "always", since `DATABASE_URL` is a
+ * required env var there. Each call atomically increments the counter for the current fixed
+ * window (`INSERT ... ON CONFLICT ... DO UPDATE SET count = count + 1 RETURNING count`) and
+ * approximates a sliding window by blending in the previous window's count, weighted by how much
+ * of it still overlaps the sliding lookback (the classic "sliding window counter" algorithm).
+ */
+export class PostgresWindow {
+  private lastCleanupAt = 0;
+
+  constructor(private readonly db: Db) {}
+
+  async check(key: string, limit: number, windowMs: number, now = Date.now()): Promise<RateLimitResult> {
+    const windowStartMs = Math.floor(now / windowMs) * windowMs;
+    const windowStart = new Date(windowStartMs);
+    const previousWindowStart = new Date(windowStartMs - windowMs);
+
+    try {
+      const [current] = await this.db
+        .insert(schema.rateLimitHits)
+        .values({ key, windowStart, count: 1 })
+        .onConflictDoUpdate({
+          target: [schema.rateLimitHits.key, schema.rateLimitHits.windowStart],
+          set: { count: sql`${schema.rateLimitHits.count} + 1` },
+        })
+        .returning({ count: schema.rateLimitHits.count });
+      const currentCount = current?.count ?? 1;
+
+      const [previous] = await this.db
+        .select({ count: schema.rateLimitHits.count })
+        .from(schema.rateLimitHits)
+        .where(and(eq(schema.rateLimitHits.key, key), eq(schema.rateLimitHits.windowStart, previousWindowStart)))
+        .limit(1);
+      const previousCount = previous?.count ?? 0;
+
+      const overlap = Math.max(0, 1 - (now - windowStartMs) / windowMs);
+      const weighted = currentCount + previousCount * overlap;
+
+      this.cleanupOpportunistically(now);
+
+      if (weighted > limit) {
+        return { allowed: false, remaining: 0 };
+      }
+      return { allowed: true, remaining: Math.max(0, Math.floor(limit - weighted)) };
+    } catch {
+      // Fail closed: a Postgres outage must not silently disable rate limiting.
+      return { allowed: false, remaining: 0 };
+    }
+  }
+
+  /** Deletes windows older than a day, at most once per 10 minutes per process. Best-effort. */
+  private cleanupOpportunistically(now: number): void {
+    if (now - this.lastCleanupAt < CLEANUP_INTERVAL_MS) return;
+    this.lastCleanupAt = now;
+    void this.db
+      .delete(schema.rateLimitHits)
+      .where(lt(schema.rateLimitHits.windowStart, new Date(now - CLEANUP_MAX_AGE_MS)))
+      .catch(() => {
+        // best effort
+      });
+  }
+}
+
+/**
  * Sliding-window rate limiting. Backend is chosen in this order:
  *  1. Upstash Redis (REST) when `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` are set.
  *  2. A standard Redis server via `REDIS_URL` (e.g. Render Key Value), using `ioredis`.
- *  3. An in-process window — dev/test only. Production with neither backend configured throws.
+ *  3. Postgres (`rate_limit_hits`), in production, when neither Redis backend is configured —
+ *     always available there since `DATABASE_URL` is required.
+ *  4. An in-process window — dev/test only.
  */
 @Injectable()
 export class RateLimitService {
   private readonly memory = new MemoryWindow();
   private readonly upstash: Redis | null;
   private readonly redisWindow: RedisWindow | null;
+  private readonly postgresWindow: PostgresWindow | null;
   private readonly limiters = new Map<string, Ratelimit>();
 
-  constructor() {
+  constructor(@Optional() @Inject(DB) private readonly db?: Db) {
     const hasUpstash = Boolean(env.upstashUrl && env.upstashToken);
     const hasRedisUrl = Boolean(env.redisUrl);
-    if (env.isProduction && !hasUpstash && !hasRedisUrl) {
-      throw new Error(
-        "UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN or REDIS_URL are required in production (no in-memory rate-limit fallback).",
-      );
-    }
     this.upstash = hasUpstash ? new Redis({ url: env.upstashUrl, token: env.upstashToken }) : null;
     this.redisWindow = !hasUpstash && hasRedisUrl ? new RedisWindow(createRedisClient(env.redisUrl)) : null;
+    const usePostgres = !hasUpstash && !hasRedisUrl && env.isProduction && Boolean(this.db);
+    this.postgresWindow = usePostgres ? new PostgresWindow(this.db!) : null;
   }
 
   /** `key` should already include the bucket name, e.g. `checkin:<userId>`. */
@@ -122,6 +192,10 @@ export class RateLimitService {
 
     if (this.redisWindow) {
       return this.redisWindow.check(key, limit, windowSeconds * 1000);
+    }
+
+    if (this.postgresWindow) {
+      return this.postgresWindow.check(key, limit, windowSeconds * 1000);
     }
 
     return this.memory.check(key, limit, windowSeconds * 1000);
