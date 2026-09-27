@@ -13,7 +13,7 @@ export const INITIAL_CHAT_ROOM = {
 
 export const INITIAL_ROOM = {
   slug: "principal",
-  name: "Sala de Estudio Principal",
+  name: "Sala de Estudio UNS",
   description: null as string | null,
   // Placeholder coordinates (UNS Bahía Blanca) — TODO confirm exact location.
   latitude: -38.702,

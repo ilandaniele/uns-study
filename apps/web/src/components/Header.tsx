@@ -23,11 +23,10 @@ export function Header() {
   const items = isAdmin ? [...NAV_ITEMS, { label: "Admin", href: "/admin" }] : NAV_ITEMS;
 
   return (
-    <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
+    <header className="flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-3">
       <div className="flex min-w-0 items-center gap-6">
-        <Link href="/sala/principal" className="shrink-0 text-base font-bold text-primary sm:text-lg">
-          <span className="sm:hidden">Sala UNS</span>
-          <span className="hidden sm:inline">Sala de Estudio UNS</span>
+        <Link href="/sala/principal" className="min-w-0 truncate text-[15px] font-bold text-primary sm:text-lg">
+          Sala de Estudio UNS
         </Link>
         <nav className="hidden items-center gap-4 text-sm font-medium sm:flex">
           {items.map((item) => (
@@ -50,15 +49,16 @@ export function Header() {
             <button
               type="button"
               onClick={() => void signOut()}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50"
+              className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50"
             >
-              Cerrar sesión
+              <span className="sm:hidden">Salir</span>
+              <span className="hidden sm:inline">Cerrar sesión</span>
             </button>
           </div>
         ) : (
           <Link
             href="/login"
-            className="rounded-lg bg-primary px-3 py-1.5 font-semibold text-white hover:bg-primary-dark"
+            className="shrink-0 rounded-lg bg-primary px-3 py-1.5 font-semibold text-white hover:bg-primary-dark"
           >
             Ingresar
           </Link>

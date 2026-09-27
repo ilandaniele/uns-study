@@ -25,7 +25,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="es">
+    // The theme init script sets `dark` on <html> before hydration; that mismatch is intentional.
+    <html lang="es" suppressHydrationWarning>
       <head>
         {/* Applies the stored/system theme before hydration to avoid a light-mode flash. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
