@@ -100,10 +100,10 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 ## Deployment state (2026-09-27)
 - GitHub: private repo `ilandaniele/uns-study`, CI green.
 - Web: Vercel project `uns-study`, https://uns-study.vercel.app (auto-deploy on push to main). `/api/auth/*` and `/api/v1/*` are rewritten to the API (`API_PROXY_TARGET`), so auth cookies are first-party. Socket.IO connects straight to the API host (defaults to `API_PROXY_TARGET` at build, see next.config.ts).
-- API: Render Blueprint `uns-study` (render.yaml) -> web service `uns-study-api` (https://uns-study-api.onrender.com, free plan, sleeps when idle), Render Postgres `uns-study-db` (free, expires after 30 days -> move to Neon project `uns-study` by setting DATABASE_URL), Render Key Value `uns-study-kv` (rate limits via REDIS_URL). Start command runs migrate + seed.
+- API: Render Blueprint `uns-study` (render.yaml) -> web service `uns-study-api` (https://uns-study-api.onrender.com, free plan, sleeps when idle), Postgres on Neon project `sala-estudio-uns` (id purple-paper-17024644, AWS us-east-1, same region as the API; DATABASE_URL set by hand in Render, `sync: false` in render.yaml). The old Render Postgres `uns-study-db` is no longer used and expires on its own, Render Key Value `uns-study-kv` (rate limits via REDIS_URL). Start command runs migrate + seed.
 - Admin: `ADMIN_EMAILS=ilan.daniele@gmail.com`; the ADMIN role is granted on the first `/me` after that account signs up.
 - Room coordinates confirmed: -38.70138372483678, -62.270139753196005, radius 120 m, max accuracy 100 m.
-- Unused but created: Neon project `uns-study` (Sao Paulo), Upstash Redis `uns-study` (Sao Paulo).
+- Unused but created (safe to delete): Neon project `uns-study` (Sao Paulo), Upstash Redis `uns-study` (Sao Paulo), Render Postgres `uns-study-db`.
 
 ## Next (blocked on Ilan)
 - Real credentials: Neon `DATABASE_URL`, Google OAuth client, Upstash Redis, Turnstile keys.
