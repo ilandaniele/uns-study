@@ -8,6 +8,11 @@ const API_PROXY_TARGET = process.env.API_PROXY_TARGET ?? "";
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@uns/contracts"],
+  // Socket.IO can't go through the rewrites below, so the browser connects to the API host
+  // directly. Default it to the proxy target so one env var configures both.
+  env: {
+    NEXT_PUBLIC_SOCKET_URL: process.env.NEXT_PUBLIC_SOCKET_URL || API_PROXY_TARGET.replace(/\/+$/, "") || "http://localhost:4000",
+  },
   async rewrites() {
     if (!API_PROXY_TARGET) return [];
     const target = API_PROXY_TARGET.replace(/\/+$/, "");

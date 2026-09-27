@@ -2,7 +2,8 @@ import { SocketEvents } from "@uns/contracts";
 import { io, type Socket } from "socket.io-client";
 import { apiFetch, ApiRequestError } from "./api";
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? "http://localhost:4000";
+// Resolved at build time in next.config.ts (falls back to API_PROXY_TARGET, then localhost).
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000";
 
 let socket: Socket | null = null;
 
