@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-// Server-only env (never `NEXT_PUBLIC_*`): the Fly.io URL of the API, when web and API are
+// Server-only env (never `NEXT_PUBLIC_*`, set in Vercel: https://uns-study-api.fly.dev): the Fly.io URL of the API, when web and API are
 // proxied through the same origin so Better Auth's session cookie stays first-party (Safari/iOS
 // block third-party `SameSite=None` cookies). Left unset in local dev, where the web app talks to
 // the API directly via `NEXT_PUBLIC_API_URL`.
