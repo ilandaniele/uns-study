@@ -71,6 +71,7 @@ export default function RoomPage() {
     markOccupied,
     extend,
     checkOut,
+    locating,
     updateIdentity,
     openDispute,
     voteDispute,
@@ -251,6 +252,7 @@ export default function RoomPage() {
 
   const detail = selectedSeat ? (
     <SeatDetail
+      locating={locating}
       seat={selectedSeat}
       table={selectedTable}
       me={me}
