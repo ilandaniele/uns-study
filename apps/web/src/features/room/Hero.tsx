@@ -32,10 +32,10 @@ export function Hero({ summary, seats }: HeroProps) {
     subline = "Si estás en la sala, marcá tu lugar y ayudá al resto.";
   } else if (summary.free === 0 && mostlyKnown) {
     headline = <>La sala está llena</>;
-    subline = latestUpdateLabel(seats, now, summary.total);
+    subline = latestUpdateLabel(seats, now);
   } else if (summary.free === 0) {
     headline = <>No hay lugares libres confirmados</>;
-    subline = `Sin datos de ${summary.unknown} lugares · ${latestUpdateLabel(seats, now, summary.total)}`;
+    subline = `Sin datos de ${summary.unknown} lugares · ${latestUpdateLabel(seats, now)}`;
   } else {
     const n = summary.free;
     const places = n === 1 ? "lugar libre" : "lugares libres";
@@ -46,7 +46,7 @@ export function Hero({ summary, seats }: HeroProps) {
           Hay {count} {places} {n === 1 ? "confirmado" : "confirmados"}
         </>
       );
-      subline = `Sin datos de ${summary.unknown} lugares · ${latestUpdateLabel(seats, now, summary.total)}`;
+      subline = `Sin datos de ${summary.unknown} lugares · ${latestUpdateLabel(seats, now)}`;
     } else {
       headline = n <= 5 ? (
         <>
@@ -57,7 +57,7 @@ export function Hero({ summary, seats }: HeroProps) {
           Hay {count} {places}
         </>
       );
-      subline = latestUpdateLabel(seats, now, summary.total);
+      subline = latestUpdateLabel(seats, now);
     }
   }
 
@@ -69,12 +69,12 @@ export function Hero({ summary, seats }: HeroProps) {
   );
 }
 
-function latestUpdateLabel(seats: SeatDto[], now: Date, total: number): string {
+function latestUpdateLabel(seats: SeatDto[], now: Date): string {
   const latest = seats.reduce<string | null>((acc, seat) => {
     if (!seat.lastUpdatedAt) return acc;
     if (!acc || seat.lastUpdatedAt > acc) return seat.lastUpdatedAt;
     return acc;
   }, null);
   const recency = latest ? recencyLabel({ status: "FREE", sourceSummary: "OBS", lastUpdatedAt: latest }, now) : null;
-  return `${recency ?? "Sin información reciente"} · ${total} lugares`;
+  return recency ?? "Sin información reciente";
 }

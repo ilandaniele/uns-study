@@ -25,7 +25,6 @@ export function SummaryCounters({ summary }: { summary: RoomSummary }) {
           </div>
         ))}
       </div>
-      <p className="mt-2 text-xs text-muted">{summary.total} lugares en total</p>
     </div>
   );
 }

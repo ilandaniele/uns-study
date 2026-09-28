@@ -29,11 +29,6 @@ export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlight
   const { width, height } = map.viewBox;
   const tableById = useMemo(() => new Map(map.tables.map((table) => [table.id, table])), [map.tables]);
   const wallBars = useMemo(() => map.tables.filter((table) => table.type === "WALL_BAR"), [map.tables]);
-  const seatCountByTable = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const seat of map.seats) counts.set(seat.tableId, (counts.get(seat.tableId) ?? 0) + 1);
-    return counts;
-  }, [map.seats]);
 
   return (
     <svg
@@ -44,24 +39,31 @@ export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlight
     >
       <defs>
         {/* Warm terracotta parquet floor: two plank tones in a basket-weave offset, plus faint grain lines. */}
-        <pattern id="floor-parquet" width={80} height={80} patternUnits="userSpaceOnUse">
-          <rect width={80} height={80} fill="var(--room-floor-a)" />
-          <g fill="var(--room-floor-b)">
-            <rect x={0} y={0} width={40} height={18} rx={1} />
-            <rect x={40} y={18} width={40} height={18} rx={1} />
-            <rect x={0} y={36} width={40} height={18} rx={1} />
-            <rect x={40} y={54} width={40} height={18} rx={1} />
-            <rect x={0} y={72} width={40} height={18} rx={1} />
+        <pattern id="floor-parquet" width={240} height={96} patternUnits="userSpaceOnUse">
+          <rect width={240} height={96} fill="var(--room-floor-a)" />
+          {/* Staggered long planks, alternating tone slightly, like a real wood floor from above. */}
+          <g fill="var(--room-floor-b)" opacity={0.55}>
+            <rect x={0} y={0} width={120} height={24} />
+            <rect x={60} y={24} width={120} height={24} />
+            <rect x={180} y={48} width={60} height={24} />
+            <rect x={0} y={48} width={60} height={24} />
+            <rect x={120} y={72} width={120} height={24} />
           </g>
-          <g stroke="var(--room-floor-grain)" strokeWidth={0.6} opacity={0.35}>
-            <line x1={0} y1={9} x2={40} y2={9} />
-            <line x1={40} y1={27} x2={80} y2={27} />
-            <line x1={0} y1={45} x2={40} y2={45} />
-            <line x1={40} y1={63} x2={80} y2={63} />
-            <line x1={20} y1={0} x2={20} y2={18} />
-            <line x1={60} y1={18} x2={60} y2={36} />
-            <line x1={20} y1={36} x2={20} y2={54} />
-            <line x1={60} y1={54} x2={60} y2={72} />
+          <g stroke="var(--room-floor-grain)" strokeWidth={1} opacity={0.28}>
+            <line x1={0} y1={24} x2={240} y2={24} />
+            <line x1={0} y1={48} x2={240} y2={48} />
+            <line x1={0} y1={72} x2={240} y2={72} />
+            <line x1={0} y1={96} x2={240} y2={96} />
+            <line x1={120} y1={0} x2={120} y2={24} />
+            <line x1={60} y1={24} x2={60} y2={48} />
+            <line x1={180} y1={24} x2={180} y2={48} />
+            <line x1={0} y1={48} x2={0} y2={72} />
+            <line x1={60} y1={48} x2={60} y2={72} />
+            <line x1={180} y1={48} x2={180} y2={72} />
+            <line x1={120} y1={72} x2={120} y2={96} />
+          </g>
+          <g stroke="var(--room-floor-grain)" strokeWidth={0.6} opacity={0.14}>
+            <path d="M 8 9 Q 60 6 112 11 M 70 36 Q 120 33 170 38 M 10 60 Q 30 58 52 61 M 130 84 Q 180 81 232 86" fill="none" />
           </g>
         </pattern>
         {/* Sunlight pool falling from the top windows, blended softly over the floor/tables. */}
@@ -156,7 +158,7 @@ export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlight
 
       {map.tables.map((table) =>
         table.type === "WALL_BAR" ? (
-          <WallBar key={table.id} table={table} seatCount={seatCountByTable.get(table.id) ?? 0} />
+          <WallBar key={table.id} table={table} />
         ) : (
           <StudyTable key={table.id} table={table} highlighted={highlightTableCode !== null && table.code === highlightTableCode} />
         ),
