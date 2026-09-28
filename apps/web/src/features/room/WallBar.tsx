@@ -21,8 +21,9 @@ export function WallBar({ table }: { table: TableDto }) {
         y={cy}
         textAnchor="middle"
         dominantBaseline="central"
-        fontSize={20}
-        fontWeight={700}
+        fontSize={18}
+        fontWeight={600}
+        fontFamily="var(--font-mono)"
         fill="var(--room-bar-text)"
         transform={`rotate(90 ${cx} ${cy})`}
       >

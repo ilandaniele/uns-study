@@ -20,7 +20,7 @@ export function StudyTable({ table, highlighted = false }: StudyTableProps) {
           height={table.height + 12}
           rx={14}
           fill="none"
-          stroke="#2563eb"
+          stroke="var(--primary)"
           strokeWidth={3}
           strokeDasharray="6 4"
         />
@@ -35,13 +35,23 @@ export function StudyTable({ table, highlighted = false }: StudyTableProps) {
         stroke="var(--room-table-border)"
         strokeWidth={1.5}
       />
+      <rect
+        x={table.x}
+        y={table.y}
+        width={table.width}
+        height={table.height}
+        rx={10}
+        fill="url(#oak-grain)"
+        opacity={0.5}
+      />
       <text
         x={cx}
         y={cy}
         textAnchor="middle"
         dominantBaseline="central"
-        fontSize={20}
-        fontWeight={700}
+        fontSize={18}
+        fontWeight={600}
+        fontFamily="var(--font-mono)"
         fill="var(--room-table-text)"
       >
         {table.label}

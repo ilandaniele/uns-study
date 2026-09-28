@@ -8,6 +8,7 @@ import { TransformComponent, TransformWrapper, type ReactZoomPanPinchRef } from 
 import { AdSlot } from "@/components/AdSlot";
 import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
 import { ExtendBanner } from "@/features/room/ExtendBanner";
+import { Hero } from "@/features/room/Hero";
 import { Legend } from "@/features/room/Legend";
 import { RoomMap } from "@/features/room/RoomMap";
 import { SeatDetail } from "@/features/room/SeatDetail";
@@ -122,7 +123,7 @@ export default function RoomPage() {
   }
 
   if (loading) {
-    return <main className="p-6 text-center text-slate-500">Cargando sala…</main>;
+    return <main className="p-6 text-center text-muted">Cargando sala…</main>;
   }
 
   if (error || !map) {
@@ -165,17 +166,18 @@ export default function RoomPage() {
       ) : null}
 
       <section className="order-1 flex flex-col gap-4 md:order-1">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">{map.room.name}</h1>
-          <p className="text-xs text-slate-500">{connected ? "Datos en vivo" : "Reconectando…"}</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-mono text-xs uppercase tracking-wide text-muted">{map.room.name}</p>
+          <p className="font-mono text-xs text-muted">{connected ? "● en vivo" : "○ reconectando…"}</p>
         </div>
+        <Hero summary={map.summary} seats={map.seats} />
         <SummaryCounters summary={map.summary} />
         <AnnouncementsBanner roomSlug={slug} socket={socket} />
         {isDesktop ? <Legend /> : null}
         {isDesktop ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-3">
+          <div className="rounded-2xl border border-app bg-surface p-3">
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-900">Personas en la sala</h2>
+              <h2 className="text-sm font-semibold text-main">Personas en la sala</h2>
               <Link href="/personas" className="text-xs font-semibold text-primary hover:underline">
                 Ver todas
               </Link>
@@ -186,7 +188,7 @@ export default function RoomPage() {
       </section>
 
       <section className="order-2 flex flex-col gap-3 md:order-2">
-        <div className="relative h-[70vh] w-full overflow-hidden rounded-2xl border border-slate-200 bg-white md:h-[80vh]">
+        <div className="relative h-[70vh] w-full overflow-hidden rounded-2xl border border-app bg-surface md:h-[80vh]">
           {isDesktop ? (
             <div className="flex h-full w-full items-center justify-center">
               <RoomMap
@@ -214,9 +216,12 @@ export default function RoomPage() {
                 type="button"
                 onClick={() => zoomRef.current?.resetTransform()}
                 aria-label="Restablecer zoom"
-                className="absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white text-lg shadow-md"
+                className="absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-full border border-app bg-surface text-main shadow-md"
               >
-                <span aria-hidden="true">⟲</span>
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 9a8 8 0 0 1 14-4.6M20 15a8 8 0 0 1-14 4.6" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 4v5h-5M6 20v-5h5" />
+                </svg>
               </button>
             </>
           )}
@@ -226,13 +231,13 @@ export default function RoomPage() {
       </section>
 
       {isDesktop ? (
-        <section className="order-3 rounded-2xl border border-slate-200 bg-white">
-          {detail ?? <p className="p-4 text-sm text-slate-500">Elegí un lugar en el mapa para ver los detalles.</p>}
+        <section className="order-3 rounded-2xl border border-app bg-surface">
+          {detail ?? <p className="p-4 text-sm text-muted">Elegí un lugar en el mapa para ver los detalles.</p>}
         </section>
       ) : detail ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 max-h-[70vh] overflow-y-auto rounded-t-2xl border-t border-slate-200 bg-white pb-safe shadow-2xl">
+        <div className="sheet-enter fixed inset-x-0 bottom-0 z-40 max-h-[70vh] overflow-y-auto rounded-t-2xl border-t border-app bg-surface pb-safe shadow-2xl">
           <div className="flex justify-center pt-2">
-            <span aria-hidden="true" className="h-1.5 w-10 rounded-full bg-slate-300" />
+            <span aria-hidden="true" className="h-1.5 w-10 rounded-full bg-[var(--border-strong)]" />
           </div>
           {detail}
         </div>

@@ -55,92 +55,121 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-57px)] max-w-sm flex-col justify-center px-4 py-10">
-      <h1 className="mb-6 text-center text-2xl font-bold text-slate-900">Sala de Estudio UNS</h1>
+    <main className="flex min-h-[calc(100vh-57px)] flex-col items-center justify-center bg-app px-4 py-10">
+      <div className="w-full max-w-sm rounded-2xl border border-app bg-surface p-6 shadow-sm">
+        <h1 className="text-center font-display text-2xl font-semibold leading-snug text-main">
+          Marcá tu lugar. Ayudá a que otros encuentren el suyo.
+        </h1>
 
-      <div className="mb-4 flex rounded-lg bg-slate-100 p-1 text-sm font-semibold">
-        <button
-          type="button"
-          onClick={() => setTab("signin")}
-          className={`flex-1 rounded-md py-2 ${tab === "signin" ? "bg-white text-primary shadow" : "text-slate-500"}`}
-        >
-          Ingresar
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("signup")}
-          className={`flex-1 rounded-md py-2 ${tab === "signup" ? "bg-white text-primary shadow" : "text-slate-500"}`}
-        >
-          Crear cuenta
-        </button>
-      </div>
+        <div className="mt-6 mb-4 flex rounded-full bg-[var(--surface-2)] p-1 text-sm font-semibold">
+          <button
+            type="button"
+            onClick={() => setTab("signin")}
+            className={`flex-1 rounded-full py-2 transition-colors ${
+              tab === "signin" ? "bg-primary text-white" : "text-muted"
+            }`}
+          >
+            Ingresar
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("signup")}
+            className={`flex-1 rounded-full py-2 transition-colors ${
+              tab === "signup" ? "bg-primary text-white" : "text-muted"
+            }`}
+          >
+            Crear cuenta
+          </button>
+        </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        {tab === "signup" ? (
-          <input
-            type="text"
-            placeholder="Nombre"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base sm:text-sm"
-          />
-        ) : null}
-        <input
-          type="email"
-          required
-          placeholder="Email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base sm:text-sm"
-        />
-        <input
-          type="password"
-          required
-          minLength={8}
-          placeholder="Contraseña"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base sm:text-sm"
-        />
-
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
-
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
-        >
-          {tab === "signin" ? "Ingresar" : "Crear cuenta"}
-        </button>
-      </form>
-
-      {googleEnabled ? (
-        <>
-          <div className="my-4 flex items-center gap-2 text-xs text-slate-400">
-            <div className="h-px flex-1 bg-slate-200" />o<div className="h-px flex-1 bg-slate-200" />
-          </div>
-
+        {googleEnabled ? (
           <button
             type="button"
             onClick={() => void handleGoogle()}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-app px-3 py-2.5 text-sm font-semibold text-main hover:bg-[var(--surface-2)]"
           >
+            <GoogleGlyph />
             Continuar con Google
           </button>
-        </>
-      ) : null}
+        ) : null}
 
-      <p className="mt-6 text-center text-xs text-slate-500">
-        Al continuar aceptás los{" "}
-        <a href="/terminos" className="underline">
-          términos
-        </a>{" "}
-        y la{" "}
-        <a href="/privacidad" className="underline">
-          política de privacidad
-        </a>
-        .
-      </p>
+        {googleEnabled ? (
+          <div className="my-4 flex items-center gap-2 text-xs text-muted">
+            <div className="h-px flex-1 bg-app" />o<div className="h-px flex-1 bg-app" />
+          </div>
+        ) : null}
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          {tab === "signup" ? (
+            <input
+              type="text"
+              placeholder="Nombre"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              className="w-full rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
+            />
+          ) : null}
+          <input
+            type="email"
+            required
+            placeholder="Email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            className="w-full rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
+          />
+          <input
+            type="password"
+            required
+            minLength={8}
+            placeholder="Contraseña"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            className="w-full rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
+          />
+
+          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+
+          <button
+            type="submit"
+            disabled={pending}
+            className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+          >
+            {tab === "signin" ? "Ingresar" : "Crear cuenta"}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-xs text-muted">
+          Al continuar aceptás los{" "}
+          <a href="/terminos" className="underline">
+            términos
+          </a>{" "}
+          y la{" "}
+          <a href="/privacidad" className="underline">
+            política de privacidad
+          </a>
+          .
+        </p>
+      </div>
     </main>
+  );
+}
+
+function GoogleGlyph() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18">
+      <path
+        fill="#4285F4"
+        d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.46a5.52 5.52 0 0 1-2.4 3.62v3h3.87c2.27-2.09 3.59-5.17 3.59-8.81Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 24c3.24 0 5.96-1.07 7.94-2.92l-3.87-3c-1.08.72-2.46 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.96H1.27v3.11A12 12 0 0 0 12 24Z"
+      />
+      <path fill="#FBBC05" d="M5.27 14.27a7.2 7.2 0 0 1 0-4.54v-3.1H1.27a12 12 0 0 0 0 10.75l4-3.11Z" />
+      <path
+        fill="#EA4335"
+        d="M12 4.76c1.76 0 3.34.6 4.58 1.79l3.44-3.43C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.27 6.63l4 3.1C6.22 6.87 8.87 4.76 12 4.76Z"
+      />
+    </svg>
   );
 }

@@ -43,7 +43,7 @@ function RankingRow({
 }) {
   return (
     <div className={`flex items-center gap-3 px-4 py-3 ${highlighted ? "bg-primary/5" : ""}`}>
-      <span className="w-6 text-right text-sm font-semibold text-slate-400">{rank}</span>
+      <span className="w-6 text-right font-mono text-sm font-semibold text-slate-400">{rank}</span>
       {avatarUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- small avatar thumbnails, not worth next/image config here
         <img src={avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
@@ -53,7 +53,7 @@ function RankingRow({
         </span>
       )}
       <span className="flex-1 truncate text-sm font-medium text-slate-800">{name}</span>
-      <span className="text-sm font-semibold text-slate-700">{value}</span>
+      <span className="font-mono text-sm font-semibold text-slate-700">{value}</span>
     </div>
   );
 }

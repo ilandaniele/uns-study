@@ -53,7 +53,7 @@ export default function PerfilPage() {
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-8 p-4 pb-16">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Mi perfil</h1>
+        <h1 className="font-display text-xl font-semibold text-slate-900">Mi perfil</h1>
         <p className="text-sm text-slate-500">{profile.email}</p>
       </div>
 

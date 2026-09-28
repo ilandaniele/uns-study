@@ -10,6 +10,7 @@ coverage
 test-results
 playwright-report
 apps/web/scripts/screenshots.mjs
+apps/web/scripts/screenshots2.mjs
 *.log
 .DS_Store
 *.tsbuildinfo

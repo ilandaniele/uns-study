@@ -23,33 +23,42 @@ export function Header() {
   const items = isAdmin ? [...NAV_ITEMS, { label: "Admin", href: "/admin" }] : NAV_ITEMS;
 
   return (
-    <header className="flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-3">
-      <div className="flex min-w-0 items-center gap-6">
-        <Link href="/sala/principal" className="min-w-0 truncate text-[15px] font-bold text-primary sm:text-lg">
+    <header className="flex items-center justify-between gap-2 border-b border-app bg-surface px-4 py-3">
+      <div className="flex min-w-0 items-center gap-3">
+        <Link href="/sala/principal" className="min-w-0 truncate font-display text-[17px] font-semibold text-main sm:text-lg">
           Sala de Estudio UNS
         </Link>
-        <nav className="hidden items-center gap-4 text-sm font-medium sm:flex">
-          {items.map((item) => (
+        <span className="hidden shrink-0 rounded-full border border-app px-2 py-0.5 font-mono text-[10px] font-medium tracking-wide text-muted lg:inline-block">
+          UNS · BAHÍA BLANCA
+        </span>
+      </div>
+
+      <nav className="hidden items-center gap-1 rounded-full border border-app bg-[var(--surface-2)] p-1 text-sm font-medium sm:flex">
+        {items.map((item) => {
+          const active = pathname?.startsWith(item.href);
+          return (
             <Link
               key={item.label}
               href={item.href}
-              className={pathname?.startsWith(item.href) ? "text-primary" : "text-slate-600 hover:text-primary"}
+              className={`rounded-full px-3 py-1.5 transition-colors ${
+                active ? "bg-primary text-white" : "text-muted hover:text-main"
+              }`}
             >
               {item.label}
             </Link>
-          ))}
-        </nav>
-      </div>
+          );
+        })}
+      </nav>
 
       <div className="flex items-center gap-2 text-sm">
         <ThemeToggle />
         {isPending ? null : session?.user ? (
           <div className="flex items-center gap-3">
-            <span className="hidden text-slate-700 sm:inline">{session.user.name ?? session.user.email}</span>
+            <span className="hidden text-main sm:inline">{session.user.name ?? session.user.email}</span>
             <button
               type="button"
               onClick={() => void signOut()}
-              className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50"
+              className="shrink-0 rounded-full border border-app px-3 py-1.5 font-semibold text-main hover:bg-[var(--surface-2)]"
             >
               <span className="sm:hidden">Salir</span>
               <span className="hidden sm:inline">Cerrar sesión</span>
@@ -58,7 +67,7 @@ export function Header() {
         ) : (
           <Link
             href="/login"
-            className="shrink-0 rounded-lg bg-primary px-3 py-1.5 font-semibold text-white hover:bg-primary-dark"
+            className="shrink-0 rounded-full bg-primary px-3 py-1.5 font-semibold text-white hover:bg-primary-dark"
           >
             Ingresar
           </Link>

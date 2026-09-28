@@ -30,7 +30,11 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock }: 
             {showDaySeparator ? (
               <p className="my-2 text-center text-xs font-semibold text-slate-400">{formatDaySeparator(message.createdAt)}</p>
             ) : null}
-            <div className={`group flex gap-2 rounded-lg px-2 py-1 hover:bg-slate-50 ${showHeader ? "mt-2" : ""}`}>
+            <div
+              className={`group flex gap-2 rounded-lg px-2 py-1 hover:bg-slate-50 ${showHeader ? "mt-2" : ""} ${
+                isOwn ? "bg-primary/5" : ""
+              }`}
+            >
               <div className="min-w-0 flex-1">
                 {showHeader ? (
                   <p className="text-xs font-semibold text-slate-600">

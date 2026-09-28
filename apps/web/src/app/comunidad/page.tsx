@@ -32,7 +32,7 @@ export default function ComunidadPage() {
 
   return (
     <main className="mx-auto max-w-2xl p-4">
-      <h1 className="mb-1 text-xl font-bold text-slate-900">Comunidad</h1>
+      <h1 className="mb-1 font-display text-xl font-semibold text-slate-900">Comunidad</h1>
       <p className="mb-4 text-sm text-slate-500">Novedades y anuncios para toda la comunidad de la sala.</p>
 
       {loading ? (

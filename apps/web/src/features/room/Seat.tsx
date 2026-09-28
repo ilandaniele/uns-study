@@ -9,11 +9,11 @@ const RADIUS = 15;
 const HIT_RADIUS = 26;
 
 const FILL: Record<"FREE" | "OCCUPIED" | "UNCERTAIN" | "UNKNOWN" | "MY_SEAT", string> = {
-  FREE: "#16a34a",
-  OCCUPIED: "#dc2626",
-  UNCERTAIN: "#d97706",
-  UNKNOWN: "#9ca3af",
-  MY_SEAT: "#2563eb",
+  FREE: "var(--seat-free)",
+  OCCUPIED: "var(--seat-occupied)",
+  UNCERTAIN: "var(--seat-uncertain)",
+  UNKNOWN: "var(--seat-unknown)",
+  MY_SEAT: "var(--seat-mine)",
 };
 
 // Short glyph per status so color is never the only signal (accessibility, §7 of the UI spec).
@@ -56,10 +56,18 @@ export function Seat({ seat, tableLabel, tableType, isMySeat, isSelected, onSele
       transform={`translate(${seat.x} ${seat.y}) rotate(${seat.rotation})`}
     >
       <circle r={HIT_RADIUS} fill="transparent" />
-      {isSelected ? (
-        <circle r={RADIUS + 4} fill="none" stroke="#2563eb" strokeWidth={2.5} />
+      {isMySeat ? (
+        <circle r={RADIUS + 6} fill="none" stroke="var(--seat-mine)" strokeWidth={2} className="seat-pulse-mine" />
       ) : null}
-      <circle r={RADIUS} fill={FILL[visualStatus]} stroke="var(--seat-stroke)" strokeWidth={1.5} />
+      {isSelected ? <circle r={RADIUS + 4} fill="none" stroke="var(--primary)" strokeWidth={2.5} /> : null}
+      <circle
+        r={RADIUS}
+        fill={FILL[visualStatus]}
+        stroke="var(--seat-stroke)"
+        strokeWidth={1.5}
+        className={visualStatus === "FREE" ? "seat-glow-free" : undefined}
+      />
+      <circle r={RADIUS - 5} fill="none" stroke="rgb(0 0 0 / 0.18)" strokeWidth={1.5} />
       <text
         textAnchor="middle"
         dominantBaseline="central"
