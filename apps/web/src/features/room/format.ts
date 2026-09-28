@@ -1,4 +1,4 @@
-import type { DisputeKind, SeatStatus, TableDto } from "@uns/contracts";
+import type { DisputeKind, RoomMapDto, SeatStatus, TableDto } from "@uns/contracts";
 
 const BAR_NAMES: Record<string, string> = {
   B01: "Barra entrada izquierda",
@@ -141,4 +141,58 @@ export function checkInExpiryStatus(expiresAt: string, now: Date = new Date()): 
 
   const minutesLeft = Math.ceil(msLeft / 60_000);
   return { minutesLeft, shouldPromptExtend: minutesLeft <= 5 };
+}
+
+/** "lado izquierdo" / "lado derecho" for a main table, from its horizontal center vs. the room's
+ *  width — wall bars already carry their side in `tableDisplayName`, so this returns null for them. */
+export function tableSideLabel(table: Pick<TableDto, "x" | "width" | "type"> | null, viewBoxWidth: number): string | null {
+  if (!table || table.type === "WALL_BAR") return null;
+  const centerX = table.x + table.width / 2;
+  return centerX < viewBoxWidth / 2 ? "lado izquierdo" : "lado derecho";
+}
+
+export interface RoomCapacityGroup {
+  /** "mesas" or "barras". */
+  label: string;
+  tableCount: number;
+  seatsPerTable: number;
+}
+
+/**
+ * Groups the room's tables by type (main tables vs. wall bars) with a seat count per table,
+ * for the "Total: 108 lugares — 12 mesas (8 lugares c/u) = 96 …" breakdown on the left panel.
+ * Derived from the actual map data rather than hardcoded, so it stays correct if the layout changes.
+ */
+export function roomCapacityBreakdown(map: Pick<RoomMapDto, "tables" | "seats">): RoomCapacityGroup[] {
+  const seatCountByTable = new Map<string, number>();
+  for (const seat of map.seats) {
+    seatCountByTable.set(seat.tableId, (seatCountByTable.get(seat.tableId) ?? 0) + 1);
+  }
+
+  const groups = new Map<TableDto["type"], { count: number; seatsPerTable: number }>();
+  for (const table of map.tables) {
+    const seats = seatCountByTable.get(table.id) ?? 0;
+    const existing = groups.get(table.type);
+    if (existing) {
+      existing.count += 1;
+      existing.seatsPerTable = Math.max(existing.seatsPerTable, seats);
+    } else {
+      groups.set(table.type, { count: 1, seatsPerTable: seats });
+    }
+  }
+
+  const order: TableDto["type"][] = ["MAIN_TABLE", "WALL_BAR"];
+  const labels: Record<TableDto["type"], string> = { MAIN_TABLE: "mesas", WALL_BAR: "barras individuales" };
+  return order
+    .filter((type) => groups.has(type))
+    .map((type) => {
+      const group = groups.get(type)!;
+      return { label: labels[type], tableCount: group.count, seatsPerTable: group.seatsPerTable };
+    });
+}
+
+/** "Hoy, 28 sep 2026" in America/Argentina/Buenos_Aires-style Spanish, for the left panel's "Abierto · …" line. */
+export function todayLabel(now: Date = new Date()): string {
+  const formatted = now.toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" });
+  return `Hoy, ${formatted.replace(".", "")}`;
 }

@@ -12,10 +12,13 @@ import { DisputeChallengeBanner } from "@/features/room/DisputeChallengeBanner";
 import { DisputeWonBanner } from "@/features/room/DisputeWonBanner";
 import { ExtendBanner } from "@/features/room/ExtendBanner";
 import { Hero } from "@/features/room/Hero";
+import { HowToUseModal } from "@/features/room/HowToUseModal";
+import { RoomInfoPanel } from "@/features/room/RoomInfoPanel";
 import { RoomMap } from "@/features/room/RoomMap";
+import { RightPanelEmptyState } from "@/features/room/RightPanelEmptyState";
 import { SeatDetail } from "@/features/room/SeatDetail";
 import { SummaryCounters } from "@/features/room/SummaryCounters";
-import { checkInExpiryStatus, seatDisplayLabel } from "@/features/room/format";
+import { checkInExpiryStatus, seatDisplayLabel, todayLabel } from "@/features/room/format";
 import { useDisputeWon } from "@/features/room/useDisputeWon";
 import { useIncumbentChallenge } from "@/features/room/useIncumbentChallenge";
 import { useRoomState } from "@/features/room/useRoomState";
@@ -34,6 +37,10 @@ export default function RoomPage() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
   const isDesktop = useMediaQuery("(min-width: 768px)");
+  // Three-column layout (left info panel / map / right detail panel) kicks in at lg; below that,
+  // detail stays a bottom sheet and the info panel collapses into a compact header + list.
+  const isLargeDesktop = useMediaQuery("(min-width: 1024px)");
+  const [showHowTo, setShowHowTo] = useState(false);
 
   const { map, me, connected, loading, error, refetch } = useRoomState(slug);
   const { bySeatId: occupantsBySeatId, refetch: refetchOccupants } = useOccupants(slug);
@@ -91,6 +98,13 @@ export default function RoomPage() {
   const mySeatId = activeCheckIn?.seatId ?? null;
   const selectedSeat = map?.seats.find((seat) => seat.id === selectedSeatId) ?? null;
   const selectedTable = selectedSeat ? map?.tables.find((t) => t.id === selectedSeat.tableId) ?? null : null;
+  // Other identified occupants seated at the same table as the selected seat, for "Personas cercanas".
+  const nearbyOccupants = selectedTable
+    ? (map?.seats ?? [])
+        .filter((seat) => seat.tableId === selectedTable.id && seat.id !== selectedSeat?.id)
+        .map((seat) => occupantsBySeatId.get(seat.id))
+        .filter((occupant): occupant is NonNullable<typeof occupant> => occupant != null)
+    : [];
 
   const { dispute: selectedDispute, setDispute: setSelectedDispute } = useSeatDispute(selectedSeat?.id ?? "", selectedSeat?.dispute ?? null);
   const { challenge, clear: clearChallenge } = useIncumbentChallenge(map, me);
@@ -206,13 +220,15 @@ export default function RoomPage() {
       onVoteDispute={(vote) => void handleVoteDispute(vote)}
       onChanged={handleChanged}
       now={now}
+      nearbyOccupants={nearbyOccupants}
+      viewBoxWidth={map.viewBox.width}
     />
   ) : null;
 
   return (
-    <main className="mx-auto flex max-w-7xl flex-col gap-4 p-4 md:grid md:grid-cols-[260px_1fr_320px] md:items-start">
+    <main className="mx-auto flex max-w-7xl flex-col gap-4 p-4 lg:grid lg:grid-cols-[320px_1fr_340px] lg:items-start">
       {challenge ? (
-        <div className="order-0 md:col-span-3">
+        <div className="order-0 lg:col-span-3">
           <DisputeChallengeBanner
             seatLabel={seatDisplayLabel(challengeTable, challengeSeat?.code ?? "", challengeSeat?.seatNumber ?? 0)}
             closesAt={challenge.closesAt}
@@ -223,7 +239,7 @@ export default function RoomPage() {
         </div>
       ) : null}
       {disputeWon ? (
-        <div className="order-0 md:col-span-3">
+        <div className="order-0 lg:col-span-3">
           <DisputeWonBanner
             seatLabel={seatDisplayLabel(wonTable, wonSeat?.code ?? disputeWon.seatCode, wonSeat?.seatNumber ?? 0)}
             pending={pending}
@@ -233,7 +249,7 @@ export default function RoomPage() {
         </div>
       ) : null}
       {expiryStatus?.shouldPromptExtend ? (
-        <div className="order-0 md:col-span-3">
+        <div className="order-0 lg:col-span-3">
           <ExtendBanner
             minutesLeft={expiryStatus.minutesLeft}
             pending={pending}
@@ -243,34 +259,30 @@ export default function RoomPage() {
         </div>
       ) : null}
 
-      <section className="order-1 flex flex-col gap-4 md:order-1">
-        <div>
-          <h1 className="font-display text-2xl font-bold text-main">{map.room.name}</h1>
-          <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
-            <span
-              aria-hidden="true"
-              className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-[var(--seat-free)]" : "bg-[var(--seat-unknown)]"}`}
-            />
-            {connected ? "Datos en vivo" : "Reconectando…"}
-          </p>
-        </div>
-        <Hero summary={map.summary} seats={map.seats} />
-        <SummaryCounters summary={map.summary} />
-        <AnnouncementsBanner roomSlug={slug} socket={socket} />
-        {isDesktop ? (
-          <div className="rounded-2xl border border-app bg-surface p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-main">Personas en la sala</h2>
-              <Link href="/personas" className="text-xs font-semibold text-primary hover:underline">
-                Ver todas
-              </Link>
+      {/* Desktop (lg+) gets the full left info panel; mobile/tablet gets a compact header + counters above the map. */}
+      <section className="order-1 flex flex-col gap-4 lg:order-1">
+        {isLargeDesktop ? (
+          <RoomInfoPanel map={map} people={people} connected={connected} onOpenHowTo={() => setShowHowTo(true)} />
+        ) : (
+          <>
+            <div>
+              <h1 className="font-display text-2xl font-bold text-main">{map.room.name}</h1>
+              <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
+                <span
+                  aria-hidden="true"
+                  className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-[var(--seat-free)]" : "bg-[var(--seat-unknown)]"}`}
+                />
+                Abierto · {todayLabel()}
+              </p>
             </div>
-            <PeopleList people={people} limit={5} />
-          </div>
-        ) : null}
+            <Hero summary={map.summary} seats={map.seats} />
+            <SummaryCounters summary={map.summary} />
+          </>
+        )}
+        <AnnouncementsBanner roomSlug={slug} socket={socket} />
       </section>
 
-      <section className="order-2 flex flex-col gap-3 md:order-2">
+      <section className="order-2 flex flex-col gap-3 lg:order-2">
         <div className="relative h-[70vh] w-full overflow-hidden rounded-3xl border border-app bg-surface shadow-sm md:h-[80vh] lg:mx-auto lg:aspect-[5/8] lg:h-[82vh] lg:w-auto lg:max-w-full">
           {isDesktop ? (
             <div className="flex h-full w-full items-center justify-center">
@@ -329,9 +341,24 @@ export default function RoomPage() {
         <AdSlot placement="room-bottom" />
       </section>
 
-      {isDesktop ? (
-        <section className="order-3 rounded-2xl border border-app bg-surface">
-          {detail ?? <p className="p-4 text-sm text-muted">Elegí un lugar en el mapa para ver los detalles.</p>}
+      {/* Mobile/tablet: people list below the map (desktop shows it in RoomInfoPanel instead). */}
+      {!isLargeDesktop ? (
+        <section className="order-3">
+          <div className="rounded-2xl border border-app bg-surface p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-main">Personas en la sala ({people.length})</h2>
+              <Link href="/personas" className="text-xs font-semibold text-primary hover:underline">
+                Ver todas →
+              </Link>
+            </div>
+            <PeopleList people={people} limit={5} />
+          </div>
+        </section>
+      ) : null}
+
+      {isLargeDesktop ? (
+        <section className="order-4 rounded-2xl border border-app bg-surface lg:order-3">
+          {detail ?? <RightPanelEmptyState hasActiveCheckIn={activeCheckIn != null} />}
         </section>
       ) : detail ? (
         <div className="sheet-enter fixed inset-x-0 bottom-0 z-40 max-h-[70vh] overflow-y-auto rounded-t-2xl border-t border-app bg-surface pb-safe shadow-2xl">
@@ -341,6 +368,8 @@ export default function RoomPage() {
           {detail}
         </div>
       ) : null}
+
+      <HowToUseModal open={showHowTo} onClose={() => setShowHowTo(false)} />
     </main>
   );
 }

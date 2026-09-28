@@ -7,9 +7,18 @@ import { MessageOccupantButton } from "./MessageOccupantButton";
 import type { ReactNode } from "react";
 import { DisputeSection } from "./DisputeSection";
 import { IdentityPrompt } from "./IdentityPrompt";
+import { NearbyOccupants } from "./NearbyOccupants";
 import { PhotoVerifyCard } from "./PhotoVerifyCard";
 import { TurnstileChallenge } from "./TurnstileChallenge";
-import { confidenceWording, recencyLabel, seatDisplayLabel, statusLabel, tableDisplayName, verifiedUntilLabel } from "./format";
+import {
+  confidenceWording,
+  recencyLabel,
+  seatDisplayLabel,
+  statusLabel,
+  tableDisplayName,
+  tableSideLabel,
+  verifiedUntilLabel,
+} from "./format";
 
 export interface SeatDetailProps {
   seat: SeatDto;
@@ -40,6 +49,10 @@ export interface SeatDetailProps {
   onChanged: () => void;
   /** Caller-supplied clock (ticks every 30s in the room page) — keeps this component pure. */
   now: Date;
+  /** Other identified occupants at the same table (from `GET /rooms/:id/occupants`), for "Personas cercanas". */
+  nearbyOccupants?: SeatOccupantDto[];
+  /** SVG viewBox width, used to derive "(lado izquierdo/derecho)" for main tables. */
+  viewBoxWidth?: number;
 }
 
 export function SeatDetail({
@@ -65,10 +78,13 @@ export function SeatDetail({
   onVoteDispute,
   onChanged,
   now,
+  nearbyOccupants = [],
+  viewBoxWidth = 1000,
 }: SeatDetailProps) {
   const isBar = table?.type === "WALL_BAR";
   const label = seatDisplayLabel(table, seat.code, seat.seatNumber);
   const recency = recencyLabel(seat);
+  const side = tableSideLabel(table, viewBoxWidth);
   const myCheckIn = isMySeat ? me?.activeCheckIn ?? null : null;
   const isPhotoVerified =
     myCheckIn?.verificationExpiresAt != null && new Date(myCheckIn.verificationExpiresAt).getTime() > now.getTime();
@@ -181,6 +197,7 @@ export function SeatDetail({
           <li className="flex items-center gap-2">
             <TableIcon aria-hidden="true" size={18} />
             {tableDisplayName(table, seat.code)}
+            {side ? ` (${side})` : ""}
           </li>
           <li className="flex items-center gap-2">
             <ChairIcon aria-hidden="true" size={18} />
@@ -192,6 +209,8 @@ export function SeatDetail({
           </li>
         </ul>
       </div>
+
+      <NearbyOccupants occupants={nearbyOccupants} />
     </div>
   );
 }

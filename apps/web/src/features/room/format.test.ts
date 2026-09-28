@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { checkInExpiryStatus, confidenceWording, disputeCountdownLabel, disputeKindTitle, recencyLabel, statusLabel } from "./format";
+import {
+  checkInExpiryStatus,
+  confidenceWording,
+  disputeCountdownLabel,
+  disputeKindTitle,
+  recencyLabel,
+  roomCapacityBreakdown,
+  statusLabel,
+  tableSideLabel,
+} from "./format";
 
 describe("statusLabel", () => {
   it("translates each seat status to Spanish", () => {
@@ -141,5 +150,50 @@ describe("checkInExpiryStatus", () => {
   it("prompts with 1 minute left just before expiry", () => {
     const status = checkInExpiryStatus(new Date("2026-09-25T12:00:30.000Z").toISOString(), now);
     expect(status).toEqual({ minutesLeft: 1, shouldPromptExtend: true });
+  });
+});
+
+describe("tableSideLabel", () => {
+  it("returns null for wall bars", () => {
+    expect(tableSideLabel({ x: 0, width: 100, type: "WALL_BAR" }, 1000)).toBeNull();
+  });
+
+  it("returns null when there is no table", () => {
+    expect(tableSideLabel(null, 1000)).toBeNull();
+  });
+
+  it("labels a table left of center as lado izquierdo", () => {
+    expect(tableSideLabel({ x: 40, width: 200, type: "MAIN_TABLE" }, 1000)).toBe("lado izquierdo");
+  });
+
+  it("labels a table right of center as lado derecho", () => {
+    expect(tableSideLabel({ x: 700, width: 200, type: "MAIN_TABLE" }, 1000)).toBe("lado derecho");
+  });
+});
+
+describe("roomCapacityBreakdown", () => {
+  it("groups tables by type with the seat count per table", () => {
+    const map = {
+      tables: [
+        { id: "t1", type: "MAIN_TABLE" as const },
+        { id: "t2", type: "MAIN_TABLE" as const },
+        { id: "b1", type: "WALL_BAR" as const },
+      ],
+      seats: [
+        { tableId: "t1" }, { tableId: "t1" }, { tableId: "t1" }, { tableId: "t1" },
+        { tableId: "t1" }, { tableId: "t1" }, { tableId: "t1" }, { tableId: "t1" },
+        { tableId: "t2" }, { tableId: "t2" }, { tableId: "t2" }, { tableId: "t2" },
+        { tableId: "t2" }, { tableId: "t2" }, { tableId: "t2" }, { tableId: "t2" },
+        { tableId: "b1" }, { tableId: "b1" }, { tableId: "b1" },
+      ],
+    };
+    expect(roomCapacityBreakdown(map as never)).toEqual([
+      { label: "mesas", tableCount: 2, seatsPerTable: 8 },
+      { label: "barras individuales", tableCount: 1, seatsPerTable: 3 },
+    ]);
+  });
+
+  it("returns an empty array for a room with no tables", () => {
+    expect(roomCapacityBreakdown({ tables: [], seats: [] })).toEqual([]);
   });
 });
