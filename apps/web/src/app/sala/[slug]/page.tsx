@@ -11,6 +11,7 @@ import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
 import { DisputeChallengeBanner } from "@/features/room/DisputeChallengeBanner";
 import { DisputeWonBanner } from "@/features/room/DisputeWonBanner";
 import { ExtendBanner } from "@/features/room/ExtendBanner";
+import { MyCheckInBar } from "@/features/room/MyCheckInBar";
 import { Hero } from "@/features/room/Hero";
 import { HowToUseModal } from "@/features/room/HowToUseModal";
 import { RoomInfoPanel } from "@/features/room/RoomInfoPanel";
@@ -114,6 +115,8 @@ export default function RoomPage() {
   const { won: disputeWon, clear: clearDisputeWon } = useDisputeWon();
   const wonSeat = disputeWon ? map?.seats.find((seat) => seat.id === disputeWon.seatId) ?? null : null;
   const wonTable = wonSeat ? map?.tables.find((t) => t.id === wonSeat.tableId) ?? null : null;
+  const mySeat = activeCheckIn ? map?.seats.find((seat) => seat.id === activeCheckIn.seatId) ?? null : null;
+  const myTable = mySeat ? map?.tables.find((t) => t.id === mySeat.tableId) ?? null : null;
 
   function handleSelectSeat(seat: SeatDto) {
     const isSame = seat.id === selectedSeatId;
@@ -255,6 +258,16 @@ export default function RoomPage() {
             pending={pending}
             onExtend={() => void extend()}
             onCheckOut={() => void checkOut()}
+          />
+        </div>
+      ) : activeCheckIn ? (
+        <div className="order-0 lg:col-span-3">
+          <MyCheckInBar
+            seatLabel={seatDisplayLabel(myTable, mySeat?.code ?? activeCheckIn.seatCode, mySeat?.seatNumber ?? 0)}
+            expiresAt={activeCheckIn.expiresAt}
+            pending={pending}
+            onShow={() => setSelectedSeatId(activeCheckIn.seatId)}
+            onRelease={() => void checkOut()}
           />
         </div>
       ) : null}
