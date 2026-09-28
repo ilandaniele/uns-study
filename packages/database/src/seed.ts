@@ -18,7 +18,7 @@ export const INITIAL_ROOM = {
   // Sala de estudio, UNS Bahía Blanca (confirmed by the project owner).
   latitude: -38.70138372483678,
   longitude: -62.270139753196005,
-  geofenceRadiusM: 120,
+  geofenceRadiusM: 50,
   timezone: "America/Argentina/Buenos_Aires",
   dailyResetTime: "04:00",
 };

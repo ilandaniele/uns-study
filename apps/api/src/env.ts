@@ -61,7 +61,7 @@ export const env = {
   crossSiteCookies: bool("CROSS_SITE_COOKIES", false),
   presenceDevBypass: bool("PRESENCE_DEV_BYPASS", false),
   presenceMaxAgeS: num("PRESENCE_MAX_AGE_S", 120),
-  presenceMaxAccuracyM: num("PRESENCE_MAX_ACCURACY_M", 100),
+  presenceMaxAccuracyM: num("PRESENCE_MAX_ACCURACY_M", 50),
   turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY ?? "",
   adminEmails: (process.env.ADMIN_EMAILS ?? "")
     .split(",")
