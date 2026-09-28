@@ -19,6 +19,10 @@ describe("describeActionError", () => {
     expect(describeActionError(apiError("DISPUTE_CLOSED"))).toBe("Esta votación ya terminó.");
   });
 
+  it("maps SEAT_VERIFIED to Spanish copy", () => {
+    expect(describeActionError(apiError("SEAT_VERIFIED"))).toBe("Este lugar está verificado con foto: la persona está sentada acá.");
+  });
+
   it("falls back to a generic message for unknown errors", () => {
     expect(describeActionError(new Error("network down"))).toBe("No pudimos actualizar el lugar. Tu cambio no fue guardado.");
   });

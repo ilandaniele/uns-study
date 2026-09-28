@@ -43,6 +43,13 @@
       "when": 1790629115632,
       "tag": "0005_zippy_silver_sable",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790630624072,
+      "tag": "0006_flashy_leech",
+      "breakpoints": true
     }
   ]
 }

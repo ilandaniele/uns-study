@@ -51,7 +51,7 @@ export function Seat({ seat, tableLabel, tableType, facing, isMySeat, isSelected
   const visualStatus = isMySeat ? "MY_SEAT" : seat.status;
   const kind = tableType === "WALL_BAR" ? "Barra" : "Mesa";
   const hasOpenDispute = seat.dispute !== null;
-  const ariaLabel = `${kind} ${tableLabel} asiento ${seat.seatNumber}: ${statusLabel(seat.status).toLowerCase()}${isMySeat ? " (tu lugar)" : ""}${hasOpenDispute ? " (en votación)" : ""}`;
+  const ariaLabel = `${kind} ${tableLabel} asiento ${seat.seatNumber}: ${statusLabel(seat.status).toLowerCase()}${isMySeat ? " (tu lugar)" : ""}${hasOpenDispute ? " (en votación)" : ""}${seat.verified ? ", verificado con foto" : ""}`;
   const isStool = tableType === "WALL_BAR";
   const backY = facing === "up" ? -(BACK_GAP + BACK_THICKNESS) : BACK_GAP;
 
@@ -133,6 +133,12 @@ export function Seat({ seat, tableLabel, tableType, facing, isMySeat, isSelected
       >
         {GLYPH[visualStatus]}
       </text>
+      {seat.verified ? (
+        <g transform={`translate(${isStool ? STOOL_RADIUS - 4 : SEAT_SIZE / 2 - 4} ${isStool ? -STOOL_RADIUS + 4 : -SEAT_SIZE / 2 + 4}) rotate(${-seat.rotation})`}>
+          <circle r={6} fill="#2563eb" stroke="white" strokeWidth={1.5} />
+          <path d="M -2.5 0 L -0.5 2 L 2.5 -2.5" stroke="white" strokeWidth={1.3} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        </g>
+      ) : null}
     </g>
   );
 }

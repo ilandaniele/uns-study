@@ -1,14 +1,15 @@
 "use client";
 
 import type { DisputeKind, DisputeVote, MeDto, SeatDisputeDto, SeatDto, SeatOccupantDto, TableDto } from "@uns/contracts";
-import { ArmchairIcon, ChairIcon, TableIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
+import { ArmchairIcon, ChairIcon, ShieldCheckIcon, TableIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { MessageOccupantButton } from "./MessageOccupantButton";
 import type { ReactNode } from "react";
 import { DisputeSection } from "./DisputeSection";
 import { IdentityPrompt } from "./IdentityPrompt";
+import { PhotoVerifyCard } from "./PhotoVerifyCard";
 import { TurnstileChallenge } from "./TurnstileChallenge";
-import { confidenceWording, recencyLabel, seatDisplayLabel, statusLabel, tableDisplayName } from "./format";
+import { confidenceWording, recencyLabel, seatDisplayLabel, statusLabel, tableDisplayName, verifiedUntilLabel } from "./format";
 
 export interface SeatDetailProps {
   seat: SeatDto;
@@ -35,6 +36,10 @@ export interface SeatDetailProps {
   dispute: SeatDisputeDto | null;
   onOpenDispute: (kind: DisputeKind) => void;
   onVoteDispute: (vote: DisputeVote) => void;
+  /** Refetches the room/me snapshot — passed to `PhotoVerifyCard` so a photo result updates the map. */
+  onChanged: () => void;
+  /** Caller-supplied clock (ticks every 30s in the room page) — keeps this component pure. */
+  now: Date;
 }
 
 export function SeatDetail({
@@ -58,10 +63,15 @@ export function SeatDetail({
   dispute,
   onOpenDispute,
   onVoteDispute,
+  onChanged,
+  now,
 }: SeatDetailProps) {
   const isBar = table?.type === "WALL_BAR";
   const label = seatDisplayLabel(table, seat.code, seat.seatNumber);
   const recency = recencyLabel(seat);
+  const myCheckIn = isMySeat ? me?.activeCheckIn ?? null : null;
+  const isPhotoVerified =
+    myCheckIn?.verificationExpiresAt != null && new Date(myCheckIn.verificationExpiresAt).getTime() > now.getTime();
 
   return (
     <div className="flex h-full flex-col gap-4 p-4">
@@ -121,6 +131,17 @@ export function SeatDetail({
             <QuietDangerButton onClick={onCheckOut} disabled={pending}>
               Me voy
             </QuietDangerButton>
+            {isPhotoVerified && myCheckIn?.verificationExpiresAt ? (
+              <p
+                className="inline-flex w-fit items-center gap-1.5 rounded-full border border-app px-2.5 py-1 text-xs font-semibold"
+                style={{ color: "var(--primary)" }}
+              >
+                <ShieldCheckIcon aria-hidden="true" size={14} weight="fill" />
+                Verificado con foto {verifiedUntilLabel(myCheckIn.verificationExpiresAt)}
+              </p>
+            ) : myCheckIn ? (
+              <PhotoVerifyCard checkInId={myCheckIn.id} onChanged={onChanged} />
+            ) : null}
           </>
         ) : (
           <>

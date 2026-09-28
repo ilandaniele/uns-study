@@ -117,6 +117,12 @@ export function disputeCountdownLabel(closesAt: string, now: Date = new Date()):
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
+/** "hasta 14:32" — local time the photo-verification protection on a check-in ends. */
+export function verifiedUntilLabel(verificationExpiresAt: string): string {
+  const time = new Date(verificationExpiresAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  return `hasta ${time}`;
+}
+
 export interface CheckInExpiryStatus {
   /** Whole minutes left, rounded up so "1 min" still means "some time left". */
   minutesLeft: number;

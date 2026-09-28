@@ -18,6 +18,8 @@ export const CHECKIN_MINUTES = 60;
 export const FREE_OBS_MINUTES = 15;
 export const OCCUPIED_OBS_MINUTES = 20;
 export const DISPUTE_MINUTES = 5;
+/** How long a photo-verified check-in is protected from disputes/"Está libre" observations. */
+export const VERIFIED_PROTECTION_MINUTES = 30;
 
 // ---- DTOs ----
 
@@ -64,6 +66,8 @@ export interface SeatDto {
   sourceSummary: string | null;
   /** Present while the seat has an OPEN dispute (vote in progress). */
   dispute: { id: string; closesAt: string } | null;
+  /** True while the seat's active check-in has unexpired photo-verification protection. */
+  verified: boolean;
 }
 
 export interface RoomMapDto {
@@ -103,6 +107,22 @@ export interface CheckInDto {
   startedAt: string;
   expiresAt: string;
   showIdentity: boolean;
+  /** When the seat verifier last confirmed this check-in's seat from a photo, if ever. */
+  verifiedAt: string | null;
+  /** `min(verifiedAt + VERIFIED_PROTECTION_MINUTES, expiresAt)` — null when never verified. */
+  verificationExpiresAt: string | null;
+}
+
+// ---- Photo-verified check-ins ----
+
+export type PhotoMimeType = "image/jpeg" | "image/webp" | "image/png";
+
+export type PhotoVerificationReason = "VERIFIED" | "SEAT_MISMATCH" | "LOW_CONFIDENCE" | "NO_PREDICTION" | "VERIFIER_ERROR";
+
+export interface PhotoVerificationResultDto {
+  verified: boolean;
+  reason: PhotoVerificationReason;
+  checkIn: CheckInDto;
 }
 
 // ---- Seat disputes ----
@@ -169,6 +189,7 @@ export interface SeatStateChangedEvent {
   status: SeatStatus;
   confidence: number;
   lastUpdatedAt: string;
+  verified: boolean;
 }
 
 // ---- Zod schemas ----
@@ -200,6 +221,14 @@ export const observationRequestSchema = z.object({
 });
 
 export const extendRequestSchema = z.object({
+  location: locationInputSchema,
+});
+
+export const checkInPhotoRequestSchema = z.object({
+  image: z.object({
+    mimeType: z.enum(["image/jpeg", "image/webp", "image/png"]),
+    base64: z.string().min(1),
+  }),
   location: locationInputSchema,
 });
 
@@ -254,7 +283,11 @@ export type ApiErrorCode =
   | "INVALID_QR"
   | "DISPUTE_NOT_ALLOWED"
   | "DISPUTE_ALREADY_OPEN"
-  | "DISPUTE_CLOSED";
+  | "DISPUTE_CLOSED"
+  | "VERIFIER_UNAVAILABLE"
+  | "SEAT_VERIFIED"
+  | "PHOTO_REUSED"
+  | "PHOTO_INVALID";
 
 export interface ApiError {
   error: {

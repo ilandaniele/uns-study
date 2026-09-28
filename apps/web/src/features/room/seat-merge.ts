@@ -19,7 +19,7 @@ export function applySeatEvent(map: RoomMapDto | null, event: SeatStateChangedEv
   const seats: SeatDto[] = map.seats.map((seat) => {
     if (seat.id !== event.seatId || ts(event.lastUpdatedAt) < ts(seat.lastUpdatedAt)) return seat;
     applied = true;
-    return { ...seat, status: event.status, confidence: event.confidence, lastUpdatedAt: event.lastUpdatedAt };
+    return { ...seat, status: event.status, confidence: event.confidence, lastUpdatedAt: event.lastUpdatedAt, verified: event.verified };
   });
   return applied ? { ...map, seats } : map;
 }
@@ -43,6 +43,7 @@ export function mergeSnapshot(prev: RoomMapDto | null, next: RoomMapDto): RoomMa
       confidence: current.confidence,
       lastUpdatedAt: current.lastUpdatedAt,
       sourceSummary: current.sourceSummary,
+      verified: current.verified,
     };
   });
   if (!keptAny) return next;

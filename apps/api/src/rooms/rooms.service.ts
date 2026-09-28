@@ -75,6 +75,7 @@ export class RoomsService {
           lastUpdatedAt: live ? live.lastUpdatedAt.toISOString() : null,
           sourceSummary: live?.sourceSummary ?? null,
           dispute: live?.dispute ? { id: live.dispute.id, closesAt: live.dispute.closesAt.toISOString() } : null,
+          verified: live?.verified ?? false,
         };
       });
 

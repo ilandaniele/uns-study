@@ -72,4 +72,10 @@ export const env = {
   r2SecretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? "",
   r2Bucket: process.env.R2_BUCKET_REPORT_EVIDENCE ?? "",
   r2Endpoint: process.env.R2_ENDPOINT ?? "",
+  // Seat photo verification (optional external model) — see docs/SEAT_PHOTO_VERIFIER.md.
+  seatVerifierUrl: process.env.SEAT_VERIFIER_URL ?? "",
+  seatVerifierToken: process.env.SEAT_VERIFIER_TOKEN ?? "",
+  seatVerifierMinConfidence: num("SEAT_VERIFIER_MIN_CONFIDENCE", 0.8),
+  // "mock" (dev/test only, ignored in production) accepts every photo as the claimed seat.
+  seatVerifierMode: process.env.SEAT_VERIFIER_MODE ?? "",
 };

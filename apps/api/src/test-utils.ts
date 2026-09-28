@@ -8,6 +8,8 @@ import { RestrictionService } from "./users/restriction.service.js";
 import { RoomRealtimeGateway } from "./realtime/room-realtime.gateway.js";
 import type { Auth } from "./auth/auth.instance.js";
 import { DisputeService } from "./disputes/disputes.service.js";
+import { PhotoVerificationService } from "./checkins/photo-verification.service.js";
+import type { SeatPhotoVerifier } from "./verification/seat-photo-verifier.js";
 
 export async function freshDb(): Promise<Db> {
   const db = createDb({ pgliteDir: "memory://" });
@@ -45,4 +47,11 @@ export function buildDisputeService(db: Db): DisputeService {
   const restrictions = new RestrictionService(db);
   const gateway = new RoomRealtimeGateway(roomState, mockAuth); // no @WebSocketServer() attached — emits are no-ops in tests
   return new DisputeService(db, roomState, presence, security, studySessions, reputation, restrictions, gateway);
+}
+
+/** A `PhotoVerificationService` wired with the given (possibly `null`) verifier stand-in. */
+export function buildPhotoVerificationService(db: Db, verifier: SeatPhotoVerifier | null): PhotoVerificationService {
+  const roomState = new RoomStateService(db);
+  const presence = new PresenceService();
+  return new PhotoVerificationService(db, roomState, presence, verifier);
 }

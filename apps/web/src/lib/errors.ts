@@ -56,6 +56,18 @@ export function describeActionError(error: unknown): string {
     if (error.code === "DISPUTE_CLOSED") {
       return "Esta votación ya terminó.";
     }
+    if (error.code === "SEAT_VERIFIED") {
+      return "Este lugar está verificado con foto: la persona está sentada acá.";
+    }
+    if (error.code === "PHOTO_REUSED") {
+      return "Esa foto ya se usó para verificar otro check-in. Sacá una foto nueva.";
+    }
+    if (error.code === "PHOTO_INVALID") {
+      return "No pudimos leer esa foto. Probá sacarla de nuevo.";
+    }
+    if (error.code === "VERIFIER_UNAVAILABLE") {
+      return "La verificación por foto no está disponible en este momento.";
+    }
   }
 
   return "No pudimos actualizar el lugar. Tu cambio no fue guardado.";

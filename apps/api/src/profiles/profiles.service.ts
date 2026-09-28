@@ -7,6 +7,7 @@ import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { displayName } from "../users/display-name.js";
 import { StudyService } from "../study/study.service.js";
+import { toDto as toCheckInDto } from "../checkins/checkins.service.js";
 
 type ProfileRow = typeof schema.userProfiles.$inferSelect;
 type PrivacyRow = typeof schema.userPrivacySettings.$inferSelect;
@@ -119,16 +120,7 @@ export class ProfilesService {
     if (!row) throw ApiErrors.noActiveCheckIn();
 
     const [seat] = await this.db.select({ code: schema.seats.code }).from(schema.seats).where(eq(schema.seats.id, row.seatId)).limit(1);
-    return {
-      id: row.id,
-      roomId: row.roomId,
-      seatId: row.seatId,
-      seatCode: seat?.code ?? "",
-      status: row.status,
-      startedAt: new Date(row.startedAt).toISOString(),
-      expiresAt: new Date(row.expiresAt).toISOString(),
-      showIdentity: row.showIdentity,
-    };
+    return toCheckInDto(row, seat?.code ?? "");
   }
 
   /** Checks the user out, records an audit trail without PII, then deletes the `user` row (cascades). */

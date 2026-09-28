@@ -10,6 +10,7 @@ import { AbusePolicyService } from "../security/abuse-policy.service.js";
 import { QrService } from "../qr/qr.service.js";
 import { ReputationService } from "../reputation/reputation.service.js";
 import { ApiErrors } from "../common/api-error.js";
+import { isCheckInVerified } from "../checkins/verification.js";
 
 const SPREAD_WINDOW_MIN = 10;
 /** A QR-verified observation counts for 1.5x its base (reputation) confidence weight. */
@@ -58,6 +59,17 @@ export class ObservationService {
       .where(and(eq(schema.checkIns.userId, input.userId), eq(schema.checkIns.status, "ACTIVE"), eq(schema.checkIns.seatId, input.seatId)))
       .limit(1);
     if (ownCheckIn) throw ApiErrors.ownSeatObservation();
+
+    if (input.status === "FREE") {
+      const [seatCheckIn] = await this.db
+        .select({ verifiedAt: schema.checkIns.verifiedAt, expiresAt: schema.checkIns.expiresAt })
+        .from(schema.checkIns)
+        .where(and(eq(schema.checkIns.seatId, input.seatId), eq(schema.checkIns.status, "ACTIVE")))
+        .limit(1);
+      if (seatCheckIn && isCheckInVerified(seatCheckIn.verifiedAt, seatCheckIn.expiresAt)) {
+        throw ApiErrors.seatVerified();
+      }
+    }
 
     const now = new Date();
     const windowStart = new Date(now.getTime() - SPREAD_WINDOW_MIN * 60_000);

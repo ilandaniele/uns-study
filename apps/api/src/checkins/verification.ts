@@ -1,0 +1,16 @@
+import { VERIFIED_PROTECTION_MINUTES } from "@uns/contracts";
+
+/**
+ * When a verified check-in's photo protection ends: `VERIFIED_PROTECTION_MINUTES` after the
+ * photo, capped by the check-in's own expiry (protection never outlives the check-in itself).
+ */
+export function computeVerificationExpiresAt(verifiedAt: Date, checkInExpiresAt: Date): Date {
+  const protectionEnd = new Date(verifiedAt.getTime() + VERIFIED_PROTECTION_MINUTES * 60_000);
+  return protectionEnd < checkInExpiresAt ? protectionEnd : checkInExpiresAt;
+}
+
+/** True while a check-in's photo-verification protection is still active. */
+export function isCheckInVerified(verifiedAt: Date | null, checkInExpiresAt: Date, now: Date = new Date()): boolean {
+  if (!verifiedAt) return false;
+  return computeVerificationExpiresAt(verifiedAt, checkInExpiresAt).getTime() > now.getTime();
+}

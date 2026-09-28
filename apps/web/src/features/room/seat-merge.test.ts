@@ -18,6 +18,7 @@ function seat(id: string, status: SeatDto["status"], lastUpdatedAt: string | nul
     lastUpdatedAt,
     sourceSummary: null,
     dispute: null,
+    verified: false,
   };
 }
 
@@ -32,7 +33,7 @@ function map(seats: SeatDto[]): RoomMapDto {
 }
 
 function event(seatId: string, status: SeatDto["status"], lastUpdatedAt: string): SeatStateChangedEvent {
-  return { roomId: ROOM, seatId, status, confidence: 0.98, lastUpdatedAt };
+  return { roomId: ROOM, seatId, status, confidence: 0.98, lastUpdatedAt, verified: false };
 }
 
 describe("applySeatEvent", () => {

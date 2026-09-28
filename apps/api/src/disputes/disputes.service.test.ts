@@ -82,6 +82,26 @@ describe("DisputeService", () => {
     });
   });
 
+  it("rejects a CLAIM against a seat whose check-in is photo-verified", async () => {
+    const { checkIn } = await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await db.update(schema.checkIns).set({ verifiedAt: new Date() }).where(eq(schema.checkIns.id, checkIn.id));
+
+    await expect(svc.open({ userId: "u2", roomId, seatId: seatIds[0]!, kind: "CLAIM", location })).rejects.toMatchObject({
+      code: "DISPUTE_NOT_ALLOWED",
+    });
+  });
+
+  it("allows a CLAIM again once the 30-minute photo protection has elapsed", async () => {
+    const { checkIn } = await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await db
+      .update(schema.checkIns)
+      .set({ verifiedAt: new Date(Date.now() - 31 * 60_000) })
+      .where(eq(schema.checkIns.id, checkIn.id));
+
+    const { dispute } = await svc.open({ userId: "u2", roomId, seatId: seatIds[0]!, kind: "CLAIM", location });
+    expect(dispute.status).toBe("OPEN");
+  });
+
   it("rejects a CLAIM/ABSENT dispute on a seat with no active check-in", async () => {
     await expect(svc.open({ userId: "u1", roomId, seatId: seatIds[0]!, kind: "ABSENT", location })).rejects.toMatchObject({
       code: "DISPUTE_NOT_ALLOWED",

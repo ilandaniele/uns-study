@@ -21,6 +21,7 @@ import { ReputationService } from "../reputation/reputation.service.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { ApiErrors } from "../common/api-error.js";
+import { isCheckInVerified } from "../checkins/verification.js";
 
 const UNIQUE_VIOLATION = "23505";
 /** Same opener can't re-open a dispute on the same seat within this many minutes of a previous one resolving. */
@@ -79,6 +80,10 @@ export class DisputeService {
 
     if (activeCheckIn?.userId === input.userId) {
       throw ApiErrors.disputeNotAllowed("No podés abrir una disputa en tu propio asiento.");
+    }
+
+    if (activeCheckIn && isCheckInVerified(activeCheckIn.verifiedAt, activeCheckIn.expiresAt)) {
+      throw ApiErrors.disputeNotAllowed("Este lugar está verificado con foto.");
     }
 
     if (input.kind === "CLAIM" || input.kind === "ABSENT") {

@@ -57,6 +57,16 @@ async function bootstrap() {
   // Better Auth owns its own body parsing; it must run before Nest's global JSON body parser.
   const auth = app.get<Auth>(AUTH);
   httpAdapter.all("/api/auth/*", toNodeHandler(auth));
+
+  // The photo-verification body carries a base64 image (~2MB decoded, larger encoded) — give just
+  // that route a bigger JSON limit before the global parser below (which body-parser then skips,
+  // since it only re-parses a request whose body hasn't already been consumed).
+  const PHOTO_ROUTE = /^\/api\/v1\/checkins\/[^/]+\/photo$/;
+  const photoJsonParser = express.json({ limit: "3mb" });
+  httpAdapter.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (req.method === "POST" && PHOTO_ROUTE.test(req.path)) return photoJsonParser(req, res, next);
+    next();
+  });
   app.use(express.json());
 
   app.setGlobalPrefix("api/v1");

@@ -24,6 +24,7 @@ import { RankingsModule } from "./rankings/rankings.module.js";
 import { QrModule } from "./qr/qr.module.js";
 import { ReputationModule } from "./reputation/reputation.module.js";
 import { DisputesModule } from "./disputes/disputes.module.js";
+import { VerificationModule } from "./verification/verification.module.js";
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { DisputesModule } from "./disputes/disputes.module.js";
     AdminModule,
     RankingsModule,
     QrModule,
+    VerificationModule,
     JobsModule,
   ],
   controllers: [HealthController, AuthProvidersController],

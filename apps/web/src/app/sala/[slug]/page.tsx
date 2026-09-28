@@ -187,6 +187,8 @@ export default function RoomPage() {
       dispute={selectedDispute}
       onOpenDispute={(kind) => void handleOpenDispute(kind)}
       onVoteDispute={(vote) => void handleVoteDispute(vote)}
+      onChanged={handleChanged}
+      now={now}
     />
   ) : null;
 

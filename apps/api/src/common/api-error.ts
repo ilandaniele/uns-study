@@ -41,4 +41,10 @@ export const ApiErrors = {
   disputeAlreadyOpen: () =>
     new ApiException("DISPUTE_ALREADY_OPEN", "Ya hay una disputa abierta para este asiento.", 409),
   disputeClosed: () => new ApiException("DISPUTE_CLOSED", "Esta disputa ya cerró.", 409),
+  verifierUnavailable: () =>
+    new ApiException("VERIFIER_UNAVAILABLE", "La verificación por foto no está disponible en este momento.", 503),
+  seatVerified: () =>
+    new ApiException("SEAT_VERIFIED", "Este lugar está verificado con foto: la persona está sentada acá.", 409),
+  photoReused: () => new ApiException("PHOTO_REUSED", "Esta foto ya se usó para verificar otro check-in.", 409),
+  photoInvalid: () => new ApiException("PHOTO_INVALID", "La foto no es válida.", 400),
 };

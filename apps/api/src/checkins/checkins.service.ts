@@ -10,6 +10,7 @@ import { StudySessionService } from "../rankings/study-session.service.js";
 import { QrService } from "../qr/qr.service.js";
 import { DisputeService } from "../disputes/disputes.service.js";
 import { ApiErrors } from "../common/api-error.js";
+import { computeVerificationExpiresAt } from "./verification.js";
 
 const UNIQUE_VIOLATION = "23505";
 const RAPID_TOGGLE_THRESHOLD = 4;
@@ -224,7 +225,9 @@ export class CheckInService {
   }
 }
 
-function toDto(row: typeof schema.checkIns.$inferSelect, seatCode: string): CheckInDto {
+export function toDto(row: typeof schema.checkIns.$inferSelect, seatCode: string): CheckInDto {
+  const verifiedAt = row.verifiedAt ? new Date(row.verifiedAt) : null;
+  const expiresAt = new Date(row.expiresAt);
   return {
     id: row.id,
     roomId: row.roomId,
@@ -232,8 +235,10 @@ function toDto(row: typeof schema.checkIns.$inferSelect, seatCode: string): Chec
     seatCode,
     status: row.status,
     startedAt: new Date(row.startedAt).toISOString(),
-    expiresAt: new Date(row.expiresAt).toISOString(),
+    expiresAt: expiresAt.toISOString(),
     showIdentity: row.showIdentity,
+    verifiedAt: verifiedAt ? verifiedAt.toISOString() : null,
+    verificationExpiresAt: verifiedAt ? computeVerificationExpiresAt(verifiedAt, expiresAt).toISOString() : null,
   };
 }
 
@@ -254,7 +259,7 @@ function uniqueViolationConstraint(err: unknown): string | undefined {
   return undefined;
 }
 
-function presenceMessage(reason: string): string {
+export function presenceMessage(reason: string): string {
   switch (reason) {
     case "OUTSIDE_GEOFENCE":
       return "Tenés que estar dentro de la sala para hacer esto.";

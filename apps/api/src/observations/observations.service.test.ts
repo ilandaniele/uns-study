@@ -81,6 +81,24 @@ describe("ObservationService", () => {
     expect(state?.status).toBe("UNCERTAIN");
   });
 
+  it("rejects a FREE observation on a seat whose check-in is photo-verified", async () => {
+    const { checkIn } = await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await db.update(schema.checkIns).set({ verifiedAt: new Date() }).where(eq(schema.checkIns.id, checkIn.id));
+
+    await expect(observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "FREE", location })).rejects.toMatchObject({
+      code: "SEAT_VERIFIED",
+    });
+  });
+
+  it("still allows an OCCUPIED observation on a seat whose check-in is photo-verified", async () => {
+    const { checkIn } = await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await db.update(schema.checkIns).set({ verifiedAt: new Date() }).where(eq(schema.checkIns.id, checkIn.id));
+
+    await expect(
+      observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "OCCUPIED", location }),
+    ).resolves.toBeDefined();
+  });
+
   it("a duplicate observation by the same user on the same seat replaces the previous one", async () => {
     await observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "OCCUPIED", location });
     await observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "FREE", location });

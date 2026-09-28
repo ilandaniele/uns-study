@@ -1,6 +1,6 @@
-import { Body, Controller, Delete, HttpCode, Inject, Ip, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, HttpCode, Inject, Ip, Param, Post, UseGuards } from "@nestjs/common";
 import type { z } from "zod";
-import { checkInRequestSchema, extendRequestSchema } from "@uns/contracts";
+import { checkInPhotoRequestSchema, checkInRequestSchema, extendRequestSchema } from "@uns/contracts";
 import { AuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";
@@ -13,12 +13,14 @@ import { TurnstileService } from "../security/turnstile.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { CheckInService } from "./checkins.service.js";
+import { PhotoVerificationService } from "./photo-verification.service.js";
 
 @Controller("checkins")
 @UseGuards(AuthGuard)
 export class CheckInsController {
   constructor(
     @Inject(CheckInService) private readonly checkIns: CheckInService,
+    @Inject(PhotoVerificationService) private readonly photoVerification: PhotoVerificationService,
     @Inject(RateLimitService) private readonly rateLimit: RateLimitService,
     @Inject(SecurityEventService) private readonly securityEvents: SecurityEventService,
     @Inject(AbusePolicyService) private readonly abusePolicy: AbusePolicyService,
@@ -83,5 +85,26 @@ export class CheckInsController {
     if (!limit.allowed) throw ApiErrors.rateLimited();
 
     return this.checkIns.extend(user.id, body.location);
+  }
+
+  @Post(":id/photo")
+  async verifyPhoto(
+    @CurrentUser() user: RequestUser,
+    @Param("id") id: string,
+    @Body(new ZodBodyPipe(checkInPhotoRequestSchema)) body: z.infer<typeof checkInPhotoRequestSchema>,
+  ) {
+    await this.restrictions.assertNot(user.id, ["SUSPENDED", "BANNED"]);
+
+    const limit = await this.rateLimit.check(`checkin-photo:${user.id}`, 6, 3600);
+    if (!limit.allowed) throw ApiErrors.rateLimited();
+
+    const { result, changes } = await this.photoVerification.verify({
+      userId: user.id,
+      checkInId: id,
+      image: body.image,
+      location: body.location,
+    });
+    if (changes.length) await this.realtime.broadcastSeatChanges(result.checkIn.roomId, changes);
+    return result;
   }
 }

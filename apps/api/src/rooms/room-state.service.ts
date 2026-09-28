@@ -4,12 +4,15 @@ import { schema, type Db } from "@uns/database";
 import type { SeatStatus } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
 import { calculateSeatState } from "./seat-state-calculator.js";
+import { isCheckInVerified } from "../checkins/verification.js";
 
 export interface SeatStateChange {
   seatId: string;
   status: SeatStatus;
   confidence: number;
   lastUpdatedAt: Date;
+  /** Whether the seat's active check-in currently has unexpired photo-verification protection. */
+  verified: boolean;
 }
 
 /**
@@ -66,10 +69,16 @@ export class RoomStateService {
       await db.execute(sql`select pg_advisory_xact_lock(hashtext(${seatId}))`);
 
       const [activeCheckIn] = await db
-        .select({ id: schema.checkIns.id, updatedAt: schema.checkIns.updatedAt })
+        .select({
+          id: schema.checkIns.id,
+          updatedAt: schema.checkIns.updatedAt,
+          verifiedAt: schema.checkIns.verifiedAt,
+          expiresAt: schema.checkIns.expiresAt,
+        })
         .from(schema.checkIns)
         .where(and(eq(schema.checkIns.seatId, seatId), eq(schema.checkIns.status, "ACTIVE")))
         .limit(1);
+      const verified = activeCheckIn ? isCheckInVerified(activeCheckIn.verifiedAt, new Date(activeCheckIn.expiresAt), now) : false;
 
       const dispute = await this.loadDisputeSignal(db, seatId, activeCheckIn);
 
@@ -100,7 +109,11 @@ export class RoomStateService {
         .where(eq(schema.seatCurrentState.seatId, seatId))
         .limit(1);
 
-      const changed = !previous || previous.status !== result.status || previous.confidence !== result.confidence;
+      // `seat_current_state` doesn't persist `verified` (it's derived fresh from the active
+      // check-in each time), so a verification-only change can't be detected by diffing it against
+      // `previous` — the PHOTO_VERIFIED event type itself is the signal that something changed.
+      const changed =
+        !previous || previous.status !== result.status || previous.confidence !== result.confidence || opts.eventType === "PHOTO_VERIFIED";
 
       await db
         .insert(schema.seatCurrentState)
@@ -134,7 +147,7 @@ export class RoomStateService {
           metadata: { confidence: result.confidence, sourceSummary: result.sourceSummary, ...(opts.seatMetadata?.[seatId] ?? {}) },
           createdAt: now,
         });
-        changes.push({ seatId, status: result.status, confidence: result.confidence, lastUpdatedAt: now });
+        changes.push({ seatId, status: result.status, confidence: result.confidence, lastUpdatedAt: now, verified });
       }
     }
 
@@ -182,11 +195,19 @@ export class RoomStateService {
     const seatIds = new Set(seatRows.map((s) => s.id));
 
     const activeCheckIns = await this.db
-      .select({ seatId: schema.checkIns.seatId, id: schema.checkIns.id, updatedAt: schema.checkIns.updatedAt })
+      .select({
+        seatId: schema.checkIns.seatId,
+        id: schema.checkIns.id,
+        updatedAt: schema.checkIns.updatedAt,
+        verifiedAt: schema.checkIns.verifiedAt,
+        expiresAt: schema.checkIns.expiresAt,
+      })
       .from(schema.checkIns)
       .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE")));
     const checkedInSeats = new Set(activeCheckIns.map((c) => c.seatId));
-    const checkInBySeat = new Map(activeCheckIns.map((c) => [c.seatId, { id: c.id, updatedAt: new Date(c.updatedAt) }]));
+    const checkInBySeat = new Map(
+      activeCheckIns.map((c) => [c.seatId, { id: c.id, updatedAt: new Date(c.updatedAt), verifiedAt: c.verifiedAt, expiresAt: new Date(c.expiresAt) }]),
+    );
 
     const openDisputes = await this.db
       .select({ id: schema.seatDisputes.id, seatId: schema.seatDisputes.seatId, closesAt: schema.seatDisputes.closesAt })
@@ -250,6 +271,7 @@ export class RoomStateService {
       });
       const stored = storedByseat.get(seatId);
       const changed = !stored || stored.status !== live.status || stored.confidence !== live.confidence;
+      const verified = checkIn ? isCheckInVerified(checkIn.verifiedAt, checkIn.expiresAt, now) : false;
       result.set(seatId, {
         seatId,
         status: live.status,
@@ -257,6 +279,7 @@ export class RoomStateService {
         sourceSummary: live.sourceSummary,
         lastUpdatedAt: changed ? now : new Date(stored!.lastUpdatedAt),
         dispute: openDispute ? { id: openDispute.id, closesAt: new Date(openDispute.closesAt) } : null,
+        verified,
       });
     }
     return result;

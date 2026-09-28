@@ -25,6 +25,14 @@ export const checkIns = pgTable(
     startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     endedAt: timestamp("ended_at", { withTimezone: true }),
+    // Photo verification (see docs/SEAT_PHOTO_VERIFIER.md). `verifiedAt` is set once the seat
+    // verifier model agrees with the claimed seat; protection lasts VERIFIED_PROTECTION_MINUTES
+    // from that time (see `isCheckInVerified`). The photo itself is never stored — only its hash,
+    // to block reusing the same image to verify a different user's check-in.
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    verificationConfidence: real("verification_confidence"),
+    verifierModel: text("verifier_model"),
+    verificationPhotoSha256: text("verification_photo_sha256"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -40,5 +48,6 @@ export const checkIns = pgTable(
     index("idx_check_ins_seat_status").on(table.seatId, table.status),
     index("idx_check_ins_room_status").on(table.roomId, table.status),
     index("idx_check_ins_expires_at").on(table.expiresAt),
+    index("idx_check_ins_verification_photo_sha256").on(table.verificationPhotoSha256),
   ],
 );
