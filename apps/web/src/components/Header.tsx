@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-client";
 import { useAdminAccess } from "@/features/admin/useAdminAccess";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { resetSocket } from "@/lib/socket";
 
 const NAV_ITEMS: { label: string; href: string }[] = [
   { label: "Sala", href: "/sala/principal" },
@@ -22,6 +23,13 @@ export function Header() {
   const pathname = usePathname();
 
   const items = isAdmin ? [...NAV_ITEMS, { label: "Admin", href: "/admin" }] : NAV_ITEMS;
+
+  // The socket carries the caller's identity in its auth token; reconnect it right after
+  // sign-out so it drops the user's channels and rejoins anonymous instead of lingering.
+  async function handleSignOut() {
+    await signOut();
+    resetSocket();
+  }
 
   return (
     <header className="flex items-center justify-between gap-2 border-b border-app bg-surface px-4 py-3">
@@ -56,7 +64,7 @@ export function Header() {
             <span className="hidden text-main xl:inline">{session.user.name ?? session.user.email}</span>
             <button
               type="button"
-              onClick={() => void signOut()}
+              onClick={() => void handleSignOut()}
               className="shrink-0 rounded-full border border-app px-3 py-1.5 font-semibold text-main hover:bg-[var(--surface-2)]"
             >
               <span className="lg:hidden">Salir</span>

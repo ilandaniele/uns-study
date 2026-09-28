@@ -50,6 +50,19 @@ export function getSocket(): Socket {
 }
 
 /**
+ * Forces the shared socket to drop its current connection and reconnect, re-running the `auth`
+ * callback above so it picks up a fresh token (or none, for a just-signed-out visitor). Call this
+ * right after a successful sign-in/sign-up/sign-out so the socket leaves whatever anonymous/user
+ * channels it had joined instead of carrying stale identity across the transition. A no-op if the
+ * socket hasn't been created yet (nothing to reconnect).
+ */
+export function resetSocket(): void {
+  if (!socket) return;
+  socket.disconnect();
+  socket.connect();
+}
+
+/**
  * Joins the realtime channel for a chat room. `chatRoomId` is the id from
  * `ChatMessageDto.chatRoomId` (the `chat_rooms` row id), not the study room id.
  * Requires an authenticated socket; the API silently ignores anonymous attempts.

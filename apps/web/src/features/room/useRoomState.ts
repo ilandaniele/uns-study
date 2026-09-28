@@ -8,7 +8,7 @@ import {
   type SeatStateChangedEvent,
   type TableNicknameChangedEvent,
 } from "@uns/contracts";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
 import { applyDisputeOpened, applyDisputeResolved, applySeatEvent, applyTableNicknameChanged, mergeSnapshot } from "./seat-merge";
@@ -37,6 +37,12 @@ export function useRoomState(slug: string): RoomState {
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Latest `me`, readable from socket handlers below without re-subscribing on every fetch.
+  const meRef = useRef<MeDto | null>(null);
+  useEffect(() => {
+    meRef.current = me;
+  }, [me]);
 
   const load = useCallback(async () => {
     try {
@@ -67,6 +73,9 @@ export function useRoomState(slug: string): RoomState {
 
     const onSeatStateChanged = (event: SeatStateChangedEvent) => {
       setMap((prev) => applySeatEvent(prev, event));
+      // The change is on the caller's own active check-in seat (e.g. it was cancelled by a
+      // resolved dispute) — refetch /me so a ghost MyCheckInBar/MY_SEAT highlight doesn't linger.
+      if (meRef.current?.activeCheckIn?.seatId === event.seatId) void load();
     };
 
     const onSummaryChanged = (summary: RoomMapDto["summary"]) => {
@@ -76,7 +85,12 @@ export function useRoomState(slug: string): RoomState {
     const onDailyReset = () => void load();
 
     const onDisputeOpened = (event: SeatDisputeLiteDto) => setMap((prev) => applyDisputeOpened(prev, event));
-    const onDisputeResolved = (event: SeatDisputeLiteDto) => setMap((prev) => applyDisputeResolved(prev, event));
+    const onDisputeResolved = (event: SeatDisputeLiteDto) => {
+      setMap((prev) => applyDisputeResolved(prev, event));
+      // A resolved dispute can cancel the incumbent's check-in server-side; refetch /me so a
+      // ghost MyCheckInBar/MY_SEAT highlight doesn't linger for whoever lost it.
+      void load();
+    };
     const onTableNicknameChanged = (event: TableNicknameChangedEvent) => setMap((prev) => applyTableNicknameChanged(prev, event));
 
     socket.on("connect", onConnect);

@@ -2,7 +2,7 @@
 
 import type { DisputeKind, DisputeVote, MeDto, SeatDisputeDto, SeatDto } from "@uns/contracts";
 import { useEffect, useState, type ReactNode } from "react";
-import { DISPUTE_OPTIONS, disputeCountdownLabel, disputeKindTitle } from "./format";
+import { disputeCountdownLabel, disputeKindTitle, disputeOptionsFor } from "./format";
 
 export interface DisputeSectionProps {
   seat: SeatDto;
@@ -29,11 +29,14 @@ export function DisputeSection({ seat, me, isMySeat, dispute, pending, onOpen, o
     return <ActiveDispute dispute={dispute} me={me} pending={pending} onVote={onVote} />;
   }
 
+  const options = disputeOptionsFor(seat);
+  if (options.length === 0) return null;
+
   return (
     <div className="border-t border-app pt-3">
       <h2 className="text-sm font-semibold text-main">¿Algo no cuadra?</h2>
       <div className="mt-2 flex flex-col gap-2">
-        {DISPUTE_OPTIONS.map((option) => (
+        {options.map((option) => (
           <button
             key={option.kind}
             type="button"

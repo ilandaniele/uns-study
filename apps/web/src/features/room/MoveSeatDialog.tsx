@@ -21,7 +21,7 @@ export function MoveSeatDialog({ fromLabel, toLabel, pending, onConfirm, onCance
         role="dialog"
         aria-modal="true"
         aria-labelledby="move-seat-title"
-        className="w-full max-w-sm rounded-t-2xl border border-app bg-surface p-5 shadow-2xl sm:rounded-2xl"
+        className="w-full max-w-sm rounded-t-2xl border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-2xl sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="move-seat-title" className="font-display text-lg font-semibold text-main">

@@ -10,6 +10,7 @@ import {
 import { useEffect, useState } from "react";
 import { getDispute } from "@/lib/disputes";
 import { getSocket } from "@/lib/socket";
+import { msUntilDisputeAutoClear } from "./format";
 
 export interface IncumbentChallenge {
   disputeId: string;
@@ -30,6 +31,8 @@ export function useIncumbentChallenge(map: RoomMapDto | null, me: MeDto | null):
   useEffect(() => {
     const socket = getSocket();
     const onChallenged = (event: DisputeChallengedEvent) => {
+      // A physical nudge for a time-sensitive prompt — easy to miss if the phone is face-down.
+      navigator.vibrate?.(200);
       setChallenge({ disputeId: event.disputeId, seatId: event.seatId, seatCode: event.seatCode, closesAt: event.closesAt });
     };
     const onResolved = (event: SeatDisputeLiteDto) => {
@@ -65,6 +68,14 @@ export function useIncumbentChallenge(map: RoomMapDto | null, me: MeDto | null):
       cancelled = true;
     };
   }, [activeSeatId, activeSeatDisputeId, activeSeatCode]);
+
+  // Self-clears shortly after `closesAt` even if the resolution socket event/refetch never lands
+  // (e.g. a dropped connection), so the banner can't outlive the vote it's about.
+  useEffect(() => {
+    if (!challenge) return;
+    const id = setTimeout(() => setChallenge(null), msUntilDisputeAutoClear(challenge.closesAt));
+    return () => clearTimeout(id);
+  }, [challenge]);
 
   return { challenge, clear: () => setChallenge(null) };
 }

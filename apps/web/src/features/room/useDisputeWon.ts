@@ -4,6 +4,9 @@ import { SocketEvents, type DisputeWonEvent } from "@uns/contracts";
 import { useEffect, useState } from "react";
 import { getSocket } from "@/lib/socket";
 
+/** How long the "you won the vote" prompt stays up before self-clearing if the opener never acts. */
+const AUTO_CLEAR_MS = 3 * 60_000;
+
 export interface DisputeWon {
   disputeId: string;
   seatId: string;
@@ -29,6 +32,13 @@ export function useDisputeWon(): { won: DisputeWon | null; clear: () => void } {
       socket.off(SocketEvents.DisputeYouWon, onWon);
     };
   }, []);
+
+  // Self-clears after a few minutes so a forgotten prompt doesn't sit there indefinitely.
+  useEffect(() => {
+    if (!won) return;
+    const id = setTimeout(() => setWon(null), AUTO_CLEAR_MS);
+    return () => clearTimeout(id);
+  }, [won]);
 
   return { won, clear: () => setWon(null) };
 }

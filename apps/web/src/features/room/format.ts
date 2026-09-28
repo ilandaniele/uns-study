@@ -1,4 +1,4 @@
-import type { DisputeKind, RoomMapDto, SeatStatus, TableDto } from "@uns/contracts";
+import type { DisputeKind, RoomMapDto, SeatDto, SeatStatus, TableDto } from "@uns/contracts";
 
 const BAR_NAMES: Record<string, string> = {
   B01: "Barra entrada izquierda",
@@ -124,6 +124,26 @@ export function disputeCountdownLabel(closesAt: string, now: Date = new Date()):
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+/**
+ * Milliseconds until a dispute-derived banner (e.g. the incumbent challenge banner) should
+ * auto-clear itself: `graceMs` after `closesAt`, in case the resolution socket event/refetch never
+ * arrives. Never negative — a `closesAt` already in the past clears on the next tick.
+ */
+export function msUntilDisputeAutoClear(closesAt: string, now: Date = new Date(), graceMs = 5_000): number {
+  return Math.max(0, new Date(closesAt).getTime() - now.getTime() + graceMs);
+}
+
+/** The "¿Algo no cuadra?" options to offer for a given seat (D1): CLAIM/ABSENT require a check-in
+ *  as the occupancy source (they contest who's checked in, not what an observation implied); SAVED
+ *  stays available for observation-only occupancy. None are offered once the seat is photo-verified. */
+export function disputeOptionsFor(
+  seat: Pick<SeatDto, "verified" | "sourceSummary">,
+): typeof DISPUTE_OPTIONS {
+  if (seat.verified) return [];
+  const isCheckInSourced = seat.sourceSummary === "CHECK_IN";
+  return DISPUTE_OPTIONS.filter((option) => option.kind === "SAVED" || isCheckInSourced);
 }
 
 /** "hasta 14:32" — local time the photo-verification protection on a check-in ends. */

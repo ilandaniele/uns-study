@@ -5,6 +5,7 @@ import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { signIn, signUp } from "@/lib/auth-client";
+import { resetSocket } from "@/lib/socket";
 
 type Tab = "signin" | "signup";
 
@@ -38,6 +39,8 @@ export default function LoginPage() {
         setError(result.error.message ?? "No pudimos completar la operación.");
         return;
       }
+      // Picks up the new session's token instead of carrying an anonymous socket into the room page.
+      resetSocket();
       router.push("/sala/principal");
       router.refresh();
     } catch {

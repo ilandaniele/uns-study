@@ -11,6 +11,7 @@ import { StudyModeControl } from "@/features/profile/StudyModeControl";
 import { useMyProfile } from "@/features/profile/useMyProfile";
 import { apiFetch, apiPost } from "@/lib/api";
 import { signOut, useSession } from "@/lib/auth-client";
+import { resetSocket } from "@/lib/socket";
 
 const ROOM_SLUG = "principal";
 
@@ -37,6 +38,7 @@ export default function PerfilPage() {
     try {
       await apiPost("/api/v1/me/delete", { confirm: "ELIMINAR" });
       await signOut();
+      resetSocket();
       router.push("/");
     } finally {
       setDeleting(false);

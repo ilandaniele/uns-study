@@ -20,6 +20,7 @@ import { RoomMap } from "@/features/room/RoomMap";
 import { RightPanelEmptyState } from "@/features/room/RightPanelEmptyState";
 import { SeatDetail } from "@/features/room/SeatDetail";
 import { SummaryCounters } from "@/features/room/SummaryCounters";
+import { TurnstileChallenge } from "@/features/room/TurnstileChallenge";
 import { checkInExpiryStatus, seatDisplayLabel, todayLabel } from "@/features/room/format";
 import { useDisputeWon } from "@/features/room/useDisputeWon";
 import { useIncumbentChallenge } from "@/features/room/useIncumbentChallenge";
@@ -63,6 +64,7 @@ export default function RoomPage() {
     pending,
     actionError,
     turnstileRequired,
+    clearError,
     submitTurnstileToken,
     checkIn,
     markFree,
@@ -88,14 +90,24 @@ export default function RoomPage() {
 
   const activeCheckIn = me?.activeCheckIn ?? null;
   const expiryStatus = activeCheckIn ? checkInExpiryStatus(activeCheckIn.expiresAt, now) : null;
+  const locallyExpired = activeCheckIn != null && !expiryStatus;
 
+  // The active check-in expired locally (expiresAt passed); refetch /me so MY_SEAT clears once the
+  // server has processed the expiration too. Keyed on id+expiresAt (primitives, stable across
+  // refetches) and the `locallyExpired` boolean rather than the `activeCheckIn`/`expiryStatus`
+  // objects, so a refetch that comes back with the *same* still-expired check-in (e.g. clock skew,
+  // or a slow expiration job) can't re-trigger this effect and poll forever on every render — one
+  // shot after 5s, then at most every 15s, until the check-in itself actually changes.
+  const activeCheckInKey = activeCheckIn ? `${activeCheckIn.id}:${activeCheckIn.expiresAt}` : null;
   useEffect(() => {
-    // The active check-in expired locally (expiresAt passed); refetch /me so MY_SEAT clears
-    // once the server has processed the expiration too.
-    if (activeCheckIn && !expiryStatus) {
-      refetch();
-    }
-  }, [activeCheckIn, expiryStatus, refetch]);
+    if (!locallyExpired) return;
+    const initial = setTimeout(() => refetch(), 5_000);
+    const poll = setInterval(() => refetch(), 15_000);
+    return () => {
+      clearTimeout(initial);
+      clearInterval(poll);
+    };
+  }, [activeCheckInKey, locallyExpired, refetch]);
 
   const mySeatId = activeCheckIn?.seatId ?? null;
   const avatarBySeatId = useMemo(() => {
@@ -124,38 +136,60 @@ export default function RoomPage() {
   const mySeat = activeCheckIn ? map?.seats.find((seat) => seat.id === activeCheckIn.seatId) ?? null : null;
   const myTable = mySeat ? map?.tables.find((t) => t.id === mySeat.tableId) ?? null : null;
 
+  // A challenge/dispute-won prompt is stale the moment its vote is reported closed — e.g. the
+  // incumbent's "Sigo acá"/"Me fui" or the opener's "Estoy acá" landed just after it resolved
+  // some other way. `describeActionError`'s copy for DISPUTE_CLOSED (lib/errors.ts) is the only
+  // signal exposed to the UI here, since useSeatActions doesn't surface the raw error code.
+  useEffect(() => {
+    if (actionError === "Esta votación ya terminó.") {
+      clearChallenge();
+      clearDisputeWon();
+    }
+  }, [actionError, clearChallenge, clearDisputeWon]);
+
   function handleSelectSeat(seat: SeatDto) {
     const isSame = seat.id === selectedSeatId;
     setSelectedSeatId(isSame ? null : seat.id);
     setShowIdentityPrompt(false);
+    clearError();
   }
 
   function closeDetail() {
     setSelectedSeatId(null);
     setShowIdentityPrompt(false);
+    clearError();
   }
 
-  const [confirmMove, setConfirmMove] = useState(false);
+  // Target seat for a pending "Ya tenés otro lugar marcado" confirmation — set from either the
+  // seat detail's "Estoy acá" or the dispute-won banner's "Estoy acá" (D3: both go through the
+  // same move confirmation when the caller already holds another seat).
+  const [confirmMove, setConfirmMove] = useState<{ seatId: string; fromDisputeWon: boolean } | null>(null);
+  const moveTargetSeat = confirmMove ? map?.seats.find((seat) => seat.id === confirmMove.seatId) ?? null : null;
+  const moveTargetTable = moveTargetSeat ? map?.tables.find((t) => t.id === moveTargetSeat.tableId) ?? null : null;
+
+  function attemptCheckIn(seatId: string, fromDisputeWon: boolean) {
+    // Already seated elsewhere: ask before moving (the API frees the old seat on move).
+    if (activeCheckIn && activeCheckIn.seatId !== seatId) {
+      setConfirmMove({ seatId, fromDisputeWon });
+      return;
+    }
+    void performCheckIn(seatId, fromDisputeWon);
+  }
+
+  async function performCheckIn(seatId: string, fromDisputeWon: boolean) {
+    setConfirmMove(null);
+    const showIdentity = hasChosenIdentityVisibility() ? getShowIdentityPreference() : false;
+    const result = await checkIn(seatId, showIdentity, { qrToken });
+    if (result) {
+      trackEvent("check_in", { roomSlug: slug, seatId });
+      if (fromDisputeWon) clearDisputeWon();
+      setShowIdentityPrompt(true);
+    }
+  }
 
   function requestCheckIn() {
     if (!selectedSeat) return;
-    // Already seated elsewhere: ask before moving (the API frees the old seat on move).
-    if (activeCheckIn && activeCheckIn.seatId !== selectedSeat.id) {
-      setConfirmMove(true);
-      return;
-    }
-    void handleCheckIn();
-  }
-
-  async function handleCheckIn() {
-    setConfirmMove(false);
-    if (!selectedSeat) return;
-    const showIdentity = hasChosenIdentityVisibility() ? getShowIdentityPreference() : false;
-    const result = await checkIn(selectedSeat.id, showIdentity, { qrToken });
-    if (result) {
-      trackEvent("check_in", { roomSlug: slug, seatId: selectedSeat.id });
-      setShowIdentityPrompt(true);
-    }
+    attemptCheckIn(selectedSeat.id, false);
   }
 
   async function handleMarkFree(seatId: string) {
@@ -192,15 +226,9 @@ export default function RoomPage() {
     if (result) clearChallenge();
   }
 
-  async function handleDisputeWonCheckIn() {
+  function handleDisputeWonCheckIn() {
     if (!disputeWon) return;
-    const showIdentity = hasChosenIdentityVisibility() ? getShowIdentityPreference() : false;
-    const result = await checkIn(disputeWon.seatId, showIdentity, { qrToken });
-    if (result) {
-      trackEvent("check_in", { roomSlug: slug, seatId: disputeWon.seatId });
-      clearDisputeWon();
-      setShowIdentityPrompt(true);
-    }
+    attemptCheckIn(disputeWon.seatId, true);
   }
 
   async function handleIdentityChoice(showIdentity: boolean) {
@@ -214,7 +242,10 @@ export default function RoomPage() {
     return <main className="p-6 text-center text-muted">Cargando sala…</main>;
   }
 
-  if (error || !map) {
+  // Only a total loss (no map at all — first load failed) blocks the whole page. Once we have a
+  // map, a later fetch failure (e.g. a dropped connection) shouldn't yank it away from under
+  // whoever's looking at it — that's handled as a small non-blocking notice below instead.
+  if (!map) {
     return <main className="p-6 text-center text-red-600">{error ?? "No encontramos esa sala."}</main>;
   }
 
@@ -249,8 +280,33 @@ export default function RoomPage() {
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-4 p-4 lg:grid lg:grid-cols-[320px_1fr_340px] lg:items-start">
-      {challenge ? (
+      {error ? (
+        <div className="order-0 flex items-center justify-between gap-3 rounded-xl border border-app bg-surface px-3 py-2 text-sm text-muted lg:col-span-3">
+          <span>Sin conexión, reintentando…</span>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="shrink-0 rounded-lg border border-app px-3 py-1.5 font-semibold text-main hover:bg-[var(--surface-2)]"
+          >
+            Reintentar
+          </button>
+        </div>
+      ) : null}
+      {/* Surfaced at page level (B3) so actions triggered from the banners below are visible with
+          no seat selected; SeatDetail shows its own copy of these when a seat is open, so hide the
+          page-level one then to avoid showing the same error/challenge twice. */}
+      {!selectedSeat && actionError ? (
+        <p role="alert" className="order-0 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 lg:col-span-3">
+          {actionError}
+        </p>
+      ) : null}
+      {!selectedSeat && turnstileRequired ? (
         <div className="order-0 lg:col-span-3">
+          <TurnstileChallenge onToken={submitTurnstileToken} />
+        </div>
+      ) : null}
+      {challenge ? (
+        <div className="order-0 sticky top-0 z-50 lg:static lg:z-auto lg:col-span-3">
           <DisputeChallengeBanner
             seatLabel={seatDisplayLabel(challengeTable, challengeSeat?.code ?? "", challengeSeat?.seatNumber ?? 0)}
             closesAt={challenge.closesAt}
@@ -265,13 +321,13 @@ export default function RoomPage() {
           <DisputeWonBanner
             seatLabel={seatDisplayLabel(wonTable, wonSeat?.code ?? disputeWon.seatCode, wonSeat?.seatNumber ?? 0)}
             pending={pending}
-            onCheckIn={() => void handleDisputeWonCheckIn()}
+            onCheckIn={handleDisputeWonCheckIn}
             onDismiss={clearDisputeWon}
           />
         </div>
       ) : null}
       {expiryStatus?.shouldPromptExtend ? (
-        <div className="order-0 lg:col-span-3">
+        <div className="order-0 sticky top-0 z-50 lg:static lg:z-auto lg:col-span-3">
           <ExtendBanner
             minutesLeft={expiryStatus.minutesLeft}
             pending={pending}
@@ -315,7 +371,7 @@ export default function RoomPage() {
       </section>
 
       <section className="order-2 flex flex-col gap-3 lg:order-2">
-        <div className="relative h-[70vh] w-full overflow-hidden rounded-3xl border border-app bg-surface shadow-sm md:h-[80vh] lg:mx-auto lg:aspect-[5/8] lg:h-[82vh] lg:w-auto lg:max-w-full">
+        <div className="relative h-[70dvh] w-full overflow-hidden rounded-3xl border border-app bg-surface shadow-sm md:h-[80dvh] lg:mx-auto lg:aspect-[5/8] lg:h-[82dvh] lg:w-auto lg:max-w-full">
           {isDesktop ? (
             <div className="flex h-full w-full items-center justify-center">
               <RoomMap
@@ -395,7 +451,7 @@ export default function RoomPage() {
           {detail ?? <RightPanelEmptyState hasActiveCheckIn={activeCheckIn != null} />}
         </section>
       ) : detail ? (
-        <div className="sheet-enter fixed inset-x-0 bottom-0 z-40 max-h-[70vh] overflow-y-auto rounded-t-2xl border-t border-app bg-surface pb-safe shadow-2xl">
+        <div className="sheet-enter fixed inset-x-0 bottom-0 z-40 max-h-[70dvh] overflow-y-auto rounded-t-2xl border-t border-app bg-surface pb-safe shadow-2xl">
           <div className="flex justify-center pt-2">
             <span aria-hidden="true" className="h-1.5 w-10 rounded-full bg-[var(--border-strong)]" />
           </div>
@@ -404,17 +460,13 @@ export default function RoomPage() {
       ) : null}
 
       <HowToUseModal open={showHowTo} onClose={() => setShowHowTo(false)} />
-      {confirmMove && selectedSeat && activeCheckIn ? (
+      {confirmMove && activeCheckIn ? (
         <MoveSeatDialog
           fromLabel={seatDisplayLabel(myTable, mySeat?.code ?? activeCheckIn.seatCode, mySeat?.seatNumber ?? 0)}
-          toLabel={seatDisplayLabel(
-            map?.tables.find((t) => t.id === selectedSeat.tableId) ?? null,
-            selectedSeat.code,
-            selectedSeat.seatNumber,
-          )}
+          toLabel={seatDisplayLabel(moveTargetTable, moveTargetSeat?.code ?? disputeWon?.seatCode ?? "", moveTargetSeat?.seatNumber ?? 0)}
           pending={pending}
-          onConfirm={() => void handleCheckIn()}
-          onCancel={() => setConfirmMove(false)}
+          onConfirm={() => void performCheckIn(confirmMove.seatId, confirmMove.fromDisputeWon)}
+          onCancel={() => setConfirmMove(null)}
         />
       ) : null}
     </main>

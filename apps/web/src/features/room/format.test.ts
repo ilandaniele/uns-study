@@ -3,8 +3,10 @@ import {
   checkInExpiryStatus,
   confidenceWording,
   disputeCountdownLabel,
+  disputeOptionsFor,
   seatCodeLabel,
   disputeKindTitle,
+  msUntilDisputeAutoClear,
   recencyLabel,
   roomCapacityBreakdown,
   seatDisplayLabel,
@@ -124,6 +126,46 @@ describe("disputeCountdownLabel", () => {
 
   it("floors at 0:00 once closesAt has passed", () => {
     expect(disputeCountdownLabel(new Date("2026-09-25T11:59:00.000Z").toISOString(), now)).toBe("0:00");
+  });
+});
+
+describe("msUntilDisputeAutoClear", () => {
+  const now = new Date("2026-09-25T12:00:00.000Z");
+
+  it("returns the time left plus the grace period when closesAt is in the future", () => {
+    expect(msUntilDisputeAutoClear(new Date("2026-09-25T12:00:10.000Z").toISOString(), now, 5_000)).toBe(15_000);
+  });
+
+  it("returns just the grace period the instant closesAt passes", () => {
+    expect(msUntilDisputeAutoClear(now.toISOString(), now, 5_000)).toBe(5_000);
+  });
+
+  it("never goes negative once closesAt + grace is already in the past", () => {
+    expect(msUntilDisputeAutoClear(new Date("2026-09-25T11:00:00.000Z").toISOString(), now, 5_000)).toBe(0);
+  });
+
+  it("defaults the grace period to 5s", () => {
+    expect(msUntilDisputeAutoClear(now.toISOString(), now)).toBe(5_000);
+  });
+});
+
+describe("disputeOptionsFor", () => {
+  it("offers no options once the seat is photo-verified", () => {
+    expect(disputeOptionsFor({ verified: true, sourceSummary: "CHECK_IN" })).toEqual([]);
+  });
+
+  it("offers all three options when a check-in is the occupancy source", () => {
+    const kinds = disputeOptionsFor({ verified: false, sourceSummary: "CHECK_IN" }).map((o) => o.kind);
+    expect(kinds).toEqual(["CLAIM", "ABSENT", "SAVED"]);
+  });
+
+  it("only offers SAVED when occupancy comes from observations, not a check-in", () => {
+    const kinds = disputeOptionsFor({ verified: false, sourceSummary: "OBSERVATION_OCCUPIED" }).map((o) => o.kind);
+    expect(kinds).toEqual(["SAVED"]);
+  });
+
+  it("only offers SAVED when there is no clear source yet", () => {
+    expect(disputeOptionsFor({ verified: false, sourceSummary: null }).map((o) => o.kind)).toEqual(["SAVED"]);
   });
 });
 
