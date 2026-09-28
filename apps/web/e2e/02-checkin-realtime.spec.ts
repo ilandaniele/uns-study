@@ -28,7 +28,7 @@ test("check-in, moving seats, and seat-taken propagate in realtime to another vi
     const seatXOnA = seatLocator(pageA, SEAT_X.table, SEAT_X.seatNumber);
     await seatXOnA.click();
     await pageA.getByRole("button", { name: "Estoy acá" }).click();
-    await expect(pageA.getByText("Tu lugar")).toBeVisible();
+    await expect(pageA.getByRole("button", { name: "Me voy" })).toBeVisible();
 
     // B sees X become occupied without reloading.
     const seatXOnB = seatLocator(pageB, SEAT_X.table, SEAT_X.seatNumber);
@@ -38,7 +38,7 @@ test("check-in, moving seats, and seat-taken propagate in realtime to another vi
     const seatYOnA = seatLocator(pageA, SEAT_Y.table, SEAT_Y.seatNumber);
     await seatYOnA.click();
     await pageA.getByRole("button", { name: "Estoy acá" }).click();
-    await expect(pageA.getByText("Tu lugar")).toBeVisible();
+    await expect(pageA.getByRole("button", { name: "Me voy" })).toBeVisible();
 
     // B sees X free up and Y become occupied.
     await expect(seatXOnB).not.toHaveAttribute("aria-label", /ocupado/, { timeout: 10_000 });

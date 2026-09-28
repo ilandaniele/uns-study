@@ -23,21 +23,28 @@ export function AuditLog() {
     };
   }, []);
 
-  if (error) return <p className="text-sm text-red-600">{error}</p>;
-  if (!page) return <p className="text-sm text-slate-500">Cargando…</p>;
+  if (error) return <p className="text-sm text-[var(--seat-occupied)]">{error}</p>;
+  if (!page) return <p className="text-sm text-muted">Cargando…</p>;
+
+  if (page.items.length === 0) {
+    return (
+      <p className="rounded-[14px] border border-app bg-surface px-4 py-6 text-center text-sm text-muted">
+        No hay eventos registrados todavía.
+      </p>
+    );
+  }
 
   return (
-    <div className="flex flex-col divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
+    <ol className="flex flex-col gap-3 rounded-[14px] border border-app bg-surface p-4">
       {page.items.map((entry) => (
-        <div key={entry.id} className="px-4 py-3 text-sm">
-          <p className="font-medium text-slate-800">{entry.action}</p>
-          <p className="text-xs text-slate-500">
-            {entry.actorId ?? "sistema"} {entry.targetUserId ? `→ ${entry.targetUserId}` : ""} ·{" "}
-            {new Date(entry.createdAt).toLocaleString("es-AR")}
+        <li key={entry.id} className="relative border-l border-app pl-3 before:absolute before:-left-[5px] before:top-1.5 before:h-2 before:w-2 before:rounded-full before:bg-[var(--text-faint)]">
+          <p className="text-sm font-medium text-main">{entry.action}</p>
+          <p className="font-mono text-xs text-muted">
+            {new Date(entry.createdAt).toLocaleString("es-AR")} · {entry.actorId ?? "sistema"}
+            {entry.targetUserId ? ` → ${entry.targetUserId}` : ""}
           </p>
-        </div>
+        </li>
       ))}
-      {page.items.length === 0 ? <p className="px-4 py-3 text-sm text-slate-400">No hay eventos registrados.</p> : null}
-    </div>
+    </ol>
   );
 }

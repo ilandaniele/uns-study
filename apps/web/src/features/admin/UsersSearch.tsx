@@ -9,6 +9,7 @@ export function UsersSearch() {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<AdminUserSearchResultDto[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
 
   async function search() {
     setLoading(true);
@@ -17,6 +18,7 @@ export function UsersSearch() {
         `/api/v1/admin/users${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`,
       );
       setResults(rows);
+      setSearched(true);
     } finally {
       setLoading(false);
     }
@@ -36,21 +38,33 @@ export function UsersSearch() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Buscar por nombre o email"
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          className="flex-1 rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
         />
-        <button type="submit" disabled={loading} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+        <button
+          type="submit"
+          disabled={loading}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        >
           Buscar
         </button>
       </form>
 
-      <div className="flex flex-col divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
+      <div className="flex flex-col divide-y divide-[var(--border)] rounded-[14px] border border-app bg-surface">
         {results.map((user) => (
-          <Link key={user.userId} href={`/admin/users/${user.userId}`} className="flex justify-between px-4 py-3 text-sm hover:bg-slate-50">
-            <span className="font-medium text-slate-800">{user.name}</span>
-            <span className="text-slate-500">{user.email}</span>
+          <Link
+            key={user.userId}
+            href={`/admin/users/${user.userId}`}
+            className="flex flex-col gap-0.5 px-4 py-3 text-sm hover:bg-[var(--surface-2)] sm:flex-row sm:items-center sm:justify-between"
+          >
+            <span className="font-medium text-main">{user.name}</span>
+            <span className="truncate text-muted">{user.email}</span>
           </Link>
         ))}
-        {results.length === 0 ? <p className="px-4 py-3 text-sm text-slate-400">Buscá un usuario por nombre o email.</p> : null}
+        {results.length === 0 ? (
+          <p className="px-4 py-3 text-sm text-muted">
+            {searched ? "No encontramos usuarios con esa búsqueda." : "Buscá un usuario por nombre o email."}
+          </p>
+        ) : null}
       </div>
     </div>
   );

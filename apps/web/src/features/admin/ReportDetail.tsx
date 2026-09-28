@@ -4,6 +4,7 @@ import type { AdminReportDto } from "@uns/contracts";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { REPORT_REASON_LABELS, REPORT_STATUS_LABELS, REPORT_STATUSES } from "./reports-labels";
+import { ReportStatusPill } from "./ReportStatusPill";
 
 export function ReportDetail({ reportId }: { reportId: string }) {
   const [report, setReport] = useState<AdminReportDto | null>(null);
@@ -52,54 +53,67 @@ export function ReportDetail({ reportId }: { reportId: string }) {
     }
   }
 
-  if (error) return <p className="text-sm text-red-600">{error}</p>;
-  if (!report) return <p className="text-sm text-slate-500">Cargando…</p>;
+  if (error) return <p className="text-sm text-[var(--seat-occupied)]">{error}</p>;
+  if (!report) return <p className="text-sm text-muted">Cargando…</p>;
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4">
-      <div>
-        <h2 className="text-lg font-semibold text-slate-900">{REPORT_REASON_LABELS[report.reason]}</h2>
-        <p className="text-sm text-slate-500">
-          {report.reporter?.name ?? "Cuenta eliminada"} ({report.reporter?.email ?? "—"}) reportó a{" "}
-          {report.reported?.name ?? "Cuenta eliminada"} ({report.reported?.email ?? "—"})
-        </p>
-        <p className="text-xs text-slate-400">
-          {report.context} · {new Date(report.createdAt).toLocaleString("es-AR")}
-        </p>
+    <div className="grid gap-4 md:grid-cols-[1fr_320px]">
+      <div className="flex flex-col gap-4 rounded-[14px] border border-app bg-surface p-4">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 className="font-display text-lg font-semibold text-main">{REPORT_REASON_LABELS[report.reason]}</h2>
+            <p className="text-sm text-muted">
+              {report.reporter?.name ?? "Cuenta eliminada"} ({report.reporter?.email ?? "—"}) reportó a{" "}
+              {report.reported?.name ?? "Cuenta eliminada"} ({report.reported?.email ?? "—"})
+            </p>
+            <p className="font-mono text-xs text-muted">
+              {report.context} · {new Date(report.createdAt).toLocaleString("es-AR")}
+            </p>
+          </div>
+          <ReportStatusPill status={report.status} />
+        </div>
+
+        {report.description ? <p className="whitespace-pre-wrap text-sm text-main">{report.description}</p> : null}
       </div>
 
-      {report.description ? <p className="whitespace-pre-wrap text-sm text-slate-700">{report.description}</p> : null}
-
-      {report.attachments.length > 0 ? (
-        <div className="flex flex-col gap-2">
-          <p className="text-xs font-semibold uppercase text-slate-400">Evidencia</p>
-          {report.attachments.map((attachment) => (
-            <button
-              key={attachment.id}
-              type="button"
-              onClick={() => void viewAttachment(attachment.id)}
-              className="w-fit rounded-lg border border-slate-300 px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50"
-            >
-              {attachment.contentType} · {(attachment.sizeBytes / 1024).toFixed(0)} KB
-              {attachmentUrls[attachment.id] ? " (abierta)" : ""}
-            </button>
-          ))}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2 rounded-[14px] border border-app bg-surface p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Evidencia</p>
+          {report.attachments.length > 0 ? (
+            report.attachments.map((attachment) => (
+              <button
+                key={attachment.id}
+                type="button"
+                onClick={() => void viewAttachment(attachment.id)}
+                className="rounded-lg border border-app px-3 py-1.5 text-left text-sm text-main hover:bg-[var(--surface-2)]"
+              >
+                {attachment.contentType} · {(attachment.sizeBytes / 1024).toFixed(0)} KB
+                {attachmentUrls[attachment.id] ? " (abierta)" : ""}
+              </button>
+            ))
+          ) : (
+            <p className="text-sm text-muted">Sin evidencia adjunta.</p>
+          )}
         </div>
-      ) : null}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-slate-500">Estado: {REPORT_STATUS_LABELS[report.status] ?? report.status}</span>
-        {REPORT_STATUSES.filter((s) => s !== report.status).map((s) => (
-          <button
-            key={s}
-            type="button"
-            disabled={saving}
-            onClick={() => void changeStatus(s)}
-            className="rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-          >
-            Marcar {REPORT_STATUS_LABELS[s]}
-          </button>
-        ))}
+        <div className="flex flex-col gap-2 rounded-[14px] border border-app bg-surface p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+            Estado: {REPORT_STATUS_LABELS[report.status] ?? report.status}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {REPORT_STATUSES.filter((s) => s !== report.status).map((s) => (
+              <button
+                key={s}
+                type="button"
+                disabled={saving}
+                onClick={() => void changeStatus(s)}
+                className="rounded-full border border-app px-3 py-1.5 text-sm font-medium text-muted hover:bg-[var(--surface-2)] hover:text-main disabled:opacity-50"
+              >
+                Marcar {REPORT_STATUS_LABELS[s]}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

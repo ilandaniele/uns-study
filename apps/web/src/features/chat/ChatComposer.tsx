@@ -27,7 +27,7 @@ export function ChatComposer({ maxLength, placeholder = "Escribí un mensaje…"
   }
 
   return (
-    <div className="sticky bottom-0 flex items-end gap-2 border-t border-slate-200 bg-white p-3 pb-safe sm:pb-3">
+    <div className="sticky bottom-0 flex items-end gap-2 border-t border-app bg-surface p-3 pb-safe sm:pb-3">
       <div className="flex-1">
         <textarea
           value={value}
@@ -42,9 +42,9 @@ export function ChatComposer({ maxLength, placeholder = "Escribí un mensaje…"
           maxLength={maxLength}
           rows={1}
           disabled={disabled}
-          className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-base focus:border-primary focus:outline-none disabled:opacity-50 sm:text-sm"
+          className="w-full resize-none rounded-xl border border-app bg-surface px-3 py-2 text-base text-main focus:border-primary focus:outline-none disabled:opacity-50 sm:text-sm"
         />
-        <p className="mt-1 text-right text-xs text-slate-400">
+        <p className="mt-1 text-right text-xs text-muted">
           {value.length}/{maxLength}
         </p>
       </div>
@@ -52,7 +52,7 @@ export function ChatComposer({ maxLength, placeholder = "Escribí un mensaje…"
         type="button"
         onClick={() => void handleSubmit()}
         disabled={!trimmed || sending || disabled}
-        className="min-h-11 shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+        className="min-h-11 shrink-0 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
       >
         Enviar
       </button>

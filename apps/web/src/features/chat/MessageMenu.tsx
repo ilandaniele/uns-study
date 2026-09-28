@@ -19,14 +19,18 @@ export function MessageMenu({ isOwn, onDelete, onReport, onBlock }: MessageMenuP
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="Más opciones"
-        className="rounded px-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+        className="rounded-full p-1.5 text-muted hover:bg-[var(--surface-2)] hover:text-main"
       >
-        ⋮
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <circle cx="12" cy="5" r="1.6" />
+          <circle cx="12" cy="12" r="1.6" />
+          <circle cx="12" cy="19" r="1.6" />
+        </svg>
       </button>
       {open ? (
         <>
           <button type="button" aria-hidden className="fixed inset-0 z-10 cursor-default" onClick={() => setOpen(false)} tabIndex={-1} />
-          <div className="absolute right-0 z-20 mt-1 w-40 overflow-hidden rounded-lg border border-slate-200 bg-white text-sm shadow-lg">
+          <div className="absolute right-0 z-20 mt-1 w-40 overflow-hidden rounded-xl border border-app bg-surface text-sm shadow-lg">
             {isOwn ? (
               <MenuItem
                 label="Eliminar"
@@ -67,7 +71,7 @@ function MenuItem({ label, onClick, danger }: { label: string; onClick: () => vo
     <button
       type="button"
       onClick={onClick}
-      className={`block w-full px-3 py-2 text-left hover:bg-slate-50 ${danger ? "text-red-600" : "text-slate-700"}`}
+      className={`block w-full px-3 py-2 text-left hover:bg-[var(--surface-2)] ${danger ? "text-red-600" : "text-main"}`}
     >
       {label}
     </button>

@@ -69,7 +69,7 @@ export function ProfileForm({ profile, saving, onSave }: ProfileFormProps) {
 
       <Field label="Bio">
         <textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={280} rows={3} className={inputClass} />
-        <p className="mt-1 text-xs text-slate-400">{bio.length}/280</p>
+        <p className="mt-1 text-xs text-muted">{bio.length}/280</p>
       </Field>
 
       <Field label="¿Cómo te ven otras personas?">
@@ -80,28 +80,28 @@ export function ProfileForm({ profile, saving, onSave }: ProfileFormProps) {
             </option>
           ))}
         </select>
-        <p className="mt-1 text-xs text-slate-400">{identityModeHint(identityMode)}</p>
+        <p className="mt-1 text-xs text-muted">{identityModeHint(identityMode)}</p>
       </Field>
 
       <div className="flex items-center gap-3">
         <button
           type="submit"
           disabled={saving}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+          className="min-h-11 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
         >
           Guardar
         </button>
-        {savedAt ? <span className="text-sm text-green-700">Guardado.</span> : null}
+        {savedAt ? <span className="text-sm text-[var(--seat-free)]">Guardado.</span> : null}
       </div>
     </form>
   );
 }
 
-const inputClass = "w-full rounded-lg border border-slate-300 px-3 py-2 text-base sm:text-sm";
+const inputClass = "w-full rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="block text-sm font-medium text-slate-700">
+    <label className="block text-sm font-medium text-main">
       {label}
       <div className="mt-1">{children}</div>
     </label>

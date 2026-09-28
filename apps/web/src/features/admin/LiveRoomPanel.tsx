@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import type { AdminLiveDto } from "./types";
 
+/** "M04-S03" -> "M04·3", matching the seat call-number style used on the room map. */
+function callNumber(seatCode: string): string {
+  const match = seatCode.match(/^(.+)-S0*(\d+)$/);
+  return match ? `${match[1]}·${match[2]}` : seatCode;
+}
+
 export function LiveRoomPanel({ roomSlug }: { roomSlug: string }) {
   const [live, setLive] = useState<AdminLiveDto | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -22,23 +28,25 @@ export function LiveRoomPanel({ roomSlug }: { roomSlug: string }) {
     };
   }, [roomSlug]);
 
-  if (error) return <p className="text-sm text-red-600">{error}</p>;
-  if (!live) return <p className="text-sm text-slate-500">Cargando…</p>;
+  if (error) return <p className="text-sm text-[var(--seat-occupied)]">{error}</p>;
+  if (!live) return <p className="text-sm text-muted">Cargando…</p>;
 
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-4">
-      <h2 className="text-sm font-semibold text-slate-700">
+    <div className="flex flex-col gap-2 rounded-[14px] border border-app bg-surface p-4">
+      <h2 className="text-sm font-semibold text-main">
         Ocupantes activos ({live.occupants.length} / {live.map.summary.total})
       </h2>
-      <div className="flex flex-col divide-y divide-slate-100">
+      <div className="flex flex-col divide-y divide-[var(--border)]">
         {live.occupants.map((occupant) => (
-          <div key={occupant.seatId} className="flex items-center justify-between py-2 text-sm">
-            <span className="font-medium text-slate-800">{occupant.name}</span>
-            <span className="text-slate-500">{occupant.email}</span>
-            <span className="font-mono text-xs text-slate-400">{occupant.seatCode}</span>
+          <div key={occupant.seatId} className="flex flex-col gap-0.5 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+            <span className="font-medium text-main">{occupant.name}</span>
+            <span className="truncate text-muted">{occupant.email}</span>
+            <span className="w-fit shrink-0 rounded-full border border-app px-2 py-0.5 font-mono text-xs text-muted">
+              {callNumber(occupant.seatCode)}
+            </span>
           </div>
         ))}
-        {live.occupants.length === 0 ? <p className="py-2 text-sm text-slate-400">Sin check-ins activos.</p> : null}
+        {live.occupants.length === 0 ? <p className="py-2 text-sm text-muted">Sin check-ins activos.</p> : null}
       </div>
     </div>
   );

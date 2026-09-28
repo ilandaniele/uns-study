@@ -55,70 +55,118 @@ export function UserDetail({ userId }: { userId: string }) {
     }
   }
 
-  if (error) return <p className="text-sm text-red-600">{error}</p>;
-  if (!user) return <p className="text-sm text-slate-500">Cargando…</p>;
+  if (error) return <p className="text-sm text-[var(--seat-occupied)]">{error}</p>;
+  if (!user) return <p className="text-sm text-muted">Cargando…</p>;
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <h2 className="text-lg font-semibold text-slate-900">{user.name}</h2>
-        <p className="text-sm text-slate-500">{user.email}</p>
-        <p className="text-xs text-slate-400">Miembro desde {new Date(user.createdAt).toLocaleDateString("es-AR")}</p>
-        {user.roles.length > 0 ? <p className="mt-2 text-xs font-semibold text-primary">{user.roles.join(", ")}</p> : null}
+      <div className="rounded-[14px] border border-app bg-surface p-4">
+        <h2 className="font-display text-lg font-semibold text-main">{user.name}</h2>
+        <p className="text-sm text-muted">{user.email}</p>
+        <p className="font-mono text-xs text-muted">Miembro desde {new Date(user.createdAt).toLocaleDateString("es-AR")}</p>
+        {user.roles.length > 0 ? (
+          <p className="mt-2 text-xs font-semibold text-primary">{user.roles.join(", ")}</p>
+        ) : null}
 
         {user.reputation ? (
-          <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600 sm:grid-cols-4">
-            <span>Observación: {user.reputation.observationScore.toFixed(2)}</span>
-            <span>Spam: {user.reputation.spamScore.toFixed(2)}</span>
-            <span>Confirmadas: {user.reputation.confirmedObservations}</span>
-            <span>Rechazadas: {user.reputation.rejectedObservations}</span>
-          </div>
+          <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-app pt-3 text-center sm:grid-cols-4">
+            <div>
+              <dd className="font-mono text-sm font-semibold text-main">{user.reputation.observationScore.toFixed(2)}</dd>
+              <dt className="text-xs text-muted">Observación</dt>
+            </div>
+            <div>
+              <dd className="font-mono text-sm font-semibold text-main">{user.reputation.spamScore.toFixed(2)}</dd>
+              <dt className="text-xs text-muted">Spam</dt>
+            </div>
+            <div>
+              <dd className="font-mono text-sm font-semibold text-main">{user.reputation.confirmedObservations}</dd>
+              <dt className="text-xs text-muted">Confirmadas</dt>
+            </div>
+            <div>
+              <dd className="font-mono text-sm font-semibold text-main">{user.reputation.rejectedObservations}</dd>
+              <dt className="text-xs text-muted">Rechazadas</dt>
+            </div>
+          </dl>
         ) : null}
 
         {user.restrictions.length > 0 ? (
-          <div className="mt-3 flex flex-col gap-1">
-            <p className="text-xs font-semibold uppercase text-slate-400">Restricciones activas</p>
-            {user.restrictions.map((r) => (
-              <p key={r.id} className="text-sm text-slate-700">
-                {r.type} — {r.reason} {r.until ? `(hasta ${new Date(r.until).toLocaleString("es-AR")})` : "(permanente)"}
-              </p>
-            ))}
+          <div className="mt-3 flex flex-col gap-1.5 border-t border-app pt-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">Restricciones activas</p>
+            <div className="flex flex-wrap gap-2">
+              {user.restrictions.map((r) => (
+                <span
+                  key={r.id}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-app bg-[var(--surface-2)] px-2.5 py-1 text-xs font-medium text-main"
+                >
+                  <span className="font-mono font-semibold text-[var(--seat-occupied)]">{r.type}</span>
+                  <span className="text-muted">— {r.reason}</span>
+                  <span className="font-mono text-muted">
+                    {r.until ? `hasta ${new Date(r.until).toLocaleString("es-AR")}` : "permanente"}
+                  </span>
+                </span>
+              ))}
+            </div>
           </div>
         ) : null}
 
         {user.recentSecurityEvents.length > 0 ? (
-          <div className="mt-3 flex flex-col gap-1">
-            <p className="text-xs font-semibold uppercase text-slate-400">Eventos de seguridad recientes</p>
-            {user.recentSecurityEvents.map((event, i) => (
-              <p key={i} className="text-xs text-slate-500">
-                {event.eventType} · {new Date(event.createdAt).toLocaleString("es-AR")}
-              </p>
-            ))}
+          <div className="mt-3 flex flex-col gap-1.5 border-t border-app pt-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">Eventos de seguridad recientes</p>
+            <ol className="flex flex-col gap-1 border-l border-app pl-3 font-mono text-xs text-muted">
+              {user.recentSecurityEvents.map((event, i) => (
+                <li key={i} className="relative before:absolute before:-left-[13px] before:top-1.5 before:h-1.5 before:w-1.5 before:rounded-full before:bg-[var(--text-faint)]">
+                  {new Date(event.createdAt).toLocaleString("es-AR")} · {event.eventType}
+                </li>
+              ))}
+            </ol>
           </div>
         ) : null}
       </div>
 
-      <form onSubmit={(e) => void submitAction(e)} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4">
-        <p className="text-sm font-semibold text-slate-700">Aplicar acción de moderación</p>
-        <select value={type} onChange={(e) => setType(e.target.value as ModerationActionType)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-          {ACTIONS.map((a) => (
-            <option key={a.type} value={a.type}>
-              {a.label}
-            </option>
-          ))}
-        </select>
-        <textarea
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="Motivo"
-          maxLength={500}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        />
-        <label className="flex flex-col gap-1 text-xs text-slate-500">
-          Vence (opcional, vacío = permanente)
-          <input type="datetime-local" value={until} onChange={(e) => setUntil(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+      <form onSubmit={(e) => void submitAction(e)} className="flex flex-col gap-3 rounded-[14px] border border-app bg-surface p-4">
+        <p className="text-sm font-semibold text-main">Aplicar acción de moderación</p>
+
+        <label className="flex flex-col gap-1 text-xs text-muted">
+          Tipo de acción
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value as ModerationActionType)}
+            className="rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
+          >
+            {ACTIONS.map((a) => (
+              <option key={a.type} value={a.type}>
+                {a.label}
+              </option>
+            ))}
+          </select>
         </label>
-        <button type="submit" disabled={saving || !reason.trim()} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+
+        <label className="flex flex-col gap-1 text-xs text-muted">
+          Motivo
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Motivo"
+            maxLength={500}
+            className="rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1 text-xs text-muted">
+          Vence (opcional, vacío = permanente)
+          <input
+            type="datetime-local"
+            value={until}
+            onChange={(e) => setUntil(e.target.value)}
+            className="rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
+          />
+        </label>
+
+        <button
+          type="submit"
+          disabled={saving || !reason.trim()}
+          className="w-fit rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        >
           Aplicar
         </button>
       </form>

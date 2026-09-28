@@ -56,50 +56,78 @@ export function AnnouncementsAdmin() {
 
   return (
     <div className="flex flex-col gap-4">
-      <form onSubmit={(e) => void create(e)} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4">
-        <p className="text-sm font-semibold text-slate-700">Nuevo anuncio</p>
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          maxLength={100}
-          placeholder="Título"
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        />
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          maxLength={1000}
-          placeholder="Mensaje"
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        />
-        <button type="submit" disabled={saving} className="w-fit rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+      <form onSubmit={(e) => void create(e)} className="flex flex-col gap-3 rounded-[14px] border border-app bg-surface p-4">
+        <p className="text-sm font-semibold text-main">Nuevo anuncio</p>
+        <label className="flex flex-col gap-1 text-xs text-muted">
+          Título
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={100}
+            placeholder="Título"
+            className="rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-muted">
+          Mensaje
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            maxLength={1000}
+            placeholder="Mensaje"
+            className="rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={saving}
+          className="w-fit rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        >
           Publicar
         </button>
       </form>
 
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--seat-occupied)]">{error}</p> : null}
 
-      <div className="flex flex-col divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
+      <div className="flex flex-col divide-y divide-[var(--border)] rounded-[14px] border border-app bg-surface">
         {items.map((item) => (
           <div key={item.id} className="flex flex-col gap-1 px-4 py-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-slate-800">{item.title}</span>
-              <span className={item.active ? "text-xs font-semibold text-green-600" : "text-xs text-slate-400"}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-semibold text-main">{item.title}</span>
+              <span
+                className="inline-flex w-fit items-center gap-1.5 rounded-full border border-app px-2.5 py-0.5 text-xs font-semibold"
+                style={{ color: item.active ? "var(--seat-free)" : "var(--text-faint)" }}
+              >
+                <span
+                  aria-hidden
+                  className="inline-block h-2 w-2 rounded-full"
+                  style={{ backgroundColor: item.active ? "var(--seat-free)" : "var(--text-faint)" }}
+                />
                 {item.active ? "Activo" : "Inactivo"}
               </span>
             </div>
-            <p className="text-slate-600">{item.body}</p>
+            <p className="text-muted">{item.body}</p>
             <div className="flex gap-2 pt-1">
-              <button type="button" onClick={() => void toggleActive(item)} className="rounded-full border border-slate-300 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50">
+              <button
+                type="button"
+                onClick={() => void toggleActive(item)}
+                className="rounded-full border border-app px-3 py-1 text-xs font-medium text-muted hover:bg-[var(--surface-2)] hover:text-main"
+              >
                 {item.active ? "Desactivar" : "Activar"}
               </button>
-              <button type="button" onClick={() => void remove(item)} className="rounded-full border border-red-300 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50">
+              <button
+                type="button"
+                onClick={() => void remove(item)}
+                className="rounded-full border border-app px-3 py-1 text-xs font-medium text-[var(--seat-occupied)] hover:bg-[var(--surface-2)]"
+              >
                 Eliminar
               </button>
             </div>
           </div>
         ))}
-        {items.length === 0 ? <p className="px-4 py-3 text-sm text-slate-400">No hay anuncios todavía.</p> : null}
+        {items.length === 0 ? (
+          <p className="px-4 py-6 text-center text-sm text-muted">No hay anuncios todavía. Publicá el primero arriba.</p>
+        ) : null}
       </div>
     </div>
   );

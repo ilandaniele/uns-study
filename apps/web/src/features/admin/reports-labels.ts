@@ -18,3 +18,11 @@ export const REPORT_STATUS_LABELS: Record<string, string> = {
 };
 
 export const REPORT_STATUSES = ["OPEN", "UNDER_REVIEW", "RESOLVED", "DISMISSED"] as const;
+
+/** Status pill colors: OPEN=primary, UNDER_REVIEW=amber, RESOLVED=green, DISMISSED=gray. */
+export const REPORT_STATUS_COLORS: Record<string, string> = {
+  OPEN: "var(--primary)",
+  UNDER_REVIEW: "var(--seat-uncertain)",
+  RESOLVED: "var(--seat-free)",
+  DISMISSED: "var(--text-faint)",
+};

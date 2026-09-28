@@ -8,12 +8,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const { loading, isAdmin } = useAdminAccess();
 
   if (loading) {
-    return <main className="p-6 text-center text-slate-500">Verificando acceso…</main>;
+    return <main className="p-6 text-center text-muted">Verificando acceso…</main>;
   }
 
   if (!isAdmin) {
     return (
-      <main className="p-6 text-center text-red-600">
+      <main className="p-6 text-center text-[var(--seat-occupied)]">
         No tenés permisos para ver esta sección. El servidor rechazará cualquier acción igual.
       </main>
     );
@@ -21,7 +21,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-4 p-4">
-      <h1 className="text-xl font-bold text-slate-900">Administración</h1>
+      <h1 className="qr-print-hide font-display text-xl font-semibold text-main">Administración</h1>
       <AdminNav />
       {children}
     </main>

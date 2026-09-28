@@ -17,14 +17,14 @@ export default function DmThreadPage() {
   const { data: session, isPending } = useSession();
 
   if (isPending) {
-    return <main className="p-6 text-center text-slate-500">Cargando…</main>;
+    return <main className="p-6 text-center text-muted">Cargando…</main>;
   }
 
   if (!session?.user) {
     return (
       <main className="mx-auto flex max-w-md flex-col items-center gap-3 p-10 text-center">
-        <p className="text-slate-600">Iniciá sesión para usar el chat.</p>
-        <Link href="/login" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark">
+        <p className="text-muted">Iniciá sesión para usar el chat.</p>
+        <Link href="/login" className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark">
           Iniciar sesión
         </Link>
       </main>
@@ -47,12 +47,14 @@ function DmThread({ conversationId, currentUserId }: { conversationId: string; c
 
   return (
     <main className="mx-auto flex h-[calc(100dvh_-_57px_-_56px_-_env(safe-area-inset-bottom))] max-w-2xl flex-col lg:h-[calc(100dvh_-_57px)]">
-      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
-        <div>
-          <Link href="/chat/dm" className="text-xs text-slate-400 hover:underline">
+      <div className="flex items-center justify-between border-b border-app bg-surface px-4 py-3">
+        <div className="min-w-0">
+          <Link href="/chat/dm" className="text-xs text-muted hover:underline">
             ← Mensajes
           </Link>
-          <h1 className="text-lg font-bold text-slate-900">{conversation?.otherUser.displayName ?? "Conversación"}</h1>
+          <h1 className="truncate font-display text-lg font-semibold text-main">
+            {conversation?.otherUser.displayName ?? "Conversación"}
+          </h1>
         </div>
         {otherUserId ? (
           <MessageMenu
@@ -64,7 +66,7 @@ function DmThread({ conversationId, currentUserId }: { conversationId: string; c
       </div>
 
       {loading ? (
-        <p className="flex-1 p-6 text-center text-slate-500">Cargando conversación…</p>
+        <p className="flex-1 p-6 text-center text-muted">Cargando conversación…</p>
       ) : error ? (
         <p className="flex-1 p-6 text-center text-red-600">{error}</p>
       ) : (
@@ -75,7 +77,7 @@ function DmThread({ conversationId, currentUserId }: { conversationId: string; c
                 type="button"
                 onClick={loadMore}
                 disabled={loadingMore}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                className="rounded-full border border-app px-3 py-1.5 text-xs font-semibold text-muted hover:bg-[var(--surface-2)] disabled:opacity-50"
               >
                 {loadingMore ? "Cargando…" : "Cargar anteriores"}
               </button>
@@ -89,20 +91,18 @@ function DmThread({ conversationId, currentUserId }: { conversationId: string; c
             return (
               <div key={message.id}>
                 {showDaySeparator ? (
-                  <p className="my-2 text-center text-xs font-semibold text-slate-400">{formatDaySeparator(message.createdAt)}</p>
+                  <p className="my-2 text-center text-xs font-semibold text-muted">{formatDaySeparator(message.createdAt)}</p>
                 ) : null}
                 <div className={`flex ${isOwn ? "justify-end" : "justify-start"} ${showHeader ? "mt-2" : ""}`}>
                   <div
                     className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${
-                      isOwn ? "bg-primary text-white" : "bg-slate-100 text-slate-900"
+                      isOwn ? "bg-primary/10 text-main" : "bg-[var(--surface-2)] text-main"
                     }`}
                   >
                     <p className={`whitespace-pre-wrap break-words ${message.deleted ? "italic opacity-70" : ""}`}>
                       {message.deleted ? "Mensaje eliminado" : message.content}
                     </p>
-                    <p className={`mt-1 text-right text-[10px] ${isOwn ? "text-white/70" : "text-slate-400"}`}>
-                      {formatMessageTime(message.createdAt)}
-                    </p>
+                    <p className="mt-1 text-right font-mono text-[10px] text-muted">{formatMessageTime(message.createdAt)}</p>
                   </div>
                 </div>
               </div>

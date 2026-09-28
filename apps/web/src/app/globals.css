@@ -294,3 +294,22 @@ input:focus-visible,
 .dark .hover\:text-primary:hover {
   color: var(--primary);
 }
+
+/* QR codes admin page (/admin/qr): printable table cards. Scoped to the `.qr-print-page`
+   wrapper via :has() so the site header (rendered outside that subtree) and the rest of the
+   app's print output are unaffected. `.qr-print-hide` marks in-page chrome (nav, buttons). */
+@media print {
+  body:has(.qr-print-page) header {
+    display: none;
+  }
+  .qr-print-page .qr-print-hide {
+    display: none;
+  }
+  .qr-print-page .qr-print-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .qr-print-page .qr-print-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

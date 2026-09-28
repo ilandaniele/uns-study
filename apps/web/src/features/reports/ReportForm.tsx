@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReportContext, ReportReason } from "@uns/contracts";
-import { type ChangeEvent, type FormEvent, useState } from "react";
+import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from "react";
 import { ApiRequestError } from "@/lib/api";
 import { describeEvidenceError, validateEvidenceFile } from "./evidence";
 import { REPORT_REASONS, reportReasonLabel } from "./reportReasons";
@@ -20,14 +20,30 @@ export function ReportForm({ reportedUserId, context, contextMessageId, roomId }
   const [reason, setReason] = useState<ReportReason>(REPORT_REASONS[0]!);
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ warning: string | null } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewUrlRef = useRef<string | null>(null);
+
+  // Revoke any outstanding object URL on unmount; creation/revocation on change happens in the
+  // handlers below (not here) so we don't call setState synchronously from an effect body.
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    };
+  }, []);
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0] ?? null;
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
     setFile(null);
+    setPreviewUrl(null);
     setFileError(null);
     if (!selected) return;
 
@@ -38,6 +54,20 @@ export function ReportForm({ reportedUserId, context, contextMessageId, roomId }
       return;
     }
     setFile(selected);
+    const url = URL.createObjectURL(selected);
+    previewUrlRef.current = url;
+    setPreviewUrl(url);
+  }
+
+  function handleRemoveFile() {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+    setFile(null);
+    setPreviewUrl(null);
+    setFileError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -71,24 +101,24 @@ export function ReportForm({ reportedUserId, context, contextMessageId, roomId }
 
   if (result) {
     return (
-      <div className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-6 text-center">
-        <p className="font-semibold text-slate-900">Reporte enviado.</p>
-        <p className="text-sm text-slate-600">Gracias por avisarnos. El equipo de moderación lo va a revisar.</p>
-        {result.warning ? <p className="text-sm text-amber-600">{result.warning}</p> : null}
+      <div className="flex flex-col gap-2 rounded-[14px] border border-app bg-surface p-6 text-center">
+        <p className="font-display font-semibold text-main">Reporte enviado.</p>
+        <p className="text-sm text-muted">Gracias por avisarnos. El equipo de moderación lo va a revisar.</p>
+        {result.warning ? <p className="text-sm text-[var(--seat-uncertain)]">{result.warning}</p> : null}
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6">
-      <h1 className="text-lg font-bold text-slate-900">Reportar usuario</h1>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-[14px] border border-app bg-surface p-6">
+      <h1 className="font-display text-lg font-semibold text-main">Reportar usuario</h1>
 
-      <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-semibold text-main">
         Motivo
         <select
           value={reason}
           onChange={(event) => setReason(event.target.value as ReportReason)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-base font-normal sm:text-sm"
+          className="rounded-lg border border-app bg-surface px-3 py-2 text-base font-normal text-main sm:text-sm"
         >
           {REPORT_REASONS.map((r) => (
             <option key={r} value={r}>
@@ -98,7 +128,7 @@ export function ReportForm({ reportedUserId, context, contextMessageId, roomId }
         </select>
       </label>
 
-      <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-semibold text-main">
         Descripción
         <textarea
           value={description}
@@ -106,21 +136,50 @@ export function ReportForm({ reportedUserId, context, contextMessageId, roomId }
           maxLength={DESCRIPTION_MAX_LENGTH}
           rows={4}
           placeholder="Contanos qué pasó (opcional)"
-          className="resize-none rounded-lg border border-slate-300 px-3 py-2 text-base font-normal sm:text-sm"
+          className="resize-none rounded-lg border border-app bg-surface px-3 py-2 text-base font-normal text-main sm:text-sm"
         />
-        <span className="text-right text-xs font-normal text-slate-400">
+        <span className="text-right text-xs font-normal text-muted">
           {description.length}/{DESCRIPTION_MAX_LENGTH}
         </span>
       </label>
 
-      <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
+      <div className="flex flex-col gap-1 text-sm font-semibold text-main">
         Foto opcional
-        <input type="file" accept="image/*" capture="environment" onChange={handleFileChange} className="text-sm font-normal" />
-        {file ? <span className="text-xs font-normal text-slate-500">{file.name}</span> : null}
+        {previewUrl ? (
+          <div className="relative w-fit">
+            {/* eslint-disable-next-line @next/next/no-img-element -- local object-URL preview of the picked file, not a build-time asset */}
+            <img src={previewUrl} alt="" className="h-28 w-28 rounded-xl border border-app object-cover" />
+            <button
+              type="button"
+              onClick={handleRemoveFile}
+              aria-label="Quitar foto"
+              className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-app bg-surface text-muted hover:text-main"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" d="M6 6l12 12M18 6 6 18" />
+              </svg>
+            </button>
+          </div>
+        ) : (
+          <label className="flex h-28 w-28 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-app text-muted hover:bg-[var(--surface-2)]">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
+            </svg>
+            <span className="text-xs font-normal">Agregar foto</span>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleFileChange}
+              className="sr-only"
+            />
+          </label>
+        )}
         {fileError ? <span className="text-xs font-normal text-red-600">{fileError}</span> : null}
-      </label>
+      </div>
 
-      <p className="text-xs text-slate-400">La evidencia sólo será visible para moderación.</p>
+      <p className="text-xs text-muted">La evidencia sólo será visible para moderación.</p>
 
       {error ? (
         <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -131,7 +190,7 @@ export function ReportForm({ reportedUserId, context, contextMessageId, roomId }
       <button
         type="submit"
         disabled={pending}
-        className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+        className="min-h-11 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
       >
         {pending ? "Enviando…" : "Enviar reporte"}
       </button>

@@ -15,19 +15,19 @@ export function PeopleList({ people, limit, emptyLabel = "Nadie está mostrándo
   const visible = limit ? people.slice(0, limit) : people;
 
   if (visible.length === 0) {
-    return <p className="text-sm text-slate-500">{emptyLabel}</p>;
+    return <p className="text-sm text-muted">{emptyLabel}</p>;
   }
 
   return (
-    <ul className="flex flex-col divide-y divide-slate-100">
+    <ul className="flex flex-col divide-y divide-[var(--border)]">
       {visible.map((person) => (
         <li key={person.userId} className="flex items-center gap-3 py-2.5">
           <PersonAvatar name={person.displayName} avatarUrl={person.avatarUrl} />
           <div className="min-w-0 flex-1">
-            <Link href={`/u/${person.userId}`} className="block truncate text-sm font-medium text-slate-900 hover:text-primary">
+            <Link href={`/u/${person.userId}`} className="block truncate text-sm font-medium text-main hover:text-primary">
               {person.displayName}
             </Link>
-            <p className="truncate text-xs text-slate-500">
+            <p className="truncate text-xs text-muted">
               {[person.career, person.seatCode ? `Lugar ${person.seatCode}` : null, person.studyStatus?.subject].filter(Boolean).join(" · ") || "Estudiando"}
             </p>
           </div>
@@ -46,7 +46,7 @@ function PersonAvatar({ name, avatarUrl }: { name: string; avatarUrl: string | n
     return <img src={avatarUrl} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />;
   }
   return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-600">
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] text-sm font-semibold text-main">
       {name.trim().charAt(0).toUpperCase() || "?"}
     </span>
   );

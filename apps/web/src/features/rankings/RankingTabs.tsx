@@ -25,7 +25,7 @@ function TabRow<T extends string>({
           className={
             option === value
               ? "rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-white"
-              : "rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              : "rounded-full border border-app px-3 py-1.5 text-sm font-medium text-muted hover:bg-[var(--surface-2)]"
           }
         >
           {labels[option]}

@@ -75,11 +75,11 @@ export default function PublicProfilePage() {
   }
 
   if (sessionPending || loading) {
-    return <main className="p-6 text-center text-slate-500">Cargando…</main>;
+    return <main className="p-6 text-center text-muted">Cargando…</main>;
   }
 
   if (!session?.user) {
-    return <main className="p-6 text-center text-slate-600">Iniciá sesión para ver este perfil.</main>;
+    return <main className="p-6 text-center text-muted">Iniciá sesión para ver este perfil.</main>;
   }
 
   if (error || !profile) {
@@ -89,74 +89,81 @@ export default function PublicProfilePage() {
   const isSelf = session.user.id === userId;
 
   return (
-    <main className="mx-auto flex max-w-lg flex-col gap-5 p-4">
-      <div className="flex items-center gap-4">
-        <PersonAvatar name={profile.displayName} avatarUrl={profile.avatarUrl} />
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">{profile.displayName}</h1>
-          {profile.career ? <p className="text-sm text-slate-500">{profile.career}</p> : null}
+    <main className="mx-auto max-w-lg p-4">
+      <div className="rounded-[14px] border border-app bg-surface p-5">
+        <div className="flex items-center gap-4">
+          <PersonAvatar name={profile.displayName} avatarUrl={profile.avatarUrl} />
+          <div className="min-w-0">
+            <h1 className="truncate font-display text-xl font-semibold text-main">{profile.displayName}</h1>
+            {profile.career || profile.currentSubject ? (
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {profile.career ? <Chip>{profile.career}</Chip> : null}
+                {profile.currentSubject ? <Chip>{profile.currentSubject}</Chip> : null}
+              </div>
+            ) : null}
+          </div>
         </div>
+
+        {profile.bio ? <p className="mt-4 text-sm text-main">{profile.bio}</p> : null}
+
+        <dl className="mt-3 flex flex-col gap-1 text-sm text-muted">
+          {profile.instagram ? (
+            <div>
+              <dt className="inline font-medium text-main">Instagram: </dt>
+              <dd className="inline">@{profile.instagram}</dd>
+            </div>
+          ) : null}
+          {profile.studentNumber ? (
+            <div>
+              <dt className="inline font-medium text-main">Legajo: </dt>
+              <dd className="inline font-mono">{profile.studentNumber}</dd>
+            </div>
+          ) : null}
+        </dl>
+
+        {profile.studyStatus ? (
+          <p className="mt-4 rounded-xl bg-[var(--surface-2)] px-3 py-2 text-sm text-main">
+            En Modo Estudio{profile.studyStatus.subject ? `: ${profile.studyStatus.subject}` : ""}
+            {profile.studyStatus.message ? ` — ${profile.studyStatus.message}` : ""}
+          </p>
+        ) : null}
+
+        {actionMessage ? <p className="mt-4 text-sm text-red-600">{actionMessage}</p> : null}
+
+        {!isSelf ? (
+          <div className="mt-5 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void handleMessage()}
+              disabled={busy || !profile.allowsDirectMessages || profile.blockedByMe}
+              className="min-h-11 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+            >
+              Enviar mensaje
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleBlockToggle()}
+              disabled={busy}
+              className="min-h-11 rounded-full border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-50"
+            >
+              {profile.blockedByMe ? "Desbloquear" : "Bloquear"}
+            </button>
+            <Link
+              href={`/reportar/${userId}?context=PROFILE`}
+              className="flex min-h-11 items-center rounded-full px-4 py-2 text-sm font-semibold text-[var(--seat-occupied)] hover:bg-[var(--surface-2)]"
+            >
+              Reportar
+            </Link>
+          </div>
+        ) : null}
       </div>
-
-      {profile.bio ? <p className="text-sm text-slate-700">{profile.bio}</p> : null}
-
-      <dl className="grid grid-cols-1 gap-2 text-sm text-slate-600">
-        {profile.currentSubject ? (
-          <div>
-            <dt className="inline font-medium">Cursando: </dt>
-            <dd className="inline">{profile.currentSubject}</dd>
-          </div>
-        ) : null}
-        {profile.instagram ? (
-          <div>
-            <dt className="inline font-medium">Instagram: </dt>
-            <dd className="inline">@{profile.instagram}</dd>
-          </div>
-        ) : null}
-        {profile.studentNumber ? (
-          <div>
-            <dt className="inline font-medium">Legajo: </dt>
-            <dd className="inline">{profile.studentNumber}</dd>
-          </div>
-        ) : null}
-      </dl>
-
-      {profile.studyStatus ? (
-        <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
-          En Modo Estudio{profile.studyStatus.subject ? `: ${profile.studyStatus.subject}` : ""}
-          {profile.studyStatus.message ? ` — ${profile.studyStatus.message}` : ""}
-        </p>
-      ) : null}
-
-      {actionMessage ? <p className="text-sm text-red-600">{actionMessage}</p> : null}
-
-      {!isSelf ? (
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => void handleMessage()}
-            disabled={busy || !profile.allowsDirectMessages || profile.blockedByMe}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
-          >
-            Enviar mensaje
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleBlockToggle()}
-            disabled={busy}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-          >
-            {profile.blockedByMe ? "Desbloquear" : "Bloquear"}
-          </button>
-          <Link
-            href={`/reportar/${userId}?context=PROFILE`}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            Reportar
-          </Link>
-        </div>
-      ) : null}
     </main>
+  );
+}
+
+function Chip({ children }: { children: string }) {
+  return (
+    <span className="rounded-full border border-app px-2 py-0.5 text-xs font-medium text-muted">{children}</span>
   );
 }
 
@@ -166,7 +173,7 @@ function PersonAvatar({ name, avatarUrl }: { name: string; avatarUrl: string | n
     return <img src={avatarUrl} alt="" className="h-16 w-16 shrink-0 rounded-full object-cover" />;
   }
   return (
-    <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-slate-200 text-2xl font-semibold text-slate-600">
+    <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] font-display text-2xl font-semibold text-main">
       {name.trim().charAt(0).toUpperCase() || "?"}
     </span>
   );

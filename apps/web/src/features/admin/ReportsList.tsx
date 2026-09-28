@@ -4,7 +4,8 @@ import type { AdminReportDto, Page } from "@uns/contracts";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
-import { REPORT_REASON_LABELS, REPORT_STATUS_LABELS, REPORT_STATUSES } from "./reports-labels";
+import { REPORT_REASON_LABELS, REPORT_STATUSES, REPORT_STATUS_LABELS } from "./reports-labels";
+import { ReportStatusPill } from "./ReportStatusPill";
 
 export function ReportsList() {
   const [status, setStatus] = useState<string>("OPEN");
@@ -27,41 +28,44 @@ export function ReportsList() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1 rounded-2xl border border-app bg-[var(--surface-2)] p-1 text-sm font-medium">
         {REPORT_STATUSES.map((s) => (
           <button
             key={s}
             type="button"
             onClick={() => setStatus(s)}
-            className={
-              s === status
-                ? "rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-white"
-                : "rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-            }
+            className={`rounded-full px-3 py-1.5 transition-colors ${
+              s === status ? "bg-primary text-white" : "text-muted hover:text-main"
+            }`}
           >
             {REPORT_STATUS_LABELS[s]}
           </button>
         ))}
       </div>
 
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--seat-occupied)]">{error}</p> : null}
 
-      <div className="flex flex-col divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
+      <div className="flex flex-col gap-2">
         {page?.items.map((report) => (
           <Link
             key={report.id}
             href={`/admin/reports/${report.id}`}
-            className="flex flex-col gap-1 px-4 py-3 text-sm hover:bg-slate-50"
+            className="flex flex-col gap-1.5 rounded-[14px] border border-app bg-surface p-4 text-sm hover:bg-[var(--surface-2)]"
           >
-            <span className="font-semibold text-slate-800">{REPORT_REASON_LABELS[report.reason]}</span>
-            <span className="text-slate-500">
-              {report.reporter?.name ?? "Cuenta eliminada"} → {report.reported?.name ?? "Cuenta eliminada"} ·{" "}
-              {new Date(report.createdAt).toLocaleString("es-AR")}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-semibold text-main">{REPORT_REASON_LABELS[report.reason]}</span>
+              <ReportStatusPill status={report.status} />
+            </div>
+            <span className="text-muted">
+              {report.reporter?.name ?? "Cuenta eliminada"} → {report.reported?.name ?? "Cuenta eliminada"}
             </span>
+            <span className="font-mono text-xs text-muted">{new Date(report.createdAt).toLocaleString("es-AR")}</span>
           </Link>
         ))}
         {page && page.items.length === 0 ? (
-          <p className="px-4 py-3 text-sm text-slate-400">No hay reportes con este estado.</p>
+          <p className="rounded-[14px] border border-app bg-surface px-4 py-6 text-center text-sm text-muted">
+            No hay reportes con este estado.
+          </p>
         ) : null}
       </div>
     </div>

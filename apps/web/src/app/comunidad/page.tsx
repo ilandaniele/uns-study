@@ -32,22 +32,25 @@ export default function ComunidadPage() {
 
   return (
     <main className="mx-auto max-w-2xl p-4">
-      <h1 className="mb-1 font-display text-xl font-semibold text-slate-900">Comunidad</h1>
-      <p className="mb-4 text-sm text-slate-500">Novedades y anuncios para toda la comunidad de la sala.</p>
+      <h1 className="mb-1 font-display text-xl font-semibold text-main">Comunidad</h1>
+      <p className="mb-4 text-sm text-muted">Novedades y anuncios para toda la comunidad de la sala.</p>
 
       {loading ? (
-        <p className="text-sm text-slate-500">Cargando…</p>
+        <p className="text-sm text-muted">Cargando…</p>
       ) : error ? (
         <p className="text-sm text-red-600">{error}</p>
       ) : announcements.length === 0 ? (
-        <p className="text-sm text-slate-500">Por ahora no hay novedades.</p>
+        <p className="text-sm text-muted">Por ahora no hay novedades.</p>
       ) : (
         <div className="flex flex-col gap-3">
           {announcements.map((announcement, index) => (
             <div key={announcement.id}>
-              <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                <p className="font-semibold">{announcement.title}</p>
-                <p className="whitespace-pre-wrap">{announcement.body}</p>
+              <div className="rounded-[14px] border border-app bg-surface px-4 py-3">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="font-display font-semibold text-main">{announcement.title}</p>
+                  <p className="shrink-0 font-mono text-xs text-muted">{formatAnnouncementDate(announcement.startsAt)}</p>
+                </div>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-muted">{announcement.body}</p>
               </div>
               {index === 0 ? (
                 <div className="mt-3">
@@ -60,4 +63,11 @@ export default function ComunidadPage() {
       )}
     </main>
   );
+}
+
+function formatAnnouncementDate(startsAt: string): string {
+  const date = new Date(startsAt);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${day}/${month}`;
 }

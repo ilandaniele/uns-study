@@ -25,7 +25,7 @@ test("profile identity + privacy: hidden by default, then visible in /personas o
     await pageA.goto(`/sala/${ROOM_SLUG}`);
     await seatLocator(pageA, SEAT.table, SEAT.seatNumber).click();
     await pageA.getByRole("button", { name: "Estoy acá" }).click();
-    await expect(pageA.getByText("Tu lugar")).toBeVisible();
+    await expect(pageA.getByRole("button", { name: "Me voy" })).toBeVisible();
 
     await pageA.goto("/perfil");
     await pageA.getByRole("textbox", { name: "Apodo" }).fill(NICKNAME);
@@ -33,12 +33,12 @@ test("profile identity + privacy: hidden by default, then visible in /personas o
     await pageA.getByRole("button", { name: "Guardar" }).click();
     await expect(pageA.getByText("Guardado.")).toBeVisible();
 
-    const showInRoomCheckbox = pageA.getByRole("checkbox", { name: /Aparecer en/ });
+    const showInRoomSwitch = pageA.getByRole("switch", { name: /Aparecer en/ });
     await Promise.all([
       pageA.waitForResponse((res) => res.url().includes("/api/v1/profiles/me/privacy") && res.request().method() === "PATCH"),
-      showInRoomCheckbox.click(),
+      showInRoomSwitch.click(),
     ]);
-    await expect(showInRoomCheckbox).toBeChecked();
+    await expect(showInRoomSwitch).toHaveAttribute("aria-checked", "true");
 
     // B reloads /personas and now sees A by nickname.
     await pageB.reload();

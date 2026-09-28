@@ -13,26 +13,58 @@ export interface PrivacyTogglesProps {
 /** Per-field privacy toggles ("Qué ve la gente de mí") — every field defaults to private (07_SECURITY §privacy). */
 export function PrivacyToggles({ privacy, saving, onChange }: PrivacyTogglesProps) {
   return (
-    <div className="flex flex-col divide-y divide-slate-100">
+    <div className="flex flex-col divide-y divide-[var(--border)]">
       {PRIVACY_FIELDS.map((field) => {
         const checked = privacy[field.key];
         const disabled = saving || privacyFieldDisabled(field.key, privacy);
         return (
-          <label key={field.key} className="flex items-start justify-between gap-4 py-3">
+          <div key={field.key} className="flex items-start justify-between gap-4 py-3">
             <span>
-              <span className="block text-sm font-medium text-slate-800">{field.label}</span>
-              <span className="block text-xs text-slate-500">{field.hint}</span>
+              <span className="block text-sm font-medium text-main">{field.label}</span>
+              <span className="block text-xs text-muted">{field.hint}</span>
             </span>
-            <input
-              type="checkbox"
+            <PrivacySwitch
               checked={checked}
               disabled={disabled}
-              onChange={(e) => onChange({ [field.key]: e.target.checked } as PrivacyPatch)}
-              className="mt-1 h-5 w-5 shrink-0 accent-primary disabled:opacity-40"
+              label={field.label}
+              onChange={(next) => onChange({ [field.key]: next } as PrivacyPatch)}
             />
-          </label>
+          </div>
         );
       })}
     </div>
+  );
+}
+
+function PrivacySwitch({
+  checked,
+  disabled,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  disabled: boolean;
+  label: string;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full border border-app transition-colors disabled:opacity-40 ${
+        checked ? "bg-primary" : "bg-[var(--surface-2)]"
+      }`}
+    >
+      <span
+        aria-hidden
+        className={`absolute left-0 top-0.5 h-[18px] w-[18px] rounded-full bg-white shadow transition-transform ${
+          checked ? "translate-x-[22px]" : "translate-x-0.5"
+        }`}
+      />
+    </button>
   );
 }

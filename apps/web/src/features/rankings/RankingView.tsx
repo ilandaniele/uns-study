@@ -13,10 +13,10 @@ export function RankingView({ roomSlug }: { roomSlug: string }) {
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-4 p-4">
-      <h1 className="font-display text-xl font-semibold text-slate-900">Ranking</h1>
+      <h1 className="font-display text-xl font-semibold text-main">Ranking</h1>
       <RankingTabs period={period} category={category} onPeriodChange={setPeriod} onCategoryChange={setCategory} />
       {loading ? (
-        <p className="p-4 text-sm text-slate-500">Cargando ranking…</p>
+        <p className="p-4 text-sm text-muted">Cargando ranking…</p>
       ) : error ? (
         <p className="p-4 text-sm text-red-600">{error}</p>
       ) : ranking ? (

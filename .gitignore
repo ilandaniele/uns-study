@@ -14,3 +14,5 @@ apps/web/scripts/screenshots2.mjs
 *.log
 .DS_Store
 *.tsbuildinfo
+apps/web/scripts/shots3.mjs
+apps/web/scripts/shots3b.mjs

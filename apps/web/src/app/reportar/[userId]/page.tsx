@@ -19,14 +19,14 @@ export default function ReportUserPage() {
   const roomId = searchParams.get("roomId") ?? undefined;
 
   if (isPending) {
-    return <main className="p-6 text-center text-slate-500">Cargando…</main>;
+    return <main className="p-6 text-center text-muted">Cargando…</main>;
   }
 
   if (!session?.user) {
     return (
       <main className="mx-auto flex max-w-md flex-col items-center gap-3 p-10 text-center">
-        <p className="text-slate-600">Iniciá sesión para reportar a un usuario.</p>
-        <Link href="/login" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark">
+        <p className="text-muted">Iniciá sesión para reportar a un usuario.</p>
+        <Link href="/login" className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark">
           Iniciar sesión
         </Link>
       </main>
@@ -34,7 +34,7 @@ export default function ReportUserPage() {
   }
 
   if (session.user.id === userId) {
-    return <main className="p-6 text-center text-slate-500">No podés reportarte a vos mismo.</main>;
+    return <main className="p-6 text-center text-muted">No podés reportarte a vos mismo.</main>;
   }
 
   return (

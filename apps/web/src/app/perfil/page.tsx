@@ -43,44 +43,44 @@ export default function PerfilPage() {
   }
 
   if (sessionPending || loading) {
-    return <main className="p-6 text-center text-slate-500">Cargando…</main>;
+    return <main className="p-6 text-center text-muted">Cargando…</main>;
   }
 
   if (!session?.user || error || !profile || !privacy) {
-    return <main className="p-6 text-center text-slate-600">{error ?? "Iniciá sesión para ver tu perfil."}</main>;
+    return <main className="p-6 text-center text-muted">{error ?? "Iniciá sesión para ver tu perfil."}</main>;
   }
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-8 p-4 pb-16">
       <div>
-        <h1 className="font-display text-xl font-semibold text-slate-900">Mi perfil</h1>
-        <p className="text-sm text-slate-500">{profile.email}</p>
+        <h1 className="font-display text-xl font-semibold text-main">Perfil</h1>
+        <p className="text-sm text-muted">{profile.email}</p>
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4">
-        <h2 className="mb-3 text-base font-semibold text-slate-900">Datos</h2>
+      <section className="rounded-[14px] border border-app bg-surface p-4">
+        <h2 className="mb-3 font-display text-base font-semibold text-main">Tu perfil</h2>
         <ProfileForm profile={profile} saving={saving} onSave={saveProfile} />
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4">
-        <h2 className="mb-1 text-base font-semibold text-slate-900">Privacidad</h2>
-        <p className="mb-2 text-xs text-slate-500">Todo está oculto por defecto. Activá sólo lo que quieras compartir.</p>
+      <section className="rounded-[14px] border border-app bg-surface p-4">
+        <h2 className="mb-1 font-display text-base font-semibold text-main">Privacidad</h2>
+        <p className="mb-2 text-xs text-muted">Todo está oculto por defecto. Activá sólo lo que quieras compartir.</p>
         <PrivacyToggles privacy={privacy} saving={saving} onChange={(patch) => void savePrivacy(patch)} />
       </section>
 
       {roomId ? (
-        <section className="rounded-2xl border border-slate-200 bg-white p-4">
-          <h2 className="mb-3 text-base font-semibold text-slate-900">Modo Estudio</h2>
+        <section className="rounded-[14px] border border-app bg-surface p-4">
+          <h2 className="mb-3 font-display text-base font-semibold text-main">Modo estudio</h2>
           <StudyModeControl roomId={roomId} initialStatus={studyStatus} />
         </section>
       ) : null}
 
-      <section className="rounded-2xl border border-red-200 bg-red-50 p-4">
-        <h2 className="mb-2 text-base font-semibold text-red-800">Zona peligrosa</h2>
+      <section className="rounded-[14px] border border-red-200 bg-red-50 p-4">
+        <h2 className="mb-2 font-display text-base font-semibold text-red-800">Zona de peligro</h2>
         <button
           type="button"
           onClick={() => setShowDelete(true)}
-          className="rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+          className="min-h-11 rounded-full border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
         >
           Eliminar cuenta
         </button>

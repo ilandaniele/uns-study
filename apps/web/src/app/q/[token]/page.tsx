@@ -35,8 +35,18 @@ export default function QrRedirectPage() {
   }, [params.token, router]);
 
   if (error) {
-    return <main className="p-6 text-center text-red-600">{error}</main>;
+    return (
+      <main className="flex min-h-[calc(100vh-57px)] items-center justify-center p-6 text-center text-red-600">{error}</main>
+    );
   }
 
-  return <main className="p-6 text-center text-slate-500">Redirigiendo…</main>;
+  return (
+    <main className="flex min-h-[calc(100vh-57px)] flex-col items-center justify-center gap-3 p-6 text-center text-muted">
+      <span
+        aria-hidden
+        className="h-8 w-8 animate-spin rounded-full border-2 border-app border-t-primary"
+      />
+      <p>Redirigiendo…</p>
+    </main>
+  );
 }
