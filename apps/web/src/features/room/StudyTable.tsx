@@ -48,14 +48,23 @@ export function StudyTable({ table, highlighted = false }: StudyTableProps) {
         stroke="var(--room-table-border)"
         strokeWidth={1.5}
       />
+      {/* Sheen: a soft light band across the top third, like a tabletop catching the window light. */}
+      <rect
+        x={table.x + 8}
+        y={table.y + 5}
+        width={table.width - 16}
+        height={table.height * 0.32}
+        rx={12}
+        fill="white"
+        opacity={0.14}
+      />
       <rect
         x={cx - pillWidth / 2}
         y={cy - pillHeight / 2}
         width={pillWidth}
         height={pillHeight}
         rx={19}
-        fill="white"
-        opacity={0.92}
+        fill="var(--room-table-label-bg)"
       />
       <text
         x={cx}
@@ -63,9 +72,9 @@ export function StudyTable({ table, highlighted = false }: StudyTableProps) {
         textAnchor="middle"
         dominantBaseline="central"
         fontSize={24}
-        fontWeight={600}
+        fontWeight={700}
         className="font-display"
-        fill="#0F172A"
+        fill="var(--room-table-label-text)"
       >
         {table.label}
       </text>

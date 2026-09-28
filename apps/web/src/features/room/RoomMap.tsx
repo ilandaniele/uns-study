@@ -15,19 +15,25 @@ export interface RoomMapProps {
   highlightTableCode?: string | null;
 }
 
-// Plant positions, in corners/aisle ends the tables never reach. Purely decorative.
-const PLANTS = [
-  { x: 60, y: 90 },
-  { x: 940, y: 90 },
-  { x: 60, y: 1510 },
-  { x: 940, y: 1510 },
-  { x: 500, y: 150 },
-  { x: 500, y: 1450 },
+// Seat status keys that get a shared radial-gradient "glossy sphere" fill, defined once below
+// and referenced by id from Seat.tsx — avoids per-seat gradients/filters across 108 seats.
+const SEAT_GRADIENT_KEYS = ["free", "occupied", "uncertain", "unknown", "mine"] as const;
+
+// Plants dotted along the central aisle, near the windows and near the entrance. Purely decorative.
+const AISLE_PLANTS = [
+  { x: 400, y: 150 },
+  { x: 600, y: 1450 },
 ];
 
 export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlightTableCode = null }: RoomMapProps) {
   const { width, height } = map.viewBox;
   const tableById = useMemo(() => new Map(map.tables.map((table) => [table.id, table])), [map.tables]);
+  const wallBars = useMemo(() => map.tables.filter((table) => table.type === "WALL_BAR"), [map.tables]);
+  const seatCountByTable = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const seat of map.seats) counts.set(seat.tableId, (counts.get(seat.tableId) ?? 0) + 1);
+    return counts;
+  }, [map.seats]);
 
   return (
     <svg
@@ -37,23 +43,64 @@ export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlight
       aria-label={`Mapa de ${map.room.name}`}
     >
       <defs>
-        <pattern id="floor-tiles" width={50} height={50} patternUnits="userSpaceOnUse">
-          <rect width={50} height={50} fill="var(--room-floor)" />
-          <rect width={50} height={50} fill="none" stroke="var(--room-floor-grout)" strokeWidth={1.5} />
+        {/* Warm terracotta parquet floor: two plank tones in a basket-weave offset, plus faint grain lines. */}
+        <pattern id="floor-parquet" width={80} height={80} patternUnits="userSpaceOnUse">
+          <rect width={80} height={80} fill="var(--room-floor-a)" />
+          <g fill="var(--room-floor-b)">
+            <rect x={0} y={0} width={40} height={18} rx={1} />
+            <rect x={40} y={18} width={40} height={18} rx={1} />
+            <rect x={0} y={36} width={40} height={18} rx={1} />
+            <rect x={40} y={54} width={40} height={18} rx={1} />
+            <rect x={0} y={72} width={40} height={18} rx={1} />
+          </g>
+          <g stroke="var(--room-floor-grain)" strokeWidth={0.6} opacity={0.35}>
+            <line x1={0} y1={9} x2={40} y2={9} />
+            <line x1={40} y1={27} x2={80} y2={27} />
+            <line x1={0} y1={45} x2={40} y2={45} />
+            <line x1={40} y1={63} x2={80} y2={63} />
+            <line x1={20} y1={0} x2={20} y2={18} />
+            <line x1={60} y1={18} x2={60} y2={36} />
+            <line x1={20} y1={36} x2={20} y2={54} />
+            <line x1={60} y1={54} x2={60} y2={72} />
+          </g>
         </pattern>
+        {/* Sunlight pool falling from the top windows, blended softly over the floor/tables. */}
+        <radialGradient id="room-light-pool" cx="50%" cy="6%" r="65%">
+          <stop offset="0%" stopColor="#fff6e3" stopOpacity={0.55} />
+          <stop offset="55%" stopColor="#fff6e3" stopOpacity={0.14} />
+          <stop offset="100%" stopColor="#fff6e3" stopOpacity={0} />
+        </radialGradient>
+        {/* Photo-style vignette, darkening the corners/edges of the "photograph". */}
+        <radialGradient id="room-vignette" cx="50%" cy="48%" r="72%">
+          <stop offset="55%" stopColor="#000000" stopOpacity={0} />
+          <stop offset="100%" stopColor="#000000" stopOpacity={0.24} />
+        </radialGradient>
         <linearGradient id="wood-gradient" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#C8955C" />
-          <stop offset="100%" stopColor="#B07A45" />
+          <stop offset="0%" stopColor="#e3b27e" />
+          <stop offset="45%" stopColor="#c8955c" />
+          <stop offset="100%" stopColor="#a9713f" />
+        </linearGradient>
+        <linearGradient id="window-glass" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--room-window-glass-a)" />
+          <stop offset="100%" stopColor="var(--room-window-glass-b)" />
         </linearGradient>
         <filter id="table-shadow" x="-20%" y="-20%" width="140%" height="140%">
           <feDropShadow dx="0" dy="3" stdDeviation="4" floodOpacity="0.15" />
         </filter>
+        {SEAT_GRADIENT_KEYS.map((key) => (
+          <radialGradient key={key} id={`seat-sphere-${key}`} cx="35%" cy="28%" r="75%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity={0.85} />
+            <stop offset="45%" stopColor={`var(--seat-${key})`} />
+            <stop offset="100%" stopColor={`var(--seat-${key})`} stopOpacity={0.88} />
+          </radialGradient>
+        ))}
       </defs>
 
       {/* Floor */}
-      <rect x={4} y={4} width={width - 8} height={height - 8} rx={28} fill="url(#floor-tiles)" />
+      <rect x={4} y={4} width={width - 8} height={height - 8} rx={28} fill="url(#floor-parquet)" />
+      <rect x={4} y={4} width={width - 8} height={height - 8} rx={28} fill="url(#room-light-pool)" style={{ mixBlendMode: "soft-light" }} aria-hidden="true" />
       {/* Central aisle runner between the two table columns */}
-      <rect x={width / 2 - 70} y={260} width={140} height={height - 520} rx={40} fill="var(--room-aisle)" opacity={0.35} aria-hidden="true" />
+      <rect x={width / 2 - 70} y={260} width={140} height={height - 520} rx={40} fill="var(--room-aisle)" opacity={0.3} aria-hidden="true" />
 
       {/* Walls */}
       <rect
@@ -67,51 +114,49 @@ export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlight
         strokeWidth={10}
       />
 
-      {/* Windows along the back (top) wall */}
+      {/* Glass window strip along the back (top) wall, with frame mullions. */}
       <g aria-hidden="true">
-        {Array.from({ length: 8 }, (_, i) => {
-          const paneWidth = (width - 160) / 8;
-          const x = 80 + i * paneWidth + 6;
-          return (
-            <rect
-              key={i}
-              x={x}
-              y={10}
-              width={paneWidth - 12}
-              height={22}
-              rx={3}
-              fill="var(--room-window)"
-              stroke="var(--room-window-frame)"
-              strokeWidth={2}
-            />
-          );
+        <rect x={70} y={8} width={width - 140} height={68} rx={8} fill="url(#window-glass)" stroke="var(--room-window-frame)" strokeWidth={4} />
+        {Array.from({ length: 7 }, (_, i) => {
+          const paneWidth = (width - 140) / 8;
+          const x = 70 + (i + 1) * paneWidth;
+          return <line key={i} x1={x} y1={10} x2={x} y2={74} stroke="var(--room-window-frame)" strokeWidth={3} />;
         })}
       </g>
-      <RoomLabelPill x={width / 2} y={44} text="Ventanas" />
+      <RoomLabelPill x={width / 2} y={46} text="Ventanas" />
 
-      {/* Entrance gap at the bottom wall, with a door swing arc */}
+      {/* Long planter box under the windows, with a leafy row. */}
       <g aria-hidden="true">
-        <rect x={width / 2 - 90} y={height - 14} width={180} height={20} fill="var(--room-floor)" />
-        <path
-          d={`M ${width / 2 - 90} ${height - 10} A 90 90 0 0 1 ${width / 2} ${height - 100}`}
-          fill="none"
-          stroke="var(--room-wall)"
-          strokeWidth={2}
-          strokeDasharray="4 4"
-          opacity={0.5}
-        />
-        <line x1={width / 2 - 90} y1={height - 10} x2={width / 2} y2={height - 100} stroke="var(--room-wall)" strokeWidth={2} opacity={0.5} />
+        <rect x={100} y={82} width={width - 200} height={22} rx={8} fill="var(--room-planter)" />
+        <rect x={100} y={82} width={width - 200} height={7} rx={4} fill="var(--room-planter-soil)" opacity={0.6} />
+      </g>
+      {Array.from({ length: 7 }, (_, i) => {
+        const gap = (width - 260) / 6;
+        return <Plant key={`window-plant-${i}`} x={130 + i * gap} y={82} scale={0.65} />;
+      })}
+
+      {/* Entrance glass doors at the bottom wall. */}
+      <g aria-hidden="true">
+        <rect x={width / 2 - 90} y={height - 14} width={180} height={20} fill="var(--room-floor-a)" />
+        <rect x={width / 2 - 84} y={height - 72} width={78} height={64} rx={6} fill="url(#window-glass)" stroke="var(--room-window-frame)" strokeWidth={4} />
+        <rect x={width / 2 + 6} y={height - 72} width={78} height={64} rx={6} fill="url(#window-glass)" stroke="var(--room-window-frame)" strokeWidth={4} />
+        <line x1={width / 2} y1={height - 72} x2={width / 2} y2={height - 8} stroke="var(--room-window-frame)" strokeWidth={4} />
       </g>
       <RoomLabelPill x={width / 2} y={height - 34} text="Entrada" />
 
-      {/* Plants */}
-      {PLANTS.map((p, i) => (
-        <Plant key={i} x={p.x} y={p.y} />
+      {/* Planters with leafy plants along the side walls, between the wall-bar corners. */}
+      {wallBars.map((bar) => {
+        const nearWallX = bar.x < width / 2 ? 18 : width - 18;
+        const midY = bar.y + bar.height / 2;
+        return <Plant key={`bar-plant-${bar.id}`} x={nearWallX} y={midY} scale={0.85} />;
+      })}
+      {AISLE_PLANTS.map((p, i) => (
+        <Plant key={`aisle-plant-${i}`} x={p.x} y={p.y} />
       ))}
 
       {map.tables.map((table) =>
         table.type === "WALL_BAR" ? (
-          <WallBar key={table.id} table={table} />
+          <WallBar key={table.id} table={table} seatCount={seatCountByTable.get(table.id) ?? 0} />
         ) : (
           <StudyTable key={table.id} table={table} highlighted={highlightTableCode !== null && table.code === highlightTableCode} />
         ),
@@ -133,6 +178,10 @@ export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlight
           />
         );
       })}
+
+      {/* Photo-style vignette on top of everything, then a dark-mode dimmer — the room stays warm, just dimmed. */}
+      <rect x={0} y={0} width={width} height={height} fill="url(#room-vignette)" pointerEvents="none" aria-hidden="true" />
+      <rect x={0} y={0} width={width} height={height} fill="black" style={{ opacity: "var(--room-dark-overlay)" }} pointerEvents="none" aria-hidden="true" />
     </svg>
   );
 }
@@ -149,7 +198,7 @@ function RoomLabelPill({ x, y, text }: { x: number; y: number; text: string }) {
   );
 }
 
-function Plant({ x, y }: { x: number; y: number }) {
+function Plant({ x, y, scale = 1 }: { x: number; y: number; scale?: number }) {
   const leaves = [
     { dx: 0, dy: -18, rx: 10, ry: 16, rot: 0 },
     { dx: -14, dy: -8, rx: 9, ry: 15, rot: -35 },
@@ -158,7 +207,7 @@ function Plant({ x, y }: { x: number; y: number }) {
     { dx: 8, dy: -20, rx: 8, ry: 14, rot: 15 },
   ];
   return (
-    <g transform={`translate(${x} ${y})`} aria-hidden="true">
+    <g transform={`translate(${x} ${y}) scale(${scale})`} aria-hidden="true">
       <ellipse cx={0} cy={14} rx={16} ry={5} fill="black" opacity={0.08} />
       <path d="M -14 10 L -10 -6 L 10 -6 L 14 10 Z" fill="#B07A45" opacity={0.9} />
       {leaves.map((leaf, i) => (
