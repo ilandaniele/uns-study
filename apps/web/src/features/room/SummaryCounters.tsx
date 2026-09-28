@@ -35,6 +35,10 @@ export function SummaryCounters({ summary }: { summary: RoomSummary }) {
             <span className={`font-mono font-semibold ${segment.text}`}>{summary[segment.key] as number}</span>
           </li>
         ))}
+        <li className="flex items-center gap-1.5">
+          <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--seat-mine)" }} />
+          <span className="text-muted">Tu lugar</span>
+        </li>
       </ul>
       <p className="mt-1 font-mono text-xs text-muted">{summary.total} lugares en total</p>
     </div>

@@ -20,7 +20,7 @@ export function BottomNav() {
   const items = isAdmin ? [...ITEMS, { label: "Admin", href: "/admin", icon: <AdminIcon /> }] : ITEMS;
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-app bg-surface pb-safe sm:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-app bg-surface pb-safe lg:hidden">
       {items.map((item) => {
         const active = pathname?.startsWith(item.href);
         return (

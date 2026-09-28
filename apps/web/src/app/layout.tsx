@@ -36,7 +36,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {/* Applies the stored/system theme before hydration to avoid a light-mode flash. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body className="min-h-screen bg-app pb-safe-14 text-main antialiased sm:pb-0">
+      <body className="min-h-screen bg-app pb-safe-14 text-main antialiased lg:pb-0">
         <OfflineBanner />
         <Header />
         {children}

@@ -9,7 +9,6 @@ import { AdSlot } from "@/components/AdSlot";
 import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
 import { ExtendBanner } from "@/features/room/ExtendBanner";
 import { Hero } from "@/features/room/Hero";
-import { Legend } from "@/features/room/Legend";
 import { RoomMap } from "@/features/room/RoomMap";
 import { SeatDetail } from "@/features/room/SeatDetail";
 import { SummaryCounters } from "@/features/room/SummaryCounters";
@@ -167,13 +166,12 @@ export default function RoomPage() {
 
       <section className="order-1 flex flex-col gap-4 md:order-1">
         <div className="flex items-center justify-between gap-2">
-          <p className="font-mono text-xs uppercase tracking-wide text-muted">{map.room.name}</p>
+          <p className="font-mono text-xs uppercase tracking-wide text-muted">Ocupación de hoy</p>
           <p className="font-mono text-xs text-muted">{connected ? "● en vivo" : "○ reconectando…"}</p>
         </div>
         <Hero summary={map.summary} seats={map.seats} />
         <SummaryCounters summary={map.summary} />
         <AnnouncementsBanner roomSlug={slug} socket={socket} />
-        {isDesktop ? <Legend /> : null}
         {isDesktop ? (
           <div className="rounded-2xl border border-app bg-surface p-3">
             <div className="mb-2 flex items-center justify-between">
@@ -226,7 +224,6 @@ export default function RoomPage() {
             </>
           )}
         </div>
-        {!isDesktop ? <Legend /> : null}
         <AdSlot placement="room-bottom" />
       </section>
 

@@ -14,7 +14,10 @@ export interface HeroProps {
  * at a glance, per the design brief. Purely presentational — derives everything from `summary`.
  */
 export function Hero({ summary, seats }: HeroProps) {
-  const hasData = summary.free + summary.occupied + summary.uncertain > 0;
+  const known = summary.free + summary.occupied + summary.uncertain;
+  const hasData = known > 0;
+  // "Full" is only a fair claim when most seats have fresh evidence; otherwise say what we know.
+  const mostlyKnown = summary.total > 0 && known / summary.total >= 0.8;
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 30_000);
@@ -27,23 +30,35 @@ export function Hero({ summary, seats }: HeroProps) {
   if (!hasData) {
     headline = <>Todavía no hay datos de hoy</>;
     subline = "Si estás en la sala, marcá tu lugar y ayudá al resto.";
-  } else if (summary.free === 0) {
+  } else if (summary.free === 0 && mostlyKnown) {
     headline = <>La sala está llena</>;
     subline = latestUpdateLabel(seats, now, summary.total);
-  } else if (summary.free <= 5) {
-    headline = (
-      <>
-        Quedan <span style={{ color: "var(--seat-free)" }}>{summary.free}</span> lugares libres
-      </>
-    );
-    subline = latestUpdateLabel(seats, now, summary.total);
+  } else if (summary.free === 0) {
+    headline = <>No hay lugares libres confirmados</>;
+    subline = `Sin datos de ${summary.unknown} lugares · ${latestUpdateLabel(seats, now, summary.total)}`;
   } else {
-    headline = (
-      <>
-        Hay <span style={{ color: "var(--seat-free)" }}>{summary.free}</span> lugares libres
-      </>
-    );
-    subline = latestUpdateLabel(seats, now, summary.total);
+    const n = summary.free;
+    const places = n === 1 ? "lugar libre" : "lugares libres";
+    const count = <span style={{ color: "var(--seat-free)" }}>{n}</span>;
+    if (!mostlyKnown) {
+      headline = (
+        <>
+          Hay {count} {places} {n === 1 ? "confirmado" : "confirmados"}
+        </>
+      );
+      subline = `Sin datos de ${summary.unknown} lugares · ${latestUpdateLabel(seats, now, summary.total)}`;
+    } else {
+      headline = n <= 5 ? (
+        <>
+          {n === 1 ? "Queda" : "Quedan"} {count} {places}
+        </>
+      ) : (
+        <>
+          Hay {count} {places}
+        </>
+      );
+      subline = latestUpdateLabel(seats, now, summary.total);
+    }
   }
 
   return (

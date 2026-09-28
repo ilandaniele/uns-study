@@ -287,3 +287,10 @@ input:focus-visible,
     padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
   }
 }
+
+/* `--color-primary` is a fixed navy so filled buttons keep white-text contrast in both themes;
+   primary-colored *text* (links) must lighten on dark surfaces instead. */
+.dark .text-primary,
+.dark .hover\:text-primary:hover {
+  color: var(--primary);
+}
