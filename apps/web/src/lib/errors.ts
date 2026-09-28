@@ -18,6 +18,13 @@ export function describeActionError(error: unknown): string {
 
   if (error instanceof ApiRequestError) {
     if (error.code === "PRESENCE_REJECTED") {
+      const d = error.details;
+      if (error.reason === "OUTSIDE_GEOFENCE" && d) {
+        return `Tu teléfono te ubica a unos ${d.distanceM} m de la sala (margen ±${d.accuracyM} m) y aceptamos hasta ${d.allowedM} m. Si estás adentro, ${preciseLocationTip()} y probá de nuevo.`;
+      }
+      if (error.reason === "POOR_ACCURACY" && d) {
+        return `Tu ubicación tiene un margen de ±${d.accuracyM} m, demasiado para confirmar que estás en la sala. ${capitalize(preciseLocationTip())} y probá de nuevo, mejor cerca de una ventana.`;
+      }
       if (error.reason === "OUTSIDE_GEOFENCE" || error.reason === "ROOM_NOT_FOUND") {
         return "Parece que no estás en la sala. Podés mirar la disponibilidad, pero las actualizaciones están habilitadas sólo para personas presentes.";
       }
@@ -74,4 +81,20 @@ export function describeActionError(error: unknown): string {
   }
 
   return "No pudimos actualizar el lugar. Tu cambio no fue guardado.";
+}
+
+/** Where to turn on precise location, worded for the visitor's platform. */
+function preciseLocationTip(): string {
+  const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
+  if (/iPhone|iPad|iPod/i.test(ua)) {
+    return "activá “Ubicación exacta” (Ajustes › Privacidad y seguridad › Localización › tu navegador)";
+  }
+  if (/Android/i.test(ua)) {
+    return "activá “Usar ubicación precisa” en los permisos de ubicación del navegador";
+  }
+  return "activá la ubicación precisa del dispositivo";
+}
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

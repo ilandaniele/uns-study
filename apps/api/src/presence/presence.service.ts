@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import type { LocationInput, PresenceRejectReason, PresenceResult } from "@uns/contracts";
+import type { LocationInput, PresenceDetails, PresenceRejectReason, PresenceResult } from "@uns/contracts";
 import { env } from "../env.js";
 
 export interface PresenceRoom {
@@ -19,6 +19,10 @@ export interface PresenceValidateOptions {
 }
 
 const EARTH_RADIUS_M = 6_371_000;
+/** Device clock may differ from the server's by up to this much before we distrust its timestamps. */
+const MAX_CLOCK_SKEW_S = 15 * 60;
+/** A fix slightly "from the future" is clock jitter, not tampering. */
+const FUTURE_TOLERANCE_S = 30;
 
 @Injectable()
 export class PresenceService {
@@ -46,9 +50,26 @@ export class PresenceService {
       return { valid: true, reason: null, expiresAt: new Date(now.getTime() + maxAgeS * 1000).toISOString() };
     }
 
-    const reject = (reason: PresenceRejectReason): PresenceResult => ({ valid: false, reason, expiresAt: null });
+    const reject = (reason: PresenceRejectReason, details?: PresenceDetails): PresenceResult => {
+      // Structured, coordinate-free log line so real-world rejections can be diagnosed from
+      // `fly logs` (distance/accuracy/age only — never the user's position or id).
+      console.info(
+        JSON.stringify({
+          evt: "presence_rejected",
+          reason,
+          distanceM: details?.distanceM ?? null,
+          accuracyM: details?.accuracyM ?? null,
+          allowedM: details?.allowedM ?? null,
+          ageS: Number.isFinite(ageS) ? Math.round(ageS) : null,
+          skewS: Number.isFinite(skewS) ? Math.round(skewS) : null,
+        }),
+      );
+      return { valid: false, reason, expiresAt: null, ...(details ? { details } : {}) };
+    };
 
-    const { latitude, longitude, accuracy, capturedAt } = location;
+    const { latitude, longitude, accuracy, capturedAt, sentAt } = location;
+    let ageS = Number.NaN;
+    let skewS = Number.NaN;
     if (
       !Number.isFinite(latitude) ||
       !Number.isFinite(longitude) ||
@@ -64,20 +85,37 @@ export class PresenceService {
     if (!Number.isFinite(capturedAtMs)) {
       return reject("INVALID_COORDINATES");
     }
-    const ageS = (now.getTime() - capturedAtMs) / 1000;
-    if (ageS > maxAgeS || ageS < -5) {
-      return reject("STALE_LOCATION");
+    // Measure the fix's age on the device's own clock when it tells us when it sent the request:
+    // phones whose clock drifts from the server's would otherwise look stale (or "from the future").
+    // The device clock itself must still be roughly right, so a replayed old request can't pass.
+    const sentAtMs = sentAt ? Date.parse(sentAt) : Number.NaN;
+    if (Number.isFinite(sentAtMs)) {
+      skewS = (sentAtMs - now.getTime()) / 1000;
+      ageS = (sentAtMs - capturedAtMs) / 1000;
+      if (Math.abs(skewS) > MAX_CLOCK_SKEW_S) return reject("STALE_LOCATION");
+    } else {
+      ageS = (now.getTime() - capturedAtMs) / 1000;
     }
-
-    if (accuracy > maxAccuracyM) {
-      return reject("POOR_ACCURACY");
+    if (ageS > maxAgeS || ageS < -FUTURE_TOLERANCE_S) {
+      return reject("STALE_LOCATION");
     }
 
     // Indoor fixes are often off by tens of meters, so half of the reported accuracy is tolerated on
     // top of the radius (50 m radius + 100 m accuracy -> reading up to 100 m from the room center).
     const distanceM = this.haversineDistanceM(room, { latitude, longitude });
-    if (distanceM > room.geofenceRadiusM + accuracy / 2) {
-      return reject("OUTSIDE_GEOFENCE");
+    const allowedM = room.geofenceRadiusM + Math.min(accuracy, maxAccuracyM) / 2;
+    const details: PresenceDetails = {
+      distanceM: Math.round(distanceM),
+      accuracyM: Math.round(accuracy),
+      radiusM: room.geofenceRadiusM,
+      allowedM: Math.round(allowedM),
+    };
+
+    if (accuracy > maxAccuracyM) {
+      return reject("POOR_ACCURACY", details);
+    }
+    if (distanceM > allowedM) {
+      return reject("OUTSIDE_GEOFENCE", details);
     }
 
     return { valid: true, reason: null, expiresAt: new Date(now.getTime() + maxAgeS * 1000).toISOString() };

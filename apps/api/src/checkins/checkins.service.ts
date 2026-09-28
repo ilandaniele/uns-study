@@ -57,7 +57,7 @@ export class CheckInService {
     if (!room) throw ApiErrors.roomNotFound();
 
     const presence = this.presence.validate(room, input.location);
-    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!));
+    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!), presence.details);
 
     const [seat] = await this.db
       .select()
@@ -225,7 +225,7 @@ export class CheckInService {
     if (!existing) throw ApiErrors.noActiveCheckIn();
 
     const presence = this.presence.validate(existing.room, location);
-    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!));
+    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!), presence.details);
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + CHECKIN_MINUTES * 60_000);

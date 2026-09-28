@@ -1,5 +1,5 @@
 import { HttpException } from "@nestjs/common";
-import type { ApiErrorCode, PresenceRejectReason } from "@uns/contracts";
+import type { ApiErrorCode, PresenceDetails, PresenceRejectReason } from "@uns/contracts";
 
 /** Thrown by domain services / controllers; rendered as `{ error: { code, message, reason? } }`. */
 export class ApiException extends HttpException {
@@ -8,15 +8,16 @@ export class ApiException extends HttpException {
     message: string,
     status: number,
     public readonly reason?: PresenceRejectReason,
+    public readonly details?: PresenceDetails,
   ) {
-    super({ error: { code, message, ...(reason ? { reason } : {}) } }, status);
+    super({ error: { code, message, ...(reason ? { reason } : {}), ...(details ? { details } : {}) } }, status);
   }
 }
 
 export const ApiErrors = {
   unauthenticated: () => new ApiException("UNAUTHENTICATED", "Iniciá sesión para continuar.", 401),
-  presenceRejected: (reason: PresenceRejectReason, message: string) =>
-    new ApiException("PRESENCE_REJECTED", message, 403, reason),
+  presenceRejected: (reason: PresenceRejectReason, message: string, details?: PresenceDetails) =>
+    new ApiException("PRESENCE_REJECTED", message, 403, reason, details),
   seatTaken: () => new ApiException("SEAT_TAKEN", "El asiento ya está ocupado.", 409),
   seatNotFound: () => new ApiException("SEAT_NOT_FOUND", "Asiento no encontrado.", 404),
   roomNotFound: () => new ApiException("SEAT_NOT_FOUND", "Sala no encontrada.", 404),

@@ -47,6 +47,8 @@ export function getFreshLocation(): Promise<LocationInput> {
           longitude: best.coords.longitude,
           accuracy: best.coords.accuracy,
           capturedAt: new Date(best.timestamp).toISOString(),
+          // Sent alongside so the server can measure the fix's age on this device's clock.
+          sentAt: new Date().toISOString(),
         });
       } else {
         reject(new GeolocationRequestError("TIMEOUT", "No pudimos obtener tu ubicación a tiempo."));

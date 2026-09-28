@@ -86,6 +86,8 @@ export interface LocationInput {
   longitude: number;
   accuracy: number;
   capturedAt: string;
+  /** Device clock at send time; lets the server measure fix age independent of clock skew. */
+  sentAt?: string;
 }
 
 export type PresenceRejectReason =
@@ -95,10 +97,20 @@ export type PresenceRejectReason =
   | "OUTSIDE_GEOFENCE"
   | "ROOM_NOT_FOUND";
 
+/** Numbers behind a presence decision, returned on rejection so the UI can say "~180 m, ±60 m". */
+export interface PresenceDetails {
+  distanceM: number;
+  accuracyM: number;
+  radiusM: number;
+  /** Maximum distance accepted for this reading (radius + tolerance). */
+  allowedM: number;
+}
+
 export interface PresenceResult {
   valid: boolean;
   reason: PresenceRejectReason | null;
   expiresAt: string | null;
+  details?: PresenceDetails;
 }
 
 export interface CheckInDto {
@@ -218,6 +230,12 @@ export const locationInputSchema = z.object({
   longitude: z.number().min(-180).max(180),
   accuracy: z.number().nonnegative(),
   capturedAt: z.string(),
+  /**
+   * Device clock when the request was sent. With it the server measures the fix's age on the
+   * device's own clock (sentAt - capturedAt), so a phone clock that runs fast/slow doesn't make
+   * every reading look stale.
+   */
+  sentAt: z.string().optional(),
 });
 
 export const checkInRequestSchema = z.object({
@@ -281,6 +299,12 @@ export const presenceValidateSchema = z.object({
   longitude: z.number().min(-180).max(180),
   accuracy: z.number().nonnegative(),
   capturedAt: z.string(),
+  /**
+   * Device clock when the request was sent. With it the server measures the fix's age on the
+   * device's own clock (sentAt - capturedAt), so a phone clock that runs fast/slow doesn't make
+   * every reading look stale.
+   */
+  sentAt: z.string().optional(),
 });
 
 // ---- API error shape ----
@@ -318,5 +342,7 @@ export interface ApiError {
     message: string;
     /** Present when code is PRESENCE_REJECTED. */
     reason?: PresenceRejectReason;
+    /** Present when code is PRESENCE_REJECTED and a distance could be computed. */
+    details?: PresenceDetails;
   };
 }

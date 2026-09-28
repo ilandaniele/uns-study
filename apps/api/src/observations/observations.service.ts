@@ -47,7 +47,7 @@ export class ObservationService {
     const [room] = await this.db.select().from(schema.rooms).where(eq(schema.rooms.id, roomId)).limit(1);
     if (!room) return; // observe() reports the missing room with its usual error.
     const presence = this.presence.validate(room, location);
-    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, "No pudimos validar tu ubicación.");
+    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, "No pudimos validar tu ubicación.", presence.details);
   }
 
   async observe(input: CreateObservationInput): Promise<{ roomId: string; changes: SeatStateChange[] }> {
@@ -55,7 +55,7 @@ export class ObservationService {
     if (!room) throw ApiErrors.roomNotFound();
 
     const presence = this.presence.validate(room, input.location);
-    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, "No pudimos validar tu ubicación.");
+    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, "No pudimos validar tu ubicación.", presence.details);
 
     const [seat] = await this.db
       .select()

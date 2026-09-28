@@ -59,7 +59,7 @@ export class PhotoVerificationService {
     if (row.checkIn.verifiedAt) throw ApiErrors.alreadyVerified();
 
     const presence = this.presence.validate(row.room, input.location);
-    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!));
+    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!), presence.details);
 
     const decoded = decodeAndValidatePhoto(input.image);
     // Metadata (EXIF GPS, device identifiers, etc.) is stripped before anything else touches the

@@ -33,3 +33,14 @@ describe("describeActionError", () => {
     expect(describeActionError(new Error("network down"))).toBe("No pudimos actualizar el lugar. Tu cambio no fue guardado.");
   });
 });
+
+describe("presence rejection details", () => {
+  it("explains distance and tolerance when outside the geofence", () => {
+    const err = new ApiRequestError(
+      { error: { code: "PRESENCE_REJECTED", message: "x", reason: "OUTSIDE_GEOFENCE", details: { distanceM: 180, accuracyM: 40, radiusM: 50, allowedM: 70 } } },
+      403,
+    );
+    expect(describeActionError(err)).toContain("unos 180 m");
+    expect(describeActionError(err)).toContain("hasta 70 m");
+  });
+});

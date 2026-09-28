@@ -72,7 +72,7 @@ export class DisputeService {
     const [room] = await this.db.select().from(schema.rooms).where(eq(schema.rooms.id, roomId)).limit(1);
     if (!room) return;
     const presence = this.presence.validate(room, location);
-    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!));
+    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!), presence.details);
   }
 
   async open(input: OpenDisputeInput): Promise<{ dispute: SeatDisputeDto; changes: SeatStateChange[] }> {
@@ -80,7 +80,7 @@ export class DisputeService {
     if (!room) throw ApiErrors.roomNotFound();
 
     const presence = this.presence.validate(room, input.location);
-    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!));
+    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!), presence.details);
 
     const [seat] = await this.db
       .select()
@@ -220,7 +220,7 @@ export class DisputeService {
     const [room] = await this.db.select().from(schema.rooms).where(eq(schema.rooms.id, row.roomId)).limit(1);
     if (!room) throw ApiErrors.roomNotFound();
     const presence = this.presence.validate(room, location);
-    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!));
+    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!), presence.details);
 
     const [voterCheckIn] = await this.db
       .select({ id: schema.checkIns.id })
@@ -288,7 +288,7 @@ export class DisputeService {
       const [room] = await this.db.select().from(schema.rooms).where(eq(schema.rooms.id, row.roomId)).limit(1);
       if (!room) throw ApiErrors.roomNotFound();
       const presence = this.presence.validate(room, location);
-      if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!));
+      if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!), presence.details);
 
       const changed = await this.db.transaction(async (tx) => {
         await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${disputeId}))`);

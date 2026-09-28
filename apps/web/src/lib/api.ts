@@ -1,4 +1,4 @@
-import type { ApiError, ApiErrorCode } from "@uns/contracts";
+import type { ApiError, ApiErrorCode, PresenceDetails } from "@uns/contracts";
 
 /**
  * Base URL for REST calls to the API. Empty/unset `NEXT_PUBLIC_API_URL` means "same origin" — the
@@ -12,12 +12,15 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 export class ApiRequestError extends Error {
   code: ApiErrorCode;
   reason?: string;
+  /** Distance/accuracy behind a PRESENCE_REJECTED, when the API could compute them. */
+  details?: PresenceDetails;
 
   constructor(body: ApiError, status: number) {
     super(body.error.message);
     this.name = "ApiRequestError";
     this.code = body.error.code;
     this.reason = body.error.reason;
+    this.details = body.error.details;
     this.status = status;
   }
 
