@@ -47,4 +47,10 @@ export const ApiErrors = {
     new ApiException("SEAT_VERIFIED", "Este lugar está verificado con foto: la persona está sentada acá.", 409),
   photoReused: () => new ApiException("PHOTO_REUSED", "Esta foto ya se usó para verificar otro check-in.", 409),
   photoInvalid: () => new ApiException("PHOTO_INVALID", "La foto no es válida.", 400),
+  alreadyVerified: () =>
+    new ApiException(
+      "ALREADY_VERIFIED",
+      "Ya verificaste este lugar. Para volver a verificar, marcá “Estoy acá” de nuevo cuando te sientes.",
+      409,
+    ),
 };

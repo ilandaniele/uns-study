@@ -23,6 +23,12 @@ describe("describeActionError", () => {
     expect(describeActionError(apiError("SEAT_VERIFIED"))).toBe("Este lugar está verificado con foto: la persona está sentada acá.");
   });
 
+  it("maps ALREADY_VERIFIED to Spanish copy", () => {
+    expect(describeActionError(apiError("ALREADY_VERIFIED"))).toBe(
+      "Ya verificaste este lugar. Para volver a verificar, marcá “Estoy acá” de nuevo cuando te sientes.",
+    );
+  });
+
   it("falls back to a generic message for unknown errors", () => {
     expect(describeActionError(new Error("network down"))).toBe("No pudimos actualizar el lugar. Tu cambio no fue guardado.");
   });

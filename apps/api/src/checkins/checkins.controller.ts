@@ -7,7 +7,7 @@ import type { RequestUser } from "../auth/request-user.js";
 import { ZodBodyPipe } from "../common/zod-body.pipe.js";
 import { ApiErrors } from "../common/api-error.js";
 import { RateLimitService } from "../security/rate-limit.service.js";
-import { SecurityEventService } from "../security/security-event.service.js";
+import { SecurityEventService, hashIp } from "../security/security-event.service.js";
 import { AbusePolicyService } from "../security/abuse-policy.service.js";
 import { TurnstileService } from "../security/turnstile.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
@@ -92,11 +92,17 @@ export class CheckInsController {
     @CurrentUser() user: RequestUser,
     @Param("id") id: string,
     @Body(new ZodBodyPipe(checkInPhotoRequestSchema)) body: z.infer<typeof checkInPhotoRequestSchema>,
+    @Ip() ip: string,
   ) {
     await this.restrictions.assertNot(user.id, ["SUSPENDED", "BANNED"]);
 
     const limit = await this.rateLimit.check(`checkin-photo:${user.id}`, 6, 3600);
     if (!limit.allowed) throw ApiErrors.rateLimited();
+
+    // A per-IP bucket on top of the per-user one — makes bulk-account abuse (many accounts, same
+    // device/IP, hammering the verifier) expensive too. Keyed by a salted hash, never the raw IP.
+    const ipLimit = await this.rateLimit.check(`checkin-photo-ip:${hashIp(ip)}`, 20, 3600);
+    if (!ipLimit.allowed) throw ApiErrors.rateLimited();
 
     const { result, changes } = await this.photoVerification.verify({
       userId: user.id,

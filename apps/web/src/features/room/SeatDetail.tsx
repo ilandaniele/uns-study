@@ -139,6 +139,11 @@ export function SeatDetail({
                 <ShieldCheckIcon aria-hidden="true" size={14} weight="fill" />
                 Verificado con foto {verifiedUntilLabel(myCheckIn.verificationExpiresAt)}
               </p>
+            ) : myCheckIn?.verifiedAt ? (
+              // Protection already expired and this check-in was already verified once — the API
+              // rejects a second photo for the same check-in (ALREADY_VERIFIED), so don't offer the
+              // button again; a new photo only counts after "Estoy acá" starts a fresh check-in.
+              <p className="text-xs text-muted">Ya verificaste este lugar en este check-in.</p>
             ) : myCheckIn ? (
               <PhotoVerifyCard checkInId={myCheckIn.id} onChanged={onChanged} />
             ) : null}

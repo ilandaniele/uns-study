@@ -60,16 +60,20 @@ async function bootstrap() {
 
   // The photo-verification body carries a base64 image (~2MB decoded, larger encoded) — give just
   // that route a bigger JSON limit before the global parser below (which body-parser then skips,
-  // since it only re-parses a request whose body hasn't already been consumed).
+  // since it only re-parses a request whose body hasn't already been consumed). Only requests that
+  // carry a Better Auth session cookie get the bigger limit — an unauthenticated caller can't reach
+  // AuthGuard-protected handlers anyway, so there's no reason to let it push multi-MB bodies through
+  // Express's body parser first. Anything without the cookie falls through to the default (100kb)
+  // parser below, which rejects it long before it reaches a controller.
   const PHOTO_ROUTE = /^\/api\/v1\/checkins\/[^/]+\/photo$/;
   const photoJsonParser = express.json({ limit: "3mb" });
-  // The avatar upload body carries a base64 image (≤300KB decoded, ~400KB encoded) — same idea,
+  // The avatar upload body carries a base64 image (≤300KB decoded, ~420KB encoded) — same idea,
   // smaller limit.
   const AVATAR_ROUTE = /^\/api\/v1\/profiles\/me\/avatar$/;
   const avatarJsonParser = express.json({ limit: "1mb" });
   httpAdapter.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-    if (req.method === "POST" && PHOTO_ROUTE.test(req.path)) return photoJsonParser(req, res, next);
-    if (req.method === "POST" && AVATAR_ROUTE.test(req.path)) return avatarJsonParser(req, res, next);
+    if (req.method === "POST" && hasSessionCookie(req) && PHOTO_ROUTE.test(req.path)) return photoJsonParser(req, res, next);
+    if (req.method === "POST" && hasSessionCookie(req) && AVATAR_ROUTE.test(req.path)) return avatarJsonParser(req, res, next);
     next();
   });
   app.use(express.json());
@@ -79,6 +83,17 @@ async function bootstrap() {
 
   await app.listen(env.port);
   console.log(`[api] listening on :${env.port} (prefix /api/v1)`);
+}
+
+// Better Auth's default cookie name (see auth.instance.ts — cookiePrefix isn't overridden), with
+// its optional `__Secure-` prefix (added automatically once the cookie is `secure`, i.e. in
+// production or over an https baseURL — see better-auth's `createCookieGetter`). A raw substring
+// check on the `Cookie` header is enough here: we only need "is this caller plausibly
+// authenticated", not a parsed value — AuthGuard does the real verification downstream.
+const SESSION_COOKIE_RE = /(?:^|;\s*)(?:__Secure-)?better-auth\.session_token=/;
+function hasSessionCookie(req: express.Request): boolean {
+  const header = req.headers.cookie;
+  return typeof header === "string" && SESSION_COOKIE_RE.test(header);
 }
 
 bootstrap().catch((err) => {

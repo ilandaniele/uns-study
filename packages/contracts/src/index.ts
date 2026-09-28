@@ -237,7 +237,9 @@ export const extendRequestSchema = z.object({
 export const checkInPhotoRequestSchema = z.object({
   image: z.object({
     mimeType: z.enum(["image/jpeg", "image/webp", "image/png"]),
-    base64: z.string().min(1),
+    // Base64 of a <=2MB decoded photo is at most ~2.8MB encoded — reject earlier/cheaper payloads
+    // before they ever reach the decode/hash/verifier pipeline.
+    base64: z.string().min(1).max(2_800_000),
   }),
   location: locationInputSchema,
 });
@@ -297,7 +299,8 @@ export type ApiErrorCode =
   | "VERIFIER_UNAVAILABLE"
   | "SEAT_VERIFIED"
   | "PHOTO_REUSED"
-  | "PHOTO_INVALID";
+  | "PHOTO_INVALID"
+  | "ALREADY_VERIFIED";
 
 export interface ApiError {
   error: {

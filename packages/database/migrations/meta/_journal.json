@@ -57,6 +57,13 @@
       "when": 1790631774508,
       "tag": "0007_careful_sage",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790632696625,
+      "tag": "0008_noisy_fabian_cortez",
+      "breakpoints": true
     }
   ]
 }

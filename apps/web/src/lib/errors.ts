@@ -68,6 +68,9 @@ export function describeActionError(error: unknown): string {
     if (error.code === "VERIFIER_UNAVAILABLE") {
       return "La verificación por foto no está disponible en este momento.";
     }
+    if (error.code === "ALREADY_VERIFIED") {
+      return "Ya verificaste este lugar. Para volver a verificar, marcá “Estoy acá” de nuevo cuando te sientes.";
+    }
   }
 
   return "No pudimos actualizar el lugar. Tu cambio no fue guardado.";

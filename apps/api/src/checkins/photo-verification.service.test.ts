@@ -140,6 +140,33 @@ describe("PhotoVerificationService", () => {
     });
   });
 
+  it("rejects the same user reusing the same photo bytes on a new check-in", async () => {
+    const agreeing = new StubVerifier(async (req) => ({ seatCode: req.claimedSeatCode, confidence: 0.95, modelVersion: "test-v1" }));
+    const { checkIn: c1 } = await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await svc(agreeing).verify({ userId: "u1", checkInId: c1.id, image, location });
+
+    // Check out and back in (into a different seat) to get a second, unverified check-in.
+    await checkIns.checkOut("u1");
+    const { checkIn: c2 } = await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[1]!, location, showIdentity: false });
+
+    await expect(svc(agreeing).verify({ userId: "u1", checkInId: c2.id, image, location })).rejects.toMatchObject({
+      code: "PHOTO_REUSED",
+    });
+  });
+
+  it("rejects a second photo for the same check-in even after the protection window would have lapsed", async () => {
+    const agreeing = new StubVerifier(async (req) => ({ seatCode: req.claimedSeatCode, confidence: 0.95, modelVersion: "test-v1" }));
+    const { checkIn } = await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await svc(agreeing).verify({ userId: "u1", checkInId: checkIn.id, image, location });
+
+    // A different, unused photo — proves the rejection is about the check-in already being
+    // verified, not about hash reuse.
+    const otherImage = { mimeType: "image/jpeg" as const, base64: Buffer.from([0xff, 0xd8, 0xff, 0x00, 0x01, 0x02, 0x03]).toString("base64") };
+    await expect(svc(agreeing).verify({ userId: "u1", checkInId: checkIn.id, image: otherImage, location })).rejects.toMatchObject({
+      code: "ALREADY_VERIFIED",
+    });
+  });
+
   it("rejects a photo whose bytes don't match the declared mime type", async () => {
     const { checkIn } = await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
     const service = svc(new StubVerifier(async (req) => ({ seatCode: req.claimedSeatCode, confidence: 0.95, modelVersion: "test-v1" })));
@@ -147,6 +174,28 @@ describe("PhotoVerificationService", () => {
     await expect(
       service.verify({ userId: "u1", checkInId: checkIn.id, image: { mimeType: "image/jpeg", base64: PNG_MAGIC_ONLY_BASE64 }, location }),
     ).rejects.toMatchObject({ code: "PHOTO_INVALID" });
+  });
+
+  it("maps a genuine race on the photo hash (both requests pass the reuse check) to PHOTO_REUSED via the unique index", async () => {
+    const { checkIn: c1 } = await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    const { checkIn: c2 } = await checkIns.checkIn({ userId: "u2", roomId, seatId: seatIds[1]!, location, showIdentity: false });
+    // A tick of delay so both requests' reuse-check SELECTs (which run before either UPDATE) land
+    // before either write — reproducing the race the app-level check alone can't close, which the
+    // `uq_check_ins_verification_photo_sha256` unique index closes.
+    const agreeing = new StubVerifier(async (req) => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      return { seatCode: req.claimedSeatCode, confidence: 0.95, modelVersion: "test-v1" };
+    });
+
+    const [r1, r2] = await Promise.allSettled([
+      svc(agreeing).verify({ userId: "u1", checkInId: c1.id, image, location }),
+      svc(agreeing).verify({ userId: "u2", checkInId: c2.id, image, location }),
+    ]);
+
+    const outcomes = [r1, r2];
+    expect(outcomes.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const rejected = outcomes.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+    expect(rejected?.reason).toMatchObject({ code: "PHOTO_REUSED" });
   });
 
   it("rejects a photo submitted for a check-in that doesn't belong to the caller", async () => {

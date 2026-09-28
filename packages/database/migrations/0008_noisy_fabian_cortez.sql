@@ -1,0 +1,2 @@
+DROP INDEX "idx_check_ins_verification_photo_sha256";--> statement-breakpoint
+CREATE UNIQUE INDEX "uq_check_ins_verification_photo_sha256" ON "check_ins" USING btree ("verification_photo_sha256") WHERE verification_photo_sha256 is not null;

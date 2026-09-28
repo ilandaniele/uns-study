@@ -121,5 +121,6 @@ export type AvatarMimeType = "image/jpeg" | "image/webp" | "image/png";
 
 export const uploadAvatarSchema = z.object({
   mimeType: z.enum(["image/jpeg", "image/webp", "image/png"]),
-  base64: z.string().min(1),
+  // Base64 of a <=300KB decoded avatar is at most ~420KB encoded.
+  base64: z.string().min(1).max(420_000),
 });
