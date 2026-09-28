@@ -1,4 +1,5 @@
 import type { TableDto } from "@uns/contracts";
+import { tableDisplayName } from "./format";
 
 export interface StudyTableProps {
   table: TableDto;
@@ -6,11 +7,21 @@ export interface StudyTableProps {
   highlighted?: boolean;
 }
 
-/** Warm wood main table, drawn top-down, with a small rounded pill carrying the table code. */
+/** Pill text over ~14 chars is truncated with an ellipsis; the full text still lives in `title`/`aria-label`. */
+const MAX_PILL_CHARS = 14;
+
+function truncatePillText(text: string): string {
+  return text.length > MAX_PILL_CHARS ? `${text.slice(0, MAX_PILL_CHARS - 1)}…` : text;
+}
+
+/** Warm wood main table, drawn top-down, with a small rounded pill carrying the table's name —
+ *  its community nickname when it has one, else "Mesa N" (see `tableDisplayName`). */
 export function StudyTable({ table, highlighted = false }: StudyTableProps) {
   const cx = table.x + table.width / 2;
   const cy = table.y + table.height / 2;
-  const pillWidth = 84;
+  const fullName = table.nickname ?? tableDisplayName(table, table.code);
+  const pillText = truncatePillText(fullName);
+  const pillWidth = Math.max(84, 18 + pillText.length * 13);
   const pillHeight = 38;
 
   return (
@@ -58,6 +69,7 @@ export function StudyTable({ table, highlighted = false }: StudyTableProps) {
         fill="white"
         opacity={0.14}
       />
+      <title>{fullName}</title>
       <rect
         x={cx - pillWidth / 2}
         y={cy - pillHeight / 2}
@@ -71,12 +83,12 @@ export function StudyTable({ table, highlighted = false }: StudyTableProps) {
         y={cy}
         textAnchor="middle"
         dominantBaseline="central"
-        fontSize={24}
+        fontSize={pillText.length > 6 ? 16 : 24}
         fontWeight={700}
         className="font-display"
         fill="var(--room-table-label-text)"
       >
-        {table.label}
+        {pillText}
       </text>
     </g>
   );

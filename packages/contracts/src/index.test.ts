@@ -6,6 +6,7 @@ import {
   presenceValidateSchema,
   extendRequestSchema,
 } from "./index.js";
+import { proposeTableNameSchema } from "./table-names.js";
 
 const validLocation = {
   latitude: -38.702,
@@ -62,5 +63,33 @@ describe("presenceValidateSchema", () => {
       ...validLocation,
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe("proposeTableNameSchema", () => {
+  it("accepts a normal name", () => {
+    expect(proposeTableNameSchema.safeParse({ name: "La Pecera" }).success).toBe(true);
+  });
+
+  it("trims surrounding whitespace", () => {
+    const result = proposeTableNameSchema.safeParse({ name: "  La Pecera  " });
+    expect(result.success && result.data.name).toBe("La Pecera");
+  });
+
+  it("rejects a name shorter than 2 characters", () => {
+    expect(proposeTableNameSchema.safeParse({ name: "A" }).success).toBe(false);
+  });
+
+  it("rejects a name longer than 24 characters", () => {
+    expect(proposeTableNameSchema.safeParse({ name: "A".repeat(25) }).success).toBe(false);
+  });
+
+  it("rejects characters outside letters/numbers/basic punctuation", () => {
+    expect(proposeTableNameSchema.safeParse({ name: "Mesa <script>" }).success).toBe(false);
+    expect(proposeTableNameSchema.safeParse({ name: "Mesa_1" }).success).toBe(false);
+  });
+
+  it("accepts accented letters and basic punctuation", () => {
+    expect(proposeTableNameSchema.safeParse({ name: "¡La Peña!" }).success).toBe(true);
   });
 });

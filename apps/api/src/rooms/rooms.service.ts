@@ -56,6 +56,7 @@ export class RoomsService {
       width: t.width,
       height: t.height,
       rotation: t.rotation,
+      nickname: t.nickname,
     }));
 
     const seats: SeatDto[] = seatRows

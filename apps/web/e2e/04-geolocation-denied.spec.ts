@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { ROOM_SLUG, seatLocator, signUpNewUser } from "./helpers";
 
 // Seat reserved for this spec (distinct from other spec files to avoid cross-test collisions).
-const SEAT = { table: "M03", seatNumber: 1 };
+const SEAT = { table: "3", seatNumber: 1 };
 
 test("checking in without geolocation permission shows the location-needed message", async ({ browser }) => {
   // No `permissions: ['geolocation']` granted, so the browser denies the request.

@@ -1,4 +1,4 @@
-import type { RoomMapDto, RoomSummary, SeatDisputeLiteDto, SeatDto, SeatStateChangedEvent } from "@uns/contracts";
+import type { RoomMapDto, RoomSummary, SeatDisputeLiteDto, SeatDto, SeatStateChangedEvent, TableNicknameChangedEvent } from "@uns/contracts";
 
 /**
  * Client-side merge rules for room seat state. REST snapshots and `seat:state-changed` socket
@@ -66,6 +66,13 @@ export function applyDisputeResolved(map: RoomMapDto | null, event: SeatDisputeL
     seat.id === event.seatId && seat.dispute?.id === event.id ? { ...seat, dispute: null } : seat,
   );
   return { ...map, seats };
+}
+
+/** Updates a table's nickname on `table:nickname-changed` — the map pill re-renders immediately. */
+export function applyTableNicknameChanged(map: RoomMapDto | null, event: TableNicknameChangedEvent): RoomMapDto | null {
+  if (!map) return map;
+  const tables = map.tables.map((table) => (table.id === event.tableId ? { ...table, nickname: event.nickname } : table));
+  return { ...map, tables };
 }
 
 export function summarize(roomId: string, seats: SeatDto[]): RoomSummary {

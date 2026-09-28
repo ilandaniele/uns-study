@@ -71,6 +71,13 @@
       "when": 1790634320362,
       "tag": "0009_flashy_alex_wilder",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790635296499,
+      "tag": "0010_chief_rogue",
+      "breakpoints": true
     }
   ]
 }

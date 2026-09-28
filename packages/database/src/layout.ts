@@ -66,7 +66,9 @@ export function generateRoomLayout(): RoomLayout {
       const code = `M${String(number).padStart(2, "0")}`;
       tables.push({
         code,
-        label: code,
+        // Human-friendly display label ("Mesa 1".."Mesa 12") — `code` (M01..) stays the stable key
+        // used for QR tokens and DB uniqueness.
+        label: String(number),
         type: "MAIN_TABLE",
         x,
         y,

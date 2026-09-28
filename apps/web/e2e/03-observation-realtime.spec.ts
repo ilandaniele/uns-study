@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { IN_GEOFENCE_LOCATION, ROOM_SLUG, seatLocator, signUpNewUser } from "./helpers";
 
 // Seat reserved for this spec (distinct from other spec files to avoid cross-test collisions).
-const SEAT_Z = { table: "M02", seatNumber: 1 };
+const SEAT_Z = { table: "2", seatNumber: 1 };
 
 test("an observation from one visitor propagates to another visitor in realtime", async ({ browser }) => {
   const contextA = await browser.newContext();

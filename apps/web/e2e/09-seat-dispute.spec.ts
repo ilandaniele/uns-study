@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { IN_GEOFENCE_LOCATION, ROOM_SLUG, checkoutCurrent, seatLocator, signUpNewUser } from "./helpers";
 
 // Seat reserved for this spec (distinct from other spec files to avoid cross-test collisions).
-const SEAT = { table: "M03", seatNumber: 4 };
+const SEAT = { table: "3", seatNumber: 4 };
 
 test("opening an 'Esa persona no está' vote challenges the occupant, who answers 'Sigo acá'", async ({ browser }) => {
   const contextA = await browser.newContext({ permissions: ["geolocation"], geolocation: IN_GEOFENCE_LOCATION });

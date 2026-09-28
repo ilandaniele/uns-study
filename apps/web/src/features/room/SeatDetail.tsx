@@ -9,6 +9,7 @@ import { DisputeSection } from "./DisputeSection";
 import { IdentityPrompt } from "./IdentityPrompt";
 import { NearbyOccupants } from "./NearbyOccupants";
 import { PhotoVerifyCard } from "./PhotoVerifyCard";
+import { TableNameSection } from "./TableNameSection";
 import { TurnstileChallenge } from "./TurnstileChallenge";
 import {
   confidenceWording,
@@ -197,6 +198,7 @@ export function SeatDetail({
           <li className="flex items-center gap-2">
             <TableIcon aria-hidden="true" size={18} />
             {tableDisplayName(table, seat.code)}
+            {table?.nickname ? ` · "${table.nickname}"` : ""}
             {side ? ` (${side})` : ""}
           </li>
           <li className="flex items-center gap-2">
@@ -209,6 +211,8 @@ export function SeatDetail({
           </li>
         </ul>
       </div>
+
+      {!isBar && table ? <TableNameSection tableId={table.id} loggedIn={me?.user != null} /> : null}
 
       <NearbyOccupants occupants={nearbyOccupants} />
     </div>

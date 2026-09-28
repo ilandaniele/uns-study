@@ -34,7 +34,7 @@ export async function signUpNewUser(context: BrowserContext): Promise<{ email: s
   return { email, password };
 }
 
-/** Locator selector prefix for a seat's aria-label, e.g. `Mesa M04 asiento 3:`. */
+/** Locator selector prefix for a seat's aria-label, e.g. `Mesa 4 asiento 3:`. */
 export function seatAriaPrefix(tableLabel: string, seatNumber: number, kind: "Mesa" | "Barra" = "Mesa"): string {
   return `${kind} ${tableLabel} asiento ${seatNumber}:`;
 }

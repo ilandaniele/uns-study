@@ -20,6 +20,7 @@ import {
   type RoomSummary,
   type SeatDisputeLiteDto,
   type SeatStateChangedEvent,
+  type TableNicknameChangedEvent,
 } from "@uns/contracts";
 import { AUTH } from "../auth/auth.tokens.js";
 import type { Auth } from "../auth/auth.instance.js";
@@ -188,6 +189,11 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
    *  is now free for them to self-check-in. */
   emitDisputeWon(openerUserId: string, payload: DisputeWonEvent): void {
     this.server?.to(userChannel(openerUserId)).emit(SocketEvents.DisputeYouWon, payload);
+  }
+
+  /** Broadcasts a table's nickname changing (crossing/leaving the vote threshold, or an admin clearing it). */
+  emitTableNicknameChanged(roomId: string, payload: TableNicknameChangedEvent): void {
+    this.server?.to(roomChannel(roomId)).emit(SocketEvents.TableNicknameChanged, payload);
   }
 
   /** Forcibly disconnects every live socket for a user — used on SUSPEND/BAN so the session revocation takes effect immediately. */

@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { IN_GEOFENCE_LOCATION, ROOM_SLUG, checkoutCurrent, seatLocator, signUpNewUser } from "./helpers";
 
 // Seat reserved for this spec (distinct from other spec files to avoid cross-test collisions).
-const SEAT = { table: "M07", seatNumber: 1 };
+const SEAT = { table: "7", seatNumber: 1 };
 const NICKNAME = `E2E-${Date.now()}`;
 
 test("profile identity + privacy: hidden by default, then visible in /personas once opted in", async ({ browser }) => {

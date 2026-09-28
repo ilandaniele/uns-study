@@ -12,3 +12,4 @@ export * from "./chat.js";
 export * from "./study.js";
 export * from "./disputes.js";
 export * from "./avatars.js";
+export * from "./table-names.js";

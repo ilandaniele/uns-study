@@ -29,6 +29,8 @@ export const roomTables = pgTable(
     code: text("code").notNull(),
     label: text("label").notNull(),
     type: tableTypeEnum("type").notNull(),
+    /** Community-voted nickname (see `table-names.ts`), null until a proposal crosses the threshold. */
+    nickname: text("nickname"),
     x: real("x").notNull(),
     y: real("y").notNull(),
     width: real("width").notNull(),

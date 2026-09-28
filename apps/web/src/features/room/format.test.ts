@@ -6,7 +6,9 @@ import {
   disputeKindTitle,
   recencyLabel,
   roomCapacityBreakdown,
+  seatDisplayLabel,
   statusLabel,
+  tableDisplayName,
   tableSideLabel,
 } from "./format";
 
@@ -150,6 +152,32 @@ describe("checkInExpiryStatus", () => {
   it("prompts with 1 minute left just before expiry", () => {
     const status = checkInExpiryStatus(new Date("2026-09-25T12:00:30.000Z").toISOString(), now);
     expect(status).toEqual({ minutesLeft: 1, shouldPromptExtend: true });
+  });
+});
+
+describe("tableDisplayName", () => {
+  it("derives 'Mesa N' from a main table's code", () => {
+    expect(tableDisplayName({ code: "M04", type: "MAIN_TABLE" }, "M04-S01")).toBe("Mesa 4");
+    expect(tableDisplayName({ code: "M12", type: "MAIN_TABLE" }, "M12-S08")).toBe("Mesa 12");
+  });
+
+  it("uses the known human name for a wall bar", () => {
+    expect(tableDisplayName({ code: "B01", type: "WALL_BAR" }, "B01-S01")).toBe("Barra entrada izquierda");
+  });
+
+  it("falls back to the raw code when the table is missing", () => {
+    expect(tableDisplayName(null, "M03")).toBe("Mesa 3");
+    expect(tableDisplayName(null, "B02-S01")).toBe("Barra B02-S01");
+  });
+});
+
+describe("seatDisplayLabel", () => {
+  it("formats a main-table seat as 'Mesa N · Asiento X'", () => {
+    expect(seatDisplayLabel({ code: "M04", type: "MAIN_TABLE" }, "M04-S03", 3)).toBe("Mesa 4 · Asiento 3");
+  });
+
+  it("formats a wall-bar seat as 'Barra <name> · Lugar X'", () => {
+    expect(seatDisplayLabel({ code: "B01", type: "WALL_BAR" }, "B01-S02", 2)).toBe("Barra entrada izquierda · Lugar 2");
   });
 });
 

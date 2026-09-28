@@ -6,6 +6,7 @@ export * from "./chat";
 export * from "./moderation";
 export * from "./rankings";
 export * from "./qr";
+export * from "./table-names";
 
 // ---- Domain enums ----
 
@@ -50,6 +51,8 @@ export interface TableDto {
   width: number;
   height: number;
   rotation: number;
+  /** Community-voted nickname (see `table-names.ts`), or `null` when the table has none. */
+  nickname: string | null;
 }
 
 export interface SeatDto {
@@ -191,7 +194,13 @@ export const SocketEvents = {
   SeatDisputeResolved: "seat:dispute-resolved",
   DisputeYouAreChallenged: "dispute:you-are-challenged",
   DisputeYouWon: "dispute:you-won",
+  TableNicknameChanged: "table:nickname-changed",
 } as const;
+
+export interface TableNicknameChangedEvent {
+  tableId: string;
+  nickname: string | null;
+}
 
 export interface SeatStateChangedEvent {
   roomId: string;

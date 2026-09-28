@@ -13,10 +13,12 @@ import { AdminUsersController } from "./admin-users.controller.js";
 import { AdminAuditController } from "./admin-audit.controller.js";
 import { AdminRoomsController } from "./admin-rooms.controller.js";
 import { AdminAnnouncementsController } from "./admin-announcements.controller.js";
+import { AdminNamesController } from "./admin-names.controller.js";
+import { TableNamesModule } from "../table-names/table-names.module.js";
 
 @Module({
-  imports: [RoomsModule, CheckInsModule, StorageModule, AnnouncementsModule],
-  controllers: [AdminReportsController, AdminUsersController, AdminAuditController, AdminRoomsController, AdminAnnouncementsController],
+  imports: [RoomsModule, CheckInsModule, StorageModule, AnnouncementsModule, TableNamesModule],
+  controllers: [AdminReportsController, AdminUsersController, AdminAuditController, AdminRoomsController, AdminAnnouncementsController, AdminNamesController],
   providers: [ModerationActionService, AdminReportsService, AdminUsersService, AdminAuditService, AdminRoomsService],
 })
 export class AdminModule {}

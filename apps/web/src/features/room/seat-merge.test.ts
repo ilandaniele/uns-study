@@ -1,8 +1,12 @@
-import type { RoomMapDto, SeatDto, SeatStateChangedEvent } from "@uns/contracts";
+import type { RoomMapDto, SeatDto, SeatStateChangedEvent, TableDto } from "@uns/contracts";
 import { describe, expect, it } from "vitest";
-import { applySeatEvent, mergeSnapshot } from "./seat-merge";
+import { applySeatEvent, applyTableNicknameChanged, mergeSnapshot } from "./seat-merge";
 
 const ROOM = "room-1";
+
+function table(id: string, nickname: string | null): TableDto {
+  return { id, code: id, label: "1", type: "MAIN_TABLE", x: 0, y: 0, width: 280, height: 90, rotation: 0, nickname };
+}
 
 function seat(id: string, status: SeatDto["status"], lastUpdatedAt: string | null): SeatDto {
   return {
@@ -22,11 +26,11 @@ function seat(id: string, status: SeatDto["status"], lastUpdatedAt: string | nul
   };
 }
 
-function map(seats: SeatDto[]): RoomMapDto {
+function map(seats: SeatDto[], tables: TableDto[] = []): RoomMapDto {
   return {
     room: { id: ROOM } as RoomMapDto["room"],
     summary: { roomId: ROOM, total: seats.length, free: 0, occupied: 0, uncertain: 0, unknown: seats.length },
-    tables: [],
+    tables,
     seats,
     viewBox: { width: 1000, height: 1600 },
   };
@@ -78,5 +82,23 @@ describe("mergeSnapshot", () => {
     expect(mergeSnapshot(null, snapshot)).toBe(snapshot);
     const other = { ...map([seat("a", "OCCUPIED", "2027-01-01T00:00:00Z")]), room: { id: "other" } as RoomMapDto["room"] };
     expect(mergeSnapshot(other, snapshot)).toBe(snapshot);
+  });
+});
+
+describe("applyTableNicknameChanged", () => {
+  it("sets a table's nickname", () => {
+    const before = map([], [table("t1", null)]);
+    const after = applyTableNicknameChanged(before, { tableId: "t1", nickname: "La Pecera" });
+    expect(after!.tables.find((t) => t.id === "t1")!.nickname).toBe("La Pecera");
+  });
+
+  it("clears a table's nickname", () => {
+    const before = map([], [table("t1", "La Pecera")]);
+    const after = applyTableNicknameChanged(before, { tableId: "t1", nickname: null });
+    expect(after!.tables.find((t) => t.id === "t1")!.nickname).toBeNull();
+  });
+
+  it("returns null unchanged", () => {
+    expect(applyTableNicknameChanged(null, { tableId: "t1", nickname: "x" })).toBeNull();
   });
 });

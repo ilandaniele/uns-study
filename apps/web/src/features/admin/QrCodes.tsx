@@ -2,10 +2,18 @@
 
 import QRCode from "qrcode";
 import { useCallback, useEffect, useState } from "react";
+import type { TableType } from "@uns/contracts";
 import { apiDelete, apiFetch, apiPost } from "@/lib/api";
+import { tableDisplayName } from "@/features/room/format";
 import type { RoomQrCodeDto } from "./types";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+/** "M04" -> "Mesa 4", "B01" -> "Barra entrada izquierda", for the printed card's big label. */
+function friendlyTableName(tableCode: string): string {
+  const type: TableType = tableCode.startsWith("B") ? "WALL_BAR" : "MAIN_TABLE";
+  return tableDisplayName({ code: tableCode, type }, tableCode);
+}
 
 export function QrCodes({ roomSlug }: { roomSlug: string }) {
   const [items, setItems] = useState<RoomQrCodeDto[]>([]);
@@ -93,7 +101,8 @@ export function QrCodes({ roomSlug }: { roomSlug: string }) {
               ) : (
                 <div className="aspect-square w-full max-w-[200px] rounded-md animate-pulse bg-[var(--surface-2)]" />
               )}
-              <p className="font-mono text-lg font-semibold text-main">{item.tableCode ?? "Sala completa"}</p>
+              <p className="text-lg font-semibold text-main">{item.tableCode ? friendlyTableName(item.tableCode) : "Sala completa"}</p>
+              {item.tableCode ? <p className="font-mono text-[11px] text-muted">{item.tableCode}</p> : null}
               <p className="w-full break-all text-center font-mono text-[11px] text-muted">{`${APP_URL}/q/${item.token}`}</p>
               <p
                 className="qr-print-hide text-xs font-semibold"

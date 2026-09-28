@@ -1,10 +1,17 @@
 "use client";
 
-import { SocketEvents, type MeDto, type RoomMapDto, type SeatDisputeLiteDto, type SeatStateChangedEvent } from "@uns/contracts";
+import {
+  SocketEvents,
+  type MeDto,
+  type RoomMapDto,
+  type SeatDisputeLiteDto,
+  type SeatStateChangedEvent,
+  type TableNicknameChangedEvent,
+} from "@uns/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
-import { applyDisputeOpened, applyDisputeResolved, applySeatEvent, mergeSnapshot } from "./seat-merge";
+import { applyDisputeOpened, applyDisputeResolved, applySeatEvent, applyTableNicknameChanged, mergeSnapshot } from "./seat-merge";
 
 export interface RoomState {
   map: RoomMapDto | null;
@@ -70,6 +77,7 @@ export function useRoomState(slug: string): RoomState {
 
     const onDisputeOpened = (event: SeatDisputeLiteDto) => setMap((prev) => applyDisputeOpened(prev, event));
     const onDisputeResolved = (event: SeatDisputeLiteDto) => setMap((prev) => applyDisputeResolved(prev, event));
+    const onTableNicknameChanged = (event: TableNicknameChangedEvent) => setMap((prev) => applyTableNicknameChanged(prev, event));
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
@@ -78,6 +86,7 @@ export function useRoomState(slug: string): RoomState {
     socket.on(SocketEvents.RoomDailyReset, onDailyReset);
     socket.on(SocketEvents.SeatDisputeOpened, onDisputeOpened);
     socket.on(SocketEvents.SeatDisputeResolved, onDisputeResolved);
+    socket.on(SocketEvents.TableNicknameChanged, onTableNicknameChanged);
 
     // eslint-disable-next-line react-hooks/set-state-in-effect -- sync with a socket that connected before mount
     if (socket.connected) setConnected(true);
@@ -90,6 +99,7 @@ export function useRoomState(slug: string): RoomState {
       socket.off(SocketEvents.RoomDailyReset, onDailyReset);
       socket.off(SocketEvents.SeatDisputeOpened, onDisputeOpened);
       socket.off(SocketEvents.SeatDisputeResolved, onDisputeResolved);
+      socket.off(SocketEvents.TableNicknameChanged, onTableNicknameChanged);
     };
   }, [load]);
 
