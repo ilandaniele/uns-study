@@ -36,4 +36,9 @@ export const ApiErrors = {
   storageUnavailable: () =>
     new ApiException("STORAGE_UNAVAILABLE", "El almacenamiento de evidencia no está disponible en este momento.", 503),
   invalidQr: () => new ApiException("INVALID_QR", "Código QR inválido o vencido.", 404),
+  disputeNotAllowed: (message = "No podés abrir una disputa en este asiento.") =>
+    new ApiException("DISPUTE_NOT_ALLOWED", message, 409),
+  disputeAlreadyOpen: () =>
+    new ApiException("DISPUTE_ALREADY_OPEN", "Ya hay una disputa abierta para este asiento.", 409),
+  disputeClosed: () => new ApiException("DISPUTE_CLOSED", "Esta disputa ya cerró.", 409),
 };

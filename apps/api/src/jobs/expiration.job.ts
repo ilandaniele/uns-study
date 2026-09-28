@@ -6,6 +6,7 @@ import { DB } from "../database/database.module.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
+import { DisputeService } from "../disputes/disputes.service.js";
 
 const SWEEP_INTERVAL_MS = 30_000;
 // Look back further than the sweep interval so a missed/delayed tick still catches every
@@ -20,6 +21,7 @@ export class ExpirationJob {
     @Inject(RoomStateService) private readonly roomState: RoomStateService,
     @Inject(RoomRealtimeGateway) private readonly realtime: RoomRealtimeGateway,
     @Inject(StudySessionService) private readonly studySessions: StudySessionService,
+    @Inject(DisputeService) private readonly disputes: DisputeService,
   ) {}
 
   @Interval(SWEEP_INTERVAL_MS)
@@ -50,6 +52,11 @@ export class ExpirationJob {
         await this.studySessions.recordFromCheckIn(tx, checkIn, now);
       }
     });
+
+    // Expiry ends the check-in — resolve any dispute still OPEN against it.
+    for (const checkIn of expiredCheckIns) {
+      await this.disputes.resolveForEndedCheckIn(checkIn.id, now);
+    }
 
     const recentlyExpiredObservations = await this.db
       .select({ seatId: schema.seatObservations.seatId, roomId: schema.seatObservations.roomId })

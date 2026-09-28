@@ -8,6 +8,7 @@ import { PresenceService } from "../presence/presence.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
 import { QrService } from "../qr/qr.service.js";
+import { DisputeService } from "../disputes/disputes.service.js";
 import { ApiErrors } from "../common/api-error.js";
 
 const UNIQUE_VIOLATION = "23505";
@@ -33,6 +34,7 @@ export class CheckInService {
     @Inject(SecurityEventService) private readonly securityEvents: SecurityEventService,
     @Inject(StudySessionService) private readonly studySessions: StudySessionService,
     @Inject(QrService) private readonly qr: QrService,
+    @Inject(DisputeService) private readonly disputes: DisputeService,
   ) {}
 
   async getActiveCheckIn(userId: string): Promise<CheckInDto | null> {
@@ -65,9 +67,11 @@ export class CheckInService {
     const expiresAt = new Date(now.getTime() + CHECKIN_MINUTES * 60_000);
 
     let previousSeatId: string | null = null;
+    let previousCheckInId: string | null = null;
     let createdId: string;
     const attempt = async (): Promise<string> => {
       previousSeatId = null;
+      previousCheckInId = null;
       return this.db.transaction(async (tx) => {
         const [existing] = await tx
           .select()
@@ -85,6 +89,7 @@ export class CheckInService {
             return existing.id;
           }
           previousSeatId = existing.seatId;
+          previousCheckInId = existing.id;
           await tx
             .update(schema.checkIns)
             .set({ status: "COMPLETED", endedAt: now, updatedAt: now })
@@ -142,6 +147,9 @@ export class CheckInService {
     const [checkInRow] = await this.db.select().from(schema.checkIns).where(eq(schema.checkIns.id, createdId)).limit(1);
     if (!checkInRow) throw new Error("Check-in vanished after creation");
 
+    // Moving away from a seat ends that check-in — resolve any dispute still OPEN against it.
+    if (previousCheckInId) await this.disputes.resolveForEndedCheckIn(previousCheckInId, now);
+
     await this.flagRapidToggleIfNeeded(input.userId, now);
 
     return { checkIn: toDto(checkInRow, seat.code), changes };
@@ -184,6 +192,9 @@ export class CheckInService {
       eventType: "CHECK_OUT",
       actingUserId: userId,
     });
+
+    // Ending the check-in resolves any dispute still OPEN against it.
+    await this.disputes.resolveForEndedCheckIn(existing.id, now);
 
     return { roomId: existing.roomId, changes };
   }

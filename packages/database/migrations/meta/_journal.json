@@ -36,6 +36,13 @@
       "when": 1790544219358,
       "tag": "0004_rapid_nicolaos",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790629115632,
+      "tag": "0005_zippy_silver_sable",
+      "breakpoints": true
     }
   ]
 }

@@ -10,3 +10,4 @@ export * from "./profiles.js";
 export * from "./moderation.js";
 export * from "./chat.js";
 export * from "./study.js";
+export * from "./disputes.js";

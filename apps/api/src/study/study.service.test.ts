@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "@uns/database";
 import { schema } from "@uns/database";
 import { and, eq } from "drizzle-orm";
-import { freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
+import { buildDisputeService, freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { PresenceService } from "../presence/presence.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
@@ -17,7 +17,7 @@ async function build(db: Db) {
   const roomState = new RoomStateService(db);
   const presence = new PresenceService();
   const security = new SecurityEventService(db, new ReputationService(db));
-  const checkIns = new CheckInService(db, roomState, presence, security, new StudySessionService(db), new QrService(db));
+  const checkIns = new CheckInService(db, roomState, presence, security, new StudySessionService(db), new QrService(db), buildDisputeService(db));
   const study = new StudyService(db, new RestrictionService(db));
   return { study, checkIns };
 }

@@ -10,6 +10,11 @@ export interface SeatObservationInput {
 export interface SeatStateInput {
   hasActiveCheckIn: boolean;
   observations: SeatObservationInput[];
+  /**
+   * Present when the seat has an OPEN dispute (any kind), or a TIED dispute still linked to the
+   * seat's current active check-in (cleared once the incumbent extends past `resolvedAt`).
+   */
+  dispute?: { status: "OPEN" | "TIED" } | null;
 }
 
 export interface SeatStateResult {
@@ -28,7 +33,17 @@ function observationConfidence(distinctUsers: number): number {
  * Only the latest observation per user counts (distinct users).
  */
 export function calculateSeatState(input: SeatStateInput): SeatStateResult {
+  // An OPEN dispute always overrides both check-in and observation signals: a vote is in
+  // progress, so the seat is genuinely uncertain until it resolves.
+  if (input.dispute?.status === "OPEN") {
+    return { status: "UNCERTAIN", confidence: 0.5, sourceSummary: "DISPUTE" };
+  }
+
   if (input.hasActiveCheckIn) {
+    // A TIED dispute keeps the same check-in's seat uncertain until the incumbent extends.
+    if (input.dispute?.status === "TIED") {
+      return { status: "UNCERTAIN", confidence: 0.4, sourceSummary: "DISPUTE_TIED" };
+    }
     return { status: "OCCUPIED", confidence: 0.98, sourceSummary: "CHECK_IN" };
   }
 

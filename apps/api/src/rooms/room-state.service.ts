@@ -66,10 +66,12 @@ export class RoomStateService {
       await db.execute(sql`select pg_advisory_xact_lock(hashtext(${seatId}))`);
 
       const [activeCheckIn] = await db
-        .select({ id: schema.checkIns.id })
+        .select({ id: schema.checkIns.id, updatedAt: schema.checkIns.updatedAt })
         .from(schema.checkIns)
         .where(and(eq(schema.checkIns.seatId, seatId), eq(schema.checkIns.status, "ACTIVE")))
         .limit(1);
+
+      const dispute = await this.loadDisputeSignal(db, seatId, activeCheckIn);
 
       const observationRows = await db
         .select({
@@ -89,6 +91,7 @@ export class RoomStateService {
           weight: o.weight,
           observedAt: new Date(o.observedAt),
         })),
+        dispute,
       });
 
       const [previous] = await db
@@ -139,21 +142,65 @@ export class RoomStateService {
   }
 
   /**
+   * Loads the dispute signal `SeatStateCalculator` needs for one seat: an OPEN dispute always
+   * wins; otherwise a TIED dispute still linked to the seat's current active check-in, unless the
+   * incumbent has extended since it tied (their check-in's `updatedAt` moved past `resolvedAt`).
+   */
+  private async loadDisputeSignal(
+    db: Db,
+    seatId: string,
+    activeCheckIn: { id: string; updatedAt: Date } | undefined,
+  ): Promise<{ status: "OPEN" | "TIED" } | null> {
+    const [open] = await db
+      .select({ id: schema.seatDisputes.id })
+      .from(schema.seatDisputes)
+      .where(and(eq(schema.seatDisputes.seatId, seatId), eq(schema.seatDisputes.status, "OPEN")))
+      .limit(1);
+    if (open) return { status: "OPEN" };
+    if (!activeCheckIn) return null;
+
+    const [tied] = await db
+      .select({ resolvedAt: schema.seatDisputes.resolvedAt })
+      .from(schema.seatDisputes)
+      .where(and(eq(schema.seatDisputes.checkInId, activeCheckIn.id), eq(schema.seatDisputes.status, "TIED")))
+      .limit(1);
+    if (tied?.resolvedAt && new Date(activeCheckIn.updatedAt).getTime() <= new Date(tied.resolvedAt).getTime()) {
+      return { status: "TIED" };
+    }
+    return null;
+  }
+
+  /**
    * Live (non-persisted) seat states for a room map read: derives expiry lazily so a stale
    * `seat_current_state` row (not yet swept by the expiration job) never leaks to clients.
    */
   async getLiveSeatStates(
     roomId: string,
     now: Date = new Date(),
-  ): Promise<Map<string, SeatStateChange & { sourceSummary: string }>> {
+  ): Promise<Map<string, SeatStateChange & { sourceSummary: string; dispute: { id: string; closesAt: Date } | null }>> {
     const seatRows = await this.db.select({ id: schema.seats.id }).from(schema.seats).where(and(eq(schema.seats.roomId, roomId), eq(schema.seats.active, true)));
     const seatIds = new Set(seatRows.map((s) => s.id));
 
     const activeCheckIns = await this.db
-      .select({ seatId: schema.checkIns.seatId })
+      .select({ seatId: schema.checkIns.seatId, id: schema.checkIns.id, updatedAt: schema.checkIns.updatedAt })
       .from(schema.checkIns)
       .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE")));
     const checkedInSeats = new Set(activeCheckIns.map((c) => c.seatId));
+    const checkInBySeat = new Map(activeCheckIns.map((c) => [c.seatId, { id: c.id, updatedAt: new Date(c.updatedAt) }]));
+
+    const openDisputes = await this.db
+      .select({ id: schema.seatDisputes.id, seatId: schema.seatDisputes.seatId, closesAt: schema.seatDisputes.closesAt })
+      .from(schema.seatDisputes)
+      .where(and(eq(schema.seatDisputes.roomId, roomId), eq(schema.seatDisputes.status, "OPEN")));
+    const openDisputeBySeat = new Map(openDisputes.map((d) => [d.seatId, d]));
+
+    const tiedDisputes = await this.db
+      .select({ checkInId: schema.seatDisputes.checkInId, resolvedAt: schema.seatDisputes.resolvedAt })
+      .from(schema.seatDisputes)
+      .where(and(eq(schema.seatDisputes.roomId, roomId), eq(schema.seatDisputes.status, "TIED")));
+    const tiedResolvedAtByCheckIn = new Map(
+      tiedDisputes.filter((d): d is { checkInId: string; resolvedAt: Date | null } => d.checkInId != null).map((d) => [d.checkInId, d.resolvedAt]),
+    );
 
     const observationRows = await this.db
       .select({
@@ -179,8 +226,18 @@ export class RoomStateService {
       : [];
     const storedByseat = new Map(storedRows.map((r) => [r.seatId, r]));
 
-    const result = new Map<string, SeatStateChange & { sourceSummary: string }>();
+    const result = new Map<string, SeatStateChange & { sourceSummary: string; dispute: { id: string; closesAt: Date } | null }>();
     for (const seatId of seatIds) {
+      const openDispute = openDisputeBySeat.get(seatId);
+      const checkIn = checkInBySeat.get(seatId);
+      let dispute: { status: "OPEN" | "TIED" } | null = openDispute ? { status: "OPEN" } : null;
+      if (!dispute && checkIn) {
+        const tiedResolvedAt = tiedResolvedAtByCheckIn.get(checkIn.id);
+        if (tiedResolvedAt && checkIn.updatedAt.getTime() <= new Date(tiedResolvedAt).getTime()) {
+          dispute = { status: "TIED" };
+        }
+      }
+
       const live = calculateSeatState({
         hasActiveCheckIn: checkedInSeats.has(seatId),
         observations: (obsBySeat.get(seatId) ?? []).map((o) => ({
@@ -189,6 +246,7 @@ export class RoomStateService {
           weight: o.weight,
           observedAt: new Date(o.observedAt),
         })),
+        dispute,
       });
       const stored = storedByseat.get(seatId);
       const changed = !stored || stored.status !== live.status || stored.confidence !== live.confidence;
@@ -198,6 +256,7 @@ export class RoomStateService {
         confidence: live.confidence,
         sourceSummary: live.sourceSummary,
         lastUpdatedAt: changed ? now : new Date(stored!.lastUpdatedAt),
+        dispute: openDispute ? { id: openDispute.id, closesAt: new Date(openDispute.closesAt) } : null,
       });
     }
     return result;

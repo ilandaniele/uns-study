@@ -104,6 +104,21 @@ describe("calculateSeatState", () => {
     expect(result.confidence).toBe(0.4);
   });
 
+  it("an OPEN dispute overrides an active check-in to UNCERTAIN", () => {
+    const result = calculateSeatState({ hasActiveCheckIn: true, observations: [], dispute: { status: "OPEN" } });
+    expect(result).toEqual({ status: "UNCERTAIN", confidence: 0.5, sourceSummary: "DISPUTE" });
+  });
+
+  it("a TIED dispute keeps the check-in's seat UNCERTAIN at lower confidence", () => {
+    const result = calculateSeatState({ hasActiveCheckIn: true, observations: [], dispute: { status: "TIED" } });
+    expect(result).toEqual({ status: "UNCERTAIN", confidence: 0.4, sourceSummary: "DISPUTE_TIED" });
+  });
+
+  it("a TIED dispute without an active check-in is ignored", () => {
+    const result = calculateSeatState({ hasActiveCheckIn: false, observations: [], dispute: { status: "TIED" } });
+    expect(result.status).toBe("UNKNOWN");
+  });
+
   it("ignores expired observations (caller is expected to pre-filter by expiresAt)", () => {
     // The calculator itself is pure and trusts its input; expiry filtering happens upstream.
     // This test documents that an empty observation list (post-filter) yields UNKNOWN.

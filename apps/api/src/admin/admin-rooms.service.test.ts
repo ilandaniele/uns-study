@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "@uns/database";
-import { freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
+import { buildDisputeService, freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { PresenceService } from "../presence/presence.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
 import { RoomsService } from "../rooms/rooms.service.js";
@@ -29,6 +29,7 @@ describe("AdminRoomsService.stats — Fresh Seat Coverage", () => {
       new SecurityEventService(db, new ReputationService(db)),
       new StudySessionService(db),
       new QrService(db),
+      buildDisputeService(db),
     );
     svc = new AdminRoomsService(db, new RoomsService(db, roomState), roomState);
 

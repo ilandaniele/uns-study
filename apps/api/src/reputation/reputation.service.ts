@@ -23,6 +23,17 @@ export class ReputationService {
       });
   }
 
+  /** Bumps `rejected_observations` by 1 — used when a user loses a seat dispute they opened. */
+  async incrementRejectedObservations(userId: string): Promise<void> {
+    await this.db
+      .insert(schema.userReputation)
+      .values({ userId, rejectedObservations: 1 })
+      .onConflictDoUpdate({
+        target: schema.userReputation.userId,
+        set: { rejectedObservations: sql`${schema.userReputation.rejectedObservations} + 1`, updatedAt: new Date() },
+      });
+  }
+
   /** Reputation-only observation confidence weight (before any QR factor): 0.5 once `spam_score` >= 5, else 1. */
   async observationWeight(userId: string): Promise<number> {
     const [row] = await this.db

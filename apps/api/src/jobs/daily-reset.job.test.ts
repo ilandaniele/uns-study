@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "@uns/database";
 import { schema } from "@uns/database";
 import { eq } from "drizzle-orm";
-import { freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
+import { buildDisputeService, freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { PresenceService } from "../presence/presence.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
@@ -30,7 +30,7 @@ describe("DailyResetJob", () => {
     const presence = new PresenceService();
     const security = new SecurityEventService(db, new ReputationService(db));
     const studySessions = new StudySessionService(db);
-    checkIns = new CheckInService(db, roomState, presence, security, studySessions, new QrService(db));
+    checkIns = new CheckInService(db, roomState, presence, security, studySessions, new QrService(db), buildDisputeService(db));
     const gateway = new RoomRealtimeGateway(roomState, mockAuth);
     job = new DailyResetJob(db, gateway, studySessions);
 

@@ -11,7 +11,15 @@ import { fromNodeHeaders } from "better-auth/node";
 import type { IncomingHttpHeaders } from "node:http";
 import type { Server, Socket } from "socket.io";
 import { z } from "zod";
-import { SocketEvents, type ChatMessageDto, type DirectMessageDto, type RoomSummary, type SeatStateChangedEvent } from "@uns/contracts";
+import {
+  SocketEvents,
+  type ChatMessageDto,
+  type DirectMessageDto,
+  type DisputeChallengedEvent,
+  type RoomSummary,
+  type SeatDisputeLiteDto,
+  type SeatStateChangedEvent,
+} from "@uns/contracts";
 import { AUTH } from "../auth/auth.tokens.js";
 import type { Auth } from "../auth/auth.instance.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
@@ -155,6 +163,23 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
     for (const userId of userIds) {
       this.server?.to(userChannel(userId)).emit(SocketEvents.DmMessageCreated, message);
     }
+  }
+
+  emitDisputeOpened(roomId: string, dispute: SeatDisputeLiteDto): void {
+    this.server?.to(roomChannel(roomId)).emit(SocketEvents.SeatDisputeOpened, dispute);
+  }
+
+  emitDisputeUpdated(roomId: string, dispute: SeatDisputeLiteDto): void {
+    this.server?.to(roomChannel(roomId)).emit(SocketEvents.SeatDisputeUpdated, dispute);
+  }
+
+  emitDisputeResolved(roomId: string, dispute: SeatDisputeLiteDto): void {
+    this.server?.to(roomChannel(roomId)).emit(SocketEvents.SeatDisputeResolved, dispute);
+  }
+
+  /** Notifies the incumbent's private `user:{userId}` channel that their seat is being disputed. */
+  emitDisputeChallenge(incumbentUserId: string, payload: DisputeChallengedEvent): void {
+    this.server?.to(userChannel(incumbentUserId)).emit(SocketEvents.DisputeYouAreChallenged, payload);
   }
 
   /** Forcibly disconnects every live socket for a user — used on SUSPEND/BAN so the session revocation takes effect immediately. */

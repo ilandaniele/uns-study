@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@uns/database";
 import { schema } from "@uns/database";
 import { eq } from "drizzle-orm";
-import { freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
+import { buildDisputeService, freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { PresenceService } from "../presence/presence.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
@@ -35,6 +35,7 @@ describe("ModerationActionService", () => {
       new SecurityEventService(db, new ReputationService(db)),
       new StudySessionService(db),
       new QrService(db),
+      buildDisputeService(db),
     );
     gateway = fakeGateway();
     svc = new ModerationActionService(db, checkIns, gateway);

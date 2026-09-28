@@ -23,6 +23,7 @@ import { AnnouncementsModule } from "./announcements/announcements.module.js";
 import { RankingsModule } from "./rankings/rankings.module.js";
 import { QrModule } from "./qr/qr.module.js";
 import { ReputationModule } from "./reputation/reputation.module.js";
+import { DisputesModule } from "./disputes/disputes.module.js";
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { ReputationModule } from "./reputation/reputation.module.js";
     PresenceModule,
     CheckInsModule,
     ObservationsModule,
+    DisputesModule,
     BlocksModule,
     StorageModule,
     StudyModule,

@@ -17,6 +17,7 @@ export type TableType = "MAIN_TABLE" | "WALL_BAR";
 export const CHECKIN_MINUTES = 60;
 export const FREE_OBS_MINUTES = 15;
 export const OCCUPIED_OBS_MINUTES = 20;
+export const DISPUTE_MINUTES = 5;
 
 // ---- DTOs ----
 
@@ -61,6 +62,8 @@ export interface SeatDto {
   confidence: number;
   lastUpdatedAt: string | null;
   sourceSummary: string | null;
+  /** Present while the seat has an OPEN dispute (vote in progress). */
+  dispute: { id: string; closesAt: string } | null;
 }
 
 export interface RoomMapDto {
@@ -102,6 +105,36 @@ export interface CheckInDto {
   showIdentity: boolean;
 }
 
+// ---- Seat disputes ----
+
+export type DisputeKind = "CLAIM" | "ABSENT" | "SAVED";
+export type DisputeStatus = "OPEN" | "RESOLVED_ABSENT" | "RESOLVED_PRESENT" | "TIED" | "CANCELLED";
+export type DisputeVote = "PRESENT" | "ABSENT";
+
+export interface SeatDisputeDto {
+  id: string;
+  seatId: string;
+  kind: DisputeKind;
+  status: DisputeStatus;
+  openedAt: string;
+  closesAt: string;
+  /** Aggregate vote weights only — voter identities are never exposed. */
+  votes: { present: number; absent: number };
+  myVote: DisputeVote | null;
+  iAmIncumbent: boolean;
+  iAmOpener: boolean;
+}
+
+/** Broadcast on the room channel — never carries `myVote`/`iAm*` (those are viewer-specific). */
+export type SeatDisputeLiteDto = Omit<SeatDisputeDto, "myVote" | "iAmIncumbent" | "iAmOpener">;
+
+export interface DisputeChallengedEvent {
+  disputeId: string;
+  seatId: string;
+  seatCode: string;
+  closesAt: string;
+}
+
 export interface MeDto {
   user: { id: string; name: string; email: string; image: string | null } | null;
   activeCheckIn: CheckInDto | null;
@@ -124,6 +157,10 @@ export const SocketEvents = {
   ChatMessageDeleted: "chat:message-deleted",
   DmMessageCreated: "dm:message-created",
   AnnouncementChanged: "room:announcement-changed",
+  SeatDisputeOpened: "seat:dispute-opened",
+  SeatDisputeUpdated: "seat:dispute-updated",
+  SeatDisputeResolved: "seat:dispute-resolved",
+  DisputeYouAreChallenged: "dispute:you-are-challenged",
 } as const;
 
 export interface SeatStateChangedEvent {
@@ -166,6 +203,28 @@ export const extendRequestSchema = z.object({
   location: locationInputSchema,
 });
 
+export const openDisputeSchema = z.object({
+  roomId: z.string(),
+  seatId: z.string(),
+  kind: z.enum(["CLAIM", "ABSENT", "SAVED"]),
+  location: locationInputSchema,
+});
+
+export const voteDisputeSchema = z.object({
+  vote: z.enum(["PRESENT", "ABSENT"]),
+  location: locationInputSchema,
+});
+
+export const incumbentRespondSchema = z
+  .object({
+    action: z.enum(["STILL_HERE", "LEFT"]),
+    location: locationInputSchema.optional(),
+  })
+  .refine((v) => v.action !== "STILL_HERE" || v.location != null, {
+    message: "location is required for STILL_HERE",
+    path: ["location"],
+  });
+
 export const presenceValidateSchema = z.object({
   roomId: z.string(),
   latitude: z.number().min(-90).max(90),
@@ -192,7 +251,10 @@ export type ApiErrorCode =
   | "DM_NOT_ALLOWED"
   | "RESTRICTED"
   | "STORAGE_UNAVAILABLE"
-  | "INVALID_QR";
+  | "INVALID_QR"
+  | "DISPUTE_NOT_ALLOWED"
+  | "DISPUTE_ALREADY_OPEN"
+  | "DISPUTE_CLOSED";
 
 export interface ApiError {
   error: {

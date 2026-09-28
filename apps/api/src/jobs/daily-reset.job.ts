@@ -78,6 +78,12 @@ export class DailyResetJob {
         .set({ expiresAt: now, updatedAt: now })
         .where(eq(schema.seatObservations.roomId, roomId));
 
+      // Daily reset cancels any dispute still voting — it never resolves as absent/present here.
+      await tx
+        .update(schema.seatDisputes)
+        .set({ status: "CANCELLED", resolvedAt: now })
+        .where(and(eq(schema.seatDisputes.roomId, roomId), eq(schema.seatDisputes.status, "OPEN")));
+
       for (const seat of seatRows) {
         await tx
           .insert(schema.seatCurrentState)
