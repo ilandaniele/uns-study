@@ -5,7 +5,7 @@ import type { CheckInDto, MyProfileDto, PrivacySettingsDto, PublicProfileDto, up
 import type { z } from "zod";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
-import { displayName } from "../users/display-name.js";
+import { displayName, visibleAvatarUrl } from "../users/display-name.js";
 import { StudyService } from "../study/study.service.js";
 import { toDto as toCheckInDto } from "../checkins/checkins.service.js";
 
@@ -98,7 +98,7 @@ export class ProfilesService {
       displayName: name,
       // `bio` has no dedicated privacy flag — it rides along with the chosen identity mode: fully
       // hidden profiles (the default) never leak it.
-      avatarUrl: privacy?.showAvatar ? (profile?.avatarUrl ?? null) : null,
+      avatarUrl: visibleAvatarUrl(profile ?? null, privacy ?? null),
       career: privacy?.showCareer ? (profile?.career ?? null) : null,
       currentSubject: privacy?.showCurrentSubject ? (profile?.currentSubject ?? null) : null,
       bio: identityMode !== "HIDDEN" ? (profile?.bio ?? null) : null,

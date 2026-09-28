@@ -63,8 +63,13 @@ async function bootstrap() {
   // since it only re-parses a request whose body hasn't already been consumed).
   const PHOTO_ROUTE = /^\/api\/v1\/checkins\/[^/]+\/photo$/;
   const photoJsonParser = express.json({ limit: "3mb" });
+  // The avatar upload body carries a base64 image (≤300KB decoded, ~400KB encoded) — same idea,
+  // smaller limit.
+  const AVATAR_ROUTE = /^\/api\/v1\/profiles\/me\/avatar$/;
+  const avatarJsonParser = express.json({ limit: "1mb" });
   httpAdapter.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (req.method === "POST" && PHOTO_ROUTE.test(req.path)) return photoJsonParser(req, res, next);
+    if (req.method === "POST" && AVATAR_ROUTE.test(req.path)) return avatarJsonParser(req, res, next);
     next();
   });
   app.use(express.json());

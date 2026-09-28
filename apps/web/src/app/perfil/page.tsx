@@ -3,6 +3,7 @@
 import type { PublicProfileDto } from "@uns/contracts";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { AvatarUploader } from "@/features/profile/AvatarUploader";
 import { DeleteAccountDialog } from "@/features/profile/DeleteAccountDialog";
 import { PrivacyToggles } from "@/features/profile/PrivacyToggles";
 import { ProfileForm } from "@/features/profile/ProfileForm";
@@ -16,7 +17,7 @@ const ROOM_SLUG = "principal";
 export default function PerfilPage() {
   const router = useRouter();
   const { data: session, isPending: sessionPending } = useSession();
-  const { profile, privacy, loading, error, saving, saveProfile, savePrivacy } = useMyProfile();
+  const { profile, privacy, loading, error, saving, saveProfile, savePrivacy, setLocalAvatarUrl } = useMyProfile();
   const [studyStatus, setStudyStatus] = useState<PublicProfileDto["studyStatus"]>(null);
   const [roomId, setRoomId] = useState<string | null>(null);
   const [showDelete, setShowDelete] = useState(false);
@@ -56,6 +57,18 @@ export default function PerfilPage() {
         <h1 className="font-display text-xl font-semibold text-main">Perfil</h1>
         <p className="text-sm text-muted">{profile.email}</p>
       </div>
+
+      <section className="rounded-[14px] border border-app bg-surface p-4">
+        <h2 className="mb-3 font-display text-base font-semibold text-main">Foto de perfil</h2>
+        <AvatarUploader
+          avatarUrl={profile.avatarUrl}
+          displayName={session.user.name || profile.nickname || profile.firstName || "?"}
+          googleImage={session.user.image ?? null}
+          showAvatar={privacy.showAvatar}
+          onAvatarUrlChange={setLocalAvatarUrl}
+          onEnableShowAvatar={() => void savePrivacy({ showAvatar: true })}
+        />
+      </section>
 
       <section className="rounded-[14px] border border-app bg-surface p-4">
         <h2 className="mb-3 font-display text-base font-semibold text-main">Tu perfil</h2>

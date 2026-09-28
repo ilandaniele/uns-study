@@ -3,7 +3,7 @@ import { and, eq, notInArray, or } from "drizzle-orm";
 import { schema, type Db } from "@uns/database";
 import type { RoomPersonDto, SeatOccupantDto } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
-import { displayName, type DisplayNameProfile } from "../users/display-name.js";
+import { displayName, visibleAvatarUrl, type DisplayNameProfile } from "../users/display-name.js";
 import { toStudyStatusDto } from "./study.service.js";
 
 function profileForDisplay(profile: typeof schema.userProfiles.$inferSelect | null): DisplayNameProfile | null {
@@ -67,7 +67,7 @@ export class RoomPeopleService {
     return rows.map((r) => ({
       userId: r.userId,
       displayName: displayName(profileForDisplay(r.profile), null, r.userName),
-      avatarUrl: r.privacy.showAvatar ? (r.profile?.avatarUrl ?? null) : null,
+      avatarUrl: visibleAvatarUrl(r.profile ?? null, r.privacy),
       career: r.privacy.showCareer ? (r.profile?.career ?? null) : null,
       seatCode: r.checkIn?.showIdentity && r.privacy.showSeat ? (r.seatCode ?? null) : null,
       studyStatus: r.study ? toStudyStatusDto(r.study) : null,
@@ -101,7 +101,7 @@ export class RoomPeopleService {
       seatId: r.seatId,
       userId: r.userId,
       displayName: displayName(profileForDisplay(r.profile), null, r.userName),
-      avatarUrl: r.privacy.showAvatar ? (r.profile?.avatarUrl ?? null) : null,
+      avatarUrl: visibleAvatarUrl(r.profile ?? null, r.privacy),
     }));
   }
 }

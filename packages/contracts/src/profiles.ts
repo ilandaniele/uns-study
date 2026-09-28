@@ -116,3 +116,10 @@ export const updateCheckInIdentitySchema = z.object({
 export const deleteAccountSchema = z.object({
   confirm: z.literal("ELIMINAR"),
 });
+
+export type AvatarMimeType = "image/jpeg" | "image/webp" | "image/png";
+
+export const uploadAvatarSchema = z.object({
+  mimeType: z.enum(["image/jpeg", "image/webp", "image/png"]),
+  base64: z.string().min(1),
+});

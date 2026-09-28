@@ -17,6 +17,9 @@ export interface UseMyProfileResult {
   saving: boolean;
   saveProfile: (patch: ProfilePatch) => Promise<boolean>;
   savePrivacy: (patch: PrivacyPatch) => Promise<boolean>;
+  /** Updates only the local `avatarUrl` — the avatar endpoints (`/profiles/me/avatar*`) already
+   *  persisted it server-side; `updateProfileSchema` can't carry it (https-only, manual URLs only). */
+  setLocalAvatarUrl: (avatarUrl: string | null) => void;
 }
 
 /** Loads and edits the caller's own profile + privacy settings (`/profiles/me`, `/profiles/me/privacy`). */
@@ -74,5 +77,9 @@ export function useMyProfile(): UseMyProfileResult {
     }
   }, []);
 
-  return { profile, privacy, loading, error, saving, saveProfile, savePrivacy };
+  const setLocalAvatarUrl = useCallback((avatarUrl: string | null) => {
+    setProfile((prev) => (prev ? { ...prev, avatarUrl } : prev));
+  }, []);
+
+  return { profile, privacy, loading, error, saving, saveProfile, savePrivacy, setLocalAvatarUrl };
 }
