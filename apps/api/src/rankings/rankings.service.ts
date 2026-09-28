@@ -7,6 +7,7 @@ import type { RankingCategory, RankingDto, RankingEntryDto, RankingPeriod } from
 import { DB } from "../database/database.module.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { displayName, visibleAvatarUrl } from "../users/display-name.js";
+import { AliasService } from "../users/alias.service.js";
 
 const STUDY_TIME_DAILY_CAP_MIN = 720;
 const CONTRIBUTION_OBSERVATION_DAILY_CAP = 20;
@@ -97,6 +98,7 @@ export class RankingsService {
   constructor(
     @Inject(DB) private readonly db: Db,
     @Inject(RoomsService) private readonly rooms: RoomsService,
+    @Inject(AliasService) private readonly aliases: AliasService,
   ) {}
 
   async getRankings(
@@ -153,13 +155,16 @@ export class RankingsService {
 
     const profiles = await this.db.select().from(schema.userProfiles).where(inArray(schema.userProfiles.userId, userIds));
     const privacyRows = await this.db.select().from(schema.userPrivacySettings).where(inArray(schema.userPrivacySettings.userId, userIds));
-    const profileByUser = new Map(profiles.map((p) => [p.userId, p]));
+    const aliasByUser = await this.aliases.ensureAliasesForProfiles(profiles);
+    const profileByUser = new Map(profiles.map((p) => [p.userId, { ...p, alias: aliasByUser.get(p.userId) ?? p.alias }]));
     const privacyByUser = new Map(privacyRows.map((p) => [p.userId, p]));
 
     for (const userId of userIds) {
       const profile = profileByUser.get(userId) ?? null;
       const privacy = privacyByUser.get(userId) ?? null;
-      const visible = Boolean(privacy?.showInRoom) || Boolean(profile && profile.identityMode !== "HIDDEN");
+      // A profile row (even HIDDEN) is now visible under its alias — only a user with no profile
+      // at all, and no `showInRoom` opt-in, stays fully out of the list.
+      const visible = Boolean(privacy?.showInRoom) || Boolean(profile);
       result.set(userId, {
         visible,
         displayName: displayName(profile, privacy, "Usuario anónimo"),

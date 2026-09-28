@@ -5,7 +5,8 @@ import type { CheckInDto, MyProfileDto, PrivacySettingsDto, PublicProfileDto, up
 import type { z } from "zod";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
-import { displayName, visibleAvatarUrl } from "../users/display-name.js";
+import { displayName, needsAlias, visibleAvatarUrl } from "../users/display-name.js";
+import { AliasService } from "../users/alias.service.js";
 import { StudyService } from "../study/study.service.js";
 import { toDto as toCheckInDto } from "../checkins/checkins.service.js";
 
@@ -19,13 +20,19 @@ export class ProfilesService {
   constructor(
     @Inject(DB) private readonly db: Db,
     @Inject(StudyService) private readonly study: StudyService,
+    @Inject(AliasService) private readonly aliases: AliasService,
   ) {}
 
-  /** Rows are created lazily on first read/write — there's no signup-time profile step. */
+  /** Rows are created lazily on first read/write — there's no signup-time profile step. Also
+   *  backfills a missing alias whenever `displayName` would currently need one (HIDDEN by default
+   *  for brand-new rows, or old rows never touched since the alias feature shipped). */
   private async ensureProfile(userId: string): Promise<ProfileRow> {
     await this.db.insert(schema.userProfiles).values({ userId }).onConflictDoNothing();
     const [row] = await this.db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, userId)).limit(1);
     if (!row) throw new Error("user_profiles row missing after upsert");
+    if (!row.alias && needsAlias(row)) {
+      row.alias = await this.aliases.ensureAlias(userId);
+    }
     return row;
   }
 
@@ -48,7 +55,24 @@ export class ProfilesService {
       .where(eq(schema.userProfiles.userId, userId))
       .returning();
     if (!row) throw new Error("user_profiles row vanished during update");
+
+    // The saved fields may have just made a HIDDEN->visible (or vice versa) switch take effect:
+    // release the alias once it's no longer needed, or assign one now that it is.
+    if (needsAlias(row) && !row.alias) {
+      row.alias = await this.aliases.ensureAlias(userId);
+    } else if (!needsAlias(row) && row.alias) {
+      await this.aliases.releaseAlias(userId);
+      row.alias = null;
+    }
     return toMyProfileDto(row, email);
+  }
+
+  /** Generates a fresh random alias, releasing the previous one. Only allowed while HIDDEN — a
+   *  visible identity doesn't have (or need) one. Rate-limited by the controller. */
+  async rerollAlias(userId: string): Promise<string> {
+    const profile = await this.ensureProfile(userId);
+    if (profile.identityMode !== "HIDDEN") throw ApiErrors.validation("Sólo podés cambiar tu apodo mientras tu identidad está oculta.");
+    return this.aliases.reroll(userId);
   }
 
   async getMyPrivacy(userId: string): Promise<PrivacySettingsDto> {
@@ -146,6 +170,7 @@ function toMyProfileDto(row: ProfileRow, email: string): MyProfileDto {
     instagram: row.instagram,
     studentNumber: row.studentNumber,
     identityMode: row.identityMode,
+    alias: row.alias,
   };
 }
 

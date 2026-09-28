@@ -4,6 +4,7 @@ import { schema } from "@uns/database";
 import { freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
+import { AliasService } from "../users/alias.service.js";
 import { RankingsService } from "./rankings.service.js";
 
 // Buenos Aires is UTC-3 with no DST: 15:00Z is always mid-afternoon local, well clear of midnight.
@@ -19,7 +20,7 @@ describe("RankingsService", () => {
   beforeEach(async () => {
     db = await freshDb();
     const roomsService = new RoomsService(db, new RoomStateService(db));
-    svc = new RankingsService(db, roomsService);
+    svc = new RankingsService(db, roomsService, new AliasService(db));
     const room = await getRoom(db);
     roomId = room.id;
     roomSlug = room.slug;
@@ -123,5 +124,17 @@ describe("RankingsService", () => {
     const asSelf = await svc.getRankings(roomSlug, "today", "study_time", "u5", TODAY);
     expect(asSelf.entries).toHaveLength(0);
     expect(asSelf.me).toEqual({ rank: 0, userId: "u5", displayName: "Usuario anónimo", avatarUrl: null, value: 60 });
+  });
+
+  it("includes a HIDDEN user (with a profile row) under their random alias instead of excluding them", async () => {
+    await insertUsers(db, ["u6"]);
+    await db.insert(schema.userProfiles).values({ userId: "u6" }); // default identityMode: HIDDEN
+    await insertStudySession("u6", "2026-01-15", 45, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+    const ranking = await svc.getRankings(roomSlug, "today", "study_time", null, TODAY);
+    expect(ranking.entries).toHaveLength(1);
+    expect(ranking.entries[0]?.userId).toBe("u6");
+    expect(ranking.entries[0]?.displayName).not.toBe("Usuario anónimo");
+    expect(ranking.entries[0]?.displayName).toMatch(/^\S+ \S+$/); // "Noun Adjective"
   });
 });

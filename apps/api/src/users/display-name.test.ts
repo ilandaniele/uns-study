@@ -38,4 +38,16 @@ describe("displayName", () => {
       displayName(profile({ identityMode: "NICKNAME_AND_NAME", nickname: "Mafe", firstName: "María" }), null, "x"),
     ).toBe("Mafe (María)");
   });
+
+  it("HIDDEN with an assigned alias returns the alias instead of 'Usuario anónimo'", () => {
+    expect(displayName(profile({ identityMode: "HIDDEN", alias: "Carpincho Estudioso" }), null, "x")).toBe("Carpincho Estudioso");
+  });
+
+  it("a visible mode with empty chosen fields also falls back to the alias when present", () => {
+    expect(displayName(profile({ identityMode: "FIRST_NAME", alias: "Mate Filosófico" }), null, "x")).toBe("Mate Filosófico");
+  });
+
+  it("falls back to 'Usuario anónimo' when hidden and no alias was assigned yet", () => {
+    expect(displayName(profile({ identityMode: "HIDDEN", alias: null }), null, "x")).toBe("Usuario anónimo");
+  });
 });

@@ -4,6 +4,7 @@ import { schema, type Db } from "@uns/database";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { displayName, visibleAvatarUrl } from "../users/display-name.js";
+import { AliasService } from "../users/alias.service.js";
 
 export interface BlockedUserDto {
   userId: string;
@@ -15,7 +16,10 @@ export interface BlockedUserDto {
 /** Blocking is one-directional per row; several helpers combine both directions for interaction checks. */
 @Injectable()
 export class BlocksService {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(
+    @Inject(DB) private readonly db: Db,
+    @Inject(AliasService) private readonly aliases: AliasService,
+  ) {}
 
   async block(blockerId: string, blockedId: string): Promise<void> {
     if (blockerId === blockedId) throw ApiErrors.validation("No podés bloquearte a vos mismo.");
@@ -68,12 +72,17 @@ export class BlocksService {
       .from(schema.userPrivacySettings)
       .where(inArray(schema.userPrivacySettings.userId, rows.map((r) => r.blockedId)));
     const privacyByUser = new Map(privacyRows.map((p) => [p.userId, p]));
+    const profiles = rows.map((r) => r.profile).filter((p): p is NonNullable<typeof p> => p !== null);
+    const aliasByUser = await this.aliases.ensureAliasesForProfiles(profiles);
 
-    return rows.map((r) => ({
-      userId: r.blockedId,
-      displayName: displayName(r.profile, privacyByUser.get(r.blockedId) ?? null, r.name),
-      avatarUrl: visibleAvatarUrl(r.profile, privacyByUser.get(r.blockedId) ?? null),
-      blockedAt: r.createdAt.toISOString(),
-    }));
+    return rows.map((r) => {
+      const profile = r.profile ? { ...r.profile, alias: aliasByUser.get(r.blockedId) ?? r.profile.alias } : null;
+      return {
+        userId: r.blockedId,
+        displayName: displayName(profile, privacyByUser.get(r.blockedId) ?? null, r.name),
+        avatarUrl: visibleAvatarUrl(profile, privacyByUser.get(r.blockedId) ?? null),
+        blockedAt: r.createdAt.toISOString(),
+      };
+    });
   }
 }

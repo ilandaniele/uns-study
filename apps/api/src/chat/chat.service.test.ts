@@ -8,6 +8,7 @@ import { RolesService } from "../users/roles.service.js";
 import { BlocksService } from "../blocks/blocks.service.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
+import { AliasService } from "../users/alias.service.js";
 import { ChatService } from "./chat.service.js";
 
 async function build(db: Db) {
@@ -15,8 +16,9 @@ async function build(db: Db) {
   const rooms = new RoomsService(db, roomState);
   const restrictions = new RestrictionService(db);
   const roles = new RolesService(db);
-  const blocks = new BlocksService(db);
-  return new ChatService(db, rooms, restrictions, roles, blocks);
+  const aliases = new AliasService(db);
+  const blocks = new BlocksService(db, aliases);
+  return new ChatService(db, rooms, restrictions, roles, blocks, aliases);
 }
 
 describe("ChatService", () => {

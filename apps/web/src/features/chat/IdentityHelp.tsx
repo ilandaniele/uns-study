@@ -24,7 +24,7 @@ export function IdentityHelp({ variant = "inline" }: { variant?: "inline" | "sid
   const open = sidebar || (toggled ?? false);
 
   const title = anonymous
-    ? "Estás apareciendo como “Usuario anónimo”"
+    ? `Estás apareciendo como “${profile.alias ?? "Usuario anónimo"}”`
     : "Tu foto no se muestra en el chat";
 
   return (

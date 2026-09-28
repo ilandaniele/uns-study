@@ -1,26 +1,34 @@
-import { boolean, integer, pgEnum, pgTable, primaryKey, real, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, integer, pgEnum, pgTable, primaryKey, real, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { user } from "./auth.js";
 
 export const identityModeEnum = pgEnum("identity_mode", ["FULL_NAME", "FIRST_NAME", "NICKNAME", "NICKNAME_AND_NAME", "HIDDEN"]);
 export const userRoleEnum = pgEnum("user_role", ["ADMIN", "MODERATOR"]);
 
-export const userProfiles = pgTable("user_profiles", {
-  userId: text("user_id")
-    .primaryKey()
-    .references(() => user.id, { onDelete: "cascade" }),
-  firstName: text("first_name"),
-  lastName: text("last_name"),
-  nickname: text("nickname"),
-  avatarUrl: text("avatar_url"),
-  career: text("career"),
-  currentSubject: text("current_subject"),
-  bio: text("bio"),
-  instagram: text("instagram"),
-  studentNumber: text("student_number"),
-  identityMode: identityModeEnum("identity_mode").notNull().default("HIDDEN"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const userProfiles = pgTable(
+  "user_profiles",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => user.id, { onDelete: "cascade" }),
+    firstName: text("first_name"),
+    lastName: text("last_name"),
+    nickname: text("nickname"),
+    avatarUrl: text("avatar_url"),
+    career: text("career"),
+    currentSubject: text("current_subject"),
+    bio: text("bio"),
+    instagram: text("instagram"),
+    studentNumber: text("student_number"),
+    identityMode: identityModeEnum("identity_mode").notNull().default("HIDDEN"),
+    // Fun random Spanish alias shown instead of "Usuario anónimo" while hidden. NULL when the user
+    // doesn't currently need one (visible identity with a non-empty name) — freed for reuse.
+    alias: text("alias"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("user_profiles_alias_lower_unique").on(sql`lower(${table.alias})`)],
+);
 
 export const userPrivacySettings = pgTable("user_privacy_settings", {
   userId: text("user_id")

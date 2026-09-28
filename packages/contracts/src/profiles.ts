@@ -15,6 +15,8 @@ export interface MyProfileDto {
   instagram: string | null;
   studentNumber: string | null;
   identityMode: IdentityMode;
+  /** Fun random alias shown instead of "Usuario anónimo" while `identityMode` is HIDDEN; `null` otherwise. */
+  alias: string | null;
 }
 
 export interface PrivacySettingsDto {

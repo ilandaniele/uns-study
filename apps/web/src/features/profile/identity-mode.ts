@@ -21,7 +21,7 @@ export function identityModeLabel(mode: IdentityMode): string {
 /** Short helper text shown under the selected identity mode. */
 export function identityModeHint(mode: IdentityMode): string {
   if (mode === "HIDDEN") {
-    return "Tu actividad en la sala aparece sin ningún nombre asociado.";
+    return "Aparecés con un apodo divertido al azar, sin tu nombre.";
   }
   return "Este es el nombre que verán otras personas registradas cuando decidas mostrarte.";
 }

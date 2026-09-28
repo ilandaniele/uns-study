@@ -12,6 +12,7 @@ import { QrService } from "../qr/qr.service.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
 import { StudyService } from "../study/study.service.js";
 import { RestrictionService } from "../users/restriction.service.js";
+import { AliasService } from "../users/alias.service.js";
 import { ProfilesService } from "./profiles.service.js";
 
 async function build(db: Db) {
@@ -20,7 +21,8 @@ async function build(db: Db) {
   const security = new SecurityEventService(db, new ReputationService(db));
   const checkIns = new CheckInService(db, roomState, presence, security, new StudySessionService(db), new QrService(db), buildDisputeService(db));
   const study = new StudyService(db, new RestrictionService(db));
-  const profiles = new ProfilesService(db, study);
+  const aliases = new AliasService(db);
+  const profiles = new ProfilesService(db, study, aliases);
   return { profiles, checkIns, study };
 }
 
@@ -43,10 +45,11 @@ describe("ProfilesService", () => {
   });
 
   describe("getMyProfile / getMyPrivacy", () => {
-    it("auto-creates rows on first read, defaulting to hidden/private", async () => {
+    it("auto-creates rows on first read, defaulting to hidden/private, with a fun alias assigned", async () => {
       const profile = await profiles.getMyProfile("u1", "u1@example.test");
       expect(profile.identityMode).toBe("HIDDEN");
       expect(profile.firstName).toBeNull();
+      expect(profile.alias).toMatch(/^\S+ \S+$/); // "Noun Adjective"
 
       const privacy = await profiles.getMyPrivacy("u1");
       expect(privacy.showInRoom).toBe(false);
@@ -64,6 +67,38 @@ describe("ProfilesService", () => {
       const privacy = await profiles.updateMyPrivacy("u1", { showInRoom: true, showAvatar: true });
       expect(privacy.showInRoom).toBe(true);
       expect(privacy.showAvatar).toBe(true);
+    });
+
+    it("releases the alias once the caller switches to a visible identity with a non-empty name", async () => {
+      const hidden = await profiles.getMyProfile("u1", "u1@example.test");
+      expect(hidden.alias).not.toBeNull();
+
+      const visible = await profiles.updateMyProfile("u1", "u1@example.test", { firstName: "Ana", identityMode: "FIRST_NAME" });
+      expect(visible.alias).toBeNull();
+
+      const [row] = await db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, "u1"));
+      expect(row?.alias).toBeNull();
+    });
+
+    it("re-assigns an alias when switching back to HIDDEN", async () => {
+      await profiles.updateMyProfile("u1", "u1@example.test", { firstName: "Ana", identityMode: "FIRST_NAME" });
+      const backToHidden = await profiles.updateMyProfile("u1", "u1@example.test", { identityMode: "HIDDEN" });
+      expect(backToHidden.alias).not.toBeNull();
+    });
+  });
+
+  describe("rerollAlias", () => {
+    it("assigns a different alias while HIDDEN", async () => {
+      await profiles.getMyProfile("u1", "u1@example.test");
+      const rerolled = await profiles.rerollAlias("u1");
+      expect(rerolled).toBeTruthy();
+      const after = await profiles.getMyProfile("u1", "u1@example.test");
+      expect(after.alias).toBe(rerolled);
+    });
+
+    it("rejects when the caller isn't HIDDEN", async () => {
+      await profiles.updateMyProfile("u1", "u1@example.test", { firstName: "Ana", identityMode: "FIRST_NAME" });
+      await expect(profiles.rerollAlias("u1")).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
     });
   });
 

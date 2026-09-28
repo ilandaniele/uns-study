@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "@uns/database";
 import { schema } from "@uns/database";
 import { freshDb, insertUsers } from "../test-utils.js";
+import { AliasService } from "../users/alias.service.js";
 import { BlocksService } from "./blocks.service.js";
 
 describe("BlocksService", () => {
@@ -10,7 +11,7 @@ describe("BlocksService", () => {
 
   beforeEach(async () => {
     db = await freshDb();
-    svc = new BlocksService(db);
+    svc = new BlocksService(db, new AliasService(db));
     await insertUsers(db, ["u1", "u2", "u3"]);
   });
 

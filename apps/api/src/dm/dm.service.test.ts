@@ -3,13 +3,15 @@ import type { Db } from "@uns/database";
 import { schema } from "@uns/database";
 import { freshDb, insertUsers } from "../test-utils.js";
 import { RestrictionService } from "../users/restriction.service.js";
+import { AliasService } from "../users/alias.service.js";
 import { BlocksService } from "../blocks/blocks.service.js";
 import { DmService } from "./dm.service.js";
 
 async function build(db: Db) {
   const restrictions = new RestrictionService(db);
-  const blocks = new BlocksService(db);
-  return new DmService(db, restrictions, blocks);
+  const aliases = new AliasService(db);
+  const blocks = new BlocksService(db, aliases);
+  return new DmService(db, restrictions, blocks, aliases);
 }
 
 describe("DmService", () => {

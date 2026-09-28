@@ -1,6 +1,7 @@
 "use client";
 
 import type { MyProfileDto } from "@uns/contracts";
+import { ShuffleIcon } from "@phosphor-icons/react/dist/ssr";
 import type { FormEvent, ReactNode } from "react";
 import { useState } from "react";
 import type { ProfilePatch } from "./useMyProfile";
@@ -10,10 +11,11 @@ export interface ProfileFormProps {
   profile: MyProfileDto;
   saving: boolean;
   onSave: (patch: ProfilePatch) => Promise<boolean>;
+  onRerollAlias: () => Promise<string | null>;
 }
 
 /** "Editar perfil" form: name/nickname/career/bio/instagram/legajo + identity-mode selector. */
-export function ProfileForm({ profile, saving, onSave }: ProfileFormProps) {
+export function ProfileForm({ profile, saving, onSave, onRerollAlias }: ProfileFormProps) {
   const [firstName, setFirstName] = useState(profile.firstName ?? "");
   const [lastName, setLastName] = useState(profile.lastName ?? "");
   const [nickname, setNickname] = useState(profile.nickname ?? "");
@@ -24,6 +26,13 @@ export function ProfileForm({ profile, saving, onSave }: ProfileFormProps) {
   const [studentNumber, setStudentNumber] = useState(profile.studentNumber ?? "");
   const [identityMode, setIdentityMode] = useState(profile.identityMode);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [rerolling, setRerolling] = useState(false);
+
+  async function handleReroll() {
+    setRerolling(true);
+    await onRerollAlias();
+    setRerolling(false);
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -82,6 +91,23 @@ export function ProfileForm({ profile, saving, onSave }: ProfileFormProps) {
         </select>
         <p className="mt-1 text-xs text-muted">{identityModeHint(identityMode)}</p>
       </Field>
+
+      {identityMode === "HIDDEN" ? (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-app bg-surface px-3 py-2">
+          <span className="text-sm text-main">
+            Te ven como: <span className="font-semibold">{profile.alias ?? "Usuario anónimo"}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => void handleReroll()}
+            disabled={rerolling}
+            className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-app px-3 text-xs font-semibold text-main disabled:opacity-50"
+          >
+            <ShuffleIcon size={14} aria-hidden="true" />
+            Otro nombre
+          </button>
+        </div>
+      ) : null}
 
       <div className="flex items-center gap-3">
         <button

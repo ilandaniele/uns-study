@@ -9,6 +9,7 @@ import { RolesService } from "../users/roles.service.js";
 import { BlocksService } from "../blocks/blocks.service.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { displayName, visibleAvatarUrl } from "../users/display-name.js";
+import { AliasService } from "../users/alias.service.js";
 
 const PAGE_SIZE = 50;
 
@@ -20,6 +21,7 @@ export class ChatService {
     @Inject(RestrictionService) private readonly restrictions: RestrictionService,
     @Inject(RolesService) private readonly roles: RolesService,
     @Inject(BlocksService) private readonly blocks: BlocksService,
+    @Inject(AliasService) private readonly aliases: AliasService,
   ) {}
 
   /** Every seeded room has exactly one chat room row; this picks the first one for `idOrSlug`. */
@@ -101,9 +103,10 @@ export class ChatService {
     const users = await this.db.select().from(schema.user).where(inArray(schema.user.id, userIds));
     const profiles = await this.db.select().from(schema.userProfiles).where(inArray(schema.userProfiles.userId, userIds));
     const privacy = await this.db.select().from(schema.userPrivacySettings).where(inArray(schema.userPrivacySettings.userId, userIds));
+    const aliasByUser = await this.aliases.ensureAliasesForProfiles(profiles);
 
     const userById = new Map(users.map((u) => [u.id, u]));
-    const profileById = new Map(profiles.map((p) => [p.userId, p]));
+    const profileById = new Map(profiles.map((p) => [p.userId, { ...p, alias: aliasByUser.get(p.userId) ?? p.alias }]));
     const privacyById = new Map(privacy.map((p) => [p.userId, p]));
 
     return rows.map((row) => {

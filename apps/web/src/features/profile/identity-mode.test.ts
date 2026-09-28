@@ -13,8 +13,8 @@ describe("identityModeLabel", () => {
 });
 
 describe("identityModeHint", () => {
-  it("warns that hidden mode shows no name at all", () => {
-    expect(identityModeHint("HIDDEN")).toMatch(/sin ningún nombre/i);
+  it("explains that hidden mode shows a random alias instead of your name", () => {
+    expect(identityModeHint("HIDDEN")).toMatch(/apodo/i);
   });
 
   it("gives the generic hint for visible modes", () => {

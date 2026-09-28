@@ -7,6 +7,7 @@ import { ApiErrors } from "../common/api-error.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { BlocksService } from "../blocks/blocks.service.js";
 import { displayName, visibleAvatarUrl } from "../users/display-name.js";
+import { AliasService } from "../users/alias.service.js";
 
 const PAGE_SIZE = 50;
 
@@ -18,6 +19,7 @@ export class DmService {
     @Inject(DB) private readonly db: Db,
     @Inject(RestrictionService) private readonly restrictions: RestrictionService,
     @Inject(BlocksService) private readonly blocks: BlocksService,
+    @Inject(AliasService) private readonly aliases: AliasService,
   ) {}
 
   /** `direct_conversations` enforces `user_a < user_b`; this returns the pair in that order. */
@@ -152,7 +154,8 @@ export class DmService {
     const otherId = this.otherUserId(conversation, viewerId);
 
     const [otherUser] = await this.db.select().from(schema.user).where(eq(schema.user.id, otherId));
-    const [profile] = await this.db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, otherId));
+    const [profileRow] = await this.db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, otherId));
+    const profile = await this.aliases.withAlias(profileRow);
     const [privacy] = await this.db.select().from(schema.userPrivacySettings).where(eq(schema.userPrivacySettings.userId, otherId));
 
     const [lastMessageRow] = await this.db

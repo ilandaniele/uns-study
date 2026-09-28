@@ -17,7 +17,7 @@ const ROOM_SLUG = "principal";
 export default function PerfilPage() {
   const router = useRouter();
   const { data: session, isPending: sessionPending } = useSession();
-  const { profile, privacy, loading, error, saving, saveProfile, savePrivacy, setLocalAvatarUrl } = useMyProfile();
+  const { profile, privacy, loading, error, saving, saveProfile, savePrivacy, setLocalAvatarUrl, rerollAlias } = useMyProfile();
   const [studyStatus, setStudyStatus] = useState<PublicProfileDto["studyStatus"]>(null);
   const [roomId, setRoomId] = useState<string | null>(null);
   const [showDelete, setShowDelete] = useState(false);
@@ -72,7 +72,7 @@ export default function PerfilPage() {
 
       <section className="rounded-[14px] border border-app bg-surface p-4">
         <h2 className="mb-3 font-display text-base font-semibold text-main">Tu perfil</h2>
-        <ProfileForm profile={profile} saving={saving} onSave={saveProfile} />
+        <ProfileForm profile={profile} saving={saving} onSave={saveProfile} onRerollAlias={rerollAlias} />
       </section>
 
       <section className="rounded-[14px] border border-app bg-surface p-4">
