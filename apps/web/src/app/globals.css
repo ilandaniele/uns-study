@@ -250,9 +250,14 @@ input:focus-visible,
 .seat-pulse-mine {
   animation: seat-pulse 1.8s ease-in-out infinite;
 }
+/* Amber ring on a seat with an open dispute (vote in progress). */
+.seat-pulse-dispute {
+  animation: seat-pulse 1.4s ease-in-out infinite;
+}
 @media (prefers-reduced-motion: reduce) {
   .seat-glow-free,
-  .seat-pulse-mine {
+  .seat-pulse-mine,
+  .seat-pulse-dispute {
     animation: none;
   }
 }

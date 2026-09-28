@@ -50,7 +50,8 @@ export interface SeatProps {
 export function Seat({ seat, tableLabel, tableType, facing, isMySeat, isSelected, onSelect }: SeatProps) {
   const visualStatus = isMySeat ? "MY_SEAT" : seat.status;
   const kind = tableType === "WALL_BAR" ? "Barra" : "Mesa";
-  const ariaLabel = `${kind} ${tableLabel} asiento ${seat.seatNumber}: ${statusLabel(seat.status).toLowerCase()}${isMySeat ? " (tu lugar)" : ""}`;
+  const hasOpenDispute = seat.dispute !== null;
+  const ariaLabel = `${kind} ${tableLabel} asiento ${seat.seatNumber}: ${statusLabel(seat.status).toLowerCase()}${isMySeat ? " (tu lugar)" : ""}${hasOpenDispute ? " (en votación)" : ""}`;
   const isStool = tableType === "WALL_BAR";
   const backY = facing === "up" ? -(BACK_GAP + BACK_THICKNESS) : BACK_GAP;
 
@@ -82,6 +83,15 @@ export function Seat({ seat, tableLabel, tableType, facing, isMySeat, isSelected
       ) : null}
       {isSelected ? (
         <circle r={(isStool ? STOOL_RADIUS : SEAT_SIZE / 2) + 5} fill="none" stroke="var(--primary)" strokeWidth={3} />
+      ) : null}
+      {hasOpenDispute ? (
+        <circle
+          r={(isStool ? STOOL_RADIUS : SEAT_SIZE / 2) + 9}
+          fill="none"
+          stroke="var(--seat-uncertain)"
+          strokeWidth={2}
+          className="seat-pulse-dispute"
+        />
       ) : null}
 
       <g className={visualStatus === "FREE" ? "seat-glow-free" : undefined}>

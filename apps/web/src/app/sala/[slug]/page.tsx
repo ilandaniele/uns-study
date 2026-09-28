@@ -8,14 +8,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { TransformComponent, TransformWrapper, type ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
 import { AdSlot } from "@/components/AdSlot";
 import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
+import { DisputeChallengeBanner } from "@/features/room/DisputeChallengeBanner";
 import { ExtendBanner } from "@/features/room/ExtendBanner";
 import { Hero } from "@/features/room/Hero";
 import { RoomMap } from "@/features/room/RoomMap";
 import { SeatDetail } from "@/features/room/SeatDetail";
 import { SummaryCounters } from "@/features/room/SummaryCounters";
-import { checkInExpiryStatus } from "@/features/room/format";
+import { checkInExpiryStatus, seatDisplayLabel } from "@/features/room/format";
+import { useIncumbentChallenge } from "@/features/room/useIncumbentChallenge";
 import { useRoomState } from "@/features/room/useRoomState";
 import { useSeatActions } from "@/features/room/useSeatActions";
+import { useSeatDispute } from "@/features/room/useSeatDispute";
 import { PeopleList } from "@/features/people/PeopleList";
 import { useOccupants } from "@/features/people/useOccupants";
 import { usePeople } from "@/features/people/usePeople";
@@ -56,6 +59,9 @@ export default function RoomPage() {
     extend,
     checkOut,
     updateIdentity,
+    openDispute,
+    voteDispute,
+    respondDispute,
   } = useSeatActions(map, handleChanged);
 
   const zoomRef = useRef<ReactZoomPanPinchRef>(null);
@@ -83,6 +89,11 @@ export default function RoomPage() {
   const mySeatId = activeCheckIn?.seatId ?? null;
   const selectedSeat = map?.seats.find((seat) => seat.id === selectedSeatId) ?? null;
   const selectedTable = selectedSeat ? map?.tables.find((t) => t.id === selectedSeat.tableId) ?? null : null;
+
+  const { dispute: selectedDispute, setDispute: setSelectedDispute } = useSeatDispute(selectedSeat?.id ?? "", selectedSeat?.dispute ?? null);
+  const { challenge, clear: clearChallenge } = useIncumbentChallenge(map, me);
+  const challengeSeat = challenge ? map?.seats.find((seat) => seat.id === challenge.seatId) ?? null : null;
+  const challengeTable = challengeSeat ? map?.tables.find((t) => t.id === challengeSeat.tableId) ?? null : null;
 
   function handleSelectSeat(seat: SeatDto) {
     const isSame = seat.id === selectedSeatId;
@@ -113,6 +124,30 @@ export default function RoomPage() {
   async function handleMarkOccupied(seatId: string) {
     const ok = await markOccupied(seatId, { qrToken });
     if (ok) trackEvent("observation", { roomSlug: slug, seatId, status: "OCCUPIED" });
+  }
+
+  async function handleOpenDispute(kind: Parameters<typeof openDispute>[1]) {
+    if (!selectedSeat) return;
+    const result = await openDispute(selectedSeat.id, kind);
+    if (result) setSelectedDispute(result);
+  }
+
+  async function handleVoteDispute(vote: Parameters<typeof voteDispute>[1]) {
+    if (!selectedDispute) return;
+    const result = await voteDispute(selectedDispute.id, vote);
+    if (result) setSelectedDispute(result);
+  }
+
+  async function handleChallengeStillHere() {
+    if (!challenge) return;
+    const result = await respondDispute(challenge.disputeId, "STILL_HERE");
+    if (result) clearChallenge();
+  }
+
+  async function handleChallengeLeft() {
+    if (!challenge) return;
+    const result = await respondDispute(challenge.disputeId, "LEFT");
+    if (result) clearChallenge();
   }
 
   async function handleIdentityChoice(showIdentity: boolean) {
@@ -149,11 +184,25 @@ export default function RoomPage() {
       onMarkOccupied={() => void handleMarkOccupied(selectedSeat.id)}
       onExtend={() => void extend()}
       onCheckOut={() => void checkOut()}
+      dispute={selectedDispute}
+      onOpenDispute={(kind) => void handleOpenDispute(kind)}
+      onVoteDispute={(vote) => void handleVoteDispute(vote)}
     />
   ) : null;
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-4 p-4 md:grid md:grid-cols-[260px_1fr_320px] md:items-start">
+      {challenge ? (
+        <div className="order-0 md:col-span-3">
+          <DisputeChallengeBanner
+            seatLabel={seatDisplayLabel(challengeTable, challengeSeat?.code ?? "", challengeSeat?.seatNumber ?? 0)}
+            closesAt={challenge.closesAt}
+            pending={pending}
+            onStillHere={() => void handleChallengeStillHere()}
+            onLeft={() => void handleChallengeLeft()}
+          />
+        </div>
+      ) : null}
       {expiryStatus?.shouldPromptExtend ? (
         <div className="order-0 md:col-span-3">
           <ExtendBanner

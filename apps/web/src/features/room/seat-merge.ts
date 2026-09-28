@@ -1,4 +1,4 @@
-import type { RoomMapDto, RoomSummary, SeatDto, SeatStateChangedEvent } from "@uns/contracts";
+import type { RoomMapDto, RoomSummary, SeatDisputeLiteDto, SeatDto, SeatStateChangedEvent } from "@uns/contracts";
 
 /**
  * Client-side merge rules for room seat state. REST snapshots and `seat:state-changed` socket
@@ -47,6 +47,24 @@ export function mergeSnapshot(prev: RoomMapDto | null, next: RoomMapDto): RoomMa
   });
   if (!keptAny) return next;
   return { ...next, seats, summary: summarize(next.room.id, seats) };
+}
+
+/** Sets `seat.dispute` on the matching seat when a new vote opens (`seat:dispute-opened`). */
+export function applyDisputeOpened(map: RoomMapDto | null, event: SeatDisputeLiteDto): RoomMapDto | null {
+  if (!map) return map;
+  const seats = map.seats.map((seat) =>
+    seat.id === event.seatId ? { ...seat, dispute: { id: event.id, closesAt: event.closesAt } } : seat,
+  );
+  return { ...map, seats };
+}
+
+/** Clears `seat.dispute` once a vote resolves (`seat:dispute-resolved`) — the resulting seat status arrives separately via `seat:state-changed`. */
+export function applyDisputeResolved(map: RoomMapDto | null, event: SeatDisputeLiteDto): RoomMapDto | null {
+  if (!map) return map;
+  const seats = map.seats.map((seat) =>
+    seat.id === event.seatId && seat.dispute?.id === event.id ? { ...seat, dispute: null } : seat,
+  );
+  return { ...map, seats };
 }
 
 export function summarize(roomId: string, seats: SeatDto[]): RoomSummary {

@@ -1,10 +1,10 @@
 "use client";
 
-import { SocketEvents, type MeDto, type RoomMapDto, type SeatStateChangedEvent } from "@uns/contracts";
+import { SocketEvents, type MeDto, type RoomMapDto, type SeatDisputeLiteDto, type SeatStateChangedEvent } from "@uns/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
-import { applySeatEvent, mergeSnapshot } from "./seat-merge";
+import { applyDisputeOpened, applyDisputeResolved, applySeatEvent, mergeSnapshot } from "./seat-merge";
 
 export interface RoomState {
   map: RoomMapDto | null;
@@ -68,11 +68,16 @@ export function useRoomState(slug: string): RoomState {
 
     const onDailyReset = () => void load();
 
+    const onDisputeOpened = (event: SeatDisputeLiteDto) => setMap((prev) => applyDisputeOpened(prev, event));
+    const onDisputeResolved = (event: SeatDisputeLiteDto) => setMap((prev) => applyDisputeResolved(prev, event));
+
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on(SocketEvents.SeatStateChanged, onSeatStateChanged);
     socket.on(SocketEvents.RoomSummaryChanged, onSummaryChanged);
     socket.on(SocketEvents.RoomDailyReset, onDailyReset);
+    socket.on(SocketEvents.SeatDisputeOpened, onDisputeOpened);
+    socket.on(SocketEvents.SeatDisputeResolved, onDisputeResolved);
 
     // eslint-disable-next-line react-hooks/set-state-in-effect -- sync with a socket that connected before mount
     if (socket.connected) setConnected(true);
@@ -83,6 +88,8 @@ export function useRoomState(slug: string): RoomState {
       socket.off(SocketEvents.SeatStateChanged, onSeatStateChanged);
       socket.off(SocketEvents.RoomSummaryChanged, onSummaryChanged);
       socket.off(SocketEvents.RoomDailyReset, onDailyReset);
+      socket.off(SocketEvents.SeatDisputeOpened, onDisputeOpened);
+      socket.off(SocketEvents.SeatDisputeResolved, onDisputeResolved);
     };
   }, [load]);
 

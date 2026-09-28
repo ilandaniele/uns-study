@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkInExpiryStatus, confidenceWording, recencyLabel, statusLabel } from "./format";
+import { checkInExpiryStatus, confidenceWording, disputeCountdownLabel, disputeKindTitle, recencyLabel, statusLabel } from "./format";
 
 describe("statusLabel", () => {
   it("translates each seat status to Spanish", () => {
@@ -70,6 +70,12 @@ describe("recencyLabel", () => {
     ).toBe("Sin información reciente");
   });
 
+  it("shows the SAVED-dispute wording regardless of status/timestamp", () => {
+    expect(
+      recencyLabel({ status: "FREE", sourceSummary: "SAVED", lastUpdatedAt: new Date("2026-09-25T11:59:30.000Z").toISOString() }, now),
+    ).toBe("Estaba guardado — se liberó por votación");
+  });
+
   it("shows 'Sin información reciente' for seed/daily-reset-only sourceSummary", () => {
     expect(
       recencyLabel({ status: "FREE", sourceSummary: "SEED", lastUpdatedAt: new Date("2026-09-25T11:59:30.000Z").toISOString() }, now),
@@ -77,6 +83,35 @@ describe("recencyLabel", () => {
     expect(
       recencyLabel({ status: "FREE", sourceSummary: "DAILY_RESET", lastUpdatedAt: new Date("2026-09-25T11:59:30.000Z").toISOString() }, now),
     ).toBe("Sin información reciente");
+  });
+});
+
+describe("disputeKindTitle", () => {
+  it("translates each dispute kind to Spanish", () => {
+    expect(disputeKindTitle("CLAIM")).toBe("Me senté acá");
+    expect(disputeKindTitle("ABSENT")).toBe("Esa persona no está");
+    expect(disputeKindTitle("SAVED")).toBe("Está guardado");
+  });
+});
+
+describe("disputeCountdownLabel", () => {
+  const now = new Date("2026-09-25T12:00:00.000Z");
+
+  it("formats minutes and seconds as m:ss", () => {
+    expect(disputeCountdownLabel(new Date("2026-09-25T12:04:59.000Z").toISOString(), now)).toBe("4:59");
+    expect(disputeCountdownLabel(new Date("2026-09-25T12:05:00.000Z").toISOString(), now)).toBe("5:00");
+  });
+
+  it("pads seconds under 10", () => {
+    expect(disputeCountdownLabel(new Date("2026-09-25T12:01:05.000Z").toISOString(), now)).toBe("1:05");
+  });
+
+  it("rounds up sub-second remainders so it never shows 0:00 while time remains", () => {
+    expect(disputeCountdownLabel(new Date("2026-09-25T12:00:00.400Z").toISOString(), now)).toBe("0:01");
+  });
+
+  it("floors at 0:00 once closesAt has passed", () => {
+    expect(disputeCountdownLabel(new Date("2026-09-25T11:59:00.000Z").toISOString(), now)).toBe("0:00");
   });
 });
 

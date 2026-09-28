@@ -47,6 +47,15 @@ export function describeActionError(error: unknown): string {
     if (error.code === "TURNSTILE_REQUIRED") {
       return "Confirmá que sos una persona para continuar.";
     }
+    if (error.code === "DISPUTE_NOT_ALLOWED") {
+      return "No podés abrir esta votación para este lugar.";
+    }
+    if (error.code === "DISPUTE_ALREADY_OPEN") {
+      return "Ya hay una votación en curso para este lugar.";
+    }
+    if (error.code === "DISPUTE_CLOSED") {
+      return "Esta votación ya terminó.";
+    }
   }
 
   return "No pudimos actualizar el lugar. Tu cambio no fue guardado.";

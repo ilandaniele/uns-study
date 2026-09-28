@@ -1,6 +1,6 @@
 "use client";
 
-import type { CheckInDto, RoomMapDto } from "@uns/contracts";
+import type { CheckInDto, DisputeKind, DisputeVote, RoomMapDto, SeatDisputeDto } from "@uns/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiDelete, apiFetch, apiPost, ApiRequestError } from "@/lib/api";
 import { describeActionError } from "@/lib/errors";
@@ -26,6 +26,12 @@ export interface UseSeatActionsResult {
   updateIdentity: (showIdentity: boolean) => Promise<CheckInDto | null>;
   /** Retries the last action (check-in/observation) with a solved Turnstile token. */
   submitTurnstileToken: (token: string) => void;
+  /** POST `/disputes` — opens "Me senté acá" / "Esa persona no está" / "Está guardado" on a seat. */
+  openDispute: (seatId: string, kind: DisputeKind) => Promise<SeatDisputeDto | null>;
+  /** POST `/disputes/:id/votes` — casts the caller's PRESENT/ABSENT vote. */
+  voteDispute: (disputeId: string, vote: DisputeVote) => Promise<SeatDisputeDto | null>;
+  /** POST `/disputes/:id/respond` — the challenged incumbent answers "Sigo acá" or "Me fui". */
+  respondDispute: (disputeId: string, action: "STILL_HERE" | "LEFT") => Promise<SeatDisputeDto | null>;
 }
 
 /** Encapsulates the presence-sensitive write actions (check-in, observation, extend, checkout). */
@@ -155,6 +161,33 @@ export function useSeatActions(map: RoomMapDto | null, onChanged: () => void): U
     retryRef.current?.(token);
   }, []);
 
+  const openDispute = useCallback(
+    (seatId: string, kind: DisputeKind) =>
+      run(async () => {
+        const location = await getFreshLocation();
+        return apiPost<SeatDisputeDto>("/api/v1/disputes", { roomId: map?.room.id, seatId, kind, location });
+      }),
+    [map?.room.id, run],
+  );
+
+  const voteDispute = useCallback(
+    (disputeId: string, vote: DisputeVote) =>
+      run(async () => {
+        const location = await getFreshLocation();
+        return apiPost<SeatDisputeDto>(`/api/v1/disputes/${disputeId}/votes`, { vote, location });
+      }),
+    [run],
+  );
+
+  const respondDispute = useCallback(
+    (disputeId: string, action: "STILL_HERE" | "LEFT") =>
+      run(async () => {
+        const location = action === "STILL_HERE" ? await getFreshLocation() : undefined;
+        return apiPost<SeatDisputeDto>(`/api/v1/disputes/${disputeId}/respond`, { action, location });
+      }),
+    [run],
+  );
+
   return {
     pending,
     actionError,
@@ -167,5 +200,8 @@ export function useSeatActions(map: RoomMapDto | null, onChanged: () => void): U
     checkOut,
     updateIdentity,
     submitTurnstileToken,
+    openDispute,
+    voteDispute,
+    respondDispute,
   };
 }

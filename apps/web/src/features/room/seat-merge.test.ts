@@ -5,7 +5,20 @@ import { applySeatEvent, mergeSnapshot } from "./seat-merge";
 const ROOM = "room-1";
 
 function seat(id: string, status: SeatDto["status"], lastUpdatedAt: string | null): SeatDto {
-  return { id, tableId: "t1", code: id, seatNumber: 1, x: 0, y: 0, rotation: 0, status, confidence: status === "UNKNOWN" ? 0 : 0.98, lastUpdatedAt, sourceSummary: null };
+  return {
+    id,
+    tableId: "t1",
+    code: id,
+    seatNumber: 1,
+    x: 0,
+    y: 0,
+    rotation: 0,
+    status,
+    confidence: status === "UNKNOWN" ? 0 : 0.98,
+    lastUpdatedAt,
+    sourceSummary: null,
+    dispute: null,
+  };
 }
 
 function map(seats: SeatDto[]): RoomMapDto {

@@ -1,9 +1,11 @@
 "use client";
 
-import type { MeDto, SeatDto, SeatOccupantDto, TableDto } from "@uns/contracts";
+import type { DisputeKind, DisputeVote, MeDto, SeatDisputeDto, SeatDto, SeatOccupantDto, TableDto } from "@uns/contracts";
 import { ArmchairIcon, ChairIcon, TableIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
+import { MessageOccupantButton } from "./MessageOccupantButton";
 import type { ReactNode } from "react";
+import { DisputeSection } from "./DisputeSection";
 import { IdentityPrompt } from "./IdentityPrompt";
 import { TurnstileChallenge } from "./TurnstileChallenge";
 import { confidenceWording, recencyLabel, seatDisplayLabel, statusLabel, tableDisplayName } from "./format";
@@ -29,6 +31,10 @@ export interface SeatDetailProps {
   onMarkOccupied: () => void;
   onExtend: () => void;
   onCheckOut: () => void;
+  /** Viewer-specific detail for `seat.dispute`, or null while it's loading/absent. */
+  dispute: SeatDisputeDto | null;
+  onOpenDispute: (kind: DisputeKind) => void;
+  onVoteDispute: (vote: DisputeVote) => void;
 }
 
 export function SeatDetail({
@@ -49,6 +55,9 @@ export function SeatDetail({
   onMarkOccupied,
   onExtend,
   onCheckOut,
+  dispute,
+  onOpenDispute,
+  onVoteDispute,
 }: SeatDetailProps) {
   const isBar = table?.type === "WALL_BAR";
   const label = seatDisplayLabel(table, seat.code, seat.seatNumber);
@@ -68,6 +77,7 @@ export function SeatDetail({
               está acá
             </p>
           ) : null}
+          {!isMySeat && occupant && me?.user && me.user.id !== occupant.userId ? <MessageOccupantButton userId={occupant.userId} /> : null}
           {recency ? <p className="mt-1 text-sm text-muted">{recency}</p> : null}
           {seat.confidence > 0 ? (
             <p className="text-sm text-muted" style={{ opacity: 0.75 }}>
@@ -128,6 +138,16 @@ export function SeatDetail({
           </>
         )}
       </div>
+
+      <DisputeSection
+        seat={seat}
+        me={me}
+        isMySeat={isMySeat}
+        dispute={dispute}
+        pending={pending}
+        onOpen={onOpenDispute}
+        onVote={onVoteDispute}
+      />
 
       <div className="border-t border-app pt-3">
         <h2 className="text-sm font-semibold text-main">Información</h2>

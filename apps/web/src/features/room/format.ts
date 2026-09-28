@@ -1,4 +1,4 @@
-import type { SeatStatus, TableDto } from "@uns/contracts";
+import type { DisputeKind, SeatStatus, TableDto } from "@uns/contracts";
 
 const BAR_NAMES: Record<string, string> = {
   B01: "Barra entrada izquierda",
@@ -62,6 +62,10 @@ export interface SeatRecencyInput {
  */
 export function recencyLabel(seat: SeatRecencyInput, now: Date = new Date()): string | null {
   const { status, sourceSummary, lastUpdatedAt } = seat;
+  // A seat freed by a "Está guardado" dispute that resolved ABSENT — call out why, instead of the generic recency text.
+  if (sourceSummary === "SAVED") {
+    return "Estaba guardado — se liberó por votación";
+  }
   if (status === "UNKNOWN" || sourceSummary === null || sourceSummary === "SEED" || sourceSummary === "DAILY_RESET") {
     return "Sin información reciente";
   }
@@ -80,6 +84,37 @@ export function recencyLabel(seat: SeatRecencyInput, now: Date = new Date()): st
 
   const diffDays = Math.floor(diffHours / 24);
   return diffDays === 1 ? "Actualizado hace 1 día" : `Actualizado hace ${diffDays} días`;
+}
+
+/** Spanish title for a dispute kind, as shown in the active-dispute card. */
+export function disputeKindTitle(kind: DisputeKind): string {
+  switch (kind) {
+    case "CLAIM":
+      return "Me senté acá";
+    case "ABSENT":
+      return "Esa persona no está";
+    case "SAVED":
+      return "Está guardado";
+  }
+}
+
+/** The three "¿Algo no cuadra?" options offered on an occupied/uncertain seat that isn't the caller's. */
+export const DISPUTE_OPTIONS: { kind: DisputeKind; label: string; helper: string }[] = [
+  { kind: "CLAIM", label: "Me senté acá", helper: "Sos vos quien está en este lugar, no quien figura." },
+  { kind: "ABSENT", label: "Esa persona no está", helper: "El lugar figura ocupado, pero no hay nadie ahí." },
+  { kind: "SAVED", label: "Está guardado", helper: "Hay pertenencias pero nadie sentado hace 30 minutos o más." },
+];
+
+/**
+ * "m:ss" countdown to a dispute's `closesAt`, floored at "0:00" once it has passed — used by the
+ * active-dispute card and the incumbent challenge banner, both of which tick every second.
+ */
+export function disputeCountdownLabel(closesAt: string, now: Date = new Date()): string {
+  const msLeft = Math.max(0, new Date(closesAt).getTime() - now.getTime());
+  const totalSeconds = Math.ceil(msLeft / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
 export interface CheckInExpiryStatus {
