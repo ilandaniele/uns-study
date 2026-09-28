@@ -39,32 +39,84 @@ export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlight
     >
       <defs>
         {/* Warm terracotta parquet floor: two plank tones in a basket-weave offset, plus faint grain lines. */}
-        <pattern id="floor-parquet" width={240} height={96} patternUnits="userSpaceOnUse">
-          <rect width={240} height={96} fill="var(--room-floor-a)" />
-          {/* Staggered long planks, alternating tone slightly, like a real wood floor from above. */}
-          <g fill="var(--room-floor-b)" opacity={0.55}>
-            <rect x={0} y={0} width={120} height={24} />
-            <rect x={60} y={24} width={120} height={24} />
-            <rect x={180} y={48} width={60} height={24} />
-            <rect x={0} y={48} width={60} height={24} />
-            <rect x={120} y={72} width={120} height={24} />
+        <pattern id="floor-parquet" width={120} height={120} patternUnits="userSpaceOnUse">
+          {/* Speckled vinyl tiles like the real room floor: salmon base, darker and lighter flecks, faint seams. */}
+          <rect width={120} height={120} fill="var(--room-floor-a)" />
+          <g fill="var(--room-floor-b)" opacity={0.7}>
+            <ellipse cx={11.3} cy={69.9} rx={3.0} ry={1.1} transform="rotate(22 11.3 69.9)" />
+            <ellipse cx={52.0} cy={8.4} rx={1.4} ry={1.4} transform="rotate(144 52.0 8.4)" />
+            <ellipse cx={70.3} cy={6.0} rx={1.6} ry={1.6} transform="rotate(34 70.3 6.0)" />
+            <ellipse cx={34.8} cy={17.3} rx={1.4} ry={1.2} transform="rotate(174 34.8 17.3)" />
+            <ellipse cx={85.5} cy={67.7} rx={2.4} ry={1.5} transform="rotate(136 85.5 67.7)" />
+            <ellipse cx={51.3} cy={37.7} rx={2.4} ry={1.4} transform="rotate(76 51.3 37.7)" />
+            <ellipse cx={63.0} cy={105.0} rx={2.7} ry={1.2} transform="rotate(18 63.0 105.0)" />
+            <ellipse cx={14.2} cy={50.2} rx={2.7} ry={1.0} transform="rotate(125 14.2 50.2)" />
+            <ellipse cx={40.8} cy={42.0} rx={2.2} ry={1.9} transform="rotate(17 40.8 42.0)" />
+            <ellipse cx={100.8} cy={113.4} rx={2.1} ry={1.7} transform="rotate(15 100.8 113.4)" />
+            <ellipse cx={34.2} cy={46.3} rx={2.5} ry={0.8} transform="rotate(118 34.2 46.3)" />
+            <ellipse cx={42.7} cy={73.3} rx={2.2} ry={1.1} transform="rotate(73 42.7 73.3)" />
+            <ellipse cx={20.0} cy={48.2} rx={1.8} ry={1.0} transform="rotate(110 20.0 48.2)" />
+            <ellipse cx={103.7} cy={33.4} rx={2.0} ry={1.3} transform="rotate(97 103.7 33.4)" />
+            <ellipse cx={1.4} cy={99.7} rx={1.6} ry={1.2} transform="rotate(37 1.4 99.7)" />
+            <ellipse cx={50.3} cy={44.3} rx={2.3} ry={2.1} transform="rotate(176 50.3 44.3)" />
+            <ellipse cx={107.9} cy={93.6} rx={2.9} ry={1.9} transform="rotate(100 107.9 93.6)" />
+            <ellipse cx={47.8} cy={47.3} rx={2.2} ry={1.4} transform="rotate(48 47.8 47.3)" />
+            <ellipse cx={12.3} cy={68.0} rx={2.3} ry={2.1} transform="rotate(157 12.3 68.0)" />
+            <ellipse cx={3.1} cy={104.9} rx={2.4} ry={1.0} transform="rotate(64 3.1 104.9)" />
+            <ellipse cx={119.2} cy={55.9} rx={2.2} ry={0.9} transform="rotate(26 119.2 55.9)" />
+            <ellipse cx={90.0} cy={88.8} rx={2.2} ry={1.8} transform="rotate(132 90.0 88.8)" />
+            <ellipse cx={109.7} cy={91.0} rx={1.8} ry={1.7} transform="rotate(23 109.7 91.0)" />
+            <ellipse cx={83.5} cy={31.3} rx={1.9} ry={1.0} transform="rotate(57 83.5 31.3)" />
+            <ellipse cx={96.7} cy={98.2} rx={2.7} ry={1.1} transform="rotate(132 96.7 98.2)" />
+            <ellipse cx={59.1} cy={87.7} rx={3.2} ry={1.9} transform="rotate(120 59.1 87.7)" />
+            <ellipse cx={114.6} cy={43.8} rx={1.6} ry={1.1} transform="rotate(50 114.6 43.8)" />
+            <ellipse cx={40.5} cy={57.9} rx={3.2} ry={1.7} transform="rotate(0 40.5 57.9)" />
+            <ellipse cx={14.4} cy={46.6} rx={2.6} ry={1.1} transform="rotate(45 14.4 46.6)" />
+            <ellipse cx={52.1} cy={76.3} rx={1.4} ry={2.1} transform="rotate(101 52.1 76.3)" />
+            <ellipse cx={3.3} cy={70.9} rx={2.1} ry={1.7} transform="rotate(156 3.3 70.9)" />
+            <ellipse cx={99.2} cy={117.6} rx={2.5} ry={1.3} transform="rotate(140 99.2 117.6)" />
+            <ellipse cx={63.2} cy={112.0} rx={2.1} ry={2.0} transform="rotate(54 63.2 112.0)" />
+            <ellipse cx={3.4} cy={25.5} rx={2.2} ry={1.9} transform="rotate(83 3.4 25.5)" />
+            <ellipse cx={107.7} cy={79.5} rx={2.8} ry={1.5} transform="rotate(128 107.7 79.5)" />
+            <ellipse cx={15.7} cy={18.2} rx={2.2} ry={2.0} transform="rotate(46 15.7 18.2)" />
+            <ellipse cx={87.0} cy={66.8} rx={1.9} ry={1.5} transform="rotate(142 87.0 66.8)" />
+            <ellipse cx={57.9} cy={93.2} rx={3.0} ry={0.9} transform="rotate(48 57.9 93.2)" />
+            <ellipse cx={53.2} cy={73.5} rx={2.2} ry={1.5} transform="rotate(177 53.2 73.5)" />
+            <ellipse cx={33.3} cy={61.0} rx={2.8} ry={1.5} transform="rotate(63 33.3 61.0)" />
+            <ellipse cx={107.1} cy={24.3} rx={2.1} ry={1.4} transform="rotate(100 107.1 24.3)" />
+            <ellipse cx={53.1} cy={8.7} rx={1.7} ry={0.9} transform="rotate(171 53.1 8.7)" />
+            <ellipse cx={79.2} cy={17.2} rx={3.0} ry={2.2} transform="rotate(56 79.2 17.2)" />
+            <ellipse cx={89.6} cy={11.3} rx={3.0} ry={1.0} transform="rotate(170 89.6 11.3)" />
+            <ellipse cx={50.6} cy={42.8} rx={1.4} ry={1.3} transform="rotate(86 50.6 42.8)" />
+            <ellipse cx={66.5} cy={52.9} rx={1.2} ry={1.3} transform="rotate(159 66.5 52.9)" />
           </g>
-          <g stroke="var(--room-floor-grain)" strokeWidth={1} opacity={0.28}>
-            <line x1={0} y1={24} x2={240} y2={24} />
-            <line x1={0} y1={48} x2={240} y2={48} />
-            <line x1={0} y1={72} x2={240} y2={72} />
-            <line x1={0} y1={96} x2={240} y2={96} />
-            <line x1={120} y1={0} x2={120} y2={24} />
-            <line x1={60} y1={24} x2={60} y2={48} />
-            <line x1={180} y1={24} x2={180} y2={48} />
-            <line x1={0} y1={48} x2={0} y2={72} />
-            <line x1={60} y1={48} x2={60} y2={72} />
-            <line x1={180} y1={48} x2={180} y2={72} />
-            <line x1={120} y1={72} x2={120} y2={96} />
+          <g fill="var(--room-floor-grain)" opacity={0.55}>
+            <ellipse cx={38.9} cy={18.1} rx={2.5} ry={0.9} transform="rotate(137 38.9 18.1)" />
+            <ellipse cx={14.9} cy={26.8} rx={2.5} ry={2.1} transform="rotate(147 14.9 26.8)" />
+            <ellipse cx={21.7} cy={69.8} rx={2.5} ry={1.3} transform="rotate(140 21.7 69.8)" />
+            <ellipse cx={29.8} cy={21.6} rx={2.8} ry={0.9} transform="rotate(76 29.8 21.6)" />
+            <ellipse cx={50.6} cy={115.4} rx={1.4} ry={1.6} transform="rotate(80 50.6 115.4)" />
+            <ellipse cx={87.7} cy={37.2} rx={2.4} ry={1.8} transform="rotate(114 87.7 37.2)" />
+            <ellipse cx={15.5} cy={29.7} rx={2.0} ry={2.0} transform="rotate(20 15.5 29.7)" />
+            <ellipse cx={114.9} cy={18.1} rx={1.6} ry={1.1} transform="rotate(59 114.9 18.1)" />
+            <ellipse cx={103.1} cy={114.0} rx={2.5} ry={1.8} transform="rotate(116 103.1 114.0)" />
+            <ellipse cx={8.1} cy={25.1} rx={1.5} ry={1.3} transform="rotate(13 8.1 25.1)" />
+            <ellipse cx={114.7} cy={72.3} rx={2.1} ry={1.0} transform="rotate(124 114.7 72.3)" />
+            <ellipse cx={2.8} cy={114.1} rx={2.3} ry={1.0} transform="rotate(139 2.8 114.1)" />
+            <ellipse cx={63.9} cy={93.5} rx={1.9} ry={1.1} transform="rotate(49 63.9 93.5)" />
+            <ellipse cx={31.1} cy={83.1} rx={3.1} ry={1.4} transform="rotate(89 31.1 83.1)" />
+            <ellipse cx={57.5} cy={78.4} rx={2.8} ry={0.9} transform="rotate(169 57.5 78.4)" />
+            <ellipse cx={55.6} cy={89.2} rx={1.4} ry={1.0} transform="rotate(32 55.6 89.2)" />
+            <ellipse cx={65.8} cy={2.6} rx={2.8} ry={1.8} transform="rotate(26 65.8 2.6)" />
+            <ellipse cx={31.1} cy={50.3} rx={1.5} ry={2.1} transform="rotate(90 31.1 50.3)" />
+            <ellipse cx={73.0} cy={93.1} rx={1.5} ry={1.0} transform="rotate(158 73.0 93.1)" />
+            <ellipse cx={33.2} cy={92.7} rx={2.2} ry={1.6} transform="rotate(16 33.2 92.7)" />
+            <ellipse cx={83.9} cy={105.2} rx={3.1} ry={1.2} transform="rotate(143 83.9 105.2)" />
+            <ellipse cx={36.3} cy={14.7} rx={2.8} ry={2.1} transform="rotate(164 36.3 14.7)" />
+            <ellipse cx={99.9} cy={19.4} rx={2.1} ry={1.5} transform="rotate(86 99.9 19.4)" />
+            <ellipse cx={35.5} cy={115.3} rx={1.4} ry={2.1} transform="rotate(58 35.5 115.3)" />
           </g>
-          <g stroke="var(--room-floor-grain)" strokeWidth={0.6} opacity={0.14}>
-            <path d="M 8 9 Q 60 6 112 11 M 70 36 Q 120 33 170 38 M 10 60 Q 30 58 52 61 M 130 84 Q 180 81 232 86" fill="none" />
-          </g>
+          <path d="M 0 0.5 H 120 M 0.5 0 V 120" stroke="var(--room-floor-seam)" strokeWidth={1} opacity={0.35} fill="none" />
         </pattern>
         {/* Sunlight pool falling from the top windows, blended softly over the floor/tables. */}
         <radialGradient id="room-light-pool" cx="50%" cy="6%" r="65%">

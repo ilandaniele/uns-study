@@ -31,11 +31,12 @@
   --oak-border: #a56a3a;
   --oak-text: #0f172a;
 
-  --room-wall: #3b4252;
-  --room-floor-a: #c9875a;
-  --room-floor-b: #b97a4f;
-  --room-floor-grain: #8a5636;
-  --room-aisle: #d9a27a;
+  --room-wall: #b07a3a;
+  --room-floor-a: #dcaea2;
+  --room-floor-b: #c4867a;
+  --room-floor-grain: #f1ddd2;
+  --room-floor-seam: #b98276;
+  --room-aisle: #e6c0b5;
   --room-table-border: var(--oak-border);
   --room-table-label-bg: #0f172a;
   --room-table-label-text: #ffffff;
@@ -78,11 +79,12 @@
   --oak-border: #9a774a;
   --oak-text: #f2e3c8;
 
-  --room-wall: #97a2b8;
-  --room-floor-a: #6b4a34;
-  --room-floor-b: #5a3d2a;
-  --room-floor-grain: #3e2a1c;
-  --room-aisle: #7a5a45;
+  --room-wall: #8a5a2b;
+  --room-floor-a: #6e4c46;
+  --room-floor-b: #5c3d38;
+  --room-floor-grain: #8a6860;
+  --room-floor-seam: #4a302c;
+  --room-aisle: #7d5a52;
   --room-table-border: var(--oak-border);
   --room-table-label-bg: #0b1120;
   --room-table-label-text: #f2e3c8;
