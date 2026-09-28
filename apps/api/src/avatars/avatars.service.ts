@@ -5,8 +5,11 @@ import { schema, type Db } from "@uns/database";
 import type { AvatarMimeType } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
+import { stripImageMetadata } from "../common/image-metadata.js";
 
 const MAX_AVATAR_BYTES = 300 * 1024;
+const GOOGLE_IMAGE_HOSTNAME_SUFFIX = ".googleusercontent.com";
+const GOOGLE_IMAGE_FETCH_TIMEOUT_MS = 5000;
 
 export interface AvatarBytes {
   mimeType: string;
@@ -38,6 +41,15 @@ function decodeAndValidateAvatar(image: { mimeType: AvatarMimeType; base64: stri
   return bytes;
 }
 
+/** Sniffs the mime type from magic bytes alone — used for the Google-fetched image, whose
+ *  `Content-Type` response header can't be trusted any more than a client-declared one. */
+function sniffMimeType(bytes: Buffer): AvatarMimeType | null {
+  if (matchesMagicBytes(bytes, "image/jpeg")) return "image/jpeg";
+  if (matchesMagicBytes(bytes, "image/png")) return "image/png";
+  if (matchesMagicBytes(bytes, "image/webp")) return "image/webp";
+  return null;
+}
+
 /** Builds the relative, cache-busted URL `user_profiles.avatar_url` points to for an uploaded photo. */
 export function avatarUrlFor(userId: string, sha256: string): string {
   return `/api/v1/avatars/${userId}?v=${sha256.slice(0, 12)}`;
@@ -52,23 +64,11 @@ export function avatarUrlFor(userId: string, sha256: string): string {
 export class AvatarsService {
   constructor(@Inject(DB) private readonly db: Db) {}
 
-  /** Decodes/validates the upload, stores it, and points `user_profiles.avatar_url` at it. */
+  /** Decodes/validates the upload, strips metadata, stores it, and points `avatar_url` at it. */
   async upload(userId: string, image: { mimeType: AvatarMimeType; base64: string }): Promise<string> {
     const bytes = decodeAndValidateAvatar(image);
-    const sha256 = createHash("sha256").update(bytes).digest("hex");
-    const url = avatarUrlFor(userId, sha256);
-    const now = new Date();
-
-    await this.db
-      .insert(schema.userAvatars)
-      .values({ userId, mimeType: image.mimeType, bytes, sha256, updatedAt: now })
-      .onConflictDoUpdate({
-        target: schema.userAvatars.userId,
-        set: { mimeType: image.mimeType, bytes, sha256, updatedAt: now },
-      });
-
-    await this.setProfileAvatarUrl(userId, url);
-    return url;
+    const stripped = stripImageMetadata(image.mimeType, bytes);
+    return this.storeBytes(userId, image.mimeType, stripped);
   }
 
   /** Removes the stored photo (if any) and clears `avatar_url`. */
@@ -77,13 +77,79 @@ export class AvatarsService {
     await this.setProfileAvatarUrl(userId, null);
   }
 
-  /** Points `avatar_url` at the caller's Better Auth (Google) profile photo — only ever set via this
-   *  explicit action, never automatically. Clears any previously uploaded photo bytes. */
+  /**
+   * Points `avatar_url` at the caller's Google profile photo — only ever set via this explicit
+   * action, never automatically. Rather than trusting (and directly linking to) an arbitrary
+   * Google-hosted URL, this fetches the bytes itself and stores them through the same path as an
+   * uploaded photo, so every avatar — Google or uploaded — is served from `/api/v1/avatars/:userId`.
+   */
   async useGoogleImage(userId: string, googleImage: string | null): Promise<string> {
-    if (!googleImage || !googleImage.startsWith("https://")) throw ApiErrors.validation("No hay una foto de Google para usar.");
-    await this.db.delete(schema.userAvatars).where(eq(schema.userAvatars.userId, userId));
-    await this.setProfileAvatarUrl(userId, googleImage);
-    return googleImage;
+    const bytes = await this.fetchGoogleImageBytes(googleImage);
+    const mimeType = sniffMimeType(bytes);
+    if (!mimeType) throw ApiErrors.validation("No hay una foto de Google para usar.");
+    const stripped = stripImageMetadata(mimeType, bytes);
+    return this.storeBytes(userId, mimeType, stripped);
+  }
+
+  /** Fetches and size/type-validates a Google-hosted profile photo. Never trusts the caller-supplied
+   *  URL beyond scheme + hostname: no redirects are followed, and the response is capped at
+   *  `MAX_AVATAR_BYTES` regardless of what `Content-Length` claims. */
+  private async fetchGoogleImageBytes(googleImage: string | null): Promise<Buffer> {
+    if (!googleImage) throw ApiErrors.validation("No hay una foto de Google para usar.");
+    let url: URL;
+    try {
+      url = new URL(googleImage);
+    } catch {
+      throw ApiErrors.validation("No hay una foto de Google para usar.");
+    }
+    if (url.protocol !== "https:" || !url.hostname.toLowerCase().endsWith(GOOGLE_IMAGE_HOSTNAME_SUFFIX)) {
+      throw ApiErrors.validation("No hay una foto de Google para usar.");
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), GOOGLE_IMAGE_FETCH_TIMEOUT_MS);
+    let response: Response;
+    try {
+      response = await fetch(url, { redirect: "error", signal: controller.signal });
+    } catch {
+      throw ApiErrors.validation("No pudimos obtener la foto de Google.");
+    } finally {
+      clearTimeout(timeout);
+    }
+    if (!response.ok || !response.body) throw ApiErrors.validation("No pudimos obtener la foto de Google.");
+
+    const declaredLength = Number(response.headers.get("content-length") ?? "0");
+    if (declaredLength > MAX_AVATAR_BYTES) throw ApiErrors.photoInvalid();
+
+    const chunks: Buffer[] = [];
+    let total = 0;
+    for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
+      total += chunk.length;
+      if (total > MAX_AVATAR_BYTES) throw ApiErrors.photoInvalid();
+      chunks.push(Buffer.from(chunk));
+    }
+    const bytes = Buffer.concat(chunks);
+    if (bytes.length === 0) throw ApiErrors.photoInvalid();
+    return bytes;
+  }
+
+  /** Upserts the bytes into `user_avatars` and points `user_profiles.avatar_url` at the result —
+   *  shared by both `upload` and `useGoogleImage` so every avatar is served the same way. */
+  private async storeBytes(userId: string, mimeType: AvatarMimeType, bytes: Buffer): Promise<string> {
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    const url = avatarUrlFor(userId, sha256);
+    const now = new Date();
+
+    await this.db
+      .insert(schema.userAvatars)
+      .values({ userId, mimeType, bytes, sha256, updatedAt: now })
+      .onConflictDoUpdate({
+        target: schema.userAvatars.userId,
+        set: { mimeType, bytes, sha256, updatedAt: now },
+      });
+
+    await this.setProfileAvatarUrl(userId, url);
+    return url;
   }
 
   /** Bytes for `GET /avatars/:userId`, gated by the owner's `show_avatar` privacy setting. Throws

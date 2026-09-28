@@ -1,4 +1,4 @@
-import { boolean, integer, pgEnum, pgTable, primaryKey, real, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, integer, pgEnum, pgTable, primaryKey, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { user } from "./auth.js";
 
@@ -44,8 +44,27 @@ export const userPrivacySettings = pgTable("user_privacy_settings", {
   showInRoom: boolean("show_in_room").notNull().default(false),
   showSeat: boolean("show_seat").notNull().default(false),
   allowDirectMessages: boolean("allow_direct_messages").notNull().default(true),
+  // Whether the user appears in rankings at all — default true so opting *out* is the deliberate
+  // action. Distinct from `showInRoom`: a user can rank under their alias without being linkable.
+  showInRanking: boolean("show_in_ranking").notNull().default(true),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Every alias ever assigned, lowercased, kept forever once retired — so a released alias can never
+ * be handed out to someone else (a stable, un-relinkable identifier must not become ambiguous).
+ * `AliasService` checks this table (in addition to the live uniqueness on `user_profiles.alias`)
+ * before assigning a candidate, and inserts into it whenever an alias is released.
+ */
+export const retiredAliases = pgTable(
+  "retired_aliases",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    alias: text("alias").notNull(),
+    retiredAt: timestamp("retired_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("retired_aliases_alias_lower_unique").on(sql`lower(${table.alias})`)],
+);
 
 export const userReputation = pgTable("user_reputation", {
   userId: text("user_id")

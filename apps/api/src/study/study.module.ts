@@ -6,6 +6,7 @@ import { RoomPeopleService } from "./room-people.service.js";
 import { RoomPeopleController } from "./room-people.controller.js";
 
 @Module({
+  // AliasService comes from the @Global() UsersModule.
   imports: [RoomsModule],
   controllers: [StudyController, RoomPeopleController],
   providers: [StudyService, RoomPeopleService],

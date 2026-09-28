@@ -309,7 +309,8 @@ export type ApiErrorCode =
   | "SEAT_VERIFIED"
   | "PHOTO_REUSED"
   | "PHOTO_INVALID"
-  | "ALREADY_VERIFIED";
+  | "ALREADY_VERIFIED"
+  | "TABLE_NAME_NOT_ALLOWED";
 
 export interface ApiError {
   error: {

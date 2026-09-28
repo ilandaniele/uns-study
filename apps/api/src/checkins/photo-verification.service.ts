@@ -7,6 +7,7 @@ import { DB } from "../database/database.module.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { PresenceService } from "../presence/presence.service.js";
 import { ApiErrors } from "../common/api-error.js";
+import { stripImageMetadata } from "../common/image-metadata.js";
 import { env } from "../env.js";
 import { SEAT_PHOTO_VERIFIER } from "../verification/seat-photo-verifier.tokens.js";
 import type { SeatPhotoVerifier } from "../verification/seat-photo-verifier.js";
@@ -60,12 +61,16 @@ export class PhotoVerificationService {
     const presence = this.presence.validate(row.room, input.location);
     if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!));
 
-    const bytes = decodeAndValidatePhoto(input.image);
+    const decoded = decodeAndValidatePhoto(input.image);
+    // Metadata (EXIF GPS, device identifiers, etc.) is stripped before anything else touches the
+    // bytes — the hash below, and the bytes forwarded to the verifier, are both of the stripped
+    // image, so nothing embedded in the original photo ever leaves this service.
+    const bytes = stripImageMetadata(input.image.mimeType, decoded);
     const hash = createHash("sha256").update(bytes).digest("hex");
-    // The canonical bytes (decoded then re-encoded), not the client-supplied base64 string, are
-    // what gets hashed above and what gets forwarded to the verifier below — this way whatever the
-    // model receives is exactly what was hashed and validated, not whatever whitespace/padding the
-    // client happened to send.
+    // The canonical bytes (decoded, stripped, then re-encoded), not the client-supplied base64
+    // string, are what gets hashed above and what gets forwarded to the verifier below — this way
+    // whatever the model receives is exactly what was hashed and validated, not whatever
+    // whitespace/padding the client happened to send.
     const canonicalImage = { mimeType: input.image.mimeType, base64: bytes.toString("base64") };
 
     // Any prior check-in (this user's or anyone else's) that was verified with the same photo bytes

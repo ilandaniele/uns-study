@@ -111,8 +111,13 @@ export class ProfilesService {
       .limit(1);
 
     const identityMode = profile?.identityMode ?? "HIDDEN";
+    // Ensures a HIDDEN profile without one yet gets an alias, so the public profile never falls
+    // back to the bare "Usuario anónimo" once an alias exists.
+    const aliasedProfile = await this.aliases.withAlias(profile ?? null);
     const name = displayName(
-      profile ? { firstName: profile.firstName, lastName: profile.lastName, nickname: profile.nickname, identityMode } : null,
+      profile
+        ? { firstName: profile.firstName, lastName: profile.lastName, nickname: profile.nickname, identityMode, alias: aliasedProfile?.alias ?? profile.alias }
+        : null,
       null,
       targetUser.name,
     );
@@ -128,7 +133,7 @@ export class ProfilesService {
       bio: identityMode !== "HIDDEN" ? (profile?.bio ?? null) : null,
       instagram: privacy?.showInstagram ? (profile?.instagram ?? null) : null,
       studentNumber: privacy?.showStudentNumber ? (profile?.studentNumber ?? null) : null,
-      studyStatus: await this.study.getActiveStatusForUser(targetUserId),
+      studyStatus: privacy?.showInRoom ? await this.study.getActiveStatusForUser(targetUserId) : null,
       allowsDirectMessages: privacy?.allowDirectMessages ?? true,
       blockedByMe: Boolean(blockedByMe),
     };
@@ -186,5 +191,6 @@ function toPrivacyDto(row: PrivacyRow): PrivacySettingsDto {
     showInRoom: row.showInRoom,
     showSeat: row.showSeat,
     allowDirectMessages: row.allowDirectMessages,
+    showInRanking: row.showInRanking,
   };
 }

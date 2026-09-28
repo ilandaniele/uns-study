@@ -30,13 +30,14 @@ describe("ProfilesService", () => {
   let db: Db;
   let profiles: ProfilesService;
   let checkIns: CheckInService;
+  let study: StudyService;
   let roomId: string;
   let seatIds: string[];
   let location: { latitude: number; longitude: number; accuracy: number; capturedAt: string };
 
   beforeEach(async () => {
     db = await freshDb();
-    ({ profiles, checkIns } = await build(db));
+    ({ profiles, checkIns, study } = await build(db));
     const room = await getRoom(db);
     roomId = room.id;
     location = { latitude: room.latitude, longitude: room.longitude, accuracy: 10, capturedAt: new Date().toISOString() };
@@ -109,7 +110,6 @@ describe("ProfilesService", () => {
         identityMode: "FIRST_NAME",
         career: "Ingeniería",
         bio: "Me gusta estudiar de noche.",
-        avatarUrl: "https://example.test/a.png",
       });
 
       const pub = await profiles.getPublicProfile("viewer", "u1");
@@ -136,6 +136,19 @@ describe("ProfilesService", () => {
       await db.insert(schema.userBlocks).values({ blockerId: "viewer", blockedId: "u1" });
       const pub = await profiles.getPublicProfile("viewer", "u1");
       expect(pub.blockedByMe).toBe(true);
+    });
+
+    it("shows the alias instead of 'Usuario anónimo' for a HIDDEN user", async () => {
+      await profiles.getMyProfile("u1", "u1@example.test"); // lazily creates the HIDDEN profile + alias
+      const pub = await profiles.getPublicProfile("viewer", "u1");
+      expect(pub.displayName).not.toBe("Usuario anónimo");
+    });
+
+    it("hides studyStatus when the owner has not opted into showInRoom", async () => {
+      await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+      await study.start("u1", roomId, { subject: "Química", lookingForGroup: false });
+      const pub = await profiles.getPublicProfile("viewer", "u1");
+      expect(pub.studyStatus).toBeNull();
     });
   });
 

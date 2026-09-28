@@ -30,6 +30,8 @@ export interface PrivacySettingsDto {
   showInRoom: boolean;
   showSeat: boolean;
   allowDirectMessages: boolean;
+  /** Whether the user appears in rankings at all (default true) — under their alias when hidden. */
+  showInRanking: boolean;
 }
 
 export interface StudyStatusDto {
@@ -85,7 +87,8 @@ export const updateProfileSchema = z.object({
     .nullable()
     .optional(),
   studentNumber: z.string().trim().max(20).nullable().optional(),
-  avatarUrl: z.string().trim().url().max(500).startsWith("https://").nullable().optional(),
+  // `avatarUrl` is intentionally absent: the server owns it exclusively via `/profiles/me/avatar[/google]`
+  // — accepting it here would let a client point their profile at an arbitrary URL.
   identityMode: z.enum(["FULL_NAME", "FIRST_NAME", "NICKNAME", "NICKNAME_AND_NAME", "HIDDEN"]).optional(),
 });
 
@@ -101,6 +104,7 @@ export const updatePrivacySchema = z
     showInRoom: z.boolean(),
     showSeat: z.boolean(),
     allowDirectMessages: z.boolean(),
+    showInRanking: z.boolean(),
   })
   .partial();
 

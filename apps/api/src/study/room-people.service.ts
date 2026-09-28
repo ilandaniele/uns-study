@@ -4,17 +4,21 @@ import { schema, type Db } from "@uns/database";
 import type { RoomPersonDto, SeatOccupantDto } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
 import { displayName, visibleAvatarUrl, type DisplayNameProfile } from "../users/display-name.js";
+import { AliasService } from "../users/alias.service.js";
 import { toStudyStatusDto } from "./study.service.js";
 
-function profileForDisplay(profile: typeof schema.userProfiles.$inferSelect | null): DisplayNameProfile | null {
+function profileForDisplay(profile: typeof schema.userProfiles.$inferSelect | null, alias?: string | null): DisplayNameProfile | null {
   if (!profile) return null;
-  return { firstName: profile.firstName, lastName: profile.lastName, nickname: profile.nickname, identityMode: profile.identityMode };
+  return { firstName: profile.firstName, lastName: profile.lastName, nickname: profile.nickname, identityMode: profile.identityMode, alias: alias ?? profile.alias };
 }
 
 /** Read models for "who's in the room" — the `/rooms/:id/people` and `/rooms/:id/occupants` endpoints. */
 @Injectable()
 export class RoomPeopleService {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(
+    @Inject(DB) private readonly db: Db,
+    @Inject(AliasService) private readonly aliases: AliasService,
+  ) {}
 
   /** Registered users visible in `roomId`: `show_in_room` + (active check-in or active study status), block-excluded both ways. */
   async listPeople(roomId: string, viewerId: string): Promise<RoomPersonDto[]> {
@@ -64,9 +68,11 @@ export class RoomPeopleService {
           : and(eq(schema.userPrivacySettings.showInRoom, true), or(eq(schema.checkIns.status, "ACTIVE"), eq(schema.studyStatus.active, true))),
       );
 
+    const aliasByUser = await this.aliases.ensureAliasesForProfiles(rows.flatMap((r) => (r.profile ? [r.profile] : [])));
+
     return rows.map((r) => ({
       userId: r.userId,
-      displayName: displayName(profileForDisplay(r.profile), null, r.userName),
+      displayName: displayName(profileForDisplay(r.profile, aliasByUser.get(r.userId)), null, r.userName),
       avatarUrl: visibleAvatarUrl(r.profile ?? null, r.privacy),
       career: r.privacy.showCareer ? (r.profile?.career ?? null) : null,
       seatCode: r.checkIn?.showIdentity && r.privacy.showSeat ? (r.seatCode ?? null) : null,
@@ -97,10 +103,12 @@ export class RoomPeopleService {
         ),
       );
 
+    const aliasByUser = await this.aliases.ensureAliasesForProfiles(rows.flatMap((r) => (r.profile ? [r.profile] : [])));
+
     return rows.map((r) => ({
       seatId: r.seatId,
       userId: r.userId,
-      displayName: displayName(profileForDisplay(r.profile), null, r.userName),
+      displayName: displayName(profileForDisplay(r.profile, aliasByUser.get(r.userId)), null, r.userName),
       avatarUrl: visibleAvatarUrl(r.profile ?? null, r.privacy),
     }));
   }

@@ -71,11 +71,26 @@ describe("AliasService", () => {
     expect(aliases.size).toBe(ids.length);
   });
 
-  it("releases an alias so it becomes NULL and reusable", async () => {
+  it("releases an alias so it becomes NULL on the profile", async () => {
     await svc.ensureAlias("u1");
     await svc.releaseAlias("u1");
     const [row] = await db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, "u1"));
     expect(row?.alias).toBeNull();
+  });
+
+  it("never reissues a released alias — it's retired forever", async () => {
+    await svc.ensureAlias("u1"); // takes "Carpincho Estudioso"
+    await svc.releaseAlias("u1");
+
+    // u2's first draw is the just-released alias, which must be skipped as retired.
+    mockedRandomAlias.mockReset();
+    mockedRandomAlias.mockReturnValueOnce("Carpincho Estudioso").mockReturnValueOnce("Hornero Madrugador");
+
+    const alias = await svc.ensureAlias("u2");
+    expect(alias).toBe("Hornero Madrugador");
+
+    const [retired] = await db.select().from(schema.retiredAliases);
+    expect(retired?.alias).toBe("Carpincho Estudioso");
   });
 
   it("rerolls: releases the old alias and assigns a fresh one", async () => {

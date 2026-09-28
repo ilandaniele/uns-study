@@ -55,6 +55,8 @@ export class TableNameVotesController {
 
   @Delete()
   async unvote(@Param("proposalId", UuidParamPipe) proposalId: string, @CurrentUser() user: RequestUser) {
+    const limit = await this.rateLimit.check(`table-name:vote:${user.id}`, 30, 600);
+    if (!limit.allowed) throw ApiErrors.rateLimited();
     return this.tableNames.removeVote(proposalId, user.id);
   }
 }

@@ -23,6 +23,7 @@ export const PRIVACY_FIELDS: PrivacyFieldDef[] = [
   { key: "showStudentNumber", label: "Mostrar legajo", hint: "Tu número de legajo aparece en tu perfil público." },
   { key: "showAvatar", label: "Mostrar foto de perfil", hint: "Tu foto aparece en tu perfil y en la sala." },
   { key: "allowDirectMessages", label: "Permitir mensajes directos", hint: "Otras personas registradas pueden enviarte mensajes privados." },
+  { key: "showInRanking", label: "Aparecer en el ranking", hint: "Con tu apodo si ocultás tu nombre." },
 ];
 
 /** Whether toggling a field off should also disable another (kept simple: only seat depends on room visibility). */

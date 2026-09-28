@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@uns/database";
 import { schema } from "@uns/database";
 import { eq } from "drizzle-orm";
@@ -9,6 +9,23 @@ import { AvatarsService } from "./avatars.service.js";
 // needing a real decodable image.
 const JPEG_BASE64 = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46]).toString("base64");
 const PNG_MAGIC_ONLY_BASE64 = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).toString("base64");
+const JPEG_BYTES = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46]);
+
+/** Stubs `global.fetch` to resolve once with the given bytes, mimicking the `Response` shape this
+ *  service actually reads from (`ok`, `headers.get`, and an async-iterable `body`). */
+function stubFetchOnce(bytes: Buffer, opts: { ok?: boolean; contentLength?: number } = {}): void {
+  const { ok = true, contentLength } = opts;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({
+      ok,
+      headers: { get: (name: string) => (name === "content-length" ? (contentLength ?? bytes.length).toString() : null) },
+      body: (async function* () {
+        yield bytes;
+      })(),
+    })),
+  );
+}
 
 describe("AvatarsService", () => {
   let db: Db;
@@ -18,6 +35,10 @@ describe("AvatarsService", () => {
     db = await freshDb();
     svc = new AvatarsService(db);
     await insertUsers(db, ["u1", "u2"]);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   describe("upload", () => {
@@ -56,6 +77,16 @@ describe("AvatarsService", () => {
         code: "PHOTO_INVALID",
       });
     });
+
+    it("strips embedded metadata (e.g. EXIF) before storing", async () => {
+      const exifPayload = Buffer.concat([Buffer.from("Exif\0\0"), Buffer.from("GPS secret")]);
+      const app1 = Buffer.concat([Buffer.from([0xff, 0xe1]), lengthBytes(exifPayload.length + 2), exifPayload]);
+      const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8]), app1, Buffer.from([0xff, 0xd9])]);
+
+      await svc.upload("u1", { mimeType: "image/jpeg", base64: jpeg.toString("base64") });
+      const [row] = await db.select().from(schema.userAvatars).where(eq(schema.userAvatars.userId, "u1"));
+      expect(row!.bytes.includes("GPS secret")).toBe(false);
+    });
   });
 
   describe("getForOwner", () => {
@@ -92,20 +123,48 @@ describe("AvatarsService", () => {
   });
 
   describe("useGoogleImage", () => {
-    it("points avatar_url at the given https image and clears any uploaded bytes", async () => {
-      await svc.upload("u1", { mimeType: "image/jpeg", base64: JPEG_BASE64 });
+    it("fetches the bytes server-side and stores them through the same route as an upload", async () => {
+      stubFetchOnce(JPEG_BYTES);
       const url = await svc.useGoogleImage("u1", "https://lh3.googleusercontent.com/a/photo.jpg");
 
-      expect(url).toBe("https://lh3.googleusercontent.com/a/photo.jpg");
+      expect(url).toMatch(/^\/api\/v1\/avatars\/u1\?v=[0-9a-f]{12}$/);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.objectContaining({ href: "https://lh3.googleusercontent.com/a/photo.jpg" }),
+        expect.objectContaining({ redirect: "error" }),
+      );
       const [profile] = await db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, "u1"));
       expect(profile?.avatarUrl).toBe(url);
       const [row] = await db.select().from(schema.userAvatars).where(eq(schema.userAvatars.userId, "u1"));
-      expect(row).toBeUndefined();
+      expect(row?.mimeType).toBe("image/jpeg");
     });
 
-    it("rejects a non-https (or missing) Google image", async () => {
+    it("rejects a non-https (or missing) Google image without ever fetching", async () => {
+      stubFetchOnce(JPEG_BYTES);
       await expect(svc.useGoogleImage("u2", null)).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
       await expect(svc.useGoogleImage("u2", "http://insecure.test/a.png")).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("rejects a URL whose host isn't a googleusercontent.com subdomain", async () => {
+      stubFetchOnce(JPEG_BYTES);
+      await expect(svc.useGoogleImage("u2", "https://evil.test/photo.jpg")).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("rejects a response larger than the avatar size cap", async () => {
+      stubFetchOnce(JPEG_BYTES, { contentLength: 400 * 1024 });
+      await expect(svc.useGoogleImage("u2", "https://lh3.googleusercontent.com/a/photo.jpg")).rejects.toMatchObject({ code: "PHOTO_INVALID" });
+    });
+
+    it("rejects bytes that don't match any known image signature", async () => {
+      stubFetchOnce(Buffer.from([0x00, 0x01, 0x02, 0x03]));
+      await expect(svc.useGoogleImage("u2", "https://lh3.googleusercontent.com/a/photo.jpg")).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
     });
   });
 });
+
+function lengthBytes(n: number): Buffer {
+  const b = Buffer.alloc(2);
+  b.writeUInt16BE(n, 0);
+  return b;
+}

@@ -54,7 +54,7 @@ describe("RankingsService", () => {
     await insertStudySession("u1", "2026-01-01", 100, "33333333-3333-3333-3333-333333333333");
 
     const today = await svc.getRankings(roomSlug, "today", "study_time", null, TODAY);
-    expect(today.entries).toEqual([{ rank: 1, userId: "u1", displayName: "Usuario anónimo", avatarUrl: null, value: 720 }]);
+    expect(today.entries).toEqual([{ rank: 1, userId: null, displayName: "Usuario anónimo", avatarUrl: null, isMe: false, value: 720 }]);
 
     const all = await svc.getRankings(roomSlug, "all", "study_time", null, TODAY);
     expect(all.entries[0]?.value).toBe(820); // 720 (capped today) + 100 (other day)
@@ -76,9 +76,10 @@ describe("RankingsService", () => {
     await insertStudySession("u3", "2026-01-13", 40, "88888888-8888-8888-8888-888888888888");
 
     const ranking = await svc.getRankings(roomSlug, "all", "streak", null, TODAY);
-    const byUser = new Map(ranking.entries.map((e) => [e.userId, e.value]));
-    expect(byUser.get("u2")).toBe(3);
-    expect(byUser.has("u3")).toBe(false); // value 0 is excluded from the list
+    // Neither u2 nor u3 opted into anything beyond `showInRoom`, so they're shown anonymously —
+    // only u2 clears a nonzero streak, so it's the only (unlinkable) entry in the list.
+    expect(ranking.entries).toHaveLength(1);
+    expect(ranking.entries[0]).toMatchObject({ userId: null, value: 3 }); // value 0 (u3) is excluded from the list
   });
 
   it("caps contribution points per day (20 observations + 5 check-ins) and sums them", async () => {
@@ -109,7 +110,7 @@ describe("RankingsService", () => {
     }
 
     const ranking = await svc.getRankings(roomSlug, "today", "contribution", null, TODAY);
-    expect(ranking.entries).toEqual([{ rank: 1, userId: "u4", displayName: "Usuario anónimo", avatarUrl: null, value: 25 }]);
+    expect(ranking.entries).toEqual([{ rank: 1, userId: null, displayName: "Usuario anónimo", avatarUrl: null, isMe: false, value: 25 }]);
   });
 
   it("excludes hidden users from the public list but still computes `me` for the viewer", async () => {
@@ -123,18 +124,44 @@ describe("RankingsService", () => {
 
     const asSelf = await svc.getRankings(roomSlug, "today", "study_time", "u5", TODAY);
     expect(asSelf.entries).toHaveLength(0);
-    expect(asSelf.me).toEqual({ rank: 0, userId: "u5", displayName: "Usuario anónimo", avatarUrl: null, value: 60 });
+    expect(asSelf.me).toEqual({ rank: 0, userId: null, displayName: "Usuario anónimo", avatarUrl: null, isMe: true, value: 60 });
   });
 
-  it("includes a HIDDEN user (with a profile row) under their random alias instead of excluding them", async () => {
+  it("includes a HIDDEN user (with a profile row) under their random alias, but never linkable", async () => {
     await insertUsers(db, ["u6"]);
     await db.insert(schema.userProfiles).values({ userId: "u6" }); // default identityMode: HIDDEN
+    await db.insert(schema.userPrivacySettings).values({ userId: "u6", showInRoom: true });
     await insertStudySession("u6", "2026-01-15", 45, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
 
     const ranking = await svc.getRankings(roomSlug, "today", "study_time", null, TODAY);
     expect(ranking.entries).toHaveLength(1);
-    expect(ranking.entries[0]?.userId).toBe("u6");
+    // Shown under the alias, but never linkable — an alias is a fun label, not an identity.
+    expect(ranking.entries[0]?.userId).toBeNull();
     expect(ranking.entries[0]?.displayName).not.toBe("Usuario anónimo");
     expect(ranking.entries[0]?.displayName).toMatch(/^\S+ \S+$/); // "Noun Adjective"
+  });
+
+  it("links a visible identity that opted into showInRoom", async () => {
+    await insertUsers(db, ["u7"]);
+    await db.insert(schema.userProfiles).values({ userId: "u7", identityMode: "FIRST_NAME", firstName: "Ana" });
+    await db.insert(schema.userPrivacySettings).values({ userId: "u7", showInRoom: true });
+    await insertStudySession("u7", "2026-01-15", 45, "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+
+    const ranking = await svc.getRankings(roomSlug, "today", "study_time", null, TODAY);
+    expect(ranking.entries).toEqual([{ rank: 1, userId: "u7", displayName: "Ana", avatarUrl: null, isMe: false, value: 45 }]);
+  });
+
+  it("excludes a user entirely once they opt out of showInRanking, even from their own `me`", async () => {
+    await insertUsers(db, ["u8"]);
+    await db.insert(schema.userProfiles).values({ userId: "u8", identityMode: "FIRST_NAME", firstName: "Beto" });
+    await db.insert(schema.userPrivacySettings).values({ userId: "u8", showInRoom: true, showInRanking: false });
+    await insertStudySession("u8", "2026-01-15", 45, "cccccccc-cccc-cccc-cccc-cccccccccccc");
+
+    const asStranger = await svc.getRankings(roomSlug, "today", "study_time", null, TODAY);
+    expect(asStranger.entries).toHaveLength(0);
+
+    const asSelf = await svc.getRankings(roomSlug, "today", "study_time", "u8", TODAY);
+    expect(asSelf.entries).toHaveLength(0);
+    expect(asSelf.me).toBeNull();
   });
 });

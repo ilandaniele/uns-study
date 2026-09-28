@@ -53,4 +53,6 @@ export const ApiErrors = {
       "Ya verificaste este lugar. Para volver a verificar, marcá “Estoy acá” de nuevo cuando te sientes.",
       409,
     ),
+  tableNameNotAllowed: () =>
+    new ApiException("TABLE_NAME_NOT_ALLOWED", "Para proponer o votar tenés que haber marcado un lugar en la sala.", 403),
 };

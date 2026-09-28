@@ -1,42 +1,20 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, gte, sql } from "drizzle-orm";
 import { schema, type Db } from "@uns/database";
 import type { TableNameProposalDto, TableNamesDto } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
+import { containsProfanity } from "./profanity.js";
 
 const UNIQUE_VIOLATION = "23505";
 /** A table's nickname is only "locked in" once its top proposal clears this many votes. */
 const NICKNAME_VOTE_THRESHOLD = 5;
 /** Cap on ACTIVE proposals any one user can have open per room, to keep the list usable. */
 const MAX_ACTIVE_PROPOSALS_PER_USER = 3;
-
-/** Small, deliberately conservative blocklist — this filters obviously abusive names, not every
- *  possible slur; anything that slips through can still be removed by an admin. */
-const PROFANITY_BLOCKLIST = [
-  "puta",
-  "puto",
-  "putos",
-  "putas",
-  "mierda",
-  "pelotud",
-  "boluda",
-  "forro",
-  "conchud",
-  "pendejo",
-  "pendeja",
-  "cornudo",
-  "trolo",
-  "trola",
-  "negro de mierda",
-  "concha",
-  "verga",
-  "pija",
-  "cagon",
-  "cagón",
-];
+/** Proposing/voting requires a check-in (any status) in the room within this many days. */
+const ELIGIBILITY_WINDOW_DAYS = 30;
 
 const URL_PATTERN = /https?:\/\/|www\.|\.(com|net|org|ar|io|co|info|xyz|gov|edu)\b/i;
 
@@ -98,9 +76,10 @@ export class TableNamesService {
   // ---- Writes ----
 
   async propose(tableId: string, userId: string, name: string): Promise<TableNameProposalDto> {
-    await this.restrictions.assertNot(userId, ["SUSPENDED", "BANNED"]);
+    await this.restrictions.assertNot(userId, ["MUTE_CHAT", "SUSPENDED", "BANNED"]);
     const table = await this.getTableOrThrow(tableId);
     if (table.type !== "MAIN_TABLE") throw ApiErrors.validation("Solo se pueden proponer nombres para mesas.");
+    await this.assertEligible(userId, table.roomId);
 
     assertNameAllowed(name);
 
@@ -129,50 +108,93 @@ export class TableNamesService {
   }
 
   async vote(proposalId: string, userId: string): Promise<TableNamesDto> {
-    await this.restrictions.assertNot(userId, ["SUSPENDED", "BANNED"]);
+    await this.restrictions.assertNot(userId, ["MUTE_CHAT", "SUSPENDED", "BANNED"]);
 
-    const [proposal] = await this.db.select().from(schema.tableNameProposals).where(eq(schema.tableNameProposals.id, proposalId)).limit(1);
-    if (!proposal || proposal.status !== "ACTIVE") throw ApiErrors.notFound("Propuesta no encontrada.");
+    const [proposalForEligibility] = await this.db.select().from(schema.tableNameProposals).where(eq(schema.tableNameProposals.id, proposalId)).limit(1);
+    if (!proposalForEligibility) throw ApiErrors.notFound("Propuesta no encontrada.");
+    await this.assertEligible(userId, proposalForEligibility.roomId);
 
-    const now = new Date();
-    await this.db
-      .insert(schema.tableNameVotes)
-      .values({ proposalId, tableId: proposal.tableId, userId, createdAt: now })
-      .onConflictDoUpdate({
-        target: [schema.tableNameVotes.tableId, schema.tableNameVotes.userId],
-        set: { proposalId, createdAt: now },
-      });
+    const tableId = await this.db.transaction(async (tx) => {
+      // Serializes with any concurrent vote/unvote/admin-removal on this table so the recompute
+      // below always sees a consistent vote count.
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${proposalForEligibility.tableId}))`);
 
-    await this.recomputeNickname(proposal.tableId);
-    return this.listForTable(proposal.tableId, userId);
+      // Re-read inside the lock: another transaction may have removed this proposal just before we acquired it.
+      const [proposal] = await tx.select().from(schema.tableNameProposals).where(eq(schema.tableNameProposals.id, proposalId)).limit(1);
+      if (!proposal || proposal.status !== "ACTIVE") throw ApiErrors.notFound("Propuesta no encontrada.");
+
+      const now = new Date();
+      await tx
+        .insert(schema.tableNameVotes)
+        .values({ proposalId, tableId: proposal.tableId, userId, createdAt: now })
+        .onConflictDoUpdate({
+          target: [schema.tableNameVotes.tableId, schema.tableNameVotes.userId],
+          set: { proposalId, createdAt: now },
+        });
+
+      await this.recomputeNickname(proposal.tableId, tx);
+      return proposal.tableId;
+    });
+
+    return this.listForTable(tableId, userId);
   }
 
   async removeVote(proposalId: string, userId: string): Promise<TableNamesDto> {
-    const [proposal] = await this.db.select().from(schema.tableNameProposals).where(eq(schema.tableNameProposals.id, proposalId)).limit(1);
-    if (!proposal) throw ApiErrors.notFound("Propuesta no encontrada.");
+    const [proposalForLock] = await this.db.select().from(schema.tableNameProposals).where(eq(schema.tableNameProposals.id, proposalId)).limit(1);
+    if (!proposalForLock) throw ApiErrors.notFound("Propuesta no encontrada.");
 
-    await this.db
-      .delete(schema.tableNameVotes)
-      .where(and(eq(schema.tableNameVotes.proposalId, proposalId), eq(schema.tableNameVotes.userId, userId)));
+    const tableId = await this.db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${proposalForLock.tableId}))`);
 
-    await this.recomputeNickname(proposal.tableId);
-    return this.listForTable(proposal.tableId, userId);
+      const [proposal] = await tx.select().from(schema.tableNameProposals).where(eq(schema.tableNameProposals.id, proposalId)).limit(1);
+      if (!proposal) throw ApiErrors.notFound("Propuesta no encontrada.");
+
+      await tx
+        .delete(schema.tableNameVotes)
+        .where(and(eq(schema.tableNameVotes.proposalId, proposalId), eq(schema.tableNameVotes.userId, userId)));
+
+      await this.recomputeNickname(proposal.tableId, tx);
+      return proposal.tableId;
+    });
+
+    return this.listForTable(tableId, userId);
   }
 
   // ---- Admin ----
 
-  async adminDeleteProposal(proposalId: string): Promise<void> {
-    const [proposal] = await this.db.select().from(schema.tableNameProposals).where(eq(schema.tableNameProposals.id, proposalId)).limit(1);
-    if (!proposal) throw ApiErrors.notFound("Propuesta no encontrada.");
+  async adminDeleteProposal(proposalId: string, actorId: string): Promise<void> {
+    const [proposalForLock] = await this.db.select().from(schema.tableNameProposals).where(eq(schema.tableNameProposals.id, proposalId)).limit(1);
+    if (!proposalForLock) throw ApiErrors.notFound("Propuesta no encontrada.");
 
-    await this.db.update(schema.tableNameProposals).set({ status: "REMOVED" }).where(eq(schema.tableNameProposals.id, proposalId));
-    await this.recomputeNickname(proposal.tableId);
+    await this.db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${proposalForLock.tableId}))`);
+
+      const [proposal] = await tx.select().from(schema.tableNameProposals).where(eq(schema.tableNameProposals.id, proposalId)).limit(1);
+      if (!proposal) throw ApiErrors.notFound("Propuesta no encontrada.");
+
+      await tx.update(schema.tableNameProposals).set({ status: "REMOVED" }).where(eq(schema.tableNameProposals.id, proposalId));
+      await tx.insert(schema.moderationActions).values({
+        actorId,
+        targetUserId: proposal.proposerUserId,
+        action: "TABLE_NAME_REMOVED",
+        metadata: { proposalId: proposal.id, name: proposal.name, tableId: proposal.tableId },
+      });
+      await this.recomputeNickname(proposal.tableId, tx);
+    });
   }
 
-  async adminClearNickname(tableId: string): Promise<void> {
+  async adminClearNickname(tableId: string, actorId: string): Promise<void> {
     const table = await this.getTableOrThrow(tableId);
     if (table.nickname === null) return;
-    await this.db.update(schema.roomTables).set({ nickname: null, updatedAt: new Date() }).where(eq(schema.roomTables.id, tableId));
+    await this.db.transaction(async (tx) => {
+      await tx.update(schema.roomTables).set({ nickname: null, updatedAt: new Date() }).where(eq(schema.roomTables.id, tableId));
+      await tx.insert(schema.moderationActions).values({
+        actorId,
+        targetUserId: null,
+        action: "TABLE_NICKNAME_CLEARED",
+        metadata: { tableId, previousNickname: table.nickname },
+      });
+    });
     this.realtime.emitTableNicknameChanged(table.roomId, { tableId, nickname: null });
   }
 
@@ -184,15 +206,30 @@ export class TableNamesService {
     return table;
   }
 
+  /** Requires a check-in (any status) by `userId` in `roomId` within the last `ELIGIBILITY_WINDOW_DAYS`
+   *  days — proposing/voting on table nicknames is a privilege for people who've actually shown up. */
+  private async assertEligible(userId: string, roomId: string): Promise<void> {
+    const since = new Date(Date.now() - ELIGIBILITY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+    const [recentCheckIn] = await this.db
+      .select({ id: schema.checkIns.id })
+      .from(schema.checkIns)
+      .where(and(eq(schema.checkIns.userId, userId), eq(schema.checkIns.roomId, roomId), gte(schema.checkIns.createdAt, since)))
+      .limit(1);
+    if (!recentCheckIn) throw ApiErrors.tableNameNotAllowed();
+  }
+
   /**
    * Recomputes the table's nickname from its ACTIVE proposals: the proposal with the most votes
    * (minimum `NICKNAME_VOTE_THRESHOLD`) wins; a tie keeps the current nickname if it's one of the
-   * tied names, else the earliest-created tied proposal; no qualifying proposal clears it.
+   * tied names, else the earliest-created tied proposal; no qualifying proposal clears it. A
+   * challenger only ever replaces the current nickname by having strictly more votes (a tie always
+   * keeps the incumbent) — callers must hold the per-table advisory lock before calling this.
    */
-  private async recomputeNickname(tableId: string): Promise<void> {
-    const table = await this.getTableOrThrow(tableId);
+  private async recomputeNickname(tableId: string, tx: Db = this.db): Promise<void> {
+    const [table] = await tx.select().from(schema.roomTables).where(eq(schema.roomTables.id, tableId)).limit(1);
+    if (!table) throw ApiErrors.notFound("Mesa no encontrada.");
 
-    const rows = await this.db
+    const rows = await tx
       .select({
         name: schema.tableNameProposals.name,
         createdAt: schema.tableNameProposals.createdAt,
@@ -220,7 +257,7 @@ export class TableNamesService {
 
     if (nextNickname === table.nickname) return;
 
-    await this.db.update(schema.roomTables).set({ nickname: nextNickname, updatedAt: new Date() }).where(eq(schema.roomTables.id, tableId));
+    await tx.update(schema.roomTables).set({ nickname: nextNickname, updatedAt: new Date() }).where(eq(schema.roomTables.id, tableId));
     this.realtime.emitTableNicknameChanged(table.roomId, { tableId, nickname: nextNickname });
   }
 }
@@ -231,8 +268,7 @@ function assertNameAllowed(name: string): void {
   if (URL_PATTERN.test(name)) {
     throw ApiErrors.validation("El nombre no puede contener enlaces.");
   }
-  const normalized = name.toLowerCase();
-  if (PROFANITY_BLOCKLIST.some((word) => normalized.includes(word))) {
+  if (containsProfanity(name)) {
     throw ApiErrors.validation("Ese nombre no está permitido.");
   }
 }

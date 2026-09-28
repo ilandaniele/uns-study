@@ -33,7 +33,7 @@ test("profile identity + privacy: hidden by default, then visible in /personas o
     await pageA.getByRole("button", { name: "Guardar" }).click();
     await expect(pageA.getByText("Guardado.")).toBeVisible();
 
-    const showInRoomSwitch = pageA.getByRole("switch", { name: /Aparecer en/ });
+    const showInRoomSwitch = pageA.getByRole("switch", { name: /Aparecer en “Personas en la sala”/ });
     await Promise.all([
       pageA.waitForResponse((res) => res.url().includes("/api/v1/profiles/me/privacy") && res.request().method() === "PATCH"),
       showInRoomSwitch.click(),

@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import type { Db } from "@uns/database";
 import { schema } from "@uns/database";
 import type { Auth } from "../auth/auth.instance.js";
-import { freshDb, getRoom, insertUsers } from "../test-utils.js";
+import { freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
@@ -23,6 +23,22 @@ describe("TableNamesService", () => {
   let tableNames: TableNamesService;
   let roomId: string;
   let tableId: string;
+  let seatId: string;
+
+  /** Eligibility (M3) requires a check-in (any status) in the room within the last 30 days. */
+  async function makeEligible(...userIds: string[]): Promise<void> {
+    for (const userId of userIds) {
+      await db.insert(schema.checkIns).values({
+        userId,
+        roomId,
+        seatId,
+        status: "COMPLETED",
+        startedAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+        endedAt: new Date(),
+      });
+    }
+  }
 
   beforeEach(async () => {
     db = await freshDb();
@@ -35,7 +51,40 @@ describe("TableNamesService", () => {
       .where(and(eq(schema.roomTables.roomId, roomId), eq(schema.roomTables.type, "MAIN_TABLE")))
       .limit(1);
     tableId = table!.id;
-    await insertUsers(db, ["u1", "u2", "u3", "u4", "u5", "u6"]);
+    seatId = (await getSeats(db))[0]!.id;
+    await insertUsers(db, ["u1", "u2", "u3", "u4", "u5", "u6", "admin1"]);
+    await makeEligible("u1", "u2", "u3", "u4", "u5", "u6");
+  });
+
+  describe("eligibility (M3)", () => {
+    it("rejects proposing without a check-in in the room in the last 30 days", async () => {
+      await insertUsers(db, ["newcomer"]);
+      await expect(tableNames.propose(tableId, "newcomer", "Mesa Nueva")).rejects.toMatchObject({ code: "TABLE_NAME_NOT_ALLOWED" });
+    });
+
+    it("rejects voting without a check-in in the room in the last 30 days", async () => {
+      const a = await tableNames.propose(tableId, "u1", "Mesa A");
+      await insertUsers(db, ["newcomer"]);
+      await expect(tableNames.vote(a.id, "newcomer")).rejects.toMatchObject({ code: "TABLE_NAME_NOT_ALLOWED" });
+    });
+
+    it("allows proposing/voting for a user with an old (even non-active) check-in in the room", async () => {
+      const a = await tableNames.propose(tableId, "u1", "Mesa A");
+      await expect(tableNames.vote(a.id, "u2")).resolves.toBeDefined();
+    });
+  });
+
+  describe("moderation gates (M7)", () => {
+    it("rejects proposing while MUTE_CHAT is active", async () => {
+      await db.insert(schema.userRestrictions).values({ userId: "u1", type: "MUTE_CHAT", reason: "test" });
+      await expect(tableNames.propose(tableId, "u1", "Mesa Muteada")).rejects.toMatchObject({ code: "RESTRICTED" });
+    });
+
+    it("rejects voting while MUTE_CHAT is active", async () => {
+      const a = await tableNames.propose(tableId, "u1", "Mesa A");
+      await db.insert(schema.userRestrictions).values({ userId: "u2", type: "MUTE_CHAT", reason: "test" });
+      await expect(tableNames.vote(a.id, "u2")).rejects.toMatchObject({ code: "RESTRICTED" });
+    });
   });
 
   describe("propose", () => {
@@ -113,6 +162,7 @@ describe("TableNamesService", () => {
       expect(table?.nickname).toBe("Nombre A");
 
       await insertUsers(db, ["u7", "u8", "u9", "u10", "u11"]);
+      await makeEligible("u7", "u8", "u9", "u10", "u11");
       for (const voter of ["u7", "u8", "u9", "u10", "u11"]) await tableNames.vote(b.id, voter);
       [table] = await db.select().from(schema.roomTables).where(eq(schema.roomTables.id, tableId));
       // Both proposals now sit at 5 votes — the tie keeps the incumbent nickname.
@@ -127,7 +177,7 @@ describe("TableNamesService", () => {
       let [table] = await db.select().from(schema.roomTables).where(eq(schema.roomTables.id, tableId));
       expect(table?.nickname).toBe("La Pecera");
 
-      await tableNames.adminDeleteProposal(a.id);
+      await tableNames.adminDeleteProposal(a.id, "admin1");
       [table] = await db.select().from(schema.roomTables).where(eq(schema.roomTables.id, tableId));
       expect(table?.nickname).toBeNull();
     });
@@ -136,9 +186,27 @@ describe("TableNamesService", () => {
       const a = await tableNames.propose(tableId, "u1", "La Pecera");
       for (const voter of ["u1", "u2", "u3", "u4", "u5"]) await tableNames.vote(a.id, voter);
 
-      await tableNames.adminClearNickname(tableId);
+      await tableNames.adminClearNickname(tableId, "admin1");
       const [table] = await db.select().from(schema.roomTables).where(eq(schema.roomTables.id, tableId));
       expect(table?.nickname).toBeNull();
+    });
+
+    it("writes a moderation_actions row when an admin deletes a proposal (M6)", async () => {
+      const a = await tableNames.propose(tableId, "u1", "La Pecera");
+      await tableNames.adminDeleteProposal(a.id, "admin1");
+
+      const [action] = await db.select().from(schema.moderationActions).where(eq(schema.moderationActions.action, "TABLE_NAME_REMOVED"));
+      expect(action?.actorId).toBe("admin1");
+      expect(action?.targetUserId).toBe("u1");
+    });
+
+    it("writes a moderation_actions row when an admin clears a nickname (M6)", async () => {
+      const a = await tableNames.propose(tableId, "u1", "La Pecera");
+      for (const voter of ["u1", "u2", "u3", "u4", "u5"]) await tableNames.vote(a.id, voter);
+
+      await tableNames.adminClearNickname(tableId, "admin1");
+      const [action] = await db.select().from(schema.moderationActions).where(eq(schema.moderationActions.action, "TABLE_NICKNAME_CLEARED"));
+      expect(action?.actorId).toBe("admin1");
     });
   });
 });

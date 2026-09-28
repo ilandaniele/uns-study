@@ -78,6 +78,13 @@
       "when": 1790635296499,
       "tag": "0010_chief_rogue",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790636746052,
+      "tag": "0011_wet_polaris",
+      "breakpoints": true
     }
   ]
 }

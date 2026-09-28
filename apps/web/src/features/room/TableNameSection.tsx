@@ -21,10 +21,14 @@ export function TableNameSection({ tableId, loggedIn }: TableNameSectionProps) {
 
   async function handleVoteToggle(proposalId: string, alreadyMine: boolean) {
     setPending(true);
+    setFormError(null);
     try {
       await (alreadyMine ? unvote(proposalId) : vote(proposalId));
-    } catch {
-      // best-effort — the list will simply not update
+    } catch (err) {
+      // Surface the "you need to have checked in here" eligibility message; otherwise best-effort.
+      if (err instanceof ApiRequestError && err.code === "TABLE_NAME_NOT_ALLOWED") {
+        setFormError(err.message);
+      }
     } finally {
       setPending(false);
     }

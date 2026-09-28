@@ -13,6 +13,7 @@ const ALL_OFF: PrivacySettingsDto = {
   showInRoom: false,
   showSeat: false,
   allowDirectMessages: true,
+  showInRanking: true,
 };
 
 describe("PRIVACY_FIELDS", () => {

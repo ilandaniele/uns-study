@@ -6,7 +6,7 @@ import { schema, type Db } from "@uns/database";
 import type { RankingCategory, RankingDto, RankingEntryDto, RankingPeriod } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
 import { RoomsService } from "../rooms/rooms.service.js";
-import { displayName, visibleAvatarUrl } from "../users/display-name.js";
+import { displayName, needsAlias, visibleAvatarUrl } from "../users/display-name.js";
 import { AliasService } from "../users/alias.service.js";
 
 const STUDY_TIME_DAILY_CAP_MIN = 720;
@@ -84,9 +84,15 @@ function cappedDailyCount(rows: { userId: string; createdAt: Date | string }[], 
 }
 
 interface VisibilityInfo {
+  /** Appears in the ranking list at all. */
   visible: boolean;
+  /** Opted out of rankings entirely (`showInRanking: false`) — excluded even from their own `me` row. */
+  hiddenFromRanking: boolean;
   displayName: string;
   avatarUrl: string | null;
+  /** `false` whenever the entry must not be linkable: not opted into room visibility, or the shown
+   *  name is the random alias rather than a chosen identity. */
+  linkable: boolean;
 }
 
 /**
@@ -121,32 +127,44 @@ export class RankingsService {
     const visibilityUserIds = viewerUserId && !userIds.includes(viewerUserId) ? [...userIds, viewerUserId] : userIds;
     const visibility = await this.visibilityInfo(visibilityUserIds);
 
-    const entries: RankingEntryDto[] = [];
+    const entries: (RankingEntryDto & { realUserId: string })[] = [];
     for (const [userId, value] of values) {
       if (value <= 0) continue;
       const info = visibility.get(userId);
-      if (!info?.visible) continue;
-      entries.push({ rank: 0, userId, displayName: info.displayName, avatarUrl: info.avatarUrl, value });
+      if (!info?.visible || info.hiddenFromRanking) continue;
+      entries.push({
+        rank: 0,
+        userId: info.linkable ? userId : null,
+        displayName: info.displayName,
+        avatarUrl: info.avatarUrl,
+        isMe: userId === viewerUserId,
+        value,
+        realUserId: userId,
+      });
     }
-    entries.sort((a, b) => b.value - a.value || a.userId.localeCompare(b.userId));
+    entries.sort((a, b) => b.value - a.value || a.realUserId.localeCompare(b.realUserId));
     entries.forEach((entry, i) => {
       entry.rank = i + 1;
     });
+    const publicEntries: RankingEntryDto[] = entries.map(({ realUserId: _realUserId, ...entry }) => entry);
 
     let me: RankingEntryDto | null = null;
     if (viewerUserId) {
       const info = visibility.get(viewerUserId);
-      const inList = entries.find((e) => e.userId === viewerUserId);
-      me = {
-        rank: inList?.rank ?? 0,
-        userId: viewerUserId,
-        displayName: info?.displayName ?? "Usuario anónimo",
-        avatarUrl: info?.avatarUrl ?? null,
-        value: values.get(viewerUserId) ?? 0,
-      };
+      if (info && !info.hiddenFromRanking) {
+        const inList = entries.find((e) => e.realUserId === viewerUserId);
+        me = {
+          rank: inList?.rank ?? 0,
+          userId: info.linkable ? viewerUserId : null,
+          displayName: info.displayName,
+          avatarUrl: info.avatarUrl,
+          isMe: true,
+          value: values.get(viewerUserId) ?? 0,
+        };
+      }
     }
 
-    return { period, category, entries, me };
+    return { period, category, entries: publicEntries, me };
   }
 
   private async visibilityInfo(userIds: string[]): Promise<Map<string, VisibilityInfo>> {
@@ -165,10 +183,17 @@ export class RankingsService {
       // A profile row (even HIDDEN) is now visible under its alias — only a user with no profile
       // at all, and no `showInRoom` opt-in, stays fully out of the list.
       const visible = Boolean(privacy?.showInRoom) || Boolean(profile);
+      // Not linkable (userId hidden from the response) unless the user opted into room visibility
+      // *and* the name shown isn't just their alias — an alias is a fun label, not an identity.
+      const shownAsAlias = !profile || needsAlias(profile);
+      const linkable = Boolean(privacy?.showInRoom) && !shownAsAlias;
       result.set(userId, {
         visible,
+        hiddenFromRanking: privacy?.showInRanking === false,
         displayName: displayName(profile, privacy, "Usuario anónimo"),
-        avatarUrl: visibleAvatarUrl(profile, privacy),
+        // No avatar at all unless both `showAvatar` and `showInRoom` are on (07_SECURITY §privacy).
+        avatarUrl: privacy?.showInRoom ? visibleAvatarUrl(profile, privacy) : null,
+        linkable,
       });
     }
     return result;

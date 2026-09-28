@@ -10,6 +10,7 @@ import { CheckInService } from "../checkins/checkins.service.js";
 import { QrService } from "../qr/qr.service.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
 import { RestrictionService } from "../users/restriction.service.js";
+import { AliasService } from "../users/alias.service.js";
 import { StudyService } from "./study.service.js";
 import { RoomPeopleService } from "./room-people.service.js";
 
@@ -19,7 +20,7 @@ async function build(db: Db) {
   const security = new SecurityEventService(db, new ReputationService(db));
   const checkIns = new CheckInService(db, roomState, presence, security, new StudySessionService(db), new QrService(db), buildDisputeService(db));
   const study = new StudyService(db, new RestrictionService(db));
-  const people = new RoomPeopleService(db);
+  const people = new RoomPeopleService(db, new AliasService(db));
   return { checkIns, study, people };
 }
 

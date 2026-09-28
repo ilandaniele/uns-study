@@ -10,18 +10,17 @@ export function RankingTable({ ranking }: { ranking: RankingDto }) {
   if (ranking.entries.length === 0) return <EmptyRanking period={ranking.period} />;
 
   const format = (value: number) => formatRankingValue(ranking.category, value);
-  const myId = ranking.me?.userId ?? null;
   const podium = ranking.entries.filter((entry) => entry.rank <= 3).slice(0, 3);
   const rest = ranking.entries.filter((entry) => !podium.includes(entry));
-  const meInList = myId === null || ranking.entries.some((entry) => entry.userId === myId);
+  const meInList = ranking.me === null || ranking.entries.some((entry) => entry.isMe);
 
   return (
     <div className="flex flex-col gap-4">
-      <Podium entries={podium} format={format} myId={myId} />
+      <Podium entries={podium} format={format} />
       {rest.length > 0 ? (
         <ol className="flex flex-col divide-y divide-[var(--border)] overflow-hidden rounded-2xl border border-app bg-surface">
           {rest.map((entry) => (
-            <RankingRow key={entry.userId} entry={entry} value={format(entry.value)} highlighted={entry.userId === myId} />
+            <RankingRow key={entry.userId ?? `anon-${entry.rank}`} entry={entry} value={format(entry.value)} highlighted={entry.isMe} />
           ))}
         </ol>
       ) : null}
@@ -38,7 +37,7 @@ export function RankingTable({ ranking }: { ranking: RankingDto }) {
 }
 
 /** Top three as cards, winner in the middle and raised (2 - 1 - 3). */
-function Podium({ entries, format, myId }: { entries: RankingEntryDto[]; format: (value: number) => string; myId: string | null }) {
+function Podium({ entries, format }: { entries: RankingEntryDto[]; format: (value: number) => string }) {
   const byRank = (rank: number) => entries.find((entry) => entry.rank === rank) ?? null;
   const slots = [byRank(2), byRank(1), byRank(3)];
   return (
@@ -46,14 +45,14 @@ function Podium({ entries, format, myId }: { entries: RankingEntryDto[]; format:
       {slots.map((entry, index) =>
         entry ? (
           <li
-            key={entry.userId}
+            key={entry.userId ?? `anon-${entry.rank}`}
             className={`flex min-w-0 flex-col items-center gap-2 rounded-2xl border bg-gradient-to-b px-2 pb-3 text-center shadow-sm ${
               entry.rank === 1 ? "from-[var(--surface-2)] to-surface pt-7" : "from-[var(--surface-2)]/60 to-surface pt-3"
-            } ${entry.userId === myId ? "border-[var(--primary)] bg-primary/10" : "border-app"}`}
+            } ${entry.isMe ? "border-[var(--primary)] bg-primary/10" : "border-app"}`}
           >
             <div className="relative">
               <Avatar
-                userId={entry.userId}
+                userId={entry.userId ?? entry.displayName}
                 name={entry.displayName}
                 url={entry.avatarUrl}
                 size={entry.rank === 1 ? 64 : 52}
@@ -66,12 +65,18 @@ function Podium({ entries, format, myId }: { entries: RankingEntryDto[]; format:
                 {entry.rank}
               </span>
             </div>
-            <Link
-              href={`/u/${entry.userId}`}
-              className={`mt-1 w-full truncate text-main hover:underline ${entry.rank === 1 ? "text-sm font-bold" : "text-sm font-semibold"}`}
-            >
-              {entry.displayName}
-            </Link>
+            {entry.userId ? (
+              <Link
+                href={`/u/${entry.userId}`}
+                className={`mt-1 w-full truncate text-main hover:underline ${entry.rank === 1 ? "text-sm font-bold" : "text-sm font-semibold"}`}
+              >
+                {entry.displayName}
+              </Link>
+            ) : (
+              <span className={`mt-1 w-full truncate text-main ${entry.rank === 1 ? "text-sm font-bold" : "text-sm font-semibold"}`}>
+                {entry.displayName}
+              </span>
+            )}
             <span className={`tabular-nums text-main ${entry.rank === 1 ? "text-base font-bold" : "text-sm font-semibold"}`}>
               {format(entry.value)}
             </span>
@@ -94,11 +99,18 @@ function RankingRow({ entry, value, highlighted }: { entry: RankingEntryDto; val
       >
         {entry.rank}
       </span>
-      <Avatar userId={entry.userId} name={entry.displayName} url={entry.avatarUrl} size={40} />
-      <Link href={`/u/${entry.userId}`} className="min-w-0 flex-1 truncate text-sm font-medium text-main hover:underline">
-        {entry.displayName}
-        {highlighted ? <span className="ml-1.5 text-xs font-medium text-primary">vos</span> : null}
-      </Link>
+      <Avatar userId={entry.userId ?? entry.displayName} name={entry.displayName} url={entry.avatarUrl} size={40} />
+      {entry.userId ? (
+        <Link href={`/u/${entry.userId}`} className="min-w-0 flex-1 truncate text-sm font-medium text-main hover:underline">
+          {entry.displayName}
+          {highlighted ? <span className="ml-1.5 text-xs font-medium text-primary">vos</span> : null}
+        </Link>
+      ) : (
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-main">
+          {entry.displayName}
+          {highlighted ? <span className="ml-1.5 text-xs font-medium text-primary">vos</span> : null}
+        </span>
+      )}
       <span className="text-sm font-bold tabular-nums text-main">{value}</span>
     </li>
   );
