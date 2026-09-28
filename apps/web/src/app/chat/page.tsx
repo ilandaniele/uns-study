@@ -44,15 +44,20 @@ function ChatRoom({ currentUserId }: { currentUserId: string }) {
     <main className="mx-auto flex h-[calc(100dvh_-_57px_-_56px_-_env(safe-area-inset-bottom))] max-w-3xl flex-col lg:h-[calc(100dvh_-_57px)]">
       <div className="flex items-center justify-between gap-3 border-b border-app bg-surface px-4 py-3">
         <div>
-          <h1 className="font-display text-lg font-semibold tracking-tight text-main">Chat de la sala</h1>
-          <p className="text-xs text-muted">Para todas las personas con sesión iniciada</p>
+          <h1 className="font-display text-lg font-semibold tracking-tight text-main"># Sala de Estudio</h1>
+          <p className="flex items-center gap-1.5 text-xs text-muted">
+            <span
+              className={`h-1.5 w-1.5 shrink-0 rounded-full ${connected ? "bg-[var(--seat-free)]" : "bg-muted"}`}
+              aria-hidden="true"
+            />
+            {connected ? "En vivo" : "Reconectando…"}
+          </p>
         </div>
         <Link href="/chat/dm" className="rounded-full border border-app px-3 py-1.5 text-sm font-medium text-main hover:bg-[var(--surface-2)]">
           Mensajes privados
         </Link>
       </div>
       <p className="sr-only" aria-live="polite">{connected ? "Conectado" : "Reconectando"}</p>
-      {!connected ? <p className="bg-[var(--surface-2)] px-4 py-1 text-center text-xs text-muted">Reconectando…</p> : null}
 
       {loading ? (
         <p className="flex-1 p-6 text-center text-muted">Cargando chat…</p>

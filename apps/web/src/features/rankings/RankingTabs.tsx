@@ -5,40 +5,12 @@ import { CATEGORY_LABELS, PERIOD_LABELS } from "./labels";
 
 const PERIODS: RankingPeriod[] = ["today", "week", "month", "all"];
 const CATEGORIES: { value: RankingCategory; icon: ReactNode }[] = [
-  { value: "study_time", icon: <ClockIcon size={18} weight="bold" aria-hidden="true" /> },
-  { value: "streak", icon: <FireIcon size={18} weight="bold" aria-hidden="true" /> },
-  { value: "contribution", icon: <HandHeartIcon size={18} weight="bold" aria-hidden="true" /> },
+  { value: "study_time", icon: <ClockIcon size={16} weight="bold" aria-hidden="true" /> },
+  { value: "streak", icon: <FireIcon size={16} weight="bold" aria-hidden="true" /> },
+  { value: "contribution", icon: <HandHeartIcon size={16} weight="bold" aria-hidden="true" /> },
 ];
 
-/** Category picker: three equal cells, the main choice of the page. */
-export function CategoryPicker({ value, onChange }: { value: RankingCategory; onChange: (value: RankingCategory) => void }) {
-  return (
-    <div role="radiogroup" aria-label="Qué medir" className="grid grid-cols-3 gap-2">
-      {CATEGORIES.map((option) => {
-        const selected = option.value === value;
-        return (
-          <button
-            key={option.value}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            onClick={() => onChange(option.value)}
-            className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-2 text-sm font-semibold transition active:scale-[0.98] ${
-              selected
-                ? "border-transparent bg-primary text-white shadow-sm"
-                : "border-app bg-surface text-main hover:bg-[var(--surface-2)]"
-            }`}
-          >
-            {option.icon}
-            <span className="truncate">{CATEGORY_LABELS[option.value]}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/** Period picker: a compact segmented control, secondary to the category. */
+/** Period picker: the primary choice, a clean full-width segmented control. */
 export function PeriodPicker({ value, onChange }: { value: RankingPeriod; onChange: (value: RankingPeriod) => void }) {
   return (
     <div role="radiogroup" aria-label="Período" className="grid grid-cols-4 rounded-full border border-app bg-[var(--surface-2)] p-1">
@@ -56,6 +28,34 @@ export function PeriodPicker({ value, onChange }: { value: RankingPeriod; onChan
             }`}
           >
             {PERIOD_LABELS[option]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Category picker: a secondary row of small pill chips (not full-width, unlike the period control). */
+export function CategoryPicker({ value, onChange }: { value: RankingCategory; onChange: (value: RankingCategory) => void }) {
+  return (
+    <div role="radiogroup" aria-label="Qué medir" className="flex flex-wrap gap-2">
+      {CATEGORIES.map((option) => {
+        const selected = option.value === value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onChange(option.value)}
+            className={`inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition active:scale-[0.98] ${
+              selected
+                ? "border-transparent bg-primary text-white shadow-sm"
+                : "border-app bg-surface text-main hover:bg-[var(--surface-2)]"
+            }`}
+          >
+            {option.icon}
+            {CATEGORY_LABELS[option.value]}
           </button>
         );
       })}

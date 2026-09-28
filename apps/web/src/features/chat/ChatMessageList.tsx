@@ -2,6 +2,7 @@
 
 import type { ChatMessageDto } from "@uns/contracts";
 import { useRouter } from "next/navigation";
+import { Avatar } from "./Avatar";
 import { daySeparatorFlags, formatDaySeparator, formatMessageTime, groupMessages } from "./grouping";
 import { MessageMenu } from "./MessageMenu";
 
@@ -31,17 +32,20 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock }: 
               <p className="my-2 text-center text-xs font-semibold text-muted">{formatDaySeparator(message.createdAt)}</p>
             ) : null}
             <div
-              className={`group flex gap-2.5 rounded-xl px-2 py-1 hover:bg-[var(--surface-2)] ${showHeader ? "mt-2" : ""} ${
+              className={`group flex gap-2.5 rounded-xl px-2 py-1 hover:bg-[var(--surface-2)] ${showHeader ? "mt-2.5" : ""} ${
                 isOwn ? "bg-primary/5" : ""
               }`}
             >
-              <div className="w-8 shrink-0">
-                {showHeader ? <AuthorAvatar name={message.author.displayName} url={message.author.avatarUrl} /> : null}
+              <div className="w-10 shrink-0">
+                {showHeader ? (
+                  <Avatar userId={message.author.userId} name={message.author.displayName} url={message.author.avatarUrl} size={40} />
+                ) : null}
               </div>
               <div className="min-w-0 flex-1">
                 {showHeader ? (
-                  <p className="text-sm font-semibold text-main">
-                    {isOwn ? "Vos" : message.author.displayName} <span className="ml-1 text-xs font-normal text-muted">{formatMessageTime(message.createdAt)}</span>
+                  <p className="flex items-baseline gap-1.5 text-sm font-semibold text-main">
+                    {isOwn ? "Vos" : message.author.displayName}
+                    <span className="text-xs font-normal text-muted">{formatMessageTime(message.createdAt)}</span>
                   </p>
                 ) : null}
                 <p className={`whitespace-pre-wrap break-words text-sm ${message.deleted ? "italic text-muted" : "text-main"}`}>
@@ -63,17 +67,5 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock }: 
         );
       })}
     </div>
-  );
-}
-
-function AuthorAvatar({ name, url }: { name: string; url: string | null }) {
-  if (url) {
-    // eslint-disable-next-line @next/next/no-img-element -- small avatar thumbnails, may be same-origin relative URLs
-    return <img src={url} alt="" className="h-8 w-8 rounded-full object-cover" />;
-  }
-  return (
-    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--surface-2)] text-xs font-semibold text-muted" aria-hidden="true">
-      {name.slice(0, 1).toUpperCase()}
-    </span>
   );
 }

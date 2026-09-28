@@ -13,17 +13,15 @@ export function RankingView({ roomSlug }: { roomSlug: string }) {
   const { ranking, loading, error } = useRankings(roomSlug, period, category);
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 pb-24 pt-6 md:pb-10">
-      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-main">Ranking</h1>
-          <p className="mt-1 text-sm text-muted">{CATEGORY_DESCRIPTIONS[category]}</p>
-        </div>
-        <div className="md:w-80">
-          <PeriodPicker value={period} onChange={setPeriod} />
-        </div>
+    <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pb-24 pt-6 md:pb-10">
+      <header>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-main">Ranking</h1>
+        <p className="mt-1 text-sm text-muted">{CATEGORY_DESCRIPTIONS[category]}</p>
       </header>
-      <CategoryPicker value={category} onChange={setCategory} />
+      <div className="flex flex-col gap-2.5">
+        <PeriodPicker value={period} onChange={setPeriod} />
+        <CategoryPicker value={category} onChange={setCategory} />
+      </div>
       {loading && !ranking ? (
         <RankingSkeleton />
       ) : error ? (

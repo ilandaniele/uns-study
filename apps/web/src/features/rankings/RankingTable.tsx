@@ -1,6 +1,7 @@
 import type { RankingDto, RankingEntryDto, RankingPeriod } from "@uns/contracts";
 import { TrophyIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
+import { Avatar } from "./Avatar";
 import { emptyRankingMessage, formatRankingValue } from "./labels";
 
 const MEDAL: Record<number, string> = { 1: "#E0A526", 2: "#9AA6B6", 3: "#C07A45" };
@@ -46,12 +47,18 @@ function Podium({ entries, format, myId }: { entries: RankingEntryDto[]; format:
         entry ? (
           <li
             key={entry.userId}
-            className={`flex min-w-0 flex-col items-center gap-2 rounded-2xl border px-2 pb-3 text-center ${
-              entry.rank === 1 ? "pt-6" : "pt-3"
-            } ${entry.userId === myId ? "border-[var(--primary)] bg-primary/10" : "border-app bg-surface"}`}
+            className={`flex min-w-0 flex-col items-center gap-2 rounded-2xl border bg-gradient-to-b px-2 pb-3 text-center shadow-sm ${
+              entry.rank === 1 ? "from-[var(--surface-2)] to-surface pt-7" : "from-[var(--surface-2)]/60 to-surface pt-3"
+            } ${entry.userId === myId ? "border-[var(--primary)] bg-primary/10" : "border-app"}`}
           >
             <div className="relative">
-              <Avatar name={entry.displayName} url={entry.avatarUrl} size={entry.rank === 1 ? 64 : 52} />
+              <Avatar
+                userId={entry.userId}
+                name={entry.displayName}
+                url={entry.avatarUrl}
+                size={entry.rank === 1 ? 64 : 52}
+                ringColor={MEDAL[entry.rank]}
+              />
               <span
                 className="absolute -bottom-1 left-1/2 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full text-xs font-bold text-white ring-2 ring-[var(--surface)]"
                 style={{ backgroundColor: MEDAL[entry.rank] }}
@@ -59,10 +66,15 @@ function Podium({ entries, format, myId }: { entries: RankingEntryDto[]; format:
                 {entry.rank}
               </span>
             </div>
-            <Link href={`/u/${entry.userId}`} className="mt-1 w-full truncate text-sm font-semibold text-main hover:underline">
+            <Link
+              href={`/u/${entry.userId}`}
+              className={`mt-1 w-full truncate text-main hover:underline ${entry.rank === 1 ? "text-sm font-bold" : "text-sm font-semibold"}`}
+            >
               {entry.displayName}
             </Link>
-            <span className="text-sm font-semibold tabular-nums text-main">{format(entry.value)}</span>
+            <span className={`tabular-nums text-main ${entry.rank === 1 ? "text-base font-bold" : "text-sm font-semibold"}`}>
+              {format(entry.value)}
+            </span>
           </li>
         ) : (
           <li key={`empty-${index}`} aria-hidden="true" />
@@ -73,32 +85,22 @@ function Podium({ entries, format, myId }: { entries: RankingEntryDto[]; format:
 }
 
 function RankingRow({ entry, value, highlighted }: { entry: RankingEntryDto; value: string; highlighted?: boolean }) {
+  const medal = MEDAL[entry.rank];
   return (
     <li className={`flex items-center gap-3 px-4 py-3 ${highlighted ? "bg-primary/10" : ""}`}>
-      <span className="w-7 text-right text-sm font-semibold tabular-nums text-muted">{entry.rank}</span>
-      <Avatar name={entry.displayName} url={entry.avatarUrl} size={36} />
+      <span
+        className="w-7 text-right text-sm font-bold tabular-nums"
+        style={{ color: medal ?? "var(--muted)" }}
+      >
+        {entry.rank}
+      </span>
+      <Avatar userId={entry.userId} name={entry.displayName} url={entry.avatarUrl} size={40} />
       <Link href={`/u/${entry.userId}`} className="min-w-0 flex-1 truncate text-sm font-medium text-main hover:underline">
         {entry.displayName}
         {highlighted ? <span className="ml-1.5 text-xs font-medium text-primary">vos</span> : null}
       </Link>
-      <span className="text-sm font-semibold tabular-nums text-main">{value}</span>
+      <span className="text-sm font-bold tabular-nums text-main">{value}</span>
     </li>
-  );
-}
-
-function Avatar({ name, url, size }: { name: string; url: string | null; size: number }) {
-  if (url) {
-    // eslint-disable-next-line @next/next/no-img-element -- small avatar thumbnails, not worth next/image config here
-    return <img src={url} alt="" className="rounded-full object-cover" style={{ width: size, height: size }} />;
-  }
-  return (
-    <span
-      className="flex items-center justify-center rounded-full bg-[var(--surface-2)] font-semibold text-main"
-      style={{ width: size, height: size, fontSize: size * 0.38 }}
-      aria-hidden="true"
-    >
-      {name.slice(0, 1).toUpperCase()}
-    </span>
   );
 }
 
@@ -127,7 +129,16 @@ export function RankingSkeleton() {
           <div key={index} className="animate-pulse rounded-2xl bg-[var(--surface-2)]" style={{ height }} />
         ))}
       </div>
-      <div className="h-48 animate-pulse rounded-2xl bg-[var(--surface-2)]" />
+      <div className="flex flex-col divide-y divide-[var(--border)] overflow-hidden rounded-2xl border border-app bg-surface">
+        {[0, 1, 2, 3, 4].map((row) => (
+          <div key={row} className="flex animate-pulse items-center gap-3 px-4 py-3">
+            <div className="h-4 w-5 rounded bg-[var(--surface-2)]" />
+            <div className="h-10 w-10 rounded-full bg-[var(--surface-2)]" />
+            <div className="h-3 flex-1 rounded bg-[var(--surface-2)]" />
+            <div className="h-3 w-12 rounded bg-[var(--surface-2)]" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

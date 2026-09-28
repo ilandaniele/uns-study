@@ -4,7 +4,7 @@ export const PERIOD_LABELS: Record<RankingPeriod, string> = {
   today: "Hoy",
   week: "Semana",
   month: "Mes",
-  all: "Siempre",
+  all: "Histórico",
 };
 
 export const CATEGORY_LABELS: Record<RankingCategory, string> = {
@@ -35,8 +35,8 @@ export function formatRankingValue(category: RankingCategory, value: number): st
   if (category === "study_time") {
     const hours = Math.floor(value / 60);
     const minutes = value % 60;
-    if (hours === 0) return `${minutes} min`;
-    return minutes === 0 ? `${hours} h` : `${hours} h ${minutes} min`;
+    if (hours === 0) return `${minutes}m`;
+    return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
   }
   if (category === "streak") {
     return value === 1 ? "1 día" : `${value} días`;
