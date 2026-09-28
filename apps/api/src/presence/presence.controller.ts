@@ -33,6 +33,7 @@ export class PresenceController {
       longitude: body.longitude,
       accuracy: body.accuracy,
       capturedAt: body.capturedAt,
+      sentAt: body.sentAt,
     });
   }
 }

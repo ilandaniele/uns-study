@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, HttpCode, Inject, Ip, Param, Post, UseGuards } from "@nestjs/common";
 import type { z } from "zod";
-import { checkInPhotoRequestSchema, checkInRequestSchema, extendRequestSchema } from "@uns/contracts";
+import { checkInPhotoRequestSchema, checkInRequestSchema, extendRequestSchema, type LocationInput } from "@uns/contracts";
 import { AuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";
@@ -12,7 +12,9 @@ import { AbusePolicyService } from "../security/abuse-policy.service.js";
 import { TurnstileService } from "../security/turnstile.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { RestrictionService } from "../users/restriction.service.js";
-import { CheckInService } from "./checkins.service.js";
+import { RoomsService } from "../rooms/rooms.service.js";
+import { PresenceService } from "../presence/presence.service.js";
+import { CheckInService, presenceMessage } from "./checkins.service.js";
 import { PhotoVerificationService } from "./photo-verification.service.js";
 
 @Controller("checkins")
@@ -27,7 +29,16 @@ export class CheckInsController {
     @Inject(TurnstileService) private readonly turnstile: TurnstileService,
     @Inject(RoomRealtimeGateway) private readonly realtime: RoomRealtimeGateway,
     @Inject(RestrictionService) private readonly restrictions: RestrictionService,
+    @Inject(RoomsService) private readonly rooms: RoomsService,
+    @Inject(PresenceService) private readonly presence: PresenceService,
   ) {}
+
+  /** Cheap presence pre-check so a rejected fix never eats into the rate-limit budget below. */
+  private async assertPresence(roomId: string, location: LocationInput): Promise<void> {
+    const room = await this.rooms.findRoomRow(roomId);
+    const result = this.presence.validate(room, location);
+    if (!result.valid) throw ApiErrors.presenceRejected(result.reason!, presenceMessage(result.reason!), result.details);
+  }
 
   @Post()
   async create(
@@ -36,6 +47,8 @@ export class CheckInsController {
     @Ip() ip: string,
   ) {
     await this.restrictions.assertNot(user.id, ["SUSPENDED", "BANNED"]);
+
+    await this.assertPresence(body.roomId, body.location);
 
     const limit = await this.rateLimit.check(`checkin:${user.id}`, 5, 60);
     if (!limit.allowed) {
@@ -81,6 +94,12 @@ export class CheckInsController {
   ) {
     await this.restrictions.assertNot(user.id, ["SUSPENDED", "BANNED"]);
 
+    // The body carries no roomId for extend — the room is whatever the caller is currently
+    // checked into, never client-supplied.
+    const active = await this.checkIns.getActiveCheckIn(user.id);
+    if (!active) throw ApiErrors.noActiveCheckIn();
+    await this.assertPresence(active.roomId, body.location);
+
     const limit = await this.rateLimit.check(`extend:${user.id}`, 5, 60);
     if (!limit.allowed) throw ApiErrors.rateLimited();
 
@@ -95,6 +114,12 @@ export class CheckInsController {
     @Ip() ip: string,
   ) {
     await this.restrictions.assertNot(user.id, ["SUSPENDED", "BANNED"]);
+
+    // Same as extend: no roomId in the body, so the room comes from the caller's own active
+    // check-in — never trust a room the client didn't have to prove it's currently checked into.
+    const active = await this.checkIns.getActiveCheckIn(user.id);
+    if (!active) throw ApiErrors.noActiveCheckIn();
+    await this.assertPresence(active.roomId, body.location);
 
     const limit = await this.rateLimit.check(`checkin-photo:${user.id}`, 6, 3600);
     if (!limit.allowed) throw ApiErrors.rateLimited();

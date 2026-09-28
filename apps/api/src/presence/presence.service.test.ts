@@ -78,7 +78,7 @@ describe("PresenceService accuracy tolerance", () => {
     capturedAt: new Date().toISOString(),
   });
 
-  it("accepts an indoor fix 80 m off with 80 m accuracy (50 + 80/2 = 90 m allowed)", () => {
+  it("accepts an indoor fix 80 m off with 80 m accuracy (50 + min(80,100) = 130 m allowed)", () => {
     const result = svc.validate(center, at(0.00072, 80), { isProduction: true, devBypass: false, maxAccuracyM: 100 });
     expect(result.valid).toBe(true);
   });
@@ -124,6 +124,17 @@ describe("PresenceService clock skew", () => {
     );
     expect(result.reason).toBe("OUTSIDE_GEOFENCE");
     expect(result.details?.distanceM).toBeGreaterThan(180);
-    expect(result.details?.allowedM).toBe(65);
+    expect(result.details?.allowedM).toBe(80);
+  });
+
+  it("caps the accuracy tolerance at 100 m even for a fix whose accuracy is still under the poor-accuracy threshold", () => {
+    // ~0.00144 degrees of latitude is ~160 m: inside 50 + 140 (uncapped) but outside 50 + min(140,100) = 150.
+    const result = svc.validate(
+      room,
+      { latitude: room.latitude + 0.00144, longitude: room.longitude, accuracy: 140, capturedAt: new Date().toISOString() },
+      opts,
+    );
+    expect(result.reason).toBe("OUTSIDE_GEOFENCE");
+    expect(result.details?.allowedM).toBe(150);
   });
 });

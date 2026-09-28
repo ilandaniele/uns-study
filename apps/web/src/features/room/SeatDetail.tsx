@@ -29,6 +29,8 @@ export interface SeatDetailProps {
   /** The occupant who chose to be identified for this seat, if any (from `GET /rooms/:id/occupants`). */
   occupant?: SeatOccupantDto | null;
   pending: boolean;
+  /** True while `getFreshLocation()` is sampling GPS for the in-flight action; swaps in "Buscando tu ubicación…" on the primary buttons below. Optional so callers can adopt it incrementally. */
+  locating?: boolean;
   actionError: string | null;
   /** True while the API is waiting for a solved Turnstile challenge to retry the last action. */
   turnstileRequired: boolean;
@@ -63,6 +65,7 @@ export function SeatDetail({
   isMySeat,
   occupant,
   pending,
+  locating = false,
   actionError,
   turnstileRequired,
   onTurnstileToken,
@@ -143,7 +146,7 @@ export function SeatDetail({
         ) : isMySeat ? (
           <>
             <PrimaryButton onClick={onExtend} disabled={pending}>
-              Seguir acá
+              {locating ? "Buscando tu ubicación…" : "Seguir acá"}
             </PrimaryButton>
             <QuietDangerButton onClick={onCheckOut} disabled={pending}>
               Me voy
@@ -168,14 +171,14 @@ export function SeatDetail({
         ) : (
           <>
             <PrimaryButton onClick={onCheckIn} disabled={pending}>
-              Estoy acá
+              {locating ? "Buscando tu ubicación…" : "Estoy acá"}
             </PrimaryButton>
             <div className="flex gap-2">
               <OutlineButton tone="free" onClick={onMarkFree} disabled={pending}>
-                Está libre
+                {locating ? "Buscando tu ubicación…" : "Está libre"}
               </OutlineButton>
               <OutlineButton tone="occupied" onClick={onMarkOccupied} disabled={pending}>
-                Está ocupado
+                {locating ? "Buscando tu ubicación…" : "Está ocupado"}
               </OutlineButton>
             </div>
           </>

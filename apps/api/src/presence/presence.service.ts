@@ -100,10 +100,11 @@ export class PresenceService {
       return reject("STALE_LOCATION");
     }
 
-    // Indoor fixes are often off by tens of meters, so half of the reported accuracy is tolerated on
-    // top of the radius (50 m radius + 100 m accuracy -> reading up to 100 m from the room center).
+    // Indoor fixes are often off by tens of meters, so the full reported accuracy (capped, so a wildly
+    // inaccurate fix doesn't buy unlimited slack) is tolerated on top of the radius (50 m radius + 100 m
+    // accuracy -> reading up to 150 m from the room center).
     const distanceM = this.haversineDistanceM(room, { latitude, longitude });
-    const allowedM = room.geofenceRadiusM + Math.min(accuracy, maxAccuracyM) / 2;
+    const allowedM = room.geofenceRadiusM + Math.min(accuracy, 100);
     const details: PresenceDetails = {
       distanceM: Math.round(distanceM),
       accuracyM: Math.round(accuracy),

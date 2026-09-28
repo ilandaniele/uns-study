@@ -13,6 +13,8 @@ export interface SeatActionOptions {
 
 export interface UseSeatActionsResult {
   pending: boolean;
+  /** True while `getFreshLocation()` is sampling GPS for the in-flight action, before the API call. */
+  locating: boolean;
   actionError: string | null;
   /** True while the API is waiting for a Cloudflare Turnstile token to retry the last action. */
   turnstileRequired: boolean;
@@ -37,6 +39,7 @@ export interface UseSeatActionsResult {
 /** Encapsulates the presence-sensitive write actions (check-in, observation, extend, checkout). */
 export function useSeatActions(map: RoomMapDto | null, onChanged: () => void): UseSeatActionsResult {
   const [pending, setPending] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [turnstileRequired, setTurnstileRequired] = useState(false);
   const retryRef = useRef<((token: string) => void) | null>(null);
@@ -82,10 +85,20 @@ export function useSeatActions(map: RoomMapDto | null, onChanged: () => void): U
     runRef.current = run;
   }, [run]);
 
+  /** Wraps `getFreshLocation()` so `locating` is true only while GPS sampling is in flight. */
+  const locate = useCallback(async () => {
+    setLocating(true);
+    try {
+      return await getFreshLocation();
+    } finally {
+      setLocating(false);
+    }
+  }, []);
+
   const checkIn = useCallback(
     (seatId: string, showIdentity: boolean, options?: SeatActionOptions) =>
       run(async (turnstileToken) => {
-        const location = await getFreshLocation();
+        const location = await locate();
         return apiPost<CheckInDto>("/api/v1/checkins", {
           roomId: map?.room.id,
           seatId,
@@ -95,13 +108,13 @@ export function useSeatActions(map: RoomMapDto | null, onChanged: () => void): U
           turnstileToken,
         });
       }),
-    [map?.room.id, run],
+    [locate, map?.room.id, run],
   );
 
   const markFree = useCallback(
     (seatId: string, options?: SeatActionOptions) =>
       run(async (turnstileToken) => {
-        const location = await getFreshLocation();
+        const location = await locate();
         await apiPost("/api/v1/observations", {
           roomId: map?.room.id,
           seatId,
@@ -112,13 +125,13 @@ export function useSeatActions(map: RoomMapDto | null, onChanged: () => void): U
         });
         return true;
       }).then((v) => v ?? false),
-    [map?.room.id, run],
+    [locate, map?.room.id, run],
   );
 
   const markOccupied = useCallback(
     (seatId: string, options?: SeatActionOptions) =>
       run(async (turnstileToken) => {
-        const location = await getFreshLocation();
+        const location = await locate();
         await apiPost("/api/v1/observations", {
           roomId: map?.room.id,
           seatId,
@@ -129,17 +142,17 @@ export function useSeatActions(map: RoomMapDto | null, onChanged: () => void): U
         });
         return true;
       }).then((v) => v ?? false),
-    [map?.room.id, run],
+    [locate, map?.room.id, run],
   );
 
   const extend = useCallback(
     () =>
       run(async () => {
-        const location = await getFreshLocation();
+        const location = await locate();
         await apiPost("/api/v1/checkins/current/extend", { location });
         return true;
       }).then((v) => v ?? false),
-    [run],
+    [locate, run],
   );
 
   const checkOut = useCallback(
@@ -164,32 +177,33 @@ export function useSeatActions(map: RoomMapDto | null, onChanged: () => void): U
   const openDispute = useCallback(
     (seatId: string, kind: DisputeKind) =>
       run(async () => {
-        const location = await getFreshLocation();
+        const location = await locate();
         return apiPost<SeatDisputeDto>("/api/v1/disputes", { roomId: map?.room.id, seatId, kind, location });
       }),
-    [map?.room.id, run],
+    [locate, map?.room.id, run],
   );
 
   const voteDispute = useCallback(
     (disputeId: string, vote: DisputeVote) =>
       run(async () => {
-        const location = await getFreshLocation();
+        const location = await locate();
         return apiPost<SeatDisputeDto>(`/api/v1/disputes/${disputeId}/votes`, { vote, location });
       }),
-    [run],
+    [locate, run],
   );
 
   const respondDispute = useCallback(
     (disputeId: string, action: "STILL_HERE" | "LEFT") =>
       run(async () => {
-        const location = action === "STILL_HERE" ? await getFreshLocation() : undefined;
+        const location = action === "STILL_HERE" ? await locate() : undefined;
         return apiPost<SeatDisputeDto>(`/api/v1/disputes/${disputeId}/respond`, { action, location });
       }),
-    [run],
+    [locate, run],
   );
 
   return {
     pending,
+    locating,
     actionError,
     turnstileRequired,
     clearError,
