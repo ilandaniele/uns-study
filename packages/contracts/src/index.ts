@@ -113,6 +113,23 @@ export interface PresenceResult {
   details?: PresenceDetails;
 }
 
+// ---- Room geofence calibration (admin) ----
+
+export interface RoomGeofenceDto {
+  latitude: number;
+  longitude: number;
+  radiusM: number;
+  maxAccuracyM: number;
+}
+
+export interface GeofenceTestResultDto {
+  distanceM: number;
+  accuracyM: number;
+  allowedM: number;
+  valid: boolean;
+  reason: PresenceRejectReason | null;
+}
+
 export interface CheckInDto {
   id: string;
   roomId: string;
@@ -292,6 +309,16 @@ export const incumbentRespondSchema = z
     message: "location is required for STILL_HERE",
     path: ["location"],
   });
+
+export const testGeofenceSchema = z.object({
+  location: locationInputSchema,
+});
+
+export const updateGeofenceSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  radiusM: z.number().int().min(20).max(300),
+});
 
 export const presenceValidateSchema = z.object({
   roomId: z.string(),

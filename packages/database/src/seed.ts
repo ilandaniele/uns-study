@@ -32,12 +32,12 @@ export async function seedInitialRoom(db: Db): Promise<void> {
     .values({ ...INITIAL_ROOM, active: true })
     .onConflictDoUpdate({
       target: rooms.slug,
+      // latitude/longitude/geofenceRadiusM are intentionally NOT overwritten here: admins can
+      // calibrate them in production (see AdminRoomsService.updateGeofence), and this seed runs on
+      // every Fly boot — re-running it must never clobber a calibrated geofence back to the default.
       set: {
         name: INITIAL_ROOM.name,
         description: INITIAL_ROOM.description,
-        latitude: INITIAL_ROOM.latitude,
-        longitude: INITIAL_ROOM.longitude,
-        geofenceRadiusM: INITIAL_ROOM.geofenceRadiusM,
         timezone: INITIAL_ROOM.timezone,
         dailyResetTime: INITIAL_ROOM.dailyResetTime,
         active: true,

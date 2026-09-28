@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { Db } from "@uns/database";
+import { eq } from "drizzle-orm";
+import { schema, type Db } from "@uns/database";
 import { buildDisputeService, freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { PresenceService } from "../presence/presence.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
@@ -31,7 +32,7 @@ describe("AdminRoomsService.stats — Fresh Seat Coverage", () => {
       new QrService(db),
       buildDisputeService(db),
     );
-    svc = new AdminRoomsService(db, new RoomsService(db, roomState), roomState);
+    svc = new AdminRoomsService(db, new RoomsService(db, roomState), roomState, new PresenceService());
 
     const room = await getRoom(db);
     roomId = room.id;
@@ -64,5 +65,78 @@ describe("AdminRoomsService.stats — Fresh Seat Coverage", () => {
     }
     const stats = await svc.stats(roomId);
     expect(stats.freshSeatCoverage).toBe(1);
+  });
+});
+
+describe("AdminRoomsService — geofence calibration", () => {
+  let db: Db;
+  let svc: AdminRoomsService;
+  let roomId: string;
+  let center: { latitude: number; longitude: number };
+
+  beforeEach(async () => {
+    db = await freshDb();
+    const roomState = new RoomStateService(db);
+    svc = new AdminRoomsService(db, new RoomsService(db, roomState), roomState, new PresenceService());
+
+    const room = await getRoom(db);
+    roomId = room.id;
+    center = { latitude: room.latitude, longitude: room.longitude };
+    await insertUsers(db, ["admin1"]);
+  });
+
+  it("getGeofence returns the room's current center/radius and the configured max accuracy", async () => {
+    const geofence = await svc.getGeofence(roomId);
+    expect(geofence.latitude).toBe(center.latitude);
+    expect(geofence.longitude).toBe(center.longitude);
+    expect(geofence.radiusM).toBe(50);
+    expect(geofence.maxAccuracyM).toBeGreaterThan(0);
+  });
+
+  it("testGeofence reports a passing reading at the room's center", async () => {
+    const result = await svc.testGeofence(roomId, {
+      latitude: center.latitude,
+      longitude: center.longitude,
+      accuracy: 15,
+      capturedAt: new Date().toISOString(),
+    });
+    expect(result.valid).toBe(true);
+    expect(result.reason).toBeNull();
+    expect(result.distanceM).toBe(0);
+  });
+
+  it("testGeofence reports a failing reading far outside the geofence", async () => {
+    const result = await svc.testGeofence(roomId, {
+      latitude: center.latitude + 1,
+      longitude: center.longitude,
+      accuracy: 15,
+      capturedAt: new Date().toISOString(),
+    });
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe("OUTSIDE_GEOFENCE");
+    expect(result.distanceM).toBeGreaterThan(1000);
+  });
+
+  it("updateGeofence persists the new center/radius and writes a moderation_actions audit row", async () => {
+    const updated = await svc.updateGeofence(roomId, "admin1", {
+      latitude: center.latitude + 0.001,
+      longitude: center.longitude - 0.001,
+      radiusM: 80,
+    });
+    expect(updated.radiusM).toBe(80);
+
+    const geofence = await svc.getGeofence(roomId);
+    expect(geofence.latitude).toBeCloseTo(center.latitude + 0.001, 6);
+    expect(geofence.longitude).toBeCloseTo(center.longitude - 0.001, 6);
+    expect(geofence.radiusM).toBe(80);
+
+    const [audit] = await db
+      .select()
+      .from(schema.moderationActions)
+      .where(eq(schema.moderationActions.action, "ROOM_GEOFENCE_UPDATED"));
+    expect(audit).toBeTruthy();
+    expect(audit?.actorId).toBe("admin1");
+    expect(audit?.targetUserId).toBeNull();
+    expect((audit?.metadata as { next?: { radiusM?: number } })?.next?.radiusM).toBe(80);
   });
 });

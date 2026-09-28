@@ -43,6 +43,24 @@ describe("migrate + seed", () => {
     expect(rows).toHaveLength(1);
   });
 
+  it("keeps a calibrated geofence across re-seeds (seed runs on every boot)", async () => {
+    await seedInitialRoom(db);
+    const [before] = await db.select().from(rooms);
+    if (!before) throw new Error("seed missing room");
+
+    await db
+      .update(rooms)
+      .set({ latitude: -38.7, longitude: -62.28, geofenceRadiusM: 75 })
+      .where(eq(rooms.id, before.id));
+
+    await seedInitialRoom(db);
+
+    const [after] = await db.select().from(rooms);
+    expect(after?.latitude).toBe(-38.7);
+    expect(after?.longitude).toBe(-62.28);
+    expect(after?.geofenceRadiusM).toBe(75);
+  });
+
   it("seeds a single #sala-principal chat room, idempotently", async () => {
     await seedInitialRoom(db);
     await seedInitialRoom(db);

@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { RoomsModule } from "../rooms/rooms.module.js";
+import { PresenceModule } from "../presence/presence.module.js";
 import { CheckInsModule } from "../checkins/checkins.module.js";
 import { StorageModule } from "../storage/storage.module.js";
 import { AnnouncementsModule } from "../announcements/announcements.module.js";
@@ -17,7 +18,7 @@ import { AdminNamesController } from "./admin-names.controller.js";
 import { TableNamesModule } from "../table-names/table-names.module.js";
 
 @Module({
-  imports: [RoomsModule, CheckInsModule, StorageModule, AnnouncementsModule, TableNamesModule],
+  imports: [RoomsModule, PresenceModule, CheckInsModule, StorageModule, AnnouncementsModule, TableNamesModule],
   controllers: [AdminReportsController, AdminUsersController, AdminAuditController, AdminRoomsController, AdminAnnouncementsController, AdminNamesController],
   providers: [ModerationActionService, AdminReportsService, AdminUsersService, AdminAuditService, AdminRoomsService],
 })

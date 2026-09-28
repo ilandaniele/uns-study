@@ -5,6 +5,7 @@ import {
   observationRequestSchema,
   presenceValidateSchema,
   extendRequestSchema,
+  updateGeofenceSchema,
 } from "./index.js";
 import { proposeTableNameSchema } from "./table-names.js";
 
@@ -63,6 +64,26 @@ describe("presenceValidateSchema", () => {
       ...validLocation,
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe("updateGeofenceSchema", () => {
+  const valid = { latitude: -38.701, longitude: -62.27, radiusM: 50 };
+
+  it("accepts a valid payload", () => {
+    expect(updateGeofenceSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("rejects a radius below 20m", () => {
+    expect(updateGeofenceSchema.safeParse({ ...valid, radiusM: 19 }).success).toBe(false);
+  });
+
+  it("rejects a radius above 300m", () => {
+    expect(updateGeofenceSchema.safeParse({ ...valid, radiusM: 301 }).success).toBe(false);
+  });
+
+  it("rejects a non-integer radius", () => {
+    expect(updateGeofenceSchema.safeParse({ ...valid, radiusM: 50.5 }).success).toBe(false);
   });
 });
 
