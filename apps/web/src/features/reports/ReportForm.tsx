@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReportContext, ReportReason } from "@uns/contracts";
+import { PlusIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from "react";
 import { ApiRequestError } from "@/lib/api";
 import { describeEvidenceError, validateEvidenceFile } from "./evidence";
@@ -155,16 +156,12 @@ export function ReportForm({ reportedUserId, context, contextMessageId, roomId }
               aria-label="Quitar foto"
               className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-app bg-surface text-muted hover:text-main"
             >
-              <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" d="M6 6l12 12M18 6 6 18" />
-              </svg>
+              <XIcon aria-hidden="true" size={14} weight="bold" />
             </button>
           </div>
         ) : (
           <label className="flex h-28 w-28 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-app text-muted hover:bg-[var(--surface-2)]">
-            <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
-            </svg>
+            <PlusIcon aria-hidden="true" size={20} />
             <span className="text-xs font-normal">Agregar foto</span>
             <input
               ref={fileInputRef}

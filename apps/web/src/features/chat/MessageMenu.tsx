@@ -1,5 +1,6 @@
 "use client";
 
+import { DotsThreeVerticalIcon } from "@phosphor-icons/react/dist/ssr";
 import { useState } from "react";
 
 export interface MessageMenuProps {
@@ -21,11 +22,7 @@ export function MessageMenu({ isOwn, onDelete, onReport, onBlock }: MessageMenuP
         aria-label="Más opciones"
         className="rounded-full p-1.5 text-muted hover:bg-[var(--surface-2)] hover:text-main"
       >
-        <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-          <circle cx="12" cy="5" r="1.6" />
-          <circle cx="12" cy="12" r="1.6" />
-          <circle cx="12" cy="19" r="1.6" />
-        </svg>
+        <DotsThreeVerticalIcon aria-hidden="true" size={18} weight="bold" />
       </button>
       {open ? (
         <>

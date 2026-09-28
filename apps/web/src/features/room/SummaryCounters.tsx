@@ -1,46 +1,31 @@
 import type { RoomSummary } from "@uns/contracts";
 
-const SEGMENTS: { key: keyof RoomSummary; label: string; color: string; text: string }[] = [
-  { key: "free", label: "Libres", color: "var(--seat-free)", text: "text-[var(--seat-free)]" },
-  { key: "occupied", label: "Ocupados", color: "var(--seat-occupied)", text: "text-[var(--seat-occupied)]" },
-  { key: "uncertain", label: "Dudosos", color: "var(--seat-uncertain)", text: "text-[var(--seat-uncertain)]" },
-  { key: "unknown", label: "Sin datos", color: "var(--seat-unknown)", text: "text-muted" },
+const TILES: { key: keyof RoomSummary; label: string; color: string }[] = [
+  { key: "free", label: "Libres", color: "var(--seat-free)" },
+  { key: "occupied", label: "Ocupados", color: "var(--seat-occupied)" },
+  { key: "uncertain", label: "Dudosos", color: "var(--seat-uncertain)" },
+  { key: "unknown", label: "Sin datos", color: "var(--seat-unknown)" },
 ];
 
-/** Segmented occupancy bar with an inline legend that doubles as the counters. */
+/** Four tinted count tiles (Libres/Ocupados/Dudosos/Sin datos) plus the total, per the room mockup. */
 export function SummaryCounters({ summary }: { summary: RoomSummary }) {
-  const total = summary.total || 1;
-
   return (
     <div>
-      <div className="flex h-3 w-full overflow-hidden rounded-full bg-[var(--surface-2)]" role="img" aria-label="Ocupación de la sala">
-        {SEGMENTS.map((segment) => {
-          const value = summary[segment.key] as number;
-          const pct = (value / total) * 100;
-          if (pct <= 0) return null;
-          return (
-            <div
-              key={segment.key}
-              className="occupancy-segment h-full first:rounded-l-full last:rounded-r-full"
-              style={{ width: `${pct}%`, backgroundColor: segment.color }}
-            />
-          );
-        })}
-      </div>
-      <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
-        {SEGMENTS.map((segment) => (
-          <li key={segment.key} className="flex items-center gap-1.5">
-            <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: segment.color }} />
-            <span className="text-muted">{segment.label}</span>
-            <span className={`font-mono font-semibold ${segment.text}`}>{summary[segment.key] as number}</span>
-          </li>
+      <div className="grid grid-cols-4 gap-2 lg:grid-cols-2">
+        {TILES.map((tile) => (
+          <div
+            key={tile.key}
+            className="rounded-2xl px-2 py-3 text-center"
+            style={{ backgroundColor: `color-mix(in srgb, ${tile.color} 12%, transparent)` }}
+          >
+            <p className="text-xl font-bold sm:text-2xl" style={{ color: tile.color }}>
+              {summary[tile.key] as number}
+            </p>
+            <p className="mt-0.5 text-xs font-medium text-muted">{tile.label}</p>
+          </div>
         ))}
-        <li className="flex items-center gap-1.5">
-          <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--seat-mine)" }} />
-          <span className="text-muted">Tu lugar</span>
-        </li>
-      </ul>
-      <p className="mt-1 font-mono text-xs text-muted">{summary.total} lugares en total</p>
+      </div>
+      <p className="mt-2 text-xs text-muted">{summary.total} lugares en total</p>
     </div>
   );
 }

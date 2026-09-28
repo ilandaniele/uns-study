@@ -1,5 +1,6 @@
 "use client";
 
+import { BookOpenTextIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-client";
@@ -25,23 +26,21 @@ export function Header() {
   return (
     <header className="flex items-center justify-between gap-2 border-b border-app bg-surface px-4 py-3">
       <div className="flex min-w-0 items-center gap-3">
-        <Link href="/sala/principal" className="shrink-0 whitespace-nowrap font-display text-[17px] font-semibold text-main sm:text-lg">
+        <Link href="/sala/principal" className="flex shrink-0 items-center gap-2 whitespace-nowrap font-display text-[17px] font-semibold text-main sm:text-lg">
+          <BookOpenTextIcon aria-hidden="true" size={24} weight="duotone" className="text-primary" />
           Sala de Estudio UNS
         </Link>
-        <span className="hidden shrink-0 rounded-full border border-app px-2 py-0.5 font-mono text-[10px] font-medium tracking-wide text-muted 2xl:inline-block">
-          UNS · BAHÍA BLANCA
-        </span>
       </div>
 
-      <nav className="hidden items-center gap-1 rounded-full border border-app bg-[var(--surface-2)] p-1 text-sm font-medium lg:flex">
+      <nav className="hidden items-center gap-5 text-sm font-medium lg:flex">
         {items.map((item) => {
           const active = pathname?.startsWith(item.href);
           return (
             <Link
               key={item.label}
               href={item.href}
-              className={`rounded-full px-3 py-1.5 transition-colors ${
-                active ? "bg-primary text-white" : "text-muted hover:text-main"
+              className={`border-b-2 px-0.5 py-1 transition-colors ${
+                active ? "border-primary text-primary" : "border-transparent text-muted hover:text-main"
               }`}
             >
               {item.label}

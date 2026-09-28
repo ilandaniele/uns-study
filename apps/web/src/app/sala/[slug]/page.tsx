@@ -1,6 +1,7 @@
 "use client";
 
 import type { SeatDto } from "@uns/contracts";
+import { MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon, ArrowsCounterClockwiseIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -165,9 +166,15 @@ export default function RoomPage() {
       ) : null}
 
       <section className="order-1 flex flex-col gap-4 md:order-1">
-        <div className="flex items-center justify-between gap-2">
-          <p className="font-mono text-xs uppercase tracking-wide text-muted">Ocupación de hoy</p>
-          <p className="font-mono text-xs text-muted">{connected ? "● en vivo" : "○ reconectando…"}</p>
+        <div>
+          <h1 className="font-display text-2xl font-bold text-main">{map.room.name}</h1>
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
+            <span
+              aria-hidden="true"
+              className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-[var(--seat-free)]" : "bg-[var(--seat-unknown)]"}`}
+            />
+            {connected ? "Datos en vivo" : "Reconectando…"}
+          </p>
         </div>
         <Hero summary={map.summary} seats={map.seats} />
         <SummaryCounters summary={map.summary} />
@@ -186,7 +193,7 @@ export default function RoomPage() {
       </section>
 
       <section className="order-2 flex flex-col gap-3 md:order-2">
-        <div className="relative h-[70vh] w-full overflow-hidden rounded-2xl border border-app bg-surface md:h-[80vh]">
+        <div className="relative h-[70vh] w-full overflow-hidden rounded-3xl border border-app bg-surface shadow-sm md:h-[80vh] lg:mx-auto lg:aspect-[5/8] lg:h-[82vh] lg:w-auto lg:max-w-full">
           {isDesktop ? (
             <div className="flex h-full w-full items-center justify-center">
               <RoomMap
@@ -210,17 +217,34 @@ export default function RoomPage() {
                   />
                 </TransformComponent>
               </TransformWrapper>
-              <button
-                type="button"
-                onClick={() => zoomRef.current?.resetTransform()}
-                aria-label="Restablecer zoom"
-                className="absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-full border border-app bg-surface text-main shadow-md"
-              >
-                <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 9a8 8 0 0 1 14-4.6M20 15a8 8 0 0 1-14 4.6" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 4v5h-5M6 20v-5h5" />
-                </svg>
-              </button>
+              <div className="absolute right-3 top-3 flex flex-col overflow-hidden rounded-xl border border-app bg-surface shadow-md">
+                <button
+                  type="button"
+                  onClick={() => zoomRef.current?.zoomIn()}
+                  aria-label="Acercar"
+                  className="flex h-10 w-10 items-center justify-center text-main hover:bg-[var(--surface-2)]"
+                >
+                  <MagnifyingGlassPlusIcon aria-hidden="true" size={20} />
+                </button>
+                <div className="h-px bg-[var(--border)]" />
+                <button
+                  type="button"
+                  onClick={() => zoomRef.current?.zoomOut()}
+                  aria-label="Alejar"
+                  className="flex h-10 w-10 items-center justify-center text-main hover:bg-[var(--surface-2)]"
+                >
+                  <MagnifyingGlassMinusIcon aria-hidden="true" size={20} />
+                </button>
+                <div className="h-px bg-[var(--border)]" />
+                <button
+                  type="button"
+                  onClick={() => zoomRef.current?.resetTransform()}
+                  aria-label="Restablecer zoom"
+                  className="flex h-10 w-10 items-center justify-center text-main hover:bg-[var(--surface-2)]"
+                >
+                  <ArrowsCounterClockwiseIcon aria-hidden="true" size={20} />
+                </button>
+              </div>
             </>
           )}
         </div>

@@ -63,8 +63,8 @@ export function Hero({ summary, seats }: HeroProps) {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-semibold leading-tight text-main sm:text-3xl">{headline}</h1>
-      <p className="mt-1 font-mono text-xs text-muted">{subline}</p>
+      <h2 className="font-display text-lg font-semibold leading-tight text-main sm:text-xl">{headline}</h2>
+      <p className="mt-1 text-sm text-muted">{subline}</p>
     </div>
   );
 }

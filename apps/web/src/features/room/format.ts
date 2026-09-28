@@ -1,4 +1,32 @@
-import type { SeatStatus } from "@uns/contracts";
+import type { SeatStatus, TableDto } from "@uns/contracts";
+
+const BAR_NAMES: Record<string, string> = {
+  B01: "Barra entrada izquierda",
+  B02: "Barra entrada derecha",
+  B03: "Barra fondo izquierda",
+  B04: "Barra fondo derecha",
+};
+
+/**
+ * Human, non-"call number" name for a table: "Mesa 4" for main tables, "Barra entrada
+ * izquierda" etc. for wall bars. Falls back to the raw code if it doesn't match the known
+ * layout (defensive — the layout is generated, but this keeps the UI readable either way).
+ */
+export function tableDisplayName(table: Pick<TableDto, "code" | "type"> | null, fallbackCode: string): string {
+  const code = table?.code ?? fallbackCode;
+  if (table?.type === "WALL_BAR" || code.startsWith("B")) {
+    return BAR_NAMES[code] ?? `Barra ${code}`;
+  }
+  const number = Number.parseInt(code.replace(/\D/g, ""), 10);
+  return Number.isNaN(number) ? code : `Mesa ${number}`;
+}
+
+/** "Mesa 4 · Asiento 3" / "Barra entrada izquierda · Lugar 2" — used wherever we used to show call numbers like M04·3. */
+export function seatDisplayLabel(table: Pick<TableDto, "code" | "type"> | null, seatCode: string, seatNumber: number): string {
+  const name = tableDisplayName(table, seatCode.split("-")[0] ?? seatCode);
+  const unit = table?.type === "WALL_BAR" ? "Lugar" : "Asiento";
+  return `${name} · ${unit} ${seatNumber}`;
+}
 
 /** Spanish label for a seat status, as shown in the seat detail panel. */
 export function statusLabel(status: SeatStatus): string {

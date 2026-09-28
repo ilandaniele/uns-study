@@ -3,87 +3,97 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-free: #1e9e62;
-  --color-occupied: #d43f3f;
-  --color-uncertain: #d99413;
-  --color-unknown: #a7b0be;
-  --color-my-seat: #2f5bea;
-  --color-primary: #1f3a8a;
-  --color-primary-dark: #17296b;
+  --color-free: #16a34a;
+  --color-occupied: #dc2626;
+  --color-uncertain: #f59e0b;
+  --color-unknown: #94a3b8;
+  --color-my-seat: #2563eb;
+  --color-primary: #2563eb;
+  --color-primary-dark: #1d4ed8;
 }
 
 :root {
-  --ink: #14213d;
-  --muted: #5b6780;
-  --bg: #f3f5f8;
+  --ink: #0f172a;
+  --muted: #5b6478;
+  --bg: #f4f6fa;
   --surface: #ffffff;
-  --surface-2: #eaeef4;
-  --border: #dce2ea;
-  --border-strong: #c3cbd9;
+  --surface-2: #eef1f6;
+  --border: #e3e8f0;
+  --border-strong: #cbd3e1;
   --text: var(--ink);
   --text-muted: var(--muted);
   --text-faint: #8994ac;
 
-  --primary: #1f3a8a;
-  --primary-dark: #17296b;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
 
-  --oak: #c9a36b;
-  --oak-border: #a17f4d;
-  --oak-text: #4a3413;
+  --oak: #c8955c;
+  --oak-border: #a56a3a;
+  --oak-text: #0f172a;
 
-  --room-floor: #faf8f4;
-  --room-floor-border: #ded4bf;
-  --room-label: #7a8398;
+  --room-wall: #3b4252;
+  --room-floor: #f3e6d3;
+  --room-floor-grout: #ead8c0;
+  --room-floor-border: #e3e8f0;
+  --room-aisle: #d9a27a;
+  --room-label: #5b6478;
   --room-table-fill: var(--oak);
   --room-table-border: var(--oak-border);
   --room-table-text: var(--oak-text);
-  --room-bar-fill: #dfe8f5;
-  --room-bar-border: #9fb6d6;
-  --room-bar-text: #274a80;
-  --seat-stroke: #ffffff;
+  --room-bar-fill: #c8955c;
+  --room-bar-border: #a56a3a;
+  --room-bar-text: #0f172a;
+  --room-window: #cfe4f5;
+  --room-window-frame: #ffffff;
+  --seat-stroke: #7c8799;
 
-  --seat-free: #1e9e62;
-  --seat-occupied: #d43f3f;
-  --seat-uncertain: #d99413;
-  --seat-unknown: #a7b0be;
-  --seat-mine: #2f5bea;
+  --seat-free: #16a34a;
+  --seat-occupied: #dc2626;
+  --seat-uncertain: #f59e0b;
+  --seat-unknown: #b8c2d0;
+  --seat-mine: #2563eb;
 }
 
 .dark {
-  --ink: #e7ecf4;
+  --ink: #e6ebf5;
   --muted: #9aa6bd;
-  --bg: #0c1220;
-  --surface: #141c2d;
-  --surface-2: #1b2436;
+  --bg: #0b1120;
+  --surface: #111a2e;
+  --surface-2: #182238;
   --border: #243049;
   --border-strong: #33415f;
   --text: var(--ink);
   --text-muted: var(--muted);
   --text-faint: #6f7c98;
 
-  --primary: #7ea2ff;
-  --primary-dark: #a7c0ff;
+  --primary: #60a5fa;
+  --primary-dark: #93c5fd;
 
-  --oak: #5e4a2e;
-  --oak-border: #7a6240;
-  --oak-text: #ecd9b8;
+  --oak: #7a5a37;
+  --oak-border: #9a774a;
+  --oak-text: #f2e3c8;
 
-  --room-floor: #111827;
+  --room-wall: #97a2b8;
+  --room-floor: #1c2233;
+  --room-floor-grout: #232b40;
   --room-floor-border: #33415f;
+  --room-aisle: #7a5a45;
   --room-label: #9fb0c9;
   --room-table-fill: var(--oak);
   --room-table-border: var(--oak-border);
   --room-table-text: var(--oak-text);
-  --room-bar-fill: #1e2f43;
-  --room-bar-border: #3f6488;
-  --room-bar-text: #bcdcf7;
-  --seat-stroke: #0c1220;
+  --room-bar-fill: #6b4f30;
+  --room-bar-border: #9a774a;
+  --room-bar-text: #f2e3c8;
+  --room-window: #23405c;
+  --room-window-frame: #111a2e;
+  --seat-stroke: #0b1120;
 
   --seat-free: #34c98a;
   --seat-occupied: #f06a6a;
   --seat-uncertain: #f2b84b;
-  --seat-unknown: #4a5570;
-  --seat-mine: #7ea2ff;
+  --seat-unknown: #3a4560;
+  --seat-mine: #60a5fa;
 }
 
 html,
@@ -217,10 +227,10 @@ input:focus-visible,
 @keyframes seat-glow {
   0%,
   100% {
-    filter: drop-shadow(0 0 0 rgba(30, 158, 98, 0));
+    filter: drop-shadow(0 0 0 rgba(22, 163, 74, 0));
   }
   50% {
-    filter: drop-shadow(0 0 6px rgba(30, 158, 98, 0.55));
+    filter: drop-shadow(0 0 6px rgba(22, 163, 74, 0.55));
   }
 }
 @keyframes seat-pulse {
@@ -246,6 +256,10 @@ input:focus-visible,
     animation: none;
   }
 }
+
+/* Wall-bar pill labels ("Barra fondo izquierda") in the room map: shown next to each bar on
+   md+ screens only, hidden on small phones where they'd crowd the illustration. */
+
 
 /* Occupancy bar segment width transitions — reduced-motion aware. */
 .occupancy-segment {

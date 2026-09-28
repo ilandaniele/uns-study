@@ -1,7 +1,7 @@
-import { Atkinson_Hyperlegible, Bricolage_Grotesque, IBM_Plex_Mono } from "next/font/google";
+import { Geist, Outfit } from "next/font/google";
 
-/** Display face: hero sentence, page titles. Used with restraint per the design brief. */
-export const fontDisplay = Bricolage_Grotesque({
+/** Display face: headings, hero sentence, table/pill labels. */
+export const fontDisplay = Outfit({
   subsets: ["latin"],
   weight: ["500", "600", "700"],
   variable: "--font-display",
@@ -9,17 +9,9 @@ export const fontDisplay = Bricolage_Grotesque({
 });
 
 /** Body face: everything else — chosen for legibility on phones. */
-export const fontBody = Atkinson_Hyperlegible({
+export const fontBody = Geist({
   subsets: ["latin"],
-  weight: ["400", "700"],
+  weight: ["400", "500", "700"],
   variable: "--font-body",
-  display: "swap",
-});
-
-/** Utility face: seat codes, timestamps, counts — rendered like library call numbers. */
-export const fontMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-mono",
   display: "swap",
 });

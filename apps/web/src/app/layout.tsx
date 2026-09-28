@@ -5,7 +5,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
-import { fontBody, fontDisplay, fontMono } from "@/lib/fonts";
+import { fontBody, fontDisplay } from "@/lib/fonts";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
@@ -18,8 +18,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#1f3a8a" },
-    { media: "(prefers-color-scheme: dark)", color: "#0c1220" },
+    { media: "(prefers-color-scheme: light)", color: "#2563EB" },
+    { media: "(prefers-color-scheme: dark)", color: "#0B1120" },
   ],
   viewportFit: "cover",
 };
@@ -30,7 +30,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html
       lang="es"
       suppressHydrationWarning
-      className={`${fontDisplay.variable} ${fontBody.variable} ${fontMono.variable}`}
+      className={`${fontDisplay.variable} ${fontBody.variable}`}
     >
       <head>
         {/* Applies the stored/system theme before hydration to avoid a light-mode flash. */}

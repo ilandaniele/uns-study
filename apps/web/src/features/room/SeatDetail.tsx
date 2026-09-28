@@ -1,11 +1,12 @@
 "use client";
 
 import type { MeDto, SeatDto, SeatOccupantDto, TableDto } from "@uns/contracts";
+import { ArmchairIcon, ChairIcon, TableIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { IdentityPrompt } from "./IdentityPrompt";
 import { TurnstileChallenge } from "./TurnstileChallenge";
-import { confidenceWording, recencyLabel, statusLabel } from "./format";
+import { confidenceWording, recencyLabel, seatDisplayLabel, statusLabel, tableDisplayName } from "./format";
 
 export interface SeatDetailProps {
   seat: SeatDto;
@@ -49,18 +50,15 @@ export function SeatDetail({
   onExtend,
   onCheckOut,
 }: SeatDetailProps) {
-  const kind = table?.type === "WALL_BAR" ? "Barra" : "Mesa";
+  const isBar = table?.type === "WALL_BAR";
+  const label = seatDisplayLabel(table, seat.code, seat.seatNumber);
   const recency = recencyLabel(seat);
-  const callNumber = `${table?.code ?? seat.code}·${seat.seatNumber}`;
 
   return (
     <div className="flex h-full flex-col gap-4 p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-mono text-2xl font-semibold tracking-tight text-main">{callNumber}</p>
-          <p className="mt-0.5 text-xs text-muted">
-            {kind} {table?.label ?? seat.code} · Asiento {seat.seatNumber}
-          </p>
+          <p className="font-display text-xl font-semibold tracking-tight text-main">{label}</p>
           <StatusPill status={seat.status} isMySeat={isMySeat} />
           {!isMySeat && occupant ? (
             <p className="mt-1.5 text-sm text-muted">
@@ -70,9 +68,9 @@ export function SeatDetail({
               está acá
             </p>
           ) : null}
-          {recency ? <p className="mt-1 font-mono text-xs text-muted">{recency}</p> : null}
+          {recency ? <p className="mt-1 text-sm text-muted">{recency}</p> : null}
           {seat.confidence > 0 ? (
-            <p className="font-mono text-xs text-muted" style={{ opacity: 0.75 }}>
+            <p className="text-sm text-muted" style={{ opacity: 0.75 }}>
               {confidenceWording(seat.confidence)}
             </p>
           ) : null}
@@ -83,9 +81,7 @@ export function SeatDetail({
           aria-label="Cerrar"
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted hover:bg-[var(--surface-2)] hover:text-main"
         >
-          <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" d="M6 6l12 12M18 6 6 18" />
-          </svg>
+          <XIcon aria-hidden="true" size={20} weight="regular" />
         </button>
       </div>
 
@@ -131,6 +127,24 @@ export function SeatDetail({
             </div>
           </>
         )}
+      </div>
+
+      <div className="border-t border-app pt-3">
+        <h2 className="text-sm font-semibold text-main">Información</h2>
+        <ul className="mt-2 flex flex-col gap-2 text-sm text-muted">
+          <li className="flex items-center gap-2">
+            <TableIcon aria-hidden="true" size={18} />
+            {tableDisplayName(table, seat.code)}
+          </li>
+          <li className="flex items-center gap-2">
+            <ChairIcon aria-hidden="true" size={18} />
+            {isBar ? `Lugar ${seat.seatNumber} de 3` : `Asiento ${seat.seatNumber} de 8`}
+          </li>
+          <li className="flex items-center gap-2">
+            <ArmchairIcon aria-hidden="true" size={18} />
+            Tipo: {isBar ? "Barra" : "Mesa principal"}
+          </li>
+        </ul>
       </div>
     </div>
   );

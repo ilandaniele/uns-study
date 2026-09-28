@@ -6,9 +6,12 @@ export interface StudyTableProps {
   highlighted?: boolean;
 }
 
+/** Warm wood main table, drawn top-down, with a small rounded pill carrying the table code. */
 export function StudyTable({ table, highlighted = false }: StudyTableProps) {
   const cx = table.x + table.width / 2;
   const cy = table.y + table.height / 2;
+  const pillWidth = 84;
+  const pillHeight = 38;
 
   return (
     <g transform={`rotate(${table.rotation} ${cx} ${cy})`}>
@@ -18,7 +21,7 @@ export function StudyTable({ table, highlighted = false }: StudyTableProps) {
           y={table.y - 6}
           width={table.width + 12}
           height={table.height + 12}
-          rx={14}
+          rx={20}
           fill="none"
           stroke="var(--primary)"
           strokeWidth={3}
@@ -27,32 +30,42 @@ export function StudyTable({ table, highlighted = false }: StudyTableProps) {
       ) : null}
       <rect
         x={table.x}
-        y={table.y}
+        y={table.y + 3}
         width={table.width}
         height={table.height}
-        rx={10}
-        fill="var(--room-table-fill)"
-        stroke="var(--room-table-border)"
-        strokeWidth={1.5}
+        rx={18}
+        fill="black"
+        opacity={0.12}
+        filter="url(#table-shadow)"
       />
       <rect
         x={table.x}
         y={table.y}
         width={table.width}
         height={table.height}
-        rx={10}
-        fill="url(#oak-grain)"
-        opacity={0.5}
+        rx={18}
+        fill="url(#wood-gradient)"
+        stroke="var(--room-table-border)"
+        strokeWidth={1.5}
+      />
+      <rect
+        x={cx - pillWidth / 2}
+        y={cy - pillHeight / 2}
+        width={pillWidth}
+        height={pillHeight}
+        rx={19}
+        fill="white"
+        opacity={0.92}
       />
       <text
         x={cx}
         y={cy}
         textAnchor="middle"
         dominantBaseline="central"
-        fontSize={18}
+        fontSize={24}
         fontWeight={600}
-        fontFamily="var(--font-mono)"
-        fill="var(--room-table-text)"
+        className="font-display"
+        fill="#0F172A"
       >
         {table.label}
       </text>

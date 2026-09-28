@@ -13,7 +13,7 @@ export const INITIAL_CHAT_ROOM = {
 
 export const INITIAL_ROOM = {
   slug: "principal",
-  name: "Sala de Estudio UNS",
+  name: "Sala principal",
   description: null as string | null,
   // Sala de estudio, UNS Bahía Blanca (confirmed by the project owner).
   latitude: -38.70138372483678,

@@ -1,34 +1,32 @@
 import type { TableDto } from "@uns/contracts";
 
-export function WallBar({ table }: { table: TableDto }) {
-  const cx = table.x + table.width / 2;
-  const cy = table.y + table.height / 2;
+export interface WallBarProps {
+  table: TableDto;
+}
 
+/** Wood counter strip against a side wall. Its human name shows in the seat detail panel. */
+export function WallBar({ table }: WallBarProps) {
   return (
-    <g transform={`rotate(${table.rotation} ${cx} ${cy})`}>
+    <g>
+      <rect
+        x={table.x}
+        y={table.y + 3}
+        width={table.width}
+        height={table.height}
+        rx={10}
+        fill="black"
+        opacity={0.1}
+      />
       <rect
         x={table.x}
         y={table.y}
         width={table.width}
         height={table.height}
-        rx={8}
-        fill="var(--room-bar-fill)"
+        rx={10}
+        fill="url(#wood-gradient)"
         stroke="var(--room-bar-border)"
         strokeWidth={1.5}
       />
-      <text
-        x={cx}
-        y={cy}
-        textAnchor="middle"
-        dominantBaseline="central"
-        fontSize={18}
-        fontWeight={600}
-        fontFamily="var(--font-mono)"
-        fill="var(--room-bar-text)"
-        transform={`rotate(90 ${cx} ${cy})`}
-      >
-        {table.label}
-      </text>
     </g>
   );
 }
