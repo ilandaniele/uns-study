@@ -38,6 +38,9 @@ test("check-in, moving seats, and seat-taken propagate in realtime to another vi
     const seatYOnA = seatLocator(pageA, SEAT_Y.table, SEAT_Y.seatNumber);
     await seatYOnA.click();
     await pageA.getByRole("button", { name: "Estoy acá" }).click();
+    // Already seated on X: the app asks before moving, then frees X and occupies Y.
+    await expect(pageA.getByRole("dialog", { name: "Ya tenés otro lugar marcado" })).toBeVisible();
+    await pageA.getByRole("button", { name: "Sí, cambiarme de lugar" }).click();
     await expect(pageA.getByRole("button", { name: "Me voy" })).toBeVisible();
 
     // B sees X free up and Y become occupied.

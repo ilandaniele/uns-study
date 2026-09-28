@@ -11,6 +11,7 @@ import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
 import { DisputeChallengeBanner } from "@/features/room/DisputeChallengeBanner";
 import { DisputeWonBanner } from "@/features/room/DisputeWonBanner";
 import { ExtendBanner } from "@/features/room/ExtendBanner";
+import { MoveSeatDialog } from "@/features/room/MoveSeatDialog";
 import { MyCheckInBar } from "@/features/room/MyCheckInBar";
 import { Hero } from "@/features/room/Hero";
 import { HowToUseModal } from "@/features/room/HowToUseModal";
@@ -129,7 +130,20 @@ export default function RoomPage() {
     setShowIdentityPrompt(false);
   }
 
+  const [confirmMove, setConfirmMove] = useState(false);
+
+  function requestCheckIn() {
+    if (!selectedSeat) return;
+    // Already seated elsewhere: ask before moving (the API frees the old seat on move).
+    if (activeCheckIn && activeCheckIn.seatId !== selectedSeat.id) {
+      setConfirmMove(true);
+      return;
+    }
+    void handleCheckIn();
+  }
+
   async function handleCheckIn() {
+    setConfirmMove(false);
     if (!selectedSeat) return;
     const showIdentity = hasChosenIdentityVisibility() ? getShowIdentityPreference() : false;
     const result = await checkIn(selectedSeat.id, showIdentity, { qrToken });
@@ -213,7 +227,7 @@ export default function RoomPage() {
       showIdentityPrompt={showIdentityPrompt}
       onIdentityChoice={handleIdentityChoice}
       onClose={closeDetail}
-      onCheckIn={() => void handleCheckIn()}
+      onCheckIn={requestCheckIn}
       onMarkFree={() => void handleMarkFree(selectedSeat.id)}
       onMarkOccupied={() => void handleMarkOccupied(selectedSeat.id)}
       onExtend={() => void extend()}
@@ -383,6 +397,19 @@ export default function RoomPage() {
       ) : null}
 
       <HowToUseModal open={showHowTo} onClose={() => setShowHowTo(false)} />
+      {confirmMove && selectedSeat && activeCheckIn ? (
+        <MoveSeatDialog
+          fromLabel={seatDisplayLabel(myTable, mySeat?.code ?? activeCheckIn.seatCode, mySeat?.seatNumber ?? 0)}
+          toLabel={seatDisplayLabel(
+            map?.tables.find((t) => t.id === selectedSeat.tableId) ?? null,
+            selectedSeat.code,
+            selectedSeat.seatNumber,
+          )}
+          pending={pending}
+          onConfirm={() => void handleCheckIn()}
+          onCancel={() => setConfirmMove(false)}
+        />
+      ) : null}
     </main>
   );
 }
