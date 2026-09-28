@@ -11,6 +11,8 @@ const HIT_RADIUS = 26;
 // both as top-down colored dots) — RING_R is the dark chair/stool base peeking out underneath.
 const SEAT_R = 15;
 const RING_R = SEAT_R + 4;
+// Occupant photo badge radius — larger than the seat, still under half the seat spacing.
+const PHOTO_R = 20;
 
 // One shared radial gradient per status, defined once in RoomMap's <defs> and referenced here —
 // keeps 108 seats cheap to paint (no per-seat filters/gradients).
@@ -42,9 +44,13 @@ export interface SeatProps {
   isMySeat: boolean;
   isSelected: boolean;
   onSelect: (seat: SeatDto) => void;
+  /** Photo of the identified occupant (only set when they chose to show themselves and their photo). */
+  avatarUrl?: string | null;
 }
 
-export function Seat({ seat, tableLabel, tableType, facing, isMySeat, isSelected, onSelect }: SeatProps) {
+export function Seat({ seat, tableLabel, tableType, facing, isMySeat, isSelected, onSelect, avatarUrl = null }: SeatProps) {
+  const showPhoto = avatarUrl !== null && (seat.status === "OCCUPIED" || isMySeat);
+  const clipId = `seat-photo-${seat.id}`;
   const visualStatus = isMySeat ? "MY_SEAT" : seat.status;
   const kind = tableType === "WALL_BAR" ? "Barra" : "Mesa";
   const hasOpenDispute = seat.dispute !== null;
@@ -84,7 +90,28 @@ export function Seat({ seat, tableLabel, tableType, facing, isMySeat, isSelected
         {/* Glossy seat sphere. */}
         <circle r={SEAT_R} fill={`url(#${GRADIENT_ID[visualStatus]})`} stroke="var(--seat-stroke)" strokeWidth={1} />
       </g>
+      {showPhoto ? (
+        // Occupant's photo as a round badge over the seat: white frame plus a ring in the seat's
+        // status color, bigger than the plain seat so the face is recognizable on the map.
+        <g transform={`rotate(${-seat.rotation})`}>
+          <clipPath id={clipId}>
+            <circle r={PHOTO_R} />
+          </clipPath>
+          <circle r={PHOTO_R + 4} fill={isMySeat ? "var(--seat-mine)" : "var(--seat-occupied)"} />
+          <circle r={PHOTO_R + 1.5} fill="white" />
+          <image
+            href={avatarUrl}
+            x={-PHOTO_R}
+            y={-PHOTO_R}
+            width={PHOTO_R * 2}
+            height={PHOTO_R * 2}
+            preserveAspectRatio="xMidYMid slice"
+            clipPath={`url(#${clipId})`}
+          />
+        </g>
+      ) : null}
       <text
+        display={showPhoto ? "none" : undefined}
         textAnchor="middle"
         dominantBaseline="central"
         y={1}

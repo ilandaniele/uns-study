@@ -14,7 +14,12 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_SOCKET_URL: process.env.NEXT_PUBLIC_SOCKET_URL || API_PROXY_TARGET.replace(/\/+$/, "") || "http://localhost:4000",
   },
   async rewrites() {
-    if (!API_PROXY_TARGET) return [];
+    // Local dev talks to the API directly for REST, but avatars are stored as same-origin relative
+    // URLs (`/api/v1/avatars/...`) rendered in <img>, so proxy just those to the local API.
+    if (!API_PROXY_TARGET) {
+      const devApi = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/\/+$/, "");
+      return [{ source: "/api/v1/avatars/:path*", destination: `${devApi}/api/v1/avatars/:path*` }];
+    }
     const target = API_PROXY_TARGET.replace(/\/+$/, "");
     return [
       { source: "/api/auth/:path*", destination: `${target}/api/auth/:path*` },

@@ -13,6 +13,8 @@ export interface RoomMapProps {
   onSelectSeat: (seat: SeatDto) => void;
   /** Table code to highlight (e.g. from a scanned QR deep link), see `useQrContext`. */
   highlightTableCode?: string | null;
+  /** Avatar URL per seat id for occupants who chose to show themselves with a photo. */
+  avatarBySeatId?: ReadonlyMap<string, string>;
 }
 
 // Seat status keys that get a shared radial-gradient "glossy sphere" fill, defined once below
@@ -25,7 +27,7 @@ const AISLE_PLANTS = [
   { x: 600, y: 1450 },
 ];
 
-export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlightTableCode = null }: RoomMapProps) {
+export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlightTableCode = null, avatarBySeatId }: RoomMapProps) {
   const { width, height } = map.viewBox;
   const tableById = useMemo(() => new Map(map.tables.map((table) => [table.id, table])), [map.tables]);
   const wallBars = useMemo(() => map.tables.filter((table) => table.type === "WALL_BAR"), [map.tables]);
@@ -229,6 +231,7 @@ export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlight
             isMySeat={seat.id === mySeatId}
             isSelected={seat.id === selectedSeatId}
             onSelect={onSelectSeat}
+            avatarUrl={avatarBySeatId?.get(seat.id) ?? null}
           />
         );
       })}

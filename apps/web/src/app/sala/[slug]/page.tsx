@@ -4,7 +4,7 @@ import type { SeatDto } from "@uns/contracts";
 import { MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon, ArrowsCounterClockwiseIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TransformComponent, TransformWrapper, type ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
 import { AdSlot } from "@/components/AdSlot";
 import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
@@ -98,6 +98,11 @@ export default function RoomPage() {
   }, [activeCheckIn, expiryStatus, refetch]);
 
   const mySeatId = activeCheckIn?.seatId ?? null;
+  const avatarBySeatId = useMemo(() => {
+    const photos = new Map<string, string>();
+    for (const [seatId, occupant] of occupantsBySeatId) if (occupant.avatarUrl) photos.set(seatId, occupant.avatarUrl);
+    return photos;
+  }, [occupantsBySeatId]);
   const selectedSeat = map?.seats.find((seat) => seat.id === selectedSeatId) ?? null;
   const selectedTable = selectedSeat ? map?.tables.find((t) => t.id === selectedSeat.tableId) ?? null : null;
   // Other identified occupants seated at the same table as the selected seat, for "Personas cercanas".
@@ -319,6 +324,7 @@ export default function RoomPage() {
                 selectedSeatId={selectedSeatId}
                 onSelectSeat={handleSelectSeat}
                 highlightTableCode={highlightTableCode}
+                avatarBySeatId={avatarBySeatId}
               />
             </div>
           ) : (
@@ -331,6 +337,7 @@ export default function RoomPage() {
                     selectedSeatId={selectedSeatId}
                     onSelectSeat={handleSelectSeat}
                     highlightTableCode={highlightTableCode}
+                avatarBySeatId={avatarBySeatId}
                   />
                 </TransformComponent>
               </TransformWrapper>
