@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Interval } from "@nestjs/schedule";
 import { and, eq, gt, lte } from "drizzle-orm";
 import { schema, type Db } from "@uns/database";
@@ -16,6 +16,8 @@ const OBSERVATION_LOOKBACK_MS = 2 * SWEEP_INTERVAL_MS;
 /** Periodically expires ACTIVE check-ins and recomputes seats whose signals just expired. */
 @Injectable()
 export class ExpirationJob {
+  private readonly logger = new Logger(ExpirationJob.name);
+
   constructor(
     @Inject(DB) private readonly db: Db,
     @Inject(RoomStateService) private readonly roomState: RoomStateService,
@@ -53,9 +55,14 @@ export class ExpirationJob {
       }
     });
 
-    // Expiry ends the check-in — resolve any dispute still OPEN against it.
+    // Expiry ends the check-in — resolve any dispute still OPEN against it. One failing dispute
+    // must not abort the sweep for every other check-in that already expired.
     for (const checkIn of expiredCheckIns) {
-      await this.disputes.resolveForEndedCheckIn(checkIn.id, now);
+      try {
+        await this.disputes.resolveForEndedCheckIn(checkIn.id, now);
+      } catch (err) {
+        this.logger.error(`Failed to resolve dispute for expired check-in ${checkIn.id}`, err instanceof Error ? err.stack : String(err));
+      }
     }
 
     const recentlyExpiredObservations = await this.db

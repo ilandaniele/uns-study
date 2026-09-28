@@ -155,6 +155,15 @@ export interface DisputeChallengedEvent {
   closesAt: string;
 }
 
+/** Sent to a CLAIM opener's private `user:{userId}` channel once their claim resolves
+ *  RESOLVED_ABSENT — the incumbent's check-in is cancelled, but the opener still has to
+ *  self-check-in (fresh presence) rather than being auto-seated. */
+export interface DisputeWonEvent {
+  disputeId: string;
+  seatId: string;
+  seatCode: string;
+}
+
 export interface MeDto {
   user: { id: string; name: string; email: string; image: string | null } | null;
   activeCheckIn: CheckInDto | null;
@@ -181,6 +190,7 @@ export const SocketEvents = {
   SeatDisputeUpdated: "seat:dispute-updated",
   SeatDisputeResolved: "seat:dispute-resolved",
   DisputeYouAreChallenged: "dispute:you-are-challenged",
+  DisputeYouWon: "dispute:you-won",
 } as const;
 
 export interface SeatStateChangedEvent {
@@ -233,8 +243,8 @@ export const checkInPhotoRequestSchema = z.object({
 });
 
 export const openDisputeSchema = z.object({
-  roomId: z.string(),
-  seatId: z.string(),
+  roomId: z.string().uuid(),
+  seatId: z.string().uuid(),
   kind: z.enum(["CLAIM", "ABSENT", "SAVED"]),
   location: locationInputSchema,
 });

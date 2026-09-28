@@ -9,12 +9,14 @@ import { TransformComponent, TransformWrapper, type ReactZoomPanPinchRef } from 
 import { AdSlot } from "@/components/AdSlot";
 import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
 import { DisputeChallengeBanner } from "@/features/room/DisputeChallengeBanner";
+import { DisputeWonBanner } from "@/features/room/DisputeWonBanner";
 import { ExtendBanner } from "@/features/room/ExtendBanner";
 import { Hero } from "@/features/room/Hero";
 import { RoomMap } from "@/features/room/RoomMap";
 import { SeatDetail } from "@/features/room/SeatDetail";
 import { SummaryCounters } from "@/features/room/SummaryCounters";
 import { checkInExpiryStatus, seatDisplayLabel } from "@/features/room/format";
+import { useDisputeWon } from "@/features/room/useDisputeWon";
 import { useIncumbentChallenge } from "@/features/room/useIncumbentChallenge";
 import { useRoomState } from "@/features/room/useRoomState";
 import { useSeatActions } from "@/features/room/useSeatActions";
@@ -95,6 +97,10 @@ export default function RoomPage() {
   const challengeSeat = challenge ? map?.seats.find((seat) => seat.id === challenge.seatId) ?? null : null;
   const challengeTable = challengeSeat ? map?.tables.find((t) => t.id === challengeSeat.tableId) ?? null : null;
 
+  const { won: disputeWon, clear: clearDisputeWon } = useDisputeWon();
+  const wonSeat = disputeWon ? map?.seats.find((seat) => seat.id === disputeWon.seatId) ?? null : null;
+  const wonTable = wonSeat ? map?.tables.find((t) => t.id === wonSeat.tableId) ?? null : null;
+
   function handleSelectSeat(seat: SeatDto) {
     const isSame = seat.id === selectedSeatId;
     setSelectedSeatId(isSame ? null : seat.id);
@@ -150,6 +156,17 @@ export default function RoomPage() {
     if (result) clearChallenge();
   }
 
+  async function handleDisputeWonCheckIn() {
+    if (!disputeWon) return;
+    const showIdentity = hasChosenIdentityVisibility() ? getShowIdentityPreference() : false;
+    const result = await checkIn(disputeWon.seatId, showIdentity, { qrToken });
+    if (result) {
+      trackEvent("check_in", { roomSlug: slug, seatId: disputeWon.seatId });
+      clearDisputeWon();
+      setShowIdentityPrompt(true);
+    }
+  }
+
   async function handleIdentityChoice(showIdentity: boolean) {
     setShowIdentityPreference(showIdentity);
     setShowIdentityPrompt(false);
@@ -202,6 +219,16 @@ export default function RoomPage() {
             pending={pending}
             onStillHere={() => void handleChallengeStillHere()}
             onLeft={() => void handleChallengeLeft()}
+          />
+        </div>
+      ) : null}
+      {disputeWon ? (
+        <div className="order-0 md:col-span-3">
+          <DisputeWonBanner
+            seatLabel={seatDisplayLabel(wonTable, wonSeat?.code ?? disputeWon.seatCode, wonSeat?.seatNumber ?? 0)}
+            pending={pending}
+            onCheckIn={() => void handleDisputeWonCheckIn()}
+            onDismiss={clearDisputeWon}
           />
         </div>
       ) : null}

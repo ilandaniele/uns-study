@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable } from "@nestjs/common";
+import { ConflictException, Inject, Injectable, Logger } from "@nestjs/common";
 import { and, eq, gte } from "drizzle-orm";
 import { schema, type Db } from "@uns/database";
 import { CHECKIN_MINUTES, type CheckInDto, type LocationInput } from "@uns/contracts";
@@ -28,6 +28,8 @@ export interface CreateCheckInInput {
 
 @Injectable()
 export class CheckInService {
+  private readonly logger = new Logger(CheckInService.name);
+
   constructor(
     @Inject(DB) private readonly db: Db,
     @Inject(RoomStateService) private readonly roomState: RoomStateService,
@@ -149,7 +151,14 @@ export class CheckInService {
     if (!checkInRow) throw new Error("Check-in vanished after creation");
 
     // Moving away from a seat ends that check-in — resolve any dispute still OPEN against it.
-    if (previousCheckInId) await this.disputes.resolveForEndedCheckIn(previousCheckInId, now);
+    // A failure here must not turn an otherwise-successful move into a 500.
+    if (previousCheckInId) {
+      try {
+        await this.disputes.resolveForEndedCheckIn(previousCheckInId, now);
+      } catch (err) {
+        this.logger.error(`Failed to resolve dispute for ended check-in ${previousCheckInId} (move)`, err instanceof Error ? err.stack : String(err));
+      }
+    }
 
     await this.flagRapidToggleIfNeeded(input.userId, now);
 
@@ -194,8 +203,13 @@ export class CheckInService {
       actingUserId: userId,
     });
 
-    // Ending the check-in resolves any dispute still OPEN against it.
-    await this.disputes.resolveForEndedCheckIn(existing.id, now);
+    // Ending the check-in resolves any dispute still OPEN against it. A failure here must not
+    // turn a committed checkout into a 500.
+    try {
+      await this.disputes.resolveForEndedCheckIn(existing.id, now);
+    } catch (err) {
+      this.logger.error(`Failed to resolve dispute for ended check-in ${existing.id} (checkout)`, err instanceof Error ? err.stack : String(err));
+    }
 
     return { roomId: existing.roomId, changes };
   }

@@ -5,6 +5,7 @@ import { AuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";
 import { ZodBodyPipe } from "../common/zod-body.pipe.js";
+import { UuidParamPipe } from "../common/uuid-param.pipe.js";
 import { ApiErrors } from "../common/api-error.js";
 import { RateLimitService } from "../security/rate-limit.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
@@ -49,7 +50,7 @@ export class DisputesController {
   @Post(":id/votes")
   async vote(
     @CurrentUser() user: RequestUser,
-    @Param("id") id: string,
+    @Param("id", UuidParamPipe) id: string,
     @Body(new ZodBodyPipe(voteDisputeSchema)) body: z.infer<typeof voteDisputeSchema>,
   ) {
     const limit = await this.rateLimit.check(`dispute:vote:${user.id}`, 20, 600);
@@ -61,9 +62,12 @@ export class DisputesController {
   @Post(":id/respond")
   async respond(
     @CurrentUser() user: RequestUser,
-    @Param("id") id: string,
+    @Param("id", UuidParamPipe) id: string,
     @Body(new ZodBodyPipe(incumbentRespondSchema)) body: z.infer<typeof incumbentRespondSchema>,
   ) {
+    const limit = await this.rateLimit.check(`dispute:respond:${user.id}`, 5, 60);
+    if (!limit.allowed) throw ApiErrors.rateLimited();
+
     const { dispute } = await this.disputes.respond(id, user.id, body.action, body.location);
     return dispute;
   }

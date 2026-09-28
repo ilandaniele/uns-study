@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@uns/database";
 import { schema } from "@uns/database";
 import { eq } from "drizzle-orm";
@@ -31,9 +31,10 @@ async function build(db: Db) {
   const restrictions = new RestrictionService(db);
   const gateway = new RoomRealtimeGateway(roomState, mockAuth); // no @WebSocketServer() attached — emits are no-ops in tests
   const qr = new QrService(db);
-  const disputes = new DisputeService(db, roomState, presence, security, studySessions, reputation, restrictions, gateway);
-  const checkIns = new CheckInService(db, roomState, presence, security, studySessions, qr, disputes);
+  const rateLimit = new RateLimitService();
   const abusePolicy = new AbusePolicyService(db, new TurnstileService());
+  const disputes = new DisputeService(db, roomState, presence, security, studySessions, reputation, restrictions, gateway, rateLimit, abusePolicy);
+  const checkIns = new CheckInService(db, roomState, presence, security, studySessions, qr, disputes);
   const observations = new ObservationService(db, roomState, presence, security, abusePolicy, qr, reputation);
   const dailyReset = new DailyResetJob(db, gateway, studySessions);
   return { disputes, checkIns, observations, reputation, roomState, dailyReset };
@@ -130,6 +131,7 @@ describe("DisputeService", () => {
 
   it("votes upsert — voting twice replaces the previous vote", async () => {
     await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await checkIns.checkIn({ userId: "u3", roomId, seatId: seatIds[2]!, location, showIdentity: false });
     const { dispute } = await svc.open({ userId: "u2", roomId, seatId: seatIds[0]!, kind: "CLAIM", location });
 
     await svc.vote(dispute.id, "u3", "PRESENT", location);
@@ -151,7 +153,7 @@ describe("DisputeService", () => {
     expect(afterRespond.votes).toEqual({ present: 1, absent: 1 });
   });
 
-  it("resolution: absent wins a CLAIM — transfers the seat and closes the claimant's previous seat", async () => {
+  it("resolution: absent wins a CLAIM — frees the seat, but does NOT auto check-in the opener", async () => {
     await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
     await checkIns.checkIn({ userId: "u2", roomId, seatId: seatIds[1]!, location, showIdentity: false });
 
@@ -164,11 +166,33 @@ describe("DisputeService", () => {
 
     const u1CheckIn = await checkIns.getActiveCheckIn("u1");
     expect(u1CheckIn).toBeNull();
+    // The opener keeps their own seat — winning a CLAIM only frees the disputed seat; the opener
+    // must self-check-in on it via the normal flow (prompted by `dispute:you-won`).
     const u2CheckIn = await checkIns.getActiveCheckIn("u2");
-    expect(u2CheckIn?.seatId).toBe(seatIds[0]);
+    expect(u2CheckIn?.seatId).toBe(seatIds[1]);
 
-    const [oldSeatState] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatIds[1]!));
-    expect(oldSeatState?.status).toBe("UNKNOWN");
+    const [freedSeatState] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatIds[0]!));
+    expect(freedSeatState?.status).toBe("UNKNOWN");
+  });
+
+  it("a CLAIM against a seat someone else has since taken resolves cleanly without a duplicate check-in", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    const { dispute } = await svc.open({ userId: "u2", roomId, seatId: seatIds[0]!, kind: "CLAIM", location });
+
+    // u1 leaves and a third user (u3) takes the seat before the dispute resolves.
+    await checkIns.checkOut("u1");
+    await insertUsers(db, ["u4"]);
+    await checkIns.checkIn({ userId: "u4", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+
+    await forceClosed(dispute.id);
+    await expect(svc.resolveDue(new Date())).resolves.toBeUndefined();
+
+    // The dispute was tied to u1's now-ended check-in, so it resolved the moment u1 checked out —
+    // u4's later check-in on the same seat is untouched.
+    const resolved = await svc.getById(dispute.id, null);
+    expect(resolved.status).toBe("RESOLVED_ABSENT");
+    expect((await checkIns.getActiveCheckIn("u4"))?.seatId).toBe(seatIds[0]);
+    expect((await checkIns.getActiveCheckIn("u2"))).toBeNull();
   });
 
   it("resolution: absent wins an ABSENT dispute — the seat just frees up, no transfer", async () => {
@@ -185,6 +209,7 @@ describe("DisputeService", () => {
 
   it("resolution: present wins — the incumbent keeps the seat and the opener takes a reputation hit", async () => {
     await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await checkIns.checkIn({ userId: "u3", roomId, seatId: seatIds[2]!, location, showIdentity: false });
     const { dispute } = await svc.open({ userId: "u2", roomId, seatId: seatIds[0]!, kind: "CLAIM", location });
     await svc.respond(dispute.id, "u1", "STILL_HERE", location); // present=1, absent=1
     await svc.vote(dispute.id, "u3", "PRESENT", location); // present=2, absent=1
@@ -219,14 +244,14 @@ describe("DisputeService", () => {
     expect(liveAfterExtend.get(seatIds[0]!)?.status).toBe("OCCUPIED");
   });
 
-  it("the incumbent responding LEFT resolves the dispute immediately, transferring a CLAIM", async () => {
+  it("the incumbent responding LEFT resolves a CLAIM immediately, freeing the seat without auto check-in", async () => {
     await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
     const { dispute } = await svc.open({ userId: "u2", roomId, seatId: seatIds[0]!, kind: "CLAIM", location });
 
     const { dispute: afterLeft } = await svc.respond(dispute.id, "u1", "LEFT");
     expect(afterLeft.status).toBe("RESOLVED_ABSENT");
     expect((await checkIns.getActiveCheckIn("u1"))).toBeNull();
-    expect((await checkIns.getActiveCheckIn("u2"))?.seatId).toBe(seatIds[0]);
+    expect((await checkIns.getActiveCheckIn("u2"))).toBeNull();
   });
 
   it("the incumbent checking out while a dispute is OPEN resolves it immediately", async () => {
@@ -250,6 +275,114 @@ describe("DisputeService", () => {
       .from(schema.seatStateEvents)
       .where(eq(schema.seatStateEvents.seatId, seatIds[0]!));
     expect(events.filter((e) => e.eventType === "DISPUTE_RESOLVED")).toHaveLength(1);
+  });
+
+  it("resolveDue continues past one dispute whose finalization throws", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await insertUsers(db, ["u4"]);
+    await checkIns.checkIn({ userId: "u4", roomId, seatId: seatIds[1]!, location, showIdentity: false });
+
+    const { dispute: failing } = await svc.open({ userId: "u2", roomId, seatId: seatIds[0]!, kind: "ABSENT", location });
+    const { dispute: healthy } = await svc.open({ userId: "u3", roomId, seatId: seatIds[1]!, kind: "ABSENT", location });
+    await forceClosed(failing.id);
+    await forceClosed(healthy.id);
+
+    const original = roomState.recomputeSeats.bind(roomState);
+    const spy = vi.spyOn(roomState, "recomputeSeats").mockImplementation(async (ids, opts) => {
+      if (ids.includes(seatIds[0]!)) throw new Error("boom");
+      return original(ids, opts);
+    });
+
+    await expect(svc.resolveDue(new Date())).resolves.toBeUndefined();
+    spy.mockRestore();
+
+    // The failing dispute's status still committed (that transaction finished before the throw) —
+    // only its post-commit side effects (seat recompute, realtime) were skipped.
+    const [failingRow] = await db.select().from(schema.seatDisputes).where(eq(schema.seatDisputes.id, failing.id));
+    expect(failingRow?.status).toBe("RESOLVED_ABSENT");
+
+    // The other dispute resolved normally, unaffected by its sibling's failure.
+    const healthyResolved = await svc.getById(healthy.id, null);
+    expect(healthyResolved.status).toBe("RESOLVED_ABSENT");
+    expect((await checkIns.getActiveCheckIn("u4"))).toBeNull();
+  });
+
+  it("rejects a vote from someone with no active check-in in the room", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    const { dispute } = await svc.open({ userId: "u2", roomId, seatId: seatIds[0]!, kind: "CLAIM", location });
+
+    await expect(svc.vote(dispute.id, "u3", "PRESENT", location)).rejects.toMatchObject({ code: "DISPUTE_NOT_ALLOWED" });
+  });
+
+  it("rejects a vote from a restricted user", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await checkIns.checkIn({ userId: "u3", roomId, seatId: seatIds[1]!, location, showIdentity: false });
+    await db.insert(schema.userRestrictions).values({ userId: "u3", type: "RESTRICT_OBSERVATIONS", reason: "test" });
+    const { dispute } = await svc.open({ userId: "u2", roomId, seatId: seatIds[0]!, kind: "CLAIM", location });
+
+    await expect(svc.vote(dispute.id, "u3", "PRESENT", location)).rejects.toMatchObject({ code: "RESTRICTED" });
+  });
+
+  it("rejects a vote cast after the dispute has already closed", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await checkIns.checkIn({ userId: "u3", roomId, seatId: seatIds[1]!, location, showIdentity: false });
+    const { dispute } = await svc.open({ userId: "u2", roomId, seatId: seatIds[0]!, kind: "ABSENT", location });
+
+    await forceClosed(dispute.id);
+    await svc.resolveDue(new Date());
+
+    await expect(svc.vote(dispute.id, "u3", "ABSENT", location)).rejects.toMatchObject({ code: "DISPUTE_CLOSED" });
+  });
+
+  it("STILL_HERE protects the incumbent unless at least 2 non-opener voters say ABSENT", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await checkIns.checkIn({ userId: "u3", roomId, seatId: seatIds[1]!, location, showIdentity: false });
+
+    const { dispute } = await svc.open({ userId: "u2", roomId, seatId: seatIds[0]!, kind: "CLAIM", location }); // absent=1 (opener)
+    await svc.respond(dispute.id, "u1", "STILL_HERE", location); // present=1, absent=1
+    await svc.vote(dispute.id, "u3", "ABSENT", location); // absent=2, present=1 — only 1 non-opener ABSENT
+
+    await forceClosed(dispute.id);
+    await svc.resolveDue(new Date());
+
+    const resolved = await svc.getById(dispute.id, null);
+    expect(resolved.status).toBe("TIED");
+    expect((await checkIns.getActiveCheckIn("u1"))?.seatId).toBe(seatIds[0]);
+  });
+
+  it("STILL_HERE is overturned once 2 non-opener voters say ABSENT", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await checkIns.checkIn({ userId: "u3", roomId, seatId: seatIds[1]!, location, showIdentity: false });
+    await insertUsers(db, ["u4"]);
+    await checkIns.checkIn({ userId: "u4", roomId, seatId: seatIds[2]!, location, showIdentity: false });
+
+    const { dispute } = await svc.open({ userId: "u2", roomId, seatId: seatIds[0]!, kind: "CLAIM", location }); // absent=1 (opener)
+    await svc.respond(dispute.id, "u1", "STILL_HERE", location); // present=1, absent=1
+    await svc.vote(dispute.id, "u3", "ABSENT", location); // absent=2
+    await svc.vote(dispute.id, "u4", "ABSENT", location); // absent=3, present=1 — 2 non-opener ABSENT votes
+
+    await forceClosed(dispute.id);
+    await svc.resolveDue(new Date());
+
+    const resolved = await svc.getById(dispute.id, null);
+    expect(resolved.status).toBe("RESOLVED_ABSENT");
+    expect((await checkIns.getActiveCheckIn("u1"))).toBeNull();
+  });
+
+  it("a per-seat cooldown blocks a new dispute for 10 minutes after RESOLVED_PRESENT/TIED", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    const { dispute } = await svc.open({ userId: "u2", roomId, seatId: seatIds[0]!, kind: "ABSENT", location });
+    await svc.respond(dispute.id, "u1", "STILL_HERE", location); // present=1, absent=1 -> TIED
+
+    await forceClosed(dispute.id);
+    await svc.resolveDue(new Date());
+    expect((await svc.getById(dispute.id, null)).status).toBe("TIED");
+
+    // A different opener, same seat, right away — blocked by the seat-level cooldown.
+    await insertUsers(db, ["u4"]);
+    await expect(svc.open({ userId: "u4", roomId, seatId: seatIds[0]!, kind: "ABSENT", location })).rejects.toMatchObject({
+      code: "DISPUTE_NOT_ALLOWED",
+    });
   });
 
   it("daily reset cancels any dispute still OPEN", async () => {

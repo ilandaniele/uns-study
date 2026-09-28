@@ -16,6 +16,7 @@ import {
   type ChatMessageDto,
   type DirectMessageDto,
   type DisputeChallengedEvent,
+  type DisputeWonEvent,
   type RoomSummary,
   type SeatDisputeLiteDto,
   type SeatStateChangedEvent,
@@ -181,6 +182,12 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
   /** Notifies the incumbent's private `user:{userId}` channel that their seat is being disputed. */
   emitDisputeChallenge(incumbentUserId: string, payload: DisputeChallengedEvent): void {
     this.server?.to(userChannel(incumbentUserId)).emit(SocketEvents.DisputeYouAreChallenged, payload);
+  }
+
+  /** Notifies a CLAIM opener's private `user:{userId}` channel that their claim won and the seat
+   *  is now free for them to self-check-in. */
+  emitDisputeWon(openerUserId: string, payload: DisputeWonEvent): void {
+    this.server?.to(userChannel(openerUserId)).emit(SocketEvents.DisputeYouWon, payload);
   }
 
   /** Forcibly disconnects every live socket for a user — used on SUSPEND/BAN so the session revocation takes effect immediately. */

@@ -6,6 +6,9 @@ import { ReputationService } from "./reputation/reputation.service.js";
 import { StudySessionService } from "./rankings/study-session.service.js";
 import { RestrictionService } from "./users/restriction.service.js";
 import { RoomRealtimeGateway } from "./realtime/room-realtime.gateway.js";
+import { RateLimitService } from "./security/rate-limit.service.js";
+import { AbusePolicyService } from "./security/abuse-policy.service.js";
+import { TurnstileService } from "./security/turnstile.service.js";
 import type { Auth } from "./auth/auth.instance.js";
 import { DisputeService } from "./disputes/disputes.service.js";
 import { PhotoVerificationService } from "./checkins/photo-verification.service.js";
@@ -46,7 +49,9 @@ export function buildDisputeService(db: Db): DisputeService {
   const studySessions = new StudySessionService(db);
   const restrictions = new RestrictionService(db);
   const gateway = new RoomRealtimeGateway(roomState, mockAuth); // no @WebSocketServer() attached — emits are no-ops in tests
-  return new DisputeService(db, roomState, presence, security, studySessions, reputation, restrictions, gateway);
+  const rateLimit = new RateLimitService();
+  const abusePolicy = new AbusePolicyService(db, new TurnstileService());
+  return new DisputeService(db, roomState, presence, security, studySessions, reputation, restrictions, gateway, rateLimit, abusePolicy);
 }
 
 /** A `PhotoVerificationService` wired with the given (possibly `null`) verifier stand-in. */

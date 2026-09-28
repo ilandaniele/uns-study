@@ -2,6 +2,7 @@ import { Controller, Get, Inject, Param, UseGuards } from "@nestjs/common";
 import { OptionalAuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";
+import { UuidParamPipe } from "../common/uuid-param.pipe.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { DisputeService } from "./disputes.service.js";
 
@@ -12,7 +13,7 @@ export class DisputeReadsController {
   constructor(@Inject(DisputeService) private readonly disputes: DisputeService) {}
 
   @Get(":id")
-  get(@Param("id") id: string, @CurrentUser() user: RequestUser | undefined) {
+  get(@Param("id", UuidParamPipe) id: string, @CurrentUser() user: RequestUser | undefined) {
     return this.disputes.getById(id, user?.id ?? null);
   }
 }

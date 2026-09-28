@@ -26,7 +26,7 @@ export function DisputeSection({ seat, me, isMySeat, dispute, pending, onOpen, o
   if (seat.dispute) {
     // Viewer-specific detail hasn't loaded yet — avoid flashing the "¿Algo no cuadra?" options.
     if (!dispute) return null;
-    return <ActiveDispute dispute={dispute} pending={pending} onVote={onVote} />;
+    return <ActiveDispute dispute={dispute} me={me} pending={pending} onVote={onVote} />;
   }
 
   return (
@@ -52,10 +52,12 @@ export function DisputeSection({ seat, me, isMySeat, dispute, pending, onOpen, o
 
 function ActiveDispute({
   dispute,
+  me,
   pending,
   onVote,
 }: {
   dispute: SeatDisputeDto;
+  me: MeDto | null;
   pending: boolean;
   onVote: (vote: DisputeVote) => void;
 }) {
@@ -64,6 +66,8 @@ function ActiveDispute({
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  const canVote = me?.activeCheckIn != null;
 
   return (
     <div role="status" className="border-t border-app pt-3">
@@ -76,7 +80,9 @@ function ActiveDispute({
         <p className="mt-2 text-sm text-muted">Abriste esta votación.</p>
       ) : dispute.myVote ? (
         <p className="mt-2 text-sm text-muted">Votaste: {dispute.myVote === "PRESENT" ? "Está ahí" : "No está"}</p>
-      ) : dispute.iAmIncumbent ? null : (
+      ) : dispute.iAmIncumbent ? null : !canVote ? (
+        <p className="mt-2 text-sm text-muted">Marcá tu lugar para votar.</p>
+      ) : (
         <div className="mt-2 flex gap-2">
           <VoteButton onClick={() => onVote("PRESENT")} disabled={pending}>
             Está ahí
