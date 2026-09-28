@@ -35,6 +35,8 @@ export class ObservationsController {
   ) {
     await this.restrictions.assertNot(user.id, ["RESTRICT_OBSERVATIONS", "SUSPENDED", "BANNED"]);
 
+    await this.observations.assertPresence(body.roomId, body.location);
+
     const limits = await this.abusePolicy.observationLimits(user.id);
     const limit = await this.rateLimit.check(`observation:${user.id}`, limits.perMinuteLimit, 60);
     if (!limit.allowed) {

@@ -39,6 +39,17 @@ export class ObservationService {
     @Inject(ReputationService) private readonly reputation: ReputationService,
   ) {}
 
+  /**
+   * Validates presence before the caller spends a rate-limit slot, so a weak GPS fix that the
+   * user retries doesn't lock them out with "Demasiadas acciones seguidas".
+   */
+  async assertPresence(roomId: string, location: CreateObservationInput["location"]): Promise<void> {
+    const [room] = await this.db.select().from(schema.rooms).where(eq(schema.rooms.id, roomId)).limit(1);
+    if (!room) return; // observe() reports the missing room with its usual error.
+    const presence = this.presence.validate(room, location);
+    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, "No pudimos validar tu ubicación.");
+  }
+
   async observe(input: CreateObservationInput): Promise<{ roomId: string; changes: SeatStateChange[] }> {
     const [room] = await this.db.select().from(schema.rooms).where(eq(schema.rooms.id, input.roomId)).limit(1);
     if (!room) throw ApiErrors.roomNotFound();

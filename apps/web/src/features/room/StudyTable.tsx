@@ -21,7 +21,9 @@ export function StudyTable({ table, highlighted = false }: StudyTableProps) {
   const cy = table.y + table.height / 2;
   const fullName = table.nickname ?? tableDisplayName(table, table.code);
   const pillText = truncatePillText(fullName);
-  const pillWidth = Math.max(84, 18 + pillText.length * 13);
+  // "Mesa 12" must read as large as "Mesa 1": only long community nicknames drop to the small size.
+  const pillFontSize = pillText.length > 8 ? 17 : 22;
+  const pillWidth = Math.max(84, 24 + pillText.length * pillFontSize * 0.56);
   const pillHeight = 38;
 
   return (
@@ -83,7 +85,7 @@ export function StudyTable({ table, highlighted = false }: StudyTableProps) {
         y={cy}
         textAnchor="middle"
         dominantBaseline="central"
-        fontSize={pillText.length > 6 ? 16 : 24}
+        fontSize={pillFontSize}
         fontWeight={700}
         className="font-display"
         fill="var(--room-table-label-text)"

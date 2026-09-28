@@ -28,6 +28,15 @@ export function seatDisplayLabel(table: Pick<TableDto, "code" | "type"> | null, 
   return `${name} · ${unit} ${seatNumber}`;
 }
 
+/** Human label from a raw seat code alone ("M07-S05" -> "Mesa 7 · Asiento 5"), for lists without table data. */
+export function seatCodeLabel(seatCode: string): string {
+  const [tableCode = seatCode, seatPart = ""] = seatCode.split("-");
+  const seatNumber = Number.parseInt(seatPart.replace(/\D/g, ""), 10);
+  const isBar = tableCode.startsWith("B");
+  const name = tableDisplayName({ code: tableCode, type: isBar ? "WALL_BAR" : "MAIN_TABLE" }, tableCode);
+  return Number.isNaN(seatNumber) ? name : `${name} · ${isBar ? "Lugar" : "Asiento"} ${seatNumber}`;
+}
+
 /** Spanish label for a seat status, as shown in the seat detail panel. */
 export function statusLabel(status: SeatStatus): string {
   switch (status) {

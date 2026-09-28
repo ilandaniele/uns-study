@@ -66,3 +66,25 @@ describe("PresenceService", () => {
     expect(result.reason).toBe("OUTSIDE_GEOFENCE");
   });
 });
+
+describe("PresenceService accuracy tolerance", () => {
+  const svc = new PresenceService();
+  const center = { latitude: -38.70138372483678, longitude: -62.270139753196005, geofenceRadiusM: 50 };
+  // ~0.0009 degrees of latitude is ~100 m.
+  const at = (dLat: number, accuracy: number) => ({
+    latitude: center.latitude + dLat,
+    longitude: center.longitude,
+    accuracy,
+    capturedAt: new Date().toISOString(),
+  });
+
+  it("accepts an indoor fix 80 m off with 80 m accuracy (50 + 80/2 = 90 m allowed)", () => {
+    const result = svc.validate(center, at(0.00072, 80), { isProduction: true, devBypass: false, maxAccuracyM: 100 });
+    expect(result.valid).toBe(true);
+  });
+
+  it("rejects a precise fix 80 m away", () => {
+    const result = svc.validate(center, at(0.00072, 10), { isProduction: true, devBypass: false, maxAccuracyM: 100 });
+    expect(result.reason).toBe("OUTSIDE_GEOFENCE");
+  });
+});

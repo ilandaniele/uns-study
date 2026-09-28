@@ -1,6 +1,7 @@
 "use client";
 
 import type { RoomPersonDto } from "@uns/contracts";
+import { seatCodeLabel } from "@/features/room/format";
 import Link from "next/link";
 
 export interface PeopleListProps {
@@ -28,7 +29,7 @@ export function PeopleList({ people, limit, emptyLabel = "Nadie está mostrándo
               {person.displayName}
             </Link>
             <p className="truncate text-xs text-muted">
-              {[person.career, person.seatCode ? `Lugar ${person.seatCode}` : null, person.studyStatus?.subject].filter(Boolean).join(" · ") || "Estudiando"}
+              {[person.career, person.seatCode ? seatCodeLabel(person.seatCode) : null, person.studyStatus?.subject].filter(Boolean).join(" · ") || "Estudiando"}
             </p>
           </div>
           {person.studyStatus?.lookingForGroup ? (

@@ -3,6 +3,7 @@ import {
   checkInExpiryStatus,
   confidenceWording,
   disputeCountdownLabel,
+  seatCodeLabel,
   disputeKindTitle,
   recencyLabel,
   roomCapacityBreakdown,
@@ -223,5 +224,12 @@ describe("roomCapacityBreakdown", () => {
 
   it("returns an empty array for a room with no tables", () => {
     expect(roomCapacityBreakdown({ tables: [], seats: [] })).toEqual([]);
+  });
+});
+
+describe("seatCodeLabel", () => {
+  it("turns raw seat codes into human labels", () => {
+    expect(seatCodeLabel("M07-S05")).toBe("Mesa 7 · Asiento 5");
+    expect(seatCodeLabel("M12-S1")).toBe("Mesa 12 · Asiento 1");
   });
 });

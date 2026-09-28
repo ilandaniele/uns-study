@@ -67,6 +67,14 @@ export class DisputeService {
 
   // ---- Opening ----
 
+  /** Checks presence before the controller spends one of the 3/hour dispute slots on a weak GPS fix. */
+  async assertPresence(roomId: string, location: OpenDisputeInput["location"]): Promise<void> {
+    const [room] = await this.db.select().from(schema.rooms).where(eq(schema.rooms.id, roomId)).limit(1);
+    if (!room) return;
+    const presence = this.presence.validate(room, location);
+    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!));
+  }
+
   async open(input: OpenDisputeInput): Promise<{ dispute: SeatDisputeDto; changes: SeatStateChange[] }> {
     const [room] = await this.db.select().from(schema.rooms).where(eq(schema.rooms.id, input.roomId)).limit(1);
     if (!room) throw ApiErrors.roomNotFound();

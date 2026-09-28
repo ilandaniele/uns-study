@@ -31,6 +31,8 @@ export class DisputesController {
   ) {
     await this.restrictions.assertNot(user.id, ["RESTRICT_OBSERVATIONS", "SUSPENDED", "BANNED"]);
 
+    await this.disputes.assertPresence(body.roomId, body.location);
+
     const limit = await this.rateLimit.check(`dispute:open:${user.id}`, 3, 3600);
     if (!limit.allowed) {
       await this.securityEvents.record({ userId: user.id, eventType: "DISPUTE_SPAM", ip, metadata: { bucket: "dispute_open" } });

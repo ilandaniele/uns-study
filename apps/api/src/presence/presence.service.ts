@@ -73,8 +73,10 @@ export class PresenceService {
       return reject("POOR_ACCURACY");
     }
 
+    // Indoor fixes are often off by tens of meters, so half of the reported accuracy is tolerated on
+    // top of the radius (50 m radius + 100 m accuracy -> reading up to 100 m from the room center).
     const distanceM = this.haversineDistanceM(room, { latitude, longitude });
-    if (distanceM > room.geofenceRadiusM) {
+    if (distanceM > room.geofenceRadiusM + accuracy / 2) {
       return reject("OUTSIDE_GEOFENCE");
     }
 
