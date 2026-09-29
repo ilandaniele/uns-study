@@ -6,6 +6,7 @@ import {
   disputeOptionsFor,
   seatCodeLabel,
   disputeKindTitle,
+  freedSeatsToastMessage,
   msUntilDisputeAutoClear,
   recencyLabel,
   roomCapacityBreakdown,
@@ -239,6 +240,25 @@ describe("tableSideLabel", () => {
 
   it("labels a table right of center as lado derecho", () => {
     expect(tableSideLabel({ x: 700, width: 200, type: "MAIN_TABLE" }, 1000)).toBe("lado derecho");
+  });
+});
+
+describe("freedSeatsToastMessage", () => {
+  const map = {
+    tables: [{ id: "t1", code: "4", type: "MAIN_TABLE" as const }],
+    seats: [{ id: "s1", tableId: "t1", code: "M04-S02", seatNumber: 2 }],
+  };
+
+  it("names the seat for a single freed seat", () => {
+    expect(freedSeatsToastMessage(map as never, ["s1"])).toBe("Se liberó Mesa 4 · Asiento 2");
+  });
+
+  it("uses a generic count for a batch of freed seats", () => {
+    expect(freedSeatsToastMessage(map as never, ["s1", "s2", "s3"])).toBe("Se liberaron 3 lugares");
+  });
+
+  it("falls back gracefully if the seat isn't in the map", () => {
+    expect(freedSeatsToastMessage(map as never, ["missing"])).toBe("Se liberó un lugar");
   });
 });
 

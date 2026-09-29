@@ -220,6 +220,20 @@ export function roomCapacityBreakdown(map: Pick<RoomMapDto, "tables" | "seats">)
     });
 }
 
+/**
+ * Toast copy for a `seat:freed-alert` event: "Se liberó Mesa 4 · Asiento 2" for a single seat, or
+ * "Se liberaron 3 lugares" for a batch — mirrors the API's push notification wording
+ * (`apps/api/src/notifications/notification.service.ts`) so the in-app toast and the push a user
+ * gets on another device read the same way.
+ */
+export function freedSeatsToastMessage(map: Pick<RoomMapDto, "seats" | "tables">, seatIds: string[]): string {
+  if (seatIds.length !== 1) return `Se liberaron ${seatIds.length} lugares`;
+  const seat = map.seats.find((s) => s.id === seatIds[0]);
+  if (!seat) return "Se liberó un lugar";
+  const table = map.tables.find((t) => t.id === seat.tableId) ?? null;
+  return `Se liberó ${seatDisplayLabel(table, seat.code, seat.seatNumber)}`;
+}
+
 /** "Hoy, 28 sep 2026" in America/Argentina/Buenos_Aires-style Spanish, for the left panel's "Abierto · …" line. */
 export function todayLabel(now: Date = new Date()): string {
   const formatted = now.toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" });

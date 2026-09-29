@@ -6,7 +6,7 @@ import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
 import { closeDb, createDb, migrate } from "@uns/database";
-import { resolveAppSecrets } from "./secrets.js";
+import { resolveAppSecrets, resolveVapidKeys } from "./secrets.js";
 
 // Load the repo-root `.env` (if present) before anything else reads `process.env` — duplicated
 // from `env.ts` here because `env.ts` must not be imported until *after* `resolveAppSecrets()`
@@ -30,6 +30,7 @@ async function bootstrap() {
     : process.env.NODE_ENV !== "production";
   if (dbAutoMigrate) await migrate(secretsDb);
   await resolveAppSecrets(secretsDb);
+  await resolveVapidKeys(secretsDb);
   await closeDb(secretsDb);
 
   // Safe to import anything that reads `env.ts` from here on.

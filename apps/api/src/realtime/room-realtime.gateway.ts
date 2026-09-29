@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import {
   ConnectedSocket,
   MessageBody,
@@ -17,14 +17,17 @@ import {
   type DirectMessageDto,
   type DisputeChallengedEvent,
   type DisputeWonEvent,
+  type RoomAdminPresentEvent,
   type RoomSummary,
   type SeatDisputeLiteDto,
+  type SeatFreedAlertEvent,
   type SeatStateChangedEvent,
   type TableNicknameChangedEvent,
 } from "@uns/contracts";
 import { AUTH } from "../auth/auth.tokens.js";
 import type { Auth } from "../auth/auth.instance.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
+import { NotificationService } from "../notifications/notification.service.js";
 import { verifySocketToken } from "./socket-token.js";
 import { env } from "../env.js";
 
@@ -81,9 +84,12 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
   @WebSocketServer()
   server!: Server;
 
+  private readonly logger = new Logger(RoomRealtimeGateway.name);
+
   constructor(
     @Inject(RoomStateService) private readonly roomState: RoomStateService,
     @Inject(AUTH) private readonly auth: Auth,
+    @Inject(NotificationService) private readonly notifications: NotificationService,
   ) {}
 
   /** Anonymous connections are allowed; joining a room map is opt-in via `room:join`. Authed
@@ -147,6 +153,26 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
     }
     const summary = await this.roomState.getRoomSummary(roomId);
     this.server?.to(channel).emit(SocketEvents.RoomSummaryChanged, summary satisfies RoomSummary);
+
+    // Fire-and-forget: figures out who should get a "seat freed" alert (opted in, not currently
+    // checked into this room) and sends any due push notifications itself — never blocks the
+    // request that triggered this broadcast. The in-app toast (for whoever has the page open) is
+    // this gateway's job since it already owns `this.server` and the per-user channels.
+    this.notifications
+      .handleSeatFreed(roomId, changes)
+      .then((recipients) => {
+        for (const { userId, seatIds } of recipients) {
+          const event: SeatFreedAlertEvent = { seatIds, freeCount: summary.free };
+          this.server?.to(userChannel(userId)).emit(SocketEvents.SeatFreedAlert, event);
+        }
+      })
+      .catch((err) => this.logger.error("Failed to process seat-freed notifications", err instanceof Error ? err.stack : String(err)));
+  }
+
+  /** Room-wide, unconditional in-app banner — everyone currently viewing the room sees it,
+   *  regardless of their notification preferences (those only gate the push side). */
+  emitAdminPresent(roomId: string, payload: RoomAdminPresentEvent): void {
+    this.server?.to(roomChannel(roomId)).emit(SocketEvents.RoomAdminPresent, payload);
   }
 
   emitDailyReset(roomId: string): void {

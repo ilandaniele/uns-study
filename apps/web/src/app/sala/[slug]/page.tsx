@@ -3,13 +3,15 @@
 import type { SeatDto } from "@uns/contracts";
 import { MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon, ArrowsCounterClockwiseIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TransformComponent, TransformWrapper, type ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
 import { AdSlot } from "@/components/AdSlot";
 import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
+import { AdminPresentBanner } from "@/features/room/AdminPresentBanner";
 import { DisputeChallengeBanner } from "@/features/room/DisputeChallengeBanner";
 import { DisputeWonBanner } from "@/features/room/DisputeWonBanner";
+import { EnableSeatFreedCta } from "@/features/room/EnableSeatFreedCta";
 import { ExtendBanner } from "@/features/room/ExtendBanner";
 import { MoveSeatDialog } from "@/features/room/MoveSeatDialog";
 import { MyCheckInBar } from "@/features/room/MyCheckInBar";
@@ -19,11 +21,13 @@ import { RoomInfoPanel } from "@/features/room/RoomInfoPanel";
 import { RoomMap } from "@/features/room/RoomMap";
 import { RightPanelEmptyState } from "@/features/room/RightPanelEmptyState";
 import { SeatDetail } from "@/features/room/SeatDetail";
+import { SeatFreedToast } from "@/features/room/SeatFreedToast";
 import { SummaryCounters } from "@/features/room/SummaryCounters";
 import { TurnstileChallenge } from "@/features/room/TurnstileChallenge";
-import { checkInExpiryStatus, seatDisplayLabel, todayLabel } from "@/features/room/format";
+import { checkInExpiryStatus, freedSeatsToastMessage, seatDisplayLabel, todayLabel } from "@/features/room/format";
 import { useDisputeWon } from "@/features/room/useDisputeWon";
 import { useIncumbentChallenge } from "@/features/room/useIncumbentChallenge";
+import { useRoomAlerts } from "@/features/room/useRoomAlerts";
 import { useRoomState } from "@/features/room/useRoomState";
 import { useSeatActions } from "@/features/room/useSeatActions";
 import { useSeatDispute } from "@/features/room/useSeatDispute";
@@ -50,6 +54,8 @@ export default function RoomPage() {
   const { people } = usePeople(slug);
   const { highlightTableCode, qrToken } = useQrContext();
   const socket = getSocket();
+  const { toast, dismissToast, adminBanner, dismissAdminBanner } = useRoomAlerts();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     trackEvent("room_view", { roomSlug: slug });
@@ -81,6 +87,18 @@ export default function RoomPage() {
   const zoomRef = useRef<ReactZoomPanPinchRef>(null);
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
   const [showIdentityPrompt, setShowIdentityPrompt] = useState(false);
+
+  // Deep link (?seat=<id>, e.g. from a "seat freed" push notification): select it once the map has
+  // loaded and confirms the seat actually exists. Only runs once per landing — after that, seat
+  // selection is fully driven by clicks on the map, not by the URL.
+  const dispatchedSeatParam = useRef(false);
+  useEffect(() => {
+    if (dispatchedSeatParam.current || !map) return;
+    const seatParam = searchParams.get("seat");
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot sync from the URL on landing, not a render loop
+    if (seatParam && map.seats.some((s) => s.id === seatParam)) setSelectedSeatId(seatParam);
+    dispatchedSeatParam.current = true;
+  }, [map, searchParams]);
 
   // Ticks every 30s so the "¿Seguís acá?" banner's minutes-left stays fresh.
   const [now, setNow] = useState(() => new Date());
@@ -307,6 +325,11 @@ export default function RoomPage() {
           <TurnstileChallenge onToken={submitTurnstileToken} />
         </div>
       ) : null}
+      {adminBanner ? (
+        <div className="order-0 lg:col-span-3">
+          <AdminPresentBanner onDismiss={dismissAdminBanner} />
+        </div>
+      ) : null}
       {challenge ? (
         <div className="order-0 sticky top-0 z-50 lg:static lg:z-auto lg:col-span-3">
           <DisputeChallengeBanner
@@ -369,6 +392,7 @@ export default function RoomPage() {
             <SummaryCounters summary={map.summary} />
           </>
         )}
+        {map.summary.free === 0 ? <EnableSeatFreedCta /> : null}
         <AnnouncementsBanner roomSlug={slug} socket={socket} />
       </section>
 
@@ -469,6 +493,20 @@ export default function RoomPage() {
           pending={pending}
           onConfirm={() => void performCheckIn(confirmMove.seatId, confirmMove.fromDisputeWon)}
           onCancel={() => setConfirmMove(null)}
+        />
+      ) : null}
+      {toast ? (
+        <SeatFreedToast
+          message={freedSeatsToastMessage(map, toast.seatIds)}
+          onView={
+            toast.seatIds.length === 1
+              ? () => {
+                  setSelectedSeatId(toast.seatIds[0]!);
+                  dismissToast();
+                }
+              : undefined
+          }
+          onDismiss={dismissToast}
         />
       ) : null}
     </main>

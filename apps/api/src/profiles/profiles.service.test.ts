@@ -13,13 +13,14 @@ import { StudySessionService } from "../rankings/study-session.service.js";
 import { StudyService } from "../study/study.service.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { AliasService } from "../users/alias.service.js";
+import { RolesService } from "../users/roles.service.js";
 import { ProfilesService } from "./profiles.service.js";
 
 async function build(db: Db) {
   const roomState = new RoomStateService(db);
   const presence = new PresenceService();
   const security = new SecurityEventService(db, new ReputationService(db));
-  const checkIns = new CheckInService(db, roomState, presence, security, new StudySessionService(db), new QrService(db), buildDisputeService(db));
+  const checkIns = new CheckInService(db, roomState, presence, security, new StudySessionService(db), new QrService(db), buildDisputeService(db), new RolesService(db));
   const study = new StudyService(db, new RestrictionService(db));
   const aliases = new AliasService(db);
   const profiles = new ProfilesService(db, study, aliases);

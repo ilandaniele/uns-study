@@ -12,6 +12,7 @@ import { ReputationService } from "../reputation/reputation.service.js";
 import { QrService } from "../qr/qr.service.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";
+import { RolesService } from "../users/roles.service.js";
 import { ObservationService } from "./observations.service.js";
 
 async function build(db: Db) {
@@ -22,7 +23,7 @@ async function build(db: Db) {
   const abusePolicy = new AbusePolicyService(db, new TurnstileService());
   const studySessions = new StudySessionService(db);
   const qr = new QrService(db);
-  const checkIns = new CheckInService(db, roomState, presence, security, studySessions, qr, buildDisputeService(db));
+  const checkIns = new CheckInService(db, roomState, presence, security, studySessions, qr, buildDisputeService(db), new RolesService(db));
   const observations = new ObservationService(db, roomState, presence, security, abusePolicy, qr, reputation);
   return { observations, checkIns, qr, reputation };
 }

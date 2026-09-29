@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@uns/database";
 import { schema } from "@uns/database";
 import { eq } from "drizzle-orm";
-import { freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
+import { buildNotificationService, freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { PresenceService } from "../presence/presence.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
@@ -11,6 +11,7 @@ import { TurnstileService } from "../security/turnstile.service.js";
 import { ReputationService } from "../reputation/reputation.service.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
 import { RestrictionService } from "../users/restriction.service.js";
+import { RolesService } from "../users/roles.service.js";
 import { RateLimitService } from "../security/rate-limit.service.js";
 import { QrService } from "../qr/qr.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";
@@ -29,12 +30,12 @@ async function build(db: Db) {
   const security = new SecurityEventService(db, reputation);
   const studySessions = new StudySessionService(db);
   const restrictions = new RestrictionService(db);
-  const gateway = new RoomRealtimeGateway(roomState, mockAuth); // no @WebSocketServer() attached — emits are no-ops in tests
+  const gateway = new RoomRealtimeGateway(roomState, mockAuth, buildNotificationService(db)); // no @WebSocketServer() attached — emits are no-ops in tests
   const qr = new QrService(db);
   const rateLimit = new RateLimitService();
   const abusePolicy = new AbusePolicyService(db, new TurnstileService());
   const disputes = new DisputeService(db, roomState, presence, security, studySessions, reputation, restrictions, gateway, rateLimit, abusePolicy);
-  const checkIns = new CheckInService(db, roomState, presence, security, studySessions, qr, disputes);
+  const checkIns = new CheckInService(db, roomState, presence, security, studySessions, qr, disputes, new RolesService(db));
   const observations = new ObservationService(db, roomState, presence, security, abusePolicy, qr, reputation);
   const dailyReset = new DailyResetJob(db, gateway, studySessions);
   return { disputes, checkIns, observations, reputation, roomState, dailyReset };

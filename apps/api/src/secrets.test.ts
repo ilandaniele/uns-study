@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createDb, migrate, schema, type Db } from "@uns/database";
 import { eq } from "drizzle-orm";
-import { resolveAppSecrets, resolveOne } from "./secrets.js";
+import { resolveAppSecrets, resolveOne, resolveVapidKeys } from "./secrets.js";
 
 async function freshDb(): Promise<Db> {
   const db = createDb({ pgliteDir: "memory://" });
@@ -71,5 +71,57 @@ describe("resolveAppSecrets", () => {
     const rows = await db.select().from(schema.appSecrets).where(eq(schema.appSecrets.name, "better_auth_secret"));
     expect(rows).toHaveLength(1);
     expect(rows[0]?.value).toBe(values[0]);
+  });
+});
+
+describe("resolveVapidKeys", () => {
+  const originalPublic = process.env.VAPID_PUBLIC_KEY;
+  const originalPrivate = process.env.VAPID_PRIVATE_KEY;
+
+  beforeEach(() => {
+    delete process.env.VAPID_PUBLIC_KEY;
+    delete process.env.VAPID_PRIVATE_KEY;
+  });
+
+  afterEach(() => {
+    if (originalPublic === undefined) delete process.env.VAPID_PUBLIC_KEY;
+    else process.env.VAPID_PUBLIC_KEY = originalPublic;
+    if (originalPrivate === undefined) delete process.env.VAPID_PRIVATE_KEY;
+    else process.env.VAPID_PRIVATE_KEY = originalPrivate;
+  });
+
+  it("generates and persists a pair on first boot, and reuses it on the next boot", async () => {
+    const db = await freshDb();
+
+    await resolveVapidKeys(db);
+    const firstPublic = process.env.VAPID_PUBLIC_KEY;
+    const firstPrivate = process.env.VAPID_PRIVATE_KEY;
+    expect(firstPublic).toBeTruthy();
+    expect(firstPrivate).toBeTruthy();
+    expect(firstPublic).not.toBe(firstPrivate);
+
+    delete process.env.VAPID_PUBLIC_KEY;
+    delete process.env.VAPID_PRIVATE_KEY;
+    await resolveVapidKeys(db);
+
+    expect(process.env.VAPID_PUBLIC_KEY).toBe(firstPublic);
+    expect(process.env.VAPID_PRIVATE_KEY).toBe(firstPrivate);
+
+    const rows = await db.select().from(schema.appSecrets).where(eq(schema.appSecrets.name, "vapid_keys"));
+    expect(rows).toHaveLength(1);
+  });
+
+  it("prefers an already-set env pair over any stored value", async () => {
+    const db = await freshDb();
+    await db
+      .insert(schema.appSecrets)
+      .values({ name: "vapid_keys", value: JSON.stringify({ publicKey: "stored-pub", privateKey: "stored-priv" }) });
+
+    process.env.VAPID_PUBLIC_KEY = "env-pub";
+    process.env.VAPID_PRIVATE_KEY = "env-priv";
+    await resolveVapidKeys(db);
+
+    expect(process.env.VAPID_PUBLIC_KEY).toBe("env-pub");
+    expect(process.env.VAPID_PRIVATE_KEY).toBe("env-priv");
   });
 });

@@ -9,6 +9,7 @@ import { SecurityEventService } from "../security/security-event.service.js";
 import { ReputationService } from "../reputation/reputation.service.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
 import { QrService } from "../qr/qr.service.js";
+import { RolesService } from "../users/roles.service.js";
 import type { SeatPhotoVerifier, SeatPhotoVerifierRequest, SeatPhotoVerifierResult } from "../verification/seat-photo-verifier.js";
 import { CheckInService } from "./checkins.service.js";
 import { PhotoVerificationService } from "./photo-verification.service.js";
@@ -31,7 +32,7 @@ async function buildCheckIns(db: Db): Promise<CheckInService> {
   const presence = new PresenceService();
   const security = new SecurityEventService(db, new ReputationService(db));
   const studySessions = new StudySessionService(db);
-  return new CheckInService(db, roomState, presence, security, studySessions, new QrService(db), buildDisputeService(db));
+  return new CheckInService(db, roomState, presence, security, studySessions, new QrService(db), buildDisputeService(db), new RolesService(db));
 }
 
 describe("PhotoVerificationService", () => {

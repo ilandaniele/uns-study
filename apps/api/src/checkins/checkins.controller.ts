@@ -14,6 +14,7 @@ import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { PresenceService } from "../presence/presence.service.js";
+import { NotificationService } from "../notifications/notification.service.js";
 import { CheckInService, presenceMessage } from "./checkins.service.js";
 import { PhotoVerificationService } from "./photo-verification.service.js";
 
@@ -31,6 +32,7 @@ export class CheckInsController {
     @Inject(RestrictionService) private readonly restrictions: RestrictionService,
     @Inject(RoomsService) private readonly rooms: RoomsService,
     @Inject(PresenceService) private readonly presence: PresenceService,
+    @Inject(NotificationService) private readonly notifications: NotificationService,
   ) {}
 
   /** Cheap presence pre-check so a rejected fix never eats into the rate-limit budget below. */
@@ -66,7 +68,7 @@ export class CheckInsController {
       }
     }
 
-    const { checkIn, changes } = await this.checkIns.checkIn({
+    const { checkIn, changes, adminPresent } = await this.checkIns.checkIn({
       userId: user.id,
       roomId: body.roomId,
       seatId: body.seatId,
@@ -75,6 +77,11 @@ export class CheckInsController {
       qrToken: body.qrToken,
     });
     await this.realtime.broadcastSeatChanges(body.roomId, changes);
+    if (adminPresent) {
+      this.realtime.emitAdminPresent(body.roomId, { since: checkIn.startedAt });
+      // Fire-and-forget — push delivery must never delay the check-in response.
+      void this.notifications.notifyAdminPresent(body.roomId, user.id);
+    }
     return checkIn;
   }
 

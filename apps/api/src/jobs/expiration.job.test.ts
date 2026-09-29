@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@uns/database";
 import { schema } from "@uns/database";
 import { eq } from "drizzle-orm";
-import { buildDisputeService, freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
+import { buildDisputeService, buildNotificationService, freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { PresenceService } from "../presence/presence.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
@@ -10,6 +10,7 @@ import { ReputationService } from "../reputation/reputation.service.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
 import { QrService } from "../qr/qr.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";
+import { RolesService } from "../users/roles.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import type { Auth } from "../auth/auth.instance.js";
 import { ExpirationJob } from "./expiration.job.js";
@@ -30,8 +31,8 @@ describe("ExpirationJob", () => {
     const presence = new PresenceService();
     const security = new SecurityEventService(db, new ReputationService(db));
     const studySessions = new StudySessionService(db);
-    checkIns = new CheckInService(db, roomState, presence, security, studySessions, new QrService(db), buildDisputeService(db));
-    const gateway = new RoomRealtimeGateway(roomState, mockAuth); // no @WebSocketServer() attached — emits are no-ops in tests
+    checkIns = new CheckInService(db, roomState, presence, security, studySessions, new QrService(db), buildDisputeService(db), new RolesService(db));
+    const gateway = new RoomRealtimeGateway(roomState, mockAuth, buildNotificationService(db)); // no @WebSocketServer() attached — emits are no-ops in tests
     job = new ExpirationJob(db, roomState, gateway, studySessions, buildDisputeService(db));
 
     const room = await getRoom(db);

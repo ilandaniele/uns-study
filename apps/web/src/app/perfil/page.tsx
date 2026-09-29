@@ -3,6 +3,7 @@
 import type { PublicProfileDto } from "@uns/contracts";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { NotificationSettings } from "@/features/notifications/NotificationSettings";
 import { AvatarUploader } from "@/features/profile/AvatarUploader";
 import { DeleteAccountDialog } from "@/features/profile/DeleteAccountDialog";
 import { PrivacyToggles } from "@/features/profile/PrivacyToggles";
@@ -89,6 +90,12 @@ export default function PerfilPage() {
           <StudyModeControl roomId={roomId} initialStatus={studyStatus} />
         </section>
       ) : null}
+
+      <section className="rounded-[14px] border border-app bg-surface p-4">
+        <h2 className="mb-1 font-display text-base font-semibold text-main">Notificaciones</h2>
+        <p className="mb-2 text-xs text-muted">Avisos puntuales, nunca spam — los podés apagar cuando quieras.</p>
+        <NotificationSettings />
+      </section>
 
       <section className="rounded-[14px] border border-red-200 bg-red-50 p-4">
         <h2 className="mb-2 font-display text-base font-semibold text-red-800">Zona de peligro</h2>

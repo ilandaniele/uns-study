@@ -9,6 +9,7 @@ import { SecurityEventService } from "../security/security-event.service.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
 import { QrService } from "../qr/qr.service.js";
 import { DisputeService } from "../disputes/disputes.service.js";
+import { RolesService } from "../users/roles.service.js";
 import { ApiErrors } from "../common/api-error.js";
 import { computeVerificationExpiresAt } from "./verification.js";
 
@@ -38,6 +39,7 @@ export class CheckInService {
     @Inject(StudySessionService) private readonly studySessions: StudySessionService,
     @Inject(QrService) private readonly qr: QrService,
     @Inject(DisputeService) private readonly disputes: DisputeService,
+    @Inject(RolesService) private readonly roles: RolesService,
   ) {}
 
   async getActiveCheckIn(userId: string): Promise<CheckInDto | null> {
@@ -53,8 +55,10 @@ export class CheckInService {
     return toDto(row.checkIn, row.seatCode);
   }
 
-  /** Creates (or moves) the caller's active check-in. Returns the changed seats for realtime emission. */
-  async checkIn(input: CreateCheckInInput): Promise<{ checkIn: CheckInDto; changes: SeatStateChange[] }> {
+  /** Creates (or moves) the caller's active check-in. Returns the changed seats for realtime
+   *  emission, plus whether this was a fresh check-in (not a move/refresh) by an ADMIN/MODERATOR —
+   *  the caller uses that to trigger the "admin present" room banner + push notification. */
+  async checkIn(input: CreateCheckInInput): Promise<{ checkIn: CheckInDto; changes: SeatStateChange[]; adminPresent: boolean }> {
     const [room] = await this.db.select().from(schema.rooms).where(eq(schema.rooms.id, input.roomId)).limit(1);
     if (!room) throw ApiErrors.roomNotFound();
 
@@ -73,16 +77,23 @@ export class CheckInService {
 
     let previousSeatId: string | null = null;
     let previousCheckInId: string | null = null;
+    // True once an attempt finds no pre-existing ACTIVE check-in for this user — i.e. this call is
+    // a brand-new check-in, not a move to a different seat or a same-seat refresh. Only this case
+    // can trigger the "admin present" notification below (moves/extends never do).
+    let isFreshCheckIn = false;
     let createdId: string;
     const attempt = async (): Promise<string> => {
       previousSeatId = null;
       previousCheckInId = null;
+      isFreshCheckIn = false;
       return this.db.transaction(async (tx) => {
         const [existing] = await tx
           .select()
           .from(schema.checkIns)
           .where(and(eq(schema.checkIns.userId, input.userId), eq(schema.checkIns.status, "ACTIVE")))
           .limit(1);
+
+        if (!existing) isFreshCheckIn = true;
 
         if (existing) {
           if (existing.seatId === input.seatId) {
@@ -164,7 +175,9 @@ export class CheckInService {
 
     await this.flagRapidToggleIfNeeded(input.userId, now);
 
-    return { checkIn: toDto(checkInRow, seat.code), changes };
+    const adminPresent = isFreshCheckIn && (await this.roles.hasRole(input.userId, ["ADMIN", "MODERATOR"]));
+
+    return { checkIn: toDto(checkInRow, seat.code), changes, adminPresent };
   }
 
   /** Records a `SEAT_TOGGLE_RAPID` security event when a user has created >= 4 check-ins in 10 min. */

@@ -7,6 +7,7 @@ export * from "./moderation";
 export * from "./rankings";
 export * from "./qr";
 export * from "./table-names";
+export * from "./notifications";
 
 // ---- Domain enums ----
 
@@ -224,6 +225,8 @@ export const SocketEvents = {
   DisputeYouAreChallenged: "dispute:you-are-challenged",
   DisputeYouWon: "dispute:you-won",
   TableNicknameChanged: "table:nickname-changed",
+  RoomAdminPresent: "room:admin-present",
+  SeatFreedAlert: "seat:freed-alert",
 } as const;
 
 export interface TableNicknameChangedEvent {

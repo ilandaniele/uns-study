@@ -9,6 +9,7 @@ import { SecurityEventService } from "../security/security-event.service.js";
 import { ReputationService } from "../reputation/reputation.service.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
 import { QrService } from "../qr/qr.service.js";
+import { RolesService } from "../users/roles.service.js";
 import { CheckInService } from "./checkins.service.js";
 
 async function build(db: Db) {
@@ -16,7 +17,7 @@ async function build(db: Db) {
   const presence = new PresenceService();
   const security = new SecurityEventService(db, new ReputationService(db));
   const studySessions = new StudySessionService(db);
-  return new CheckInService(db, roomState, presence, security, studySessions, new QrService(db), buildDisputeService(db));
+  return new CheckInService(db, roomState, presence, security, studySessions, new QrService(db), buildDisputeService(db), new RolesService(db));
 }
 
 describe("CheckInService", () => {
@@ -44,6 +45,31 @@ describe("CheckInService", () => {
     const [state] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatIds[0]!));
     expect(state?.status).toBe("OCCUPIED");
     expect(state?.confidence).toBeCloseTo(0.98, 5);
+  });
+
+  it("adminPresent is false for a regular user's fresh check-in", async () => {
+    const { adminPresent } = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    expect(adminPresent).toBe(false);
+  });
+
+  it("adminPresent is true for an ADMIN/MODERATOR's fresh check-in", async () => {
+    await db.insert(schema.userRoles).values({ userId: "u1", role: "ADMIN" });
+    const { adminPresent } = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    expect(adminPresent).toBe(true);
+  });
+
+  it("adminPresent is false when an admin moves seats (not a fresh check-in)", async () => {
+    await db.insert(schema.userRoles).values({ userId: "u1", role: "MODERATOR" });
+    await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    const { adminPresent } = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[1]!, location, showIdentity: false });
+    expect(adminPresent).toBe(false);
+  });
+
+  it("adminPresent is false when an admin re-checks into the same seat (refresh, not fresh)", async () => {
+    await db.insert(schema.userRoles).values({ userId: "u1", role: "ADMIN" });
+    await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    const { adminPresent } = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    expect(adminPresent).toBe(false);
   });
 
   it("moving to a new seat completes the old check-in and recomputes the old seat", async () => {

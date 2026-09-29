@@ -10,6 +10,7 @@ import { ReputationService } from "../reputation/reputation.service.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
 import { QrService } from "../qr/qr.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";
+import { RolesService } from "../users/roles.service.js";
 import type { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { ModerationActionService } from "./moderation-action.service.js";
 
@@ -36,6 +37,7 @@ describe("ModerationActionService", () => {
       new StudySessionService(db),
       new QrService(db),
       buildDisputeService(db),
+      new RolesService(db),
     );
     gateway = fakeGateway();
     svc = new ModerationActionService(db, checkIns, gateway);

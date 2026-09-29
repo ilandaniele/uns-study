@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Auth } from "../auth/auth.instance.js";
 import type { Socket } from "socket.io";
 import type { RoomStateService } from "../rooms/room-state.service.js";
+import type { NotificationService } from "../notifications/notification.service.js";
 import { RoomRealtimeGateway, resolveSocketUserId } from "./room-realtime.gateway.js";
 import { signSocketToken } from "./socket-token.js";
 
@@ -47,7 +48,7 @@ describe("RoomRealtimeGateway.onJoin", () => {
     const rooms = new Set<string>(["socket-id"]);
     return { id: "socket-id", rooms, join: (r: string) => void rooms.add(r) } as unknown as Socket & { rooms: Set<string> };
   }
-  const gateway = new RoomRealtimeGateway({} as RoomStateService, {} as Auth);
+  const gateway = new RoomRealtimeGateway({} as RoomStateService, {} as Auth, { handleSeatFreed: async () => [] } as unknown as NotificationService);
 
   // The client re-fetches the map only after this ack, so the ack must mean "already subscribed".
   it("acks only after the socket has joined the room channel", () => {

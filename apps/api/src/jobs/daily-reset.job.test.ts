@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@uns/database";
 import { schema } from "@uns/database";
 import { eq } from "drizzle-orm";
-import { buildDisputeService, freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
+import { buildDisputeService, buildNotificationService, freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { PresenceService } from "../presence/presence.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
@@ -11,6 +11,7 @@ import { StudySessionService } from "../rankings/study-session.service.js";
 import { QrService } from "../qr/qr.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";
 import { DisputeService } from "../disputes/disputes.service.js";
+import { RolesService } from "../users/roles.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import type { Auth } from "../auth/auth.instance.js";
 import { DailyResetJob, resetInstantFor } from "./daily-reset.job.js";
@@ -34,8 +35,8 @@ describe("DailyResetJob", () => {
     const security = new SecurityEventService(db, new ReputationService(db));
     const studySessions = new StudySessionService(db);
     disputes = buildDisputeService(db);
-    checkIns = new CheckInService(db, roomState, presence, security, studySessions, new QrService(db), disputes);
-    gateway = new RoomRealtimeGateway(roomState, mockAuth);
+    checkIns = new CheckInService(db, roomState, presence, security, studySessions, new QrService(db), disputes, new RolesService(db));
+    gateway = new RoomRealtimeGateway(roomState, mockAuth, buildNotificationService(db));
     job = new DailyResetJob(db, gateway, studySessions);
 
     const room = await getRoom(db);

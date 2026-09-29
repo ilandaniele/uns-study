@@ -13,6 +13,8 @@ import type { Auth } from "./auth/auth.instance.js";
 import { DisputeService } from "./disputes/disputes.service.js";
 import { PhotoVerificationService } from "./checkins/photo-verification.service.js";
 import type { SeatPhotoVerifier } from "./verification/seat-photo-verifier.js";
+import { NotificationService } from "./notifications/notification.service.js";
+import { PushService } from "./notifications/push.service.js";
 
 export async function freshDb(): Promise<Db> {
   const db = createDb({ pgliteDir: "memory://" });
@@ -39,6 +41,12 @@ export async function getSeats(db: Db) {
 
 const mockAuth = { api: { getSession: async () => null } } as unknown as Auth;
 
+/** A `NotificationService` wired against a real db but with no VAPID keys configured, so its push
+ *  side no-ops — good enough for tests that only need `RoomRealtimeGateway` to compile. */
+export function buildNotificationService(db: Db): NotificationService {
+  return new NotificationService(db, new PushService(db), new RoomStateService(db));
+}
+
 /** A fully-wired `DisputeService` for tests that only need `CheckInService` to compile — its own
  *  dispute-related tests build the graph explicitly instead, to keep instances easy to spy on. */
 export function buildDisputeService(db: Db): DisputeService {
@@ -48,7 +56,7 @@ export function buildDisputeService(db: Db): DisputeService {
   const security = new SecurityEventService(db, reputation);
   const studySessions = new StudySessionService(db);
   const restrictions = new RestrictionService(db);
-  const gateway = new RoomRealtimeGateway(roomState, mockAuth); // no @WebSocketServer() attached — emits are no-ops in tests
+  const gateway = new RoomRealtimeGateway(roomState, mockAuth, buildNotificationService(db)); // no @WebSocketServer() attached — emits are no-ops in tests
   const rateLimit = new RateLimitService();
   const abusePolicy = new AbusePolicyService(db, new TurnstileService());
   return new DisputeService(db, roomState, presence, security, studySessions, reputation, restrictions, gateway, rateLimit, abusePolicy);

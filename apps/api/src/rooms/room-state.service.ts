@@ -13,6 +13,11 @@ export interface SeatStateChange {
   lastUpdatedAt: Date;
   /** Whether the seat's active check-in currently has unexpired photo-verification protection. */
   verified: boolean;
+  /** The seat's persisted status right before this recompute, or `null` if it had none yet (never
+   *  persisted / a brand-new seat) — lets subscribers (e.g. `NotificationService`) tell a seat
+   *  freeing up (OCCUPIED/UNCERTAIN -> FREE) apart from any other kind of change. Only populated by
+   *  `recomputeSeats` (an actual diff) — `undefined` from `getLiveSeatStates`, which has no "before". */
+  previousStatus?: SeatStatus | null;
 }
 
 /**
@@ -147,7 +152,7 @@ export class RoomStateService {
           metadata: { confidence: result.confidence, sourceSummary: result.sourceSummary, ...(opts.seatMetadata?.[seatId] ?? {}) },
           createdAt: now,
         });
-        changes.push({ seatId, status: result.status, confidence: result.confidence, lastUpdatedAt: now, verified });
+        changes.push({ seatId, status: result.status, confidence: result.confidence, lastUpdatedAt: now, verified, previousStatus: previous?.status ?? null });
       }
     }
 

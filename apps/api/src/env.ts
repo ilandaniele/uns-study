@@ -78,4 +78,8 @@ export const env = {
   seatVerifierMinConfidence: num("SEAT_VERIFIER_MIN_CONFIDENCE", 0.8),
   // "mock" (dev/test only, ignored in production) accepts every photo as the claimed seat.
   seatVerifierMode: process.env.SEAT_VERIFIER_MODE ?? "",
+  // Web Push (see `secrets.ts`'s `resolveVapidKeys` — generated + persisted on first boot if unset).
+  vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? "",
+  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? "",
+  vapidSubject: process.env.VAPID_SUBJECT || "mailto:contacto@uns-study.example",
 };

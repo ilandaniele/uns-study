@@ -10,6 +10,7 @@ import { ReputationService } from "../reputation/reputation.service.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
 import { QrService } from "../qr/qr.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";
+import { RolesService } from "../users/roles.service.js";
 import { AdminRoomsService } from "./admin-rooms.service.js";
 
 describe("AdminRoomsService.stats — Fresh Seat Coverage", () => {
@@ -31,6 +32,7 @@ describe("AdminRoomsService.stats — Fresh Seat Coverage", () => {
       new StudySessionService(db),
       new QrService(db),
       buildDisputeService(db),
+      new RolesService(db),
     );
     svc = new AdminRoomsService(db, new RoomsService(db, roomState), roomState, new PresenceService());
 
