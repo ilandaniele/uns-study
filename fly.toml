@@ -15,6 +15,7 @@ primary_region = "gru"
   ROOM_RESET_TIMEZONE = "America/Argentina/Buenos_Aires"
   TRUST_PROXY_HOPS = "2"
   PRESENCE_DEV_BYPASS = "false"
+  VAPID_SUBJECT = "https://uns-study.vercel.app"
 
 # Secrets (not set here — `fly secrets set`): DATABASE_URL, GOOGLE_CLIENT_SECRET,
 # BETTER_AUTH_SECRET, IP_HASH_SALT.
