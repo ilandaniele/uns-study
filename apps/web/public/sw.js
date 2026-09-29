@@ -4,9 +4,9 @@
 // It deliberately has NO `fetch` handler: earlier versions intercepted page loads and build assets,
 // and a stale worker could leave the app blank or stuck on "Cargando sala…" after a deploy. Without
 // a fetch handler the browser loads everything straight from the network (and its own HTTP cache).
-// On activation it deletes every cache earlier versions created and reloads open tabs once, so
-// visitors still controlled by an old worker recover without clearing site data.
-const SW_VERSION = "v6";
+// On activation it deletes every cache earlier versions created, so visitors still controlled by an
+// old worker recover on their next navigation without clearing site data.
+const SW_VERSION = "v7";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -18,9 +18,8 @@ self.addEventListener("activate", (event) => {
       const keys = await caches.keys();
       await Promise.all(keys.map((key) => caches.delete(key)));
       await self.clients.claim();
-      // Tabs that were loaded (or got stuck) under an old worker: reload them once under this one.
-      const windows = await self.clients.matchAll({ type: "window" });
-      await Promise.all(windows.map((client) => client.navigate(client.url).catch(() => undefined)));
+      // No forced reload of open tabs here: on a first visit that reload raced the page while it
+      // was hydrating. Without a fetch handler, the next navigation is already network-only.
     })(),
   );
 });
