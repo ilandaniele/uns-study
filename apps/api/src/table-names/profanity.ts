@@ -51,7 +51,7 @@ const LEET_MAP: Record<string, string> = {
 
 /** Lowercases, strips accents, un-leets common substitutions, and collapses repeated letters —
  *  so "P3L0TUD000" and "pélotúúdo" both normalize to something the blocklist can match. */
-export function normalizeForProfanityCheck(input: string): string {
+function normalizeForProfanityCheck(input: string): string {
   const lowered = input.toLowerCase();
   const deLeeted = lowered.replace(/[013457@$]/g, (ch) => LEET_MAP[ch] ?? ch);
   // NFD splits accented letters into base + combining mark; stripping ̀-ͯ removes the accent.

@@ -9,11 +9,9 @@ dist
 coverage
 test-results
 playwright-report
-apps/web/scripts/screenshots.mjs
-apps/web/scripts/screenshots2.mjs
 *.log
 .DS_Store
 *.tsbuildinfo
-apps/web/scripts/shots3.mjs
-apps/web/scripts/shots3b.mjs
-apps/web/scripts/shots4.mjs
+# local screenshot/debug scripts (not part of the repo; keep only package.json-referenced scripts)
+apps/web/scripts/*shot*.mjs
+apps/web/scripts/debug-*.mjs

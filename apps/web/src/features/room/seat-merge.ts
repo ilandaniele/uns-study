@@ -75,7 +75,7 @@ export function applyTableNicknameChanged(map: RoomMapDto | null, event: TableNi
   return { ...map, tables };
 }
 
-export function summarize(roomId: string, seats: SeatDto[]): RoomSummary {
+function summarize(roomId: string, seats: SeatDto[]): RoomSummary {
   const summary: RoomSummary = { roomId, total: seats.length, free: 0, occupied: 0, uncertain: 0, unknown: 0 };
   for (const seat of seats) {
     if (seat.status === "FREE") summary.free += 1;

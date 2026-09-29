@@ -51,7 +51,7 @@ function sniffMimeType(bytes: Buffer): AvatarMimeType | null {
 }
 
 /** Builds the relative, cache-busted URL `user_profiles.avatar_url` points to for an uploaded photo. */
-export function avatarUrlFor(userId: string, sha256: string): string {
+function avatarUrlFor(userId: string, sha256: string): string {
   return `/api/v1/avatars/${userId}?v=${sha256.slice(0, 12)}`;
 }
 

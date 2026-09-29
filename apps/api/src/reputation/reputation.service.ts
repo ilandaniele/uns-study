@@ -4,8 +4,8 @@ import { schema, type Db } from "@uns/database";
 import { DB } from "../database/database.module.js";
 
 /** At or above this `spam_score`, an observation authored by the user counts for half its weight. */
-export const SPAM_SCORE_WEIGHT_THRESHOLD = 5;
-export const SPAM_PENALTY_WEIGHT = 0.5;
+const SPAM_SCORE_WEIGHT_THRESHOLD = 5;
+const SPAM_PENALTY_WEIGHT = 0.5;
 
 /** Tracks per-user reputation (`user_reputation`) and derives observation confidence weight from it. */
 @Injectable()
