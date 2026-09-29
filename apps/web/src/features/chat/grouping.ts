@@ -6,7 +6,7 @@ export interface GroupableMessage {
 }
 
 /** Consecutive messages from the same author within this many minutes collapse visually (no repeated avatar/name). */
-export const GROUP_GAP_MINUTES = 5;
+const GROUP_GAP_MINUTES = 5;
 
 /**
  * True when `current` should render without a repeated author header/avatar because it

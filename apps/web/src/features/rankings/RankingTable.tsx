@@ -1,7 +1,7 @@
 import type { RankingDto, RankingEntryDto, RankingPeriod } from "@uns/contracts";
 import { TrophyIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
-import { Avatar } from "./Avatar";
+import { Avatar } from "@/components/Avatar";
 import { emptyRankingMessage, formatRankingValue } from "./labels";
 
 const MEDAL: Record<number, string> = { 1: "#E0A526", 2: "#9AA6B6", 3: "#C07A45" };

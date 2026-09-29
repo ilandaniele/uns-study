@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { Avatar } from "@/features/chat/Avatar";
+import { Avatar } from "@/components/Avatar";
 import { ChatComposer } from "@/features/chat/ChatComposer";
 import { daySeparatorFlags, formatDaySeparator, formatMessageTime, groupMessages } from "@/features/chat/grouping";
 import { MessageMenu } from "@/features/chat/MessageMenu";

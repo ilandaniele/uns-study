@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Avatar } from "@/features/chat/Avatar";
+import { Avatar } from "@/components/Avatar";
 import { formatMessageTime } from "@/features/chat/grouping";
 import { useConversations } from "@/features/chat/useConversations";
 import { useSession } from "@/lib/auth-client";

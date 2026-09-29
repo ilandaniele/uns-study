@@ -2,7 +2,7 @@
 
 import type { ChatMessageDto } from "@uns/contracts";
 import { useRouter } from "next/navigation";
-import { Avatar } from "./Avatar";
+import { Avatar } from "@/components/Avatar";
 import { daySeparatorFlags, formatDaySeparator, formatMessageTime, groupMessages } from "./grouping";
 import { MessageMenu } from "./MessageMenu";
 
