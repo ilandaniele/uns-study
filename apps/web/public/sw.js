@@ -1,7 +1,10 @@
 // Minimal PWA offline shell. Registered only in production (see ServiceWorkerRegistration.tsx).
 // Never caches `/api` (own-origin API calls go through NEXT_PUBLIC_API_URL on a different origin
 // anyway) or any cross-origin request — PostgreSQL/the API stay the single source of truth.
-const CACHE_NAME = "uns-study-shell-v1";
+// Bump CACHE_VERSION whenever this file (or what it caches) changes — `activate` below deletes any
+// cache under the old name, so a stale shell/build asset can never survive a deploy.
+const CACHE_VERSION = "v2";
+const CACHE_NAME = `uns-study-shell-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {

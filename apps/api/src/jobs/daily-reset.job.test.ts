@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@uns/database";
 import { schema } from "@uns/database";
 import { eq } from "drizzle-orm";
@@ -10,6 +10,7 @@ import { ReputationService } from "../reputation/reputation.service.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
 import { QrService } from "../qr/qr.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";
+import { DisputeService } from "../disputes/disputes.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import type { Auth } from "../auth/auth.instance.js";
 import { DailyResetJob, resetInstantFor } from "./daily-reset.job.js";
@@ -19,6 +20,8 @@ const mockAuth = { api: { getSession: async () => null } } as unknown as Auth;
 describe("DailyResetJob", () => {
   let db: Db;
   let checkIns: CheckInService;
+  let disputes: DisputeService;
+  let gateway: RoomRealtimeGateway;
   let job: DailyResetJob;
   let roomId: string;
   let seatId: string;
@@ -30,8 +33,9 @@ describe("DailyResetJob", () => {
     const presence = new PresenceService();
     const security = new SecurityEventService(db, new ReputationService(db));
     const studySessions = new StudySessionService(db);
-    checkIns = new CheckInService(db, roomState, presence, security, studySessions, new QrService(db), buildDisputeService(db));
-    const gateway = new RoomRealtimeGateway(roomState, mockAuth);
+    disputes = buildDisputeService(db);
+    checkIns = new CheckInService(db, roomState, presence, security, studySessions, new QrService(db), disputes);
+    gateway = new RoomRealtimeGateway(roomState, mockAuth);
     job = new DailyResetJob(db, gateway, studySessions);
 
     const room = await getRoom(db);
@@ -50,10 +54,15 @@ describe("DailyResetJob", () => {
   });
 
   it("expires active check-ins/observations and resets all seats to UNKNOWN after the reset time", async () => {
-    await checkIns.checkIn({ userId: "u1", roomId, seatId, location, showIdentity: false });
+    const { checkIn: created } = await checkIns.checkIn({ userId: "u1", roomId, seatId, location, showIdentity: false });
 
     const room = await getRoom(db);
     const after = new Date(resetInstantFor(room, new Date()).getTime() + 60_000); // 1 minute after
+    // Back-date the check-in so it predates the (simulated) reset instant regardless of the
+    // wall-clock time the test happens to run at — only signals from *before* the reset boundary
+    // are supposed to be swept.
+    await db.update(schema.checkIns).set({ startedAt: new Date(after.getTime() - 60 * 60_000) }).where(eq(schema.checkIns.id, created.id));
+
     const ran = await job.runReset(roomId, after);
     expect(ran).toBe(true);
 
@@ -81,6 +90,61 @@ describe("DailyResetJob", () => {
 
     const sessions = await db.select().from(schema.studySessions).where(eq(schema.studySessions.checkInId, checkIn.id));
     expect(sessions).toHaveLength(1);
+  });
+
+  it("does not expire a check-in started after the reset instant (late cron tick)", async () => {
+    const { checkIn } = await checkIns.checkIn({ userId: "u1", roomId, seatId, location, showIdentity: false });
+    const room = await getRoom(db);
+    const resetInstant = resetInstantFor(room, new Date());
+    const after = new Date(resetInstant.getTime() + 60_000); // cron fires a minute late
+    // Simulates a user checking in *after* the reset boundary but before the tick actually runs.
+    await db.update(schema.checkIns).set({ startedAt: new Date(resetInstant.getTime() + 10_000) }).where(eq(schema.checkIns.id, checkIn.id));
+
+    await job.runReset(roomId, after);
+
+    const [row] = await db.select().from(schema.checkIns).where(eq(schema.checkIns.id, checkIn.id));
+    expect(row?.status).toBe("ACTIVE");
+  });
+
+  it("does not expire an observation observed after the reset instant", async () => {
+    const room = await getRoom(db);
+    const resetInstant = resetInstantFor(room, new Date());
+    const after = new Date(resetInstant.getTime() + 60_000);
+    await db.insert(schema.seatObservations).values({
+      userId: "u1",
+      roomId,
+      seatId,
+      observedStatus: "FREE",
+      presenceVerified: true,
+      qrVerified: false,
+      confidenceWeight: 1,
+      observedAt: new Date(resetInstant.getTime() + 10_000),
+      expiresAt: new Date(resetInstant.getTime() + 15 * 60_000),
+    });
+
+    await job.runReset(roomId, after);
+
+    const [row] = await db.select().from(schema.seatObservations).where(eq(schema.seatObservations.seatId, seatId));
+    expect(row?.expiresAt.getTime()).toBe(new Date(resetInstant.getTime() + 15 * 60_000).getTime());
+  });
+
+  it("cancels an OPEN dispute and emits seat:dispute-resolved with a CANCELLED payload", async () => {
+    const { checkIn } = await checkIns.checkIn({ userId: "u1", roomId, seatId, location, showIdentity: false });
+    await insertUsers(db, ["u2"]);
+    const { dispute } = await disputes.open({ userId: "u2", roomId, seatId, kind: "CLAIM", location });
+
+    const room = await getRoom(db);
+    const after = new Date(resetInstantFor(room, new Date()).getTime() + 60_000);
+    await db.update(schema.checkIns).set({ startedAt: new Date(after.getTime() - 60 * 60_000) }).where(eq(schema.checkIns.id, checkIn.id));
+
+    const spy = vi.spyOn(gateway, "emitDisputeResolved");
+    await job.runReset(roomId, after);
+
+    expect(spy).toHaveBeenCalledWith(
+      roomId,
+      expect.objectContaining({ id: dispute.id, seatId, status: "CANCELLED" }),
+    );
+    spy.mockRestore();
   });
 
   it("a second run the same day is a no-op", async () => {

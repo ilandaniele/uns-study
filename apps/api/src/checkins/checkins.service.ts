@@ -1,5 +1,5 @@
-import { ConflictException, Inject, Injectable, Logger } from "@nestjs/common";
-import { and, eq, gte } from "drizzle-orm";
+import { Inject, Injectable, Logger } from "@nestjs/common";
+import { and, eq, gt, gte } from "drizzle-orm";
 import { schema, type Db } from "@uns/database";
 import { CHECKIN_MINUTES, type CheckInDto, type LocationInput } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
@@ -45,7 +45,9 @@ export class CheckInService {
       .select({ checkIn: schema.checkIns, seatCode: schema.seats.code })
       .from(schema.checkIns)
       .innerJoin(schema.seats, eq(schema.seats.id, schema.checkIns.seatId))
-      .where(and(eq(schema.checkIns.userId, userId), eq(schema.checkIns.status, "ACTIVE")))
+      // A row can still read ACTIVE here if the expiration sweep just hasn't reached it yet —
+      // don't hand a check-in that's already past `expires_at` back to the client as live.
+      .where(and(eq(schema.checkIns.userId, userId), eq(schema.checkIns.status, "ACTIVE"), gt(schema.checkIns.expiresAt, new Date())))
       .limit(1);
     if (!row) return null;
     return toDto(row.checkIn, row.seatCode);
@@ -215,26 +217,29 @@ export class CheckInService {
   }
 
   async extend(userId: string, location: LocationInput): Promise<CheckInDto> {
+    const now = new Date();
     const [existing] = await this.db
       .select({ checkIn: schema.checkIns, seatCode: schema.seats.code, room: schema.rooms })
       .from(schema.checkIns)
       .innerJoin(schema.seats, eq(schema.seats.id, schema.checkIns.seatId))
       .innerJoin(schema.rooms, eq(schema.rooms.id, schema.checkIns.roomId))
-      .where(and(eq(schema.checkIns.userId, userId), eq(schema.checkIns.status, "ACTIVE")))
+      .where(and(eq(schema.checkIns.userId, userId), eq(schema.checkIns.status, "ACTIVE"), gt(schema.checkIns.expiresAt, now)))
       .limit(1);
     if (!existing) throw ApiErrors.noActiveCheckIn();
 
     const presence = this.presence.validate(existing.room, location);
     if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!), presence.details);
 
-    const now = new Date();
     const expiresAt = new Date(now.getTime() + CHECKIN_MINUTES * 60_000);
+    // Conditional on still being ACTIVE (and unexpired) at write time: the expiration sweep may
+    // have raced ahead and flipped this row between the read above and this update — if so, the
+    // extension must not resurrect a check-in the sweep already closed out.
     const [updated] = await this.db
       .update(schema.checkIns)
       .set({ expiresAt, updatedAt: now, locationAccuracyM: location.accuracy })
-      .where(eq(schema.checkIns.id, existing.checkIn.id))
+      .where(and(eq(schema.checkIns.id, existing.checkIn.id), eq(schema.checkIns.status, "ACTIVE"), gt(schema.checkIns.expiresAt, now)))
       .returning();
-    if (!updated) throw new ConflictException();
+    if (!updated) throw ApiErrors.noActiveCheckIn();
     return toDto(updated, existing.seatCode);
   }
 }

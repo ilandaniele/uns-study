@@ -190,7 +190,7 @@ export class RoomStateService {
   async getLiveSeatStates(
     roomId: string,
     now: Date = new Date(),
-  ): Promise<Map<string, SeatStateChange & { sourceSummary: string; dispute: { id: string; closesAt: Date } | null }>> {
+  ): Promise<Map<string, SeatStateChange & { sourceSummary: string; dispute: { id: string; closesAt: Date } | null; changed: boolean }>> {
     const seatRows = await this.db.select({ id: schema.seats.id }).from(schema.seats).where(and(eq(schema.seats.roomId, roomId), eq(schema.seats.active, true)));
     const seatIds = new Set(seatRows.map((s) => s.id));
 
@@ -247,7 +247,10 @@ export class RoomStateService {
       : [];
     const storedByseat = new Map(storedRows.map((r) => [r.seatId, r]));
 
-    const result = new Map<string, SeatStateChange & { sourceSummary: string; dispute: { id: string; closesAt: Date } | null }>();
+    const result = new Map<
+      string,
+      SeatStateChange & { sourceSummary: string; dispute: { id: string; closesAt: Date } | null; changed: boolean }
+    >();
     for (const seatId of seatIds) {
       const openDispute = openDisputeBySeat.get(seatId);
       const checkIn = checkInBySeat.get(seatId);
@@ -280,27 +283,39 @@ export class RoomStateService {
         lastUpdatedAt: changed ? now : new Date(stored!.lastUpdatedAt),
         dispute: openDispute ? { id: openDispute.id, closesAt: new Date(openDispute.closesAt) } : null,
         verified,
+        changed,
       });
     }
     return result;
   }
 
-  async getRoomSummary(roomId: string) {
-    const rows = await this.db
-      .select({ status: schema.seatCurrentState.status, value: sql<number>`count(*)` })
-      .from(schema.seatCurrentState)
-      .innerJoin(schema.seats, eq(schema.seats.id, schema.seatCurrentState.seatId))
-      .where(and(eq(schema.seats.roomId, roomId), eq(schema.seats.active, true)))
-      .groupBy(schema.seatCurrentState.status);
+  /**
+   * Seats whose persisted `seat_current_state` disagrees with what `getLiveSeatStates` derives
+   * right now — i.e. a signal (check-in or observation) expired since the last successful sweep
+   * but hasn't been reconciled yet. Recomputing exactly this set is what lets the expiration job
+   * catch up correctly after being stopped for any length of time, rather than only looking back a
+   * fixed window from `now`.
+   */
+  async findMismatchedSeats(roomId: string, now: Date = new Date()): Promise<string[]> {
+    const live = await this.getLiveSeatStates(roomId, now);
+    return [...live.values()].filter((s) => s.changed).map((s) => s.seatId);
+  }
 
+  /**
+   * Seat-status counts for a room, derived the same way the live map is (`getLiveSeatStates`) so a
+   * `room:summary-changed` broadcast can never disagree with what `seat:state-changed` events (and
+   * a fresh map fetch) show — unlike reading `seat_current_state` directly, this can't be stale
+   * while a signal has expired but not yet been swept.
+   */
+  async getRoomSummary(roomId: string) {
+    const liveStates = await this.getLiveSeatStates(roomId);
     const summary = { roomId, total: 0, free: 0, occupied: 0, uncertain: 0, unknown: 0 };
-    for (const row of rows) {
-      const n = Number(row.value);
-      summary.total += n;
-      if (row.status === "FREE") summary.free = n;
-      else if (row.status === "OCCUPIED") summary.occupied = n;
-      else if (row.status === "UNCERTAIN") summary.uncertain = n;
-      else summary.unknown = n;
+    for (const state of liveStates.values()) {
+      summary.total += 1;
+      if (state.status === "FREE") summary.free += 1;
+      else if (state.status === "OCCUPIED") summary.occupied += 1;
+      else if (state.status === "UNCERTAIN") summary.uncertain += 1;
+      else summary.unknown += 1;
     }
     return summary;
   }

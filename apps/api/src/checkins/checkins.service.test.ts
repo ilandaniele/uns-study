@@ -142,4 +142,38 @@ describe("CheckInService", () => {
     const expires = new Date(checkIn.expiresAt).getTime();
     expect(expires - started).toBe(60 * 60_000);
   });
+
+  it("extend rejects a check-in that has already passed its expires_at, even though the row is still status=ACTIVE", async () => {
+    const { checkIn } = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    // The expiration sweep hasn't run yet, so the row still reads ACTIVE, but it's past due.
+    await db.update(schema.checkIns).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.checkIns.id, checkIn.id));
+
+    await expect(svc.extend("u1", location)).rejects.toMatchObject({ code: "NO_ACTIVE_CHECKIN" });
+  });
+
+  it("extend rejects when a concurrent sweep expires the check-in between extend's own read and write", async () => {
+    const { checkIn } = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+
+    // Kicks the raw "sweep" update off in the same tick as `extend`'s read, so it can land between
+    // `extend`'s SELECT (which still sees ACTIVE) and its own conditional UPDATE.
+    const [extendResult] = await Promise.allSettled([
+      svc.extend("u1", location),
+      db.update(schema.checkIns).set({ status: "EXPIRED", endedAt: new Date(), updatedAt: new Date() }).where(eq(schema.checkIns.id, checkIn.id)),
+    ]);
+
+    expect(extendResult.status).toBe("rejected");
+    if (extendResult.status === "rejected") {
+      expect(extendResult.reason).toMatchObject({ code: "NO_ACTIVE_CHECKIN" });
+    }
+
+    const [row] = await db.select().from(schema.checkIns).where(eq(schema.checkIns.id, checkIn.id));
+    expect(row?.status).toBe("EXPIRED"); // the sweep's write won, extend must not resurrect it
+  });
+
+  it("getActiveCheckIn ignores a status=ACTIVE row that is already past expires_at (not yet swept)", async () => {
+    const { checkIn } = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await db.update(schema.checkIns).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.checkIns.id, checkIn.id));
+
+    expect(await svc.getActiveCheckIn("u1")).toBeNull();
+  });
 });

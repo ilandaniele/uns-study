@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@uns/database";
 import { schema } from "@uns/database";
 import { eq } from "drizzle-orm";
@@ -80,5 +80,84 @@ describe("ExpirationJob", () => {
     const sessions = await db.select().from(schema.studySessions).where(eq(schema.studySessions.checkInId, checkIn.id));
     expect(sessions).toHaveLength(1);
     expect(sessions[0]?.verifiedMinutes).toBeGreaterThanOrEqual(44);
+  });
+
+  it("does not expire a check-in whose extension committed between the sweep's select and its per-row update", async () => {
+    const { checkIn } = await checkIns.checkIn({ userId: "u1", roomId, seatId, location, showIdentity: false });
+    await db.update(schema.checkIns).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.checkIns.id, checkIn.id));
+
+    const originalTransaction = db.transaction.bind(db);
+    const spy = vi.spyOn(db, "transaction").mockImplementationOnce(async (cb: Parameters<typeof db.transaction>[0]) => {
+      // Simulates a concurrent `extend()` committing its renewal after the sweep already selected
+      // this check-in as an expiry candidate, but before the sweep's own transaction runs.
+      await db
+        .update(schema.checkIns)
+        .set({ status: "ACTIVE", expiresAt: new Date(Date.now() + 60 * 60_000), updatedAt: new Date() })
+        .where(eq(schema.checkIns.id, checkIn.id));
+      return originalTransaction(cb);
+    });
+
+    await job.runSweep(new Date());
+    spy.mockRestore();
+
+    const [row] = await db.select().from(schema.checkIns).where(eq(schema.checkIns.id, checkIn.id));
+    expect(row?.status).toBe("ACTIVE");
+    expect(row!.expiresAt.getTime()).toBeGreaterThan(Date.now());
+
+    const sessions = await db.select().from(schema.studySessions).where(eq(schema.studySessions.checkInId, checkIn.id));
+    expect(sessions).toHaveLength(0); // never treated as ended, so no session was recorded either
+  });
+
+  it("does not overwrite a check-in that was completed (checked out) between the sweep's select and its per-row update", async () => {
+    const { checkIn } = await checkIns.checkIn({ userId: "u1", roomId, seatId, location, showIdentity: false });
+    await db.update(schema.checkIns).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.checkIns.id, checkIn.id));
+
+    const originalTransaction = db.transaction.bind(db);
+    const spy = vi.spyOn(db, "transaction").mockImplementationOnce(async (cb: Parameters<typeof db.transaction>[0]) => {
+      // Simulates the user checking out (COMPLETED) right after the sweep selected this row as an
+      // expiry candidate but before the sweep's own transaction runs.
+      await db
+        .update(schema.checkIns)
+        .set({ status: "COMPLETED", endedAt: new Date(), updatedAt: new Date() })
+        .where(eq(schema.checkIns.id, checkIn.id));
+      return originalTransaction(cb);
+    });
+
+    await job.runSweep(new Date());
+    spy.mockRestore();
+
+    const [row] = await db.select().from(schema.checkIns).where(eq(schema.checkIns.id, checkIn.id));
+    expect(row?.status).toBe("COMPLETED"); // must stay COMPLETED, never flipped to EXPIRED
+  });
+
+  it("recomputes a seat whose observation expired long before the previous sweep, not just within a recent lookback window", async () => {
+    // An observation that expired a full day ago — well outside any short fixed lookback window —
+    // simulating the job having been stopped for a while.
+    await db.insert(schema.seatObservations).values({
+      userId: "u1",
+      roomId,
+      seatId,
+      observedStatus: "OCCUPIED",
+      presenceVerified: true,
+      qrVerified: false,
+      confidenceWeight: 1,
+      observedAt: new Date(Date.now() - 25 * 60 * 60_000),
+      expiresAt: new Date(Date.now() - 24 * 60 * 60_000),
+    });
+    // `seat_current_state` is still stale from when that observation was fresh — nothing has
+    // reconciled it since.
+    const stale = new Date(Date.now() - 25 * 60 * 60_000);
+    await db
+      .insert(schema.seatCurrentState)
+      .values({ seatId, status: "OCCUPIED", confidence: 0.6, sourceSummary: "OBSERVATION", lastUpdatedAt: stale, updatedAt: stale })
+      .onConflictDoUpdate({
+        target: schema.seatCurrentState.seatId,
+        set: { status: "OCCUPIED", confidence: 0.6, sourceSummary: "OBSERVATION", lastUpdatedAt: stale, updatedAt: stale },
+      });
+
+    await job.runSweep(new Date());
+
+    const [state] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatId));
+    expect(state?.status).toBe("UNKNOWN");
   });
 });
