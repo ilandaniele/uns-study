@@ -8,20 +8,12 @@ export * from "./rankings";
 export * from "./qr";
 export * from "./table-names";
 export * from "./notifications";
+export * from "./events";
 
 // ---- Domain enums ----
 
 export type SeatStatus = "UNKNOWN" | "FREE" | "OCCUPIED" | "UNCERTAIN";
 export type TableType = "MAIN_TABLE" | "WALL_BAR";
-
-// ---- Durations (minutes) ----
-
-export const CHECKIN_MINUTES = 60;
-export const FREE_OBS_MINUTES = 15;
-export const OCCUPIED_OBS_MINUTES = 20;
-export const DISPUTE_MINUTES = 5;
-/** How long a photo-verified check-in is protected from disputes/"Está libre" observations. */
-export const VERIFIED_PROTECTION_MINUTES = 30;
 
 // ---- DTOs ----
 
@@ -206,28 +198,6 @@ export interface MeDto {
 }
 
 // ---- Socket events ----
-
-export const SocketEvents = {
-  RoomJoin: "room:join",
-  RoomLeave: "room:leave",
-  SeatStateChanged: "seat:state-changed",
-  RoomSummaryChanged: "room:summary-changed",
-  RoomDailyReset: "room:daily-reset",
-  ChatJoin: "chat:join",
-  ChatLeave: "chat:leave",
-  ChatMessageCreated: "chat:message-created",
-  ChatMessageDeleted: "chat:message-deleted",
-  DmMessageCreated: "dm:message-created",
-  AnnouncementChanged: "room:announcement-changed",
-  SeatDisputeOpened: "seat:dispute-opened",
-  SeatDisputeUpdated: "seat:dispute-updated",
-  SeatDisputeResolved: "seat:dispute-resolved",
-  DisputeYouAreChallenged: "dispute:you-are-challenged",
-  DisputeYouWon: "dispute:you-won",
-  TableNicknameChanged: "table:nickname-changed",
-  RoomAdminPresent: "room:admin-present",
-  SeatFreedAlert: "seat:freed-alert",
-} as const;
 
 export interface TableNicknameChangedEvent {
   tableId: string;

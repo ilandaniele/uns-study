@@ -1,6 +1,7 @@
 "use client";
 
-import { SocketEvents, type ConversationDto, type DirectMessageDto } from "@uns/contracts";
+import { SocketEvents } from "@uns/contracts/events";
+import type { ConversationDto, DirectMessageDto } from "@uns/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { getSocket } from "@/lib/socket";

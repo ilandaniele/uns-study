@@ -1,6 +1,7 @@
 "use client";
 
-import { SocketEvents, type ChatHistoryDto, type ChatMessageDto, type Page } from "@uns/contracts";
+import { SocketEvents } from "@uns/contracts/events";
+import type { ChatHistoryDto, ChatMessageDto, Page } from "@uns/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { apiDelete, apiFetch, apiPost, ApiRequestError } from "@/lib/api";
 import { getSocket, joinChat, leaveChat } from "@/lib/socket";

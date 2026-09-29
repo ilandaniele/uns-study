@@ -1,6 +1,7 @@
 "use client";
 
-import { SocketEvents, type DisputeWonEvent } from "@uns/contracts";
+import { SocketEvents } from "@uns/contracts/events";
+import type { DisputeWonEvent } from "@uns/contracts";
 import { useEffect, useState } from "react";
 import { getSocket } from "@/lib/socket";
 

@@ -1,12 +1,7 @@
 "use client";
 
-import {
-  SocketEvents,
-  type DisputeChallengedEvent,
-  type MeDto,
-  type RoomMapDto,
-  type SeatDisputeLiteDto,
-} from "@uns/contracts";
+import { SocketEvents } from "@uns/contracts/events";
+import type { DisputeChallengedEvent, MeDto, RoomMapDto, SeatDisputeLiteDto } from "@uns/contracts";
 import { useEffect, useState } from "react";
 import { getDispute } from "@/lib/disputes";
 import { getSocket } from "@/lib/socket";
