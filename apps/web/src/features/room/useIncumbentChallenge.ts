@@ -2,7 +2,7 @@
 
 import { SocketEvents } from "@uns/contracts/events";
 import type { DisputeChallengedEvent, MeDto, RoomMapDto, SeatDisputeLiteDto } from "@uns/contracts";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getDispute } from "@/lib/disputes";
 import { getSocket } from "@/lib/socket";
 import { msUntilDisputeAutoClear } from "./format";
@@ -20,6 +20,13 @@ export interface IncumbentChallenge {
  * load/reconnect by checking whether the seat of the caller's active check-in already has an
  * open dispute naming them as incumbent (e.g. the challenge fired while they were offline).
  */
+/**
+ * Disputes the caller already answered ("Sigo acá"/"Me fui"). The vote stays OPEN until it closes,
+ * so without this a later refetch — or a reconciliation request still in flight when they
+ * answered — would pop the same banner right back up. Module-level so it survives remounts.
+ */
+const answeredDisputeIds = new Set<string>();
+
 export function useIncumbentChallenge(map: RoomMapDto | null, me: MeDto | null): { challenge: IncumbentChallenge | null; clear: () => void } {
   const [challenge, setChallenge] = useState<IncumbentChallenge | null>(null);
 
@@ -28,6 +35,7 @@ export function useIncumbentChallenge(map: RoomMapDto | null, me: MeDto | null):
     const onChallenged = (event: DisputeChallengedEvent) => {
       // A physical nudge for a time-sensitive prompt — easy to miss if the phone is face-down.
       navigator.vibrate?.(200);
+      if (answeredDisputeIds.has(event.disputeId)) return;
       setChallenge({ disputeId: event.disputeId, seatId: event.seatId, seatCode: event.seatCode, closesAt: event.closesAt });
     };
     const onResolved = (event: SeatDisputeLiteDto) => {
@@ -52,7 +60,7 @@ export function useIncumbentChallenge(map: RoomMapDto | null, me: MeDto | null):
     let cancelled = false;
     getDispute(activeSeatDisputeId)
       .then((dto) => {
-        if (!cancelled && dto.status === "OPEN" && dto.iAmIncumbent) {
+        if (!cancelled && dto.status === "OPEN" && dto.iAmIncumbent && !answeredDisputeIds.has(dto.id)) {
           setChallenge({ disputeId: dto.id, seatId: activeSeatId, seatCode: activeSeatCode, closesAt: dto.closesAt });
         }
       })
@@ -72,5 +80,12 @@ export function useIncumbentChallenge(map: RoomMapDto | null, me: MeDto | null):
     return () => clearTimeout(id);
   }, [challenge]);
 
-  return { challenge, clear: () => setChallenge(null) };
+  const clear = useCallback(() => {
+    setChallenge((prev) => {
+      if (prev) answeredDisputeIds.add(prev.disputeId);
+      return null;
+    });
+  }, []);
+
+  return { challenge, clear };
 }
