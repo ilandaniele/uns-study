@@ -13,8 +13,6 @@ export interface PrivacyFieldDef {
  * Pure data — kept out of the component so it's unit-testable and easy to reorder.
  */
 export const PRIVACY_FIELDS: PrivacyFieldDef[] = [
-  { key: "showInRoom", label: "Aparecer en “Personas en la sala”", hint: "Otras personas registradas te ven en la lista de quienes están estudiando." },
-  { key: "showSeat", label: "Mostrar mi lugar", hint: "Se muestra el lugar donde estás sentado/a (requiere que también actives “Mostrar identidad” en el check-in)." },
   { key: "showFullName", label: "Mostrar nombre completo", hint: "Permite que tu nombre completo se use según tu modo de identidad." },
   { key: "showNickname", label: "Mostrar apodo", hint: "Permite que tu apodo se use según tu modo de identidad." },
   { key: "showCareer", label: "Mostrar carrera", hint: "Tu carrera aparece en tu perfil público." },
@@ -26,9 +24,3 @@ export const PRIVACY_FIELDS: PrivacyFieldDef[] = [
   { key: "showAliasAnimalOnMap", label: "Mostrar mi animal en el mapa", hint: "Si está apagado, en el mapa aparecés con una silueta." },
   { key: "showInRanking", label: "Aparecer en el ranking", hint: "Con tu apodo si ocultás tu nombre." },
 ];
-
-/** Whether toggling a field off should also disable another (kept simple: only seat depends on room visibility). */
-export function privacyFieldDisabled(key: PrivacyFieldKey, settings: PrivacySettingsDto): boolean {
-  if (key === "showSeat") return !settings.showInRoom;
-  return false;
-}

@@ -3,7 +3,7 @@ import { and, desc, eq, gt, inArray, or } from "drizzle-orm";
 import { schema, type Db } from "@uns/database";
 import { animalIdFromAlias, type RoomPersonDto, type SeatMarkedByDto, type SeatOccupancyDto } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
-import { displayName, visibleAvatarUrl, type DisplayNameProfile } from "../users/display-name.js";
+import { displayName, needsAlias, visibleAvatarUrl, type DisplayNameProfile } from "../users/display-name.js";
 import { AliasService } from "../users/alias.service.js";
 import { toStudyStatusDto } from "./study.service.js";
 
@@ -21,10 +21,10 @@ export class RoomPeopleService {
   ) {}
 
   /**
-   * Who is in `roomId`, block-excluded both ways. Users with `show_in_room` and (active check-in or active study
-   * status) appear with their profile. Users with an active check-in but without `show_in_room` appear as their
-   * alias animal only (`userId: null`, no profile fields) — mirroring `listOccupants` — and are left out entirely
-   * when `show_alias_animal_on_map` is off (the map shows a nameless "Alguien" silhouette for them).
+   * Who is in `roomId`, block-excluded both ways. Users with a visible identity mode (name field filled) and
+   * (active check-in with `show_identity`, or active study status) appear by that name with their profile. Hidden
+   * users, and check-ins answered "No, mantener privado", appear as their alias animal only (`userId: null`, no
+   * profile fields) — mirroring `listOccupants` — and are left out when `show_alias_animal_on_map` is off.
    */
   async listPeople(roomId: string, viewerId: string): Promise<RoomPersonDto[]> {
     const [blockedByMe, blockedMe] = await Promise.all([
@@ -85,24 +85,25 @@ export class RoomPeopleService {
         ),
       );
 
-    const isListed = (r: (typeof rows)[number]) => r.privacy?.showInRoom === true;
-    const aliasByUser = await this.aliases.ensureAliasesForProfiles(rows.flatMap((r) => (isListed(r) && r.profile ? [r.profile] : [])));
+    // A visible identity mode (with its field filled) is always listed by that name; the alias is only for
+    // hidden users and for check-ins where the user chose "No, mantener privado".
+    const hasVisibleName = (r: (typeof rows)[number]) => Boolean(r.profile) && !needsAlias(r.profile!);
 
     const result: RoomPersonDto[] = [];
     for (const r of rows) {
-      if (isListed(r) && r.privacy) {
+      if (hasVisibleName(r) && (!r.checkIn || r.checkIn.showIdentity)) {
         result.push({
           userId: r.userId,
-          displayName: displayName(profileForDisplay(r.profile, aliasByUser.get(r.userId)), null, r.userName),
-          avatarUrl: visibleAvatarUrl(r.profile ?? null, r.privacy),
-          career: r.privacy.showCareer ? (r.profile?.career ?? null) : null,
-          seatCode: r.checkIn?.showIdentity && r.privacy.showSeat ? (r.seatCode ?? null) : null,
+          displayName: displayName(profileForDisplay(r.profile), null, r.userName),
+          avatarUrl: visibleAvatarUrl(r.profile ?? null, r.privacy ?? null),
+          career: r.privacy?.showCareer ? (r.profile?.career ?? null) : null,
+          seatCode: r.checkIn?.showIdentity ? (r.seatCode ?? null) : null,
           studyStatus: r.study ? toStudyStatusDto(r.study) : null,
         });
         continue;
       }
 
-      // Not listed by choice: only a checked-in user whose alias animal is on the map shows up, as that alias.
+      // Hidden (or private for this check-in): only a checked-in user whose alias animal is on the map shows up, as that alias.
       if (!r.checkIn || !r.profile || !(r.privacy?.showAliasAnimalOnMap ?? true)) continue;
       const alias = r.profile.alias && r.profile.aliasAnimal ? r.profile.alias : await this.aliases.ensureAlias(r.userId);
       const animalId = animalIdFromAlias(alias);
@@ -122,7 +123,7 @@ export class RoomPeopleService {
 
   /**
    * One entry per active check-in (`SeatOccupantDto`) plus one per seat that is OCCUPIED only because
-   * someone marked it (`SeatMarkedByDto`). Identity follows the check-in's `show_identity` + `show_seat`:
+   * someone marked it (`SeatMarkedByDto`). Identity follows the check-in's `show_identity` + a visible identity mode:
    * visible -> real display name, photo (if `show_avatar`) or silhouette, `userId` set; otherwise
    * alias + animal (if `show_alias_animal_on_map`) or "Alguien" + silhouette, and `userId` is always
    * `null` so a hidden user can never be linked to their seat.
@@ -143,17 +144,14 @@ export class RoomPeopleService {
       .leftJoin(schema.userProfiles, eq(schema.userProfiles.userId, schema.checkIns.userId))
       .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE")));
 
-    const visibleProfiles = rows.flatMap((r) => (r.showIdentity && r.privacy?.showSeat && r.profile ? [r.profile] : []));
-    const aliasByUser = await this.aliases.ensureAliasesForProfiles(visibleProfiles);
-
     const result: SeatOccupancyDto[] = [];
     for (const r of rows) {
-      if (r.showIdentity && r.privacy?.showSeat) {
-        const url = visibleAvatarUrl(r.profile ?? null, r.privacy);
+      if (r.showIdentity && r.profile && !needsAlias(r.profile)) {
+        const url = visibleAvatarUrl(r.profile ?? null, r.privacy ?? null);
         result.push({
           seatId: r.seatId,
           userId: r.userId,
-          displayName: displayName(profileForDisplay(r.profile, aliasByUser.get(r.userId)), null, r.userName),
+          displayName: displayName(profileForDisplay(r.profile), null, r.userName),
           avatarUrl: url,
           avatar: url ? { kind: "photo", url } : { kind: "silhouette" },
         });

@@ -1,7 +1,7 @@
 "use client";
 
 import type { PrivacySettingsDto } from "@uns/contracts";
-import { PRIVACY_FIELDS, privacyFieldDisabled } from "./privacy-fields";
+import { PRIVACY_FIELDS } from "./privacy-fields";
 import type { PrivacyPatch } from "./useMyProfile";
 
 export interface PrivacyTogglesProps {
@@ -16,7 +16,7 @@ export function PrivacyToggles({ privacy, saving, onChange }: PrivacyTogglesProp
     <div className="flex flex-col divide-y divide-[var(--border)]">
       {PRIVACY_FIELDS.map((field) => {
         const checked = privacy[field.key];
-        const disabled = saving || privacyFieldDisabled(field.key, privacy);
+        const disabled = saving;
         return (
           <div key={field.key} className="flex items-start justify-between gap-4 py-3">
             <span>

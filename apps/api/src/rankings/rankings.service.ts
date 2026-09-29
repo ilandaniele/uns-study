@@ -199,19 +199,18 @@ export class RankingsService {
     for (const userId of userIds) {
       const profile = profileByUser.get(userId) ?? null;
       const privacy = privacyByUser.get(userId) ?? null;
-      // A profile row (even HIDDEN) is now visible under its alias — only a user with no profile
-      // at all, and no `showInRoom` opt-in, stays fully out of the list.
-      const visible = Boolean(privacy?.showInRoom) || Boolean(profile);
-      // Not linkable (userId hidden from the response) unless the user opted into room visibility
-      // *and* the name shown isn't just their alias — an alias is a fun label, not an identity.
+      // A profile row (even HIDDEN) is visible under its alias — only a user with no profile stays out.
+      const visible = Boolean(profile);
+      // Not linkable (userId hidden from the response) while the name shown is just the alias — an
+      // alias is a fun label, not an identity. A visible identity mode is always linkable.
       const shownAsAlias = !profile || needsAlias(profile);
-      const linkable = Boolean(privacy?.showInRoom) && !shownAsAlias;
+      const linkable = !shownAsAlias;
       result.set(userId, {
         visible,
         hiddenFromRanking: privacy?.showInRanking === false,
         displayName: displayName(profile, privacy, "Usuario anónimo"),
-        // No avatar at all unless both `showAvatar` and `showInRoom` are on (07_SECURITY §privacy).
-        avatarUrl: privacy?.showInRoom ? visibleAvatarUrl(profile, privacy) : null,
+        // Photo only for visible-name users who enabled `showAvatar` (07_SECURITY §privacy).
+        avatarUrl: profile && !needsAlias(profile) ? visibleAvatarUrl(profile, privacy) : null,
         aliasAnimal: shownAliasAnimal(profile) ?? undefined,
         linkable,
       });

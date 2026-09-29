@@ -6,7 +6,7 @@ import { useSession } from "@/lib/auth-client";
 
 const ROOM_SLUG = "principal";
 
-/** "Personas en la sala" — registered users who opted into `showInRoom`, full list. */
+/** "Personas en la sala" — registered users in the room, full list. */
 export default function PersonasPage() {
   const { data: session, isPending } = useSession();
   const { people, loading, error } = usePeople(ROOM_SLUG);

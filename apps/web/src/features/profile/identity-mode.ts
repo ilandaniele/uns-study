@@ -47,8 +47,3 @@ export function previewDisplayName(mode: IdentityMode, fields: { firstName: stri
       return null;
   }
 }
-
-/** True when a visible identity mode is chosen but the room-visibility privacy toggles are still off. */
-export function needsRoomVisibility(mode: IdentityMode, privacy: { showInRoom: boolean; showSeat: boolean }): boolean {
-  return mode !== "HIDDEN" && (!privacy.showInRoom || !privacy.showSeat);
-}

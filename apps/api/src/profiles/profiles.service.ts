@@ -133,7 +133,7 @@ export class ProfilesService {
       bio: identityMode !== "HIDDEN" ? (profile?.bio ?? null) : null,
       instagram: privacy?.showInstagram ? (profile?.instagram ?? null) : null,
       studentNumber: privacy?.showStudentNumber ? (profile?.studentNumber ?? null) : null,
-      studyStatus: privacy?.showInRoom ? await this.study.getActiveStatusForUser(targetUserId) : null,
+      studyStatus: profile && !needsAlias(profile) ? await this.study.getActiveStatusForUser(targetUserId) : null,
       allowsDirectMessages: privacy?.allowDirectMessages ?? true,
       blockedByMe: Boolean(blockedByMe),
     };

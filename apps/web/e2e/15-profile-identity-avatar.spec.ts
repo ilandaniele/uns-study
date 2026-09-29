@@ -83,10 +83,15 @@ test("avatar upload shows up in chat and as a photo badge on the occupied seat f
   try {
     await signUpNewUser(contextA);
 
-    // Opt into showing the seat/identity + the avatar, then upload a tiny JPEG via the API.
+    // Choose a visible identity mode and opt into the avatar, then upload a tiny JPEG via the API.
+    const profileRes = await contextA.request.patch(`${API_URL}/api/v1/profiles/me`, {
+      headers: { Origin: "http://localhost:3000" },
+      data: { nickname: `Foto${Date.now() % 100000}`, identityMode: "NICKNAME" },
+    });
+    expect(profileRes.ok()).toBe(true);
     const privacyRes = await contextA.request.patch(`${API_URL}/api/v1/profiles/me/privacy`, {
       headers: { Origin: "http://localhost:3000" },
-      data: { showInRoom: true, showSeat: true, showAvatar: true },
+      data: { showAvatar: true },
     });
     expect(privacyRes.ok()).toBe(true);
 

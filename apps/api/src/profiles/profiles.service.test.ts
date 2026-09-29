@@ -54,8 +54,6 @@ describe("ProfilesService", () => {
       expect(profile.alias).toMatch(/^\S+ \S+$/); // "Noun Adjective"
 
       const privacy = await profiles.getMyPrivacy("u1");
-      expect(privacy.showInRoom).toBe(false);
-      expect(privacy.showSeat).toBe(false);
       expect(privacy.allowDirectMessages).toBe(true);
     });
   });
@@ -66,8 +64,7 @@ describe("ProfilesService", () => {
       expect(updated.firstName).toBe("Ana");
       expect(updated.identityMode).toBe("FIRST_NAME");
 
-      const privacy = await profiles.updateMyPrivacy("u1", { showInRoom: true, showAvatar: true });
-      expect(privacy.showInRoom).toBe(true);
+      const privacy = await profiles.updateMyPrivacy("u1", { showAvatar: true });
       expect(privacy.showAvatar).toBe(true);
     });
 
@@ -145,11 +142,19 @@ describe("ProfilesService", () => {
       expect(pub.displayName).not.toBe("Usuario anónimo");
     });
 
-    it("hides studyStatus when the owner has not opted into showInRoom", async () => {
+    it("hides studyStatus while the owner has a hidden identity mode", async () => {
       await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
       await study.start("u1", roomId, { subject: "Química", lookingForGroup: false });
       const pub = await profiles.getPublicProfile("viewer", "u1");
       expect(pub.studyStatus).toBeNull();
+    });
+
+    it("shows studyStatus for an owner with a visible identity mode", async () => {
+      await profiles.updateMyProfile("u1", "u1@example.test", { nickname: "Ilancho", identityMode: "NICKNAME" });
+      await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: true });
+      await study.start("u1", roomId, { subject: "Química", lookingForGroup: false });
+      const pub = await profiles.getPublicProfile("viewer", "u1");
+      expect(pub.studyStatus?.subject).toBe("Química");
     });
   });
 

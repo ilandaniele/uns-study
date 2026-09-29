@@ -12,7 +12,7 @@ import { StudyModeControl } from "@/features/profile/StudyModeControl";
 import { useMyProfile } from "@/features/profile/useMyProfile";
 import { apiFetch, apiPost } from "@/lib/api";
 import { signOut, useSession } from "@/lib/auth-client";
-import { getMe, invalidateMe, refreshMe } from "@/lib/me-store";
+import { invalidateMe } from "@/lib/me-store";
 import { resetSocket } from "@/lib/socket";
 
 const ROOM_SLUG = "principal";
@@ -34,21 +34,6 @@ export default function PerfilPage() {
     if (!session?.user) return;
     void apiFetch<PublicProfileDto>(`/api/v1/profiles/${session.user.id}`).then((pub) => setStudyStatus(pub.studyStatus));
   }, [session?.user]);
-
-  async function handleShowMeInRoom(): Promise<boolean> {
-    const ok = await savePrivacy({ showInRoom: true, showSeat: true });
-    if (!ok) return false;
-    try {
-      const me = await getMe();
-      if (me.activeCheckIn) {
-        await apiFetch("/api/v1/checkins/current/identity", { method: "PATCH", body: JSON.stringify({ showIdentity: true }) });
-        void refreshMe();
-      }
-    } catch {
-      // Privacy is already saved; the check-in toggle can still be flipped from the room.
-    }
-    return true;
-  }
 
   async function handleDelete() {
     setDeleting(true);
@@ -94,11 +79,9 @@ export default function PerfilPage() {
         <h2 className="mb-3 font-display text-base font-semibold text-main">Tu perfil</h2>
         <ProfileForm
           profile={profile}
-          privacy={privacy}
           saving={saving}
           onSave={saveProfile}
           onRerollAlias={rerollAlias}
-          onShowMeInRoom={handleShowMeInRoom}
         />
       </section>
 
