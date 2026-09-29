@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import type { Db } from "./client.js";
 import { createDb } from "./client.js";
 import { generateRoomLayout } from "./layout.js";
@@ -48,11 +49,11 @@ export async function seedInitialRoom(db: Db): Promise<void> {
 
   if (!room) throw new Error("Failed to upsert room");
 
-  const tableIdByCode = new Map<string, string>();
-  for (const t of layout.tables) {
-    const [row] = await db
-      .insert(roomTables)
-      .values({
+  // One multi-row upsert per table (this runs on every boot): 3 round trips instead of ~220.
+  const tableRows = await db
+    .insert(roomTables)
+    .values(
+      layout.tables.map((t) => ({
         roomId: room.id,
         code: t.code,
         label: t.label,
@@ -62,61 +63,60 @@ export async function seedInitialRoom(db: Db): Promise<void> {
         width: t.width,
         height: t.height,
         rotation: t.rotation,
-      })
-      .onConflictDoUpdate({
-        target: [roomTables.roomId, roomTables.code],
-        set: {
-          label: t.label,
-          type: t.type,
-          x: t.x,
-          y: t.y,
-          width: t.width,
-          height: t.height,
-          rotation: t.rotation,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    if (!row) throw new Error(`Failed to upsert table ${t.code}`);
-    tableIdByCode.set(t.code, row.id);
-  }
+      })),
+    )
+    .onConflictDoUpdate({
+      target: [roomTables.roomId, roomTables.code],
+      set: {
+        label: sql`excluded.label`,
+        type: sql`excluded.type`,
+        x: sql`excluded.x`,
+        y: sql`excluded.y`,
+        width: sql`excluded.width`,
+        height: sql`excluded.height`,
+        rotation: sql`excluded.rotation`,
+        updatedAt: new Date(),
+      },
+    })
+    .returning({ id: roomTables.id, code: roomTables.code });
+  const tableIdByCode = new Map(tableRows.map((r) => [r.code, r.id]));
 
-  for (const s of layout.seats) {
-    const tableId = tableIdByCode.get(s.tableCode);
-    if (!tableId) throw new Error(`Unknown table code ${s.tableCode}`);
-
-    const [seatRow] = await db
-      .insert(seats)
-      .values({
-        roomId: room.id,
-        tableId,
-        code: s.code,
-        seatNumber: s.seatNumber,
-        x: s.x,
-        y: s.y,
-        rotation: s.rotation,
-        active: true,
-      })
-      .onConflictDoUpdate({
-        target: [seats.roomId, seats.code],
-        set: {
+  const seatRows = await db
+    .insert(seats)
+    .values(
+      layout.seats.map((s) => {
+        const tableId = tableIdByCode.get(s.tableCode);
+        if (!tableId) throw new Error(`Unknown table code ${s.tableCode}`);
+        return {
+          roomId: room.id,
           tableId,
+          code: s.code,
           seatNumber: s.seatNumber,
           x: s.x,
           y: s.y,
           rotation: s.rotation,
           active: true,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    if (!seatRow) throw new Error(`Failed to upsert seat ${s.code}`);
+        };
+      }),
+    )
+    .onConflictDoUpdate({
+      target: [seats.roomId, seats.code],
+      set: {
+        tableId: sql`excluded.table_id`,
+        seatNumber: sql`excluded.seat_number`,
+        x: sql`excluded.x`,
+        y: sql`excluded.y`,
+        rotation: sql`excluded.rotation`,
+        active: true,
+        updatedAt: new Date(),
+      },
+    })
+    .returning({ id: seats.id });
 
-    await db
-      .insert(seatCurrentState)
-      .values({ seatId: seatRow.id, status: "UNKNOWN", confidence: 0 })
-      .onConflictDoNothing({ target: seatCurrentState.seatId });
-  }
+  await db
+    .insert(seatCurrentState)
+    .values(seatRows.map((r) => ({ seatId: r.id, status: "UNKNOWN" as const, confidence: 0 })))
+    .onConflictDoNothing({ target: seatCurrentState.seatId });
 
   await db
     .insert(chatRooms)

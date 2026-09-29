@@ -12,6 +12,10 @@ primary_region = "gru"
   ADMIN_EMAILS = "ilan.daniele@gmail.com"
   GOOGLE_CLIENT_ID = "1032351199989-q4i4g9vsn7unkemt09in1md9omp4hh0o.apps.googleusercontent.com"
   DB_AUTO_MIGRATE = "false"
+  # main.ts runs migrations + idempotent seed in-process before listening (no tsx at boot).
+  BOOT_MIGRATE_SEED = "true"
+  # Keep V8 heap under the 256 MB VM limit so GC kicks in before the OOM killer.
+  NODE_OPTIONS = "--max-old-space-size=200"
   ROOM_RESET_TIMEZONE = "America/Argentina/Buenos_Aires"
   TRUST_PROXY_HOPS = "2"
   PRESENCE_DEV_BYPASS = "false"
@@ -41,8 +45,8 @@ primary_region = "gru"
     path = "/api/v1/health"
     timeout = "5s"
 
-# 256mb is the spec'd default. `pnpm db:migrate`/`pnpm db:seed` run via `tsx` (esbuild-based) before
-# the server starts on every boot (scale-to-zero); if that OOMs in practice, bump to 512mb.
+# 256mb is the spec'd default; migrations + seed now run inside the API process (no tsx), so the
+# boot peak is lower. Bump to 512mb if it OOMs in practice.
 [[vm]]
   size = "shared-cpu-1x"
   memory = "256mb"

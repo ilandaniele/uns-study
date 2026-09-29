@@ -31,6 +31,7 @@ export const userBlocks = pgTable(
   (table) => [
     primaryKey({ columns: [table.blockerId, table.blockedId] }),
     check("chk_user_blocks_not_self", sql`${table.blockerId} <> ${table.blockedId}`),
+    index("idx_user_blocks_blocked").on(table.blockedId),
   ],
 );
 
@@ -98,15 +99,19 @@ export const moderationActions = pgTable("moderation_actions", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const announcements = pgTable("announcements", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  roomId: uuid("room_id").references(() => rooms.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  body: text("body").notNull(),
-  active: boolean("active").notNull().default(true),
-  startsAt: timestamp("starts_at", { withTimezone: true }).notNull().defaultNow(),
-  endsAt: timestamp("ends_at", { withTimezone: true }),
-  createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const announcements = pgTable(
+  "announcements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roomId: uuid("room_id").references(() => rooms.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    active: boolean("active").notNull().default(true),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull().defaultNow(),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("idx_announcements_room_starts").on(table.roomId, table.startsAt)],
+);

@@ -71,7 +71,14 @@ export function createDb(options: CreateDbOptions = {}): Db {
 
   if (databaseUrl) {
     const ssl = databaseUrl.includes("sslmode=") ? true : undefined;
-    const pool = new Pool({ connectionString: databaseUrl, ssl });
+    const pool = new Pool({
+      connectionString: databaseUrl,
+      ssl,
+      max: 10,
+      idleTimeoutMillis: 300_000,
+      connectionTimeoutMillis: 10_000,
+      keepAlive: true,
+    });
     const db = drizzleNodePostgres(pool, { schema }) as unknown as Db;
     closers.set(db, () => pool.end());
     return db;

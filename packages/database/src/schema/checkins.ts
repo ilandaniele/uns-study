@@ -49,6 +49,7 @@ export const checkIns = pgTable(
     index("idx_check_ins_seat_status").on(table.seatId, table.status),
     index("idx_check_ins_room_status").on(table.roomId, table.status),
     index("idx_check_ins_expires_at").on(table.expiresAt),
+    index("idx_check_ins_room_created").on(table.roomId, table.createdAt),
     // A photo's hash can verify at most one check-in ever — partial so unverified rows (most of
     // them, null hash) never collide with each other.
     uniqueIndex("uq_check_ins_verification_photo_sha256")

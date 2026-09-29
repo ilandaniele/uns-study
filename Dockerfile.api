@@ -43,9 +43,8 @@ COPY --from=deps /app/packages/database/node_modules ./packages/database/node_mo
 COPY --from=deps /app/apps/api/package.json ./apps/api/package.json
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=build /app/apps/api/dist ./apps/api/dist
-# `db:migrate` / `db:seed` run via `tsx` against TypeScript sources directly (no build step for
-# `@uns/database`), so the migrator/seed source and the SQL migrations themselves must ship too.
-COPY packages/database/src ./packages/database/src
+# Migrations + seed run inside the bundled API (main.ts, BOOT_MIGRATE_SEED=true), so only the SQL
+# migrations need to ship (resolved from the repo root via pnpm-workspace.yaml, copied above).
 COPY packages/database/migrations ./packages/database/migrations
 
 # Official Node images ship a non-root `node` user (uid 1000) — use it instead of provisioning one.
@@ -53,6 +52,4 @@ USER node
 
 EXPOSE 8080
 
-# Run tsx straight from the package's bin dir: no pnpm/corepack download at boot.
-WORKDIR /app/packages/database
-CMD ["sh", "-c", "./node_modules/.bin/tsx src/migrate.ts && ./node_modules/.bin/tsx src/seed.ts && cd /app && exec node apps/api/dist/main.js"]
+CMD ["node", "apps/api/dist/main.js"]

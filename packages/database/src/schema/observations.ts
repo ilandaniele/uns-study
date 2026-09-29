@@ -29,6 +29,8 @@ export const seatObservations = pgTable(
   (table) => [
     index("idx_seat_observations_seat_expires").on(table.seatId, table.expiresAt),
     index("idx_seat_observations_user_created").on(table.userId, table.createdAt),
+    index("idx_seat_observations_room_expires").on(table.roomId, table.expiresAt),
+    index("idx_seat_observations_room_created").on(table.roomId, table.createdAt),
   ],
 );
 

@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
-import { closeDb, createDb, migrate } from "@uns/database";
+import { closeDb, createDb, migrate, seedInitialRoom } from "@uns/database";
 import { resolveAppSecrets, resolveVapidKeys } from "./secrets.js";
 
 // Load the repo-root `.env` (if present) before anything else reads `process.env` — duplicated
@@ -29,6 +29,12 @@ async function bootstrap() {
     ? process.env.DB_AUTO_MIGRATE === "true" || process.env.DB_AUTO_MIGRATE === "1"
     : process.env.NODE_ENV !== "production";
   if (dbAutoMigrate) await migrate(secretsDb);
+  // Production (Fly) sets BOOT_MIGRATE_SEED=true: migrate + idempotent seed run in-process here,
+  // replacing the two `tsx` child processes the container used to spawn before every boot.
+  if (process.env.BOOT_MIGRATE_SEED === "true") {
+    if (!dbAutoMigrate) await migrate(secretsDb);
+    await seedInitialRoom(secretsDb);
+  }
   await resolveAppSecrets(secretsDb);
   await resolveVapidKeys(secretsDb);
   await closeDb(secretsDb);

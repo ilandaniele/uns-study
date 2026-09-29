@@ -42,6 +42,7 @@ export const seatDisputes = pgTable(
       .on(table.closesAt)
       .where(sql`status = 'OPEN'`),
     index("idx_seat_disputes_room").on(table.roomId),
+    index("idx_seat_disputes_room_status").on(table.roomId, table.status),
     index("idx_seat_disputes_check_in").on(table.checkInId),
   ],
 );
