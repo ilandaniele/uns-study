@@ -33,6 +33,8 @@ export class ApiRequestError extends Error {
  */
 /** Requests give up after this long so buttons never hang forever on a slow/booting server. */
 const REQUEST_TIMEOUT_MS = 20_000;
+/** Idempotent reads fail faster, since they're retried once anyway. */
+const GET_TIMEOUT_MS = 10_000;
 
 /** Thrown when the API didn't answer within {@link REQUEST_TIMEOUT_MS}. */
 export class ApiTimeoutError extends Error {
@@ -44,18 +46,32 @@ export class ApiTimeoutError extends Error {
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const method = (init?.method ?? "GET").toUpperCase();
-  const res = await fetchWithTimeout(path, init);
+  const isGet = method === "GET";
+  let res: Response;
+  try {
+    res = await fetchWithTimeout(path, init, isGet ? GET_TIMEOUT_MS : REQUEST_TIMEOUT_MS);
+  } catch (error) {
+    // A GET is safe to retry once after a dropped connection (TypeError from fetch), with jitter.
+    if (!isGet || !(error instanceof TypeError) || init?.signal?.aborted) throw error;
+    await retryDelay();
+    return parseResponse<T>(await fetchWithTimeout(path, init, GET_TIMEOUT_MS));
+  }
   // A GET that failed at the gateway (server restarting) is safe to retry once.
-  if (method === "GET" && (res.status === 502 || res.status === 503 || res.status === 504)) {
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    return parseResponse<T>(await fetchWithTimeout(path, init));
+  if (isGet && (res.status === 502 || res.status === 503 || res.status === 504)) {
+    await retryDelay();
+    return parseResponse<T>(await fetchWithTimeout(path, init, GET_TIMEOUT_MS));
   }
   return parseResponse<T>(res);
 }
 
-async function fetchWithTimeout(path: string, init?: RequestInit): Promise<Response> {
+/** Jittered 500-1500 ms pause before the single GET retry. */
+function retryDelay(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 1000));
+}
+
+async function fetchWithTimeout(path: string, init: RequestInit | undefined, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   const outerSignal = init?.signal;
   outerSignal?.addEventListener("abort", () => controller.abort(), { once: true });
   try {
@@ -63,8 +79,9 @@ async function fetchWithTimeout(path: string, init?: RequestInit): Promise<Respo
       ...init,
       signal: controller.signal,
       credentials: "include",
+      // Only requests with a body declare a content type (keeps GETs "simple" for CORS/proxies).
       headers: {
-        "Content-Type": "application/json",
+        ...(init?.body != null ? { "Content-Type": "application/json" } : {}),
         ...init?.headers,
       },
     });

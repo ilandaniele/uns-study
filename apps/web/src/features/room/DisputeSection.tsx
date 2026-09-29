@@ -73,10 +73,12 @@ function ActiveDispute({
   const canVote = me?.activeCheckIn != null;
 
   return (
-    <div role="status" className="border-t border-app pt-3">
+    <div className="border-t border-app pt-3">
       <h2 className="text-sm font-semibold text-main">{disputeKindTitle(dispute.kind)}</h2>
-      <p className="mt-1 text-sm text-muted">Se decide en {disputeCountdownLabel(dispute.closesAt, now)}</p>
-      <p className="mt-1 text-sm text-muted">
+      <p aria-live="off" className="mt-1 text-sm text-muted">
+        Se decide en {disputeCountdownLabel(dispute.closesAt, now)}
+      </p>
+      <p role="status" className="mt-1 text-sm text-muted">
         Está ahí: {dispute.votes.present} · No está: {dispute.votes.absent}
       </p>
       {dispute.iAmOpener ? (

@@ -24,12 +24,12 @@ export function DisputeChallengeBanner({ seatLabel, closesAt, pending, onStillHe
   }, []);
 
   return (
-    <div
-      role="alert"
-      className="flex flex-col gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between"
+    <div className="flex flex-col gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between"
     >
       <p className="font-medium">
-        Alguien dice que no estás en {seatLabel}. ¿Seguís ahí? Se decide en {disputeCountdownLabel(closesAt, now)}.
+        {/* Only the static sentence is announced; the per-second countdown must not re-trigger the live region. */}
+        <span role="alert">Alguien dice que no estás en {seatLabel}. ¿Seguís ahí?</span>{" "}
+        <span aria-live="off">Se decide en {disputeCountdownLabel(closesAt, now)}.</span>
       </p>
       <div className="flex gap-2">
         <button

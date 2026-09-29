@@ -13,6 +13,9 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_SOCKET_URL: process.env.NEXT_PUBLIC_SOCKET_URL || API_PROXY_TARGET.replace(/\/+$/, "") || "http://localhost:4000",
   },
+  async redirects() {
+    return [{ source: "/", destination: "/sala/principal", permanent: false }];
+  },
   async headers() {
     // The service worker must never be served from a cache, or a broken one could stick around.
     return [{ source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] }];

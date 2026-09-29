@@ -1,30 +1,21 @@
 "use client";
 
 import type { SeatDto } from "@uns/contracts";
-import { MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon, ArrowsCounterClockwiseIcon } from "@phosphor-icons/react/dist/ssr";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { TransformComponent, TransformWrapper, type ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
 import { AdSlot } from "@/components/AdSlot";
 import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
+import { ActiveCheckInBanner } from "@/features/room/ActiveCheckInBanner";
+import { RoomSkeleton } from "@/features/room/RoomSkeleton";
 import { AdminPresentBanner } from "@/features/room/AdminPresentBanner";
-import { DisputeChallengeBanner } from "@/features/room/DisputeChallengeBanner";
-import { DisputeWonBanner } from "@/features/room/DisputeWonBanner";
-import { EnableSeatFreedCta } from "@/features/room/EnableSeatFreedCta";
-import { ExtendBanner } from "@/features/room/ExtendBanner";
-import { MoveSeatDialog } from "@/features/room/MoveSeatDialog";
-import { MyCheckInBar } from "@/features/room/MyCheckInBar";
 import { Hero } from "@/features/room/Hero";
-import { HowToUseModal } from "@/features/room/HowToUseModal";
 import { RoomInfoPanel } from "@/features/room/RoomInfoPanel";
 import { RoomMap } from "@/features/room/RoomMap";
 import { RightPanelEmptyState } from "@/features/room/RightPanelEmptyState";
-import { SeatDetail } from "@/features/room/SeatDetail";
-import { SeatFreedToast } from "@/features/room/SeatFreedToast";
 import { SummaryCounters } from "@/features/room/SummaryCounters";
-import { TurnstileChallenge } from "@/features/room/TurnstileChallenge";
-import { checkInExpiryStatus, freedSeatsToastMessage, seatDisplayLabel, todayLabel } from "@/features/room/format";
+import { freedSeatsToastMessage, seatDisplayLabel, todayLabel } from "@/features/room/format";
 import { useDisputeWon } from "@/features/room/useDisputeWon";
 import { useIncumbentChallenge } from "@/features/room/useIncumbentChallenge";
 import { useRoomAlerts } from "@/features/room/useRoomAlerts";
@@ -40,9 +31,19 @@ import { useQrContext } from "@/lib/qr-context";
 import { getSocket } from "@/lib/socket";
 import { useMediaQuery } from "@/lib/use-media-query";
 
-export default function RoomPage() {
-  const params = useParams<{ slug: string }>();
-  const slug = params.slug;
+// Rarely-needed UI is split out of the initial bundle. Desktop never downloads the zoom library.
+const DisputeChallengeBanner = dynamic(() => import("@/features/room/DisputeChallengeBanner").then((m) => m.DisputeChallengeBanner));
+const DisputeWonBanner = dynamic(() => import("@/features/room/DisputeWonBanner").then((m) => m.DisputeWonBanner));
+const EnableSeatFreedCta = dynamic(() => import("@/features/room/EnableSeatFreedCta").then((m) => m.EnableSeatFreedCta));
+const HowToUseModal = dynamic(() => import("@/features/room/HowToUseModal").then((m) => m.HowToUseModal));
+const MoveSeatDialog = dynamic(() => import("@/features/room/MoveSeatDialog").then((m) => m.MoveSeatDialog));
+const SeatFreedToast = dynamic(() => import("@/features/room/SeatFreedToast").then((m) => m.SeatFreedToast));
+const TurnstileChallenge = dynamic(() => import("@/features/room/TurnstileChallenge").then((m) => m.TurnstileChallenge));
+const ZoomableMap = dynamic(() => import("@/features/room/ZoomableMap"));
+const loadSeatDetail = () => import("@/features/room/SeatDetail").then((m) => m.SeatDetail);
+const SeatDetail = dynamic(loadSeatDetail);
+
+export function RoomPageClient({ slug }: { slug: string }) {
   const isDesktop = useMediaQuery("(min-width: 768px)");
   // Three-column layout (left info panel / map / right detail panel) kicks in at lg; below that,
   // detail stays a bottom sheet and the info panel collapses into a compact header + list.
@@ -53,13 +54,28 @@ export default function RoomPage() {
   const { bySeatId: occupantsBySeatId, refetch: refetchOccupants } = useOccupants(slug);
   const { people } = usePeople(slug);
   const { highlightTableCode, qrToken } = useQrContext();
-  const socket = getSocket();
+  const socket = useMemo(() => getSocket(), []);
   const { toast, dismissToast, adminBanner, dismissAdminBanner } = useRoomAlerts();
   const searchParams = useSearchParams();
 
   useEffect(() => {
     trackEvent("room_view", { roomSlug: slug });
   }, [slug]);
+
+  // First load failed (no map yet): keep retrying with exponential backoff (2 s, 4 s ... capped at 30 s).
+  const [loadAttempts, setLoadAttempts] = useState(0);
+  const firstLoadFailed = !loading && !map && error != null;
+  useEffect(() => {
+    if (!firstLoadFailed) return;
+    const id = setTimeout(
+      () => {
+        setLoadAttempts((n) => n + 1);
+        refetch();
+      },
+      Math.min(2_000 * 2 ** loadAttempts, 30_000),
+    );
+    return () => clearTimeout(id);
+  }, [firstLoadFailed, loadAttempts, refetch]);
 
   const handleChanged = useCallback(() => {
     refetch();
@@ -84,7 +100,16 @@ export default function RoomPage() {
     respondDispute,
   } = useSeatActions(map, handleChanged);
 
-  const zoomRef = useRef<ReactZoomPanPinchRef>(null);
+  // The zoom wrapper is mobile-only; wait until the media queries have resolved so desktop never loads it.
+  const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot "hydrated" flag
+  useEffect(() => setMounted(true), []);
+  const preloadedDetail = useRef(false);
+  const preloadSeatDetail = useCallback(() => {
+    if (preloadedDetail.current) return;
+    preloadedDetail.current = true;
+    void loadSeatDetail();
+  }, []);
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
   const [showIdentityPrompt, setShowIdentityPrompt] = useState(false);
 
@@ -100,33 +125,7 @@ export default function RoomPage() {
     dispatchedSeatParam.current = true;
   }, [map, searchParams]);
 
-  // Ticks every 30s so the "¿Seguís acá?" banner's minutes-left stays fresh.
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 30_000);
-    return () => clearInterval(id);
-  }, []);
-
   const activeCheckIn = me?.activeCheckIn ?? null;
-  const expiryStatus = activeCheckIn ? checkInExpiryStatus(activeCheckIn.expiresAt, now) : null;
-  const locallyExpired = activeCheckIn != null && !expiryStatus;
-
-  // The active check-in expired locally (expiresAt passed); refetch /me so MY_SEAT clears once the
-  // server has processed the expiration too. Keyed on id+expiresAt (primitives, stable across
-  // refetches) and the `locallyExpired` boolean rather than the `activeCheckIn`/`expiryStatus`
-  // objects, so a refetch that comes back with the *same* still-expired check-in (e.g. clock skew,
-  // or a slow expiration job) can't re-trigger this effect and poll forever on every render — one
-  // shot after 5s, then at most every 15s, until the check-in itself actually changes.
-  const activeCheckInKey = activeCheckIn ? `${activeCheckIn.id}:${activeCheckIn.expiresAt}` : null;
-  useEffect(() => {
-    if (!locallyExpired) return;
-    const initial = setTimeout(() => refetch(), 5_000);
-    const poll = setInterval(() => refetch(), 15_000);
-    return () => {
-      clearTimeout(initial);
-      clearInterval(poll);
-    };
-  }, [activeCheckInKey, locallyExpired, refetch]);
 
   const mySeatId = activeCheckIn?.seatId ?? null;
   const avatarBySeatId = useMemo(() => {
@@ -134,26 +133,29 @@ export default function RoomPage() {
     for (const [seatId, occupant] of occupantsBySeatId) if (occupant.avatarUrl) photos.set(seatId, occupant.avatarUrl);
     return photos;
   }, [occupantsBySeatId]);
-  const selectedSeat = map?.seats.find((seat) => seat.id === selectedSeatId) ?? null;
-  const selectedTable = selectedSeat ? map?.tables.find((t) => t.id === selectedSeat.tableId) ?? null : null;
+  const seatById = useMemo(() => new Map((map?.seats ?? []).map((seat) => [seat.id, seat])), [map]);
+  const tableById = useMemo(() => new Map((map?.tables ?? []).map((table) => [table.id, table])), [map]);
+  const selectedSeat = (selectedSeatId ? seatById.get(selectedSeatId) : null) ?? null;
+  const selectedTable = (selectedSeat ? tableById.get(selectedSeat.tableId) : null) ?? null;
   // Other identified occupants seated at the same table as the selected seat, for "Personas cercanas".
-  const nearbyOccupants = selectedTable
-    ? (map?.seats ?? [])
-        .filter((seat) => seat.tableId === selectedTable.id && seat.id !== selectedSeat?.id)
-        .map((seat) => occupantsBySeatId.get(seat.id))
-        .filter((occupant): occupant is NonNullable<typeof occupant> => occupant != null)
-    : [];
+  const nearbyOccupants = useMemo(() => {
+    if (!selectedTable) return [];
+    return (map?.seats ?? [])
+      .filter((seat) => seat.tableId === selectedTable.id && seat.id !== selectedSeatId)
+      .map((seat) => occupantsBySeatId.get(seat.id))
+      .filter((occupant): occupant is NonNullable<typeof occupant> => occupant != null);
+  }, [map, selectedTable, selectedSeatId, occupantsBySeatId]);
 
   const { dispute: selectedDispute, setDispute: setSelectedDispute } = useSeatDispute(selectedSeat?.id ?? "", selectedSeat?.dispute ?? null);
   const { challenge, clear: clearChallenge } = useIncumbentChallenge(map, me);
-  const challengeSeat = challenge ? map?.seats.find((seat) => seat.id === challenge.seatId) ?? null : null;
-  const challengeTable = challengeSeat ? map?.tables.find((t) => t.id === challengeSeat.tableId) ?? null : null;
+  const challengeSeat = challenge ? seatById.get(challenge.seatId) ?? null : null;
+  const challengeTable = challengeSeat ? tableById.get(challengeSeat.tableId) ?? null : null;
 
   const { won: disputeWon, clear: clearDisputeWon } = useDisputeWon();
-  const wonSeat = disputeWon ? map?.seats.find((seat) => seat.id === disputeWon.seatId) ?? null : null;
-  const wonTable = wonSeat ? map?.tables.find((t) => t.id === wonSeat.tableId) ?? null : null;
-  const mySeat = activeCheckIn ? map?.seats.find((seat) => seat.id === activeCheckIn.seatId) ?? null : null;
-  const myTable = mySeat ? map?.tables.find((t) => t.id === mySeat.tableId) ?? null : null;
+  const wonSeat = disputeWon ? seatById.get(disputeWon.seatId) ?? null : null;
+  const wonTable = wonSeat ? tableById.get(wonSeat.tableId) ?? null : null;
+  const mySeat = activeCheckIn ? seatById.get(activeCheckIn.seatId) ?? null : null;
+  const myTable = mySeat ? tableById.get(mySeat.tableId) ?? null : null;
 
   // A challenge/dispute-won prompt is stale the moment its vote is reported closed — e.g. the
   // incumbent's "Sigo acá"/"Me fui" or the opener's "Estoy acá" landed just after it resolved
@@ -166,25 +168,30 @@ export default function RoomPage() {
     }
   }, [actionError, clearChallenge, clearDisputeWon]);
 
-  function handleSelectSeat(seat: SeatDto) {
-    const isSame = seat.id === selectedSeatId;
-    setSelectedSeatId(isSame ? null : seat.id);
-    setShowIdentityPrompt(false);
-    clearError();
-  }
+  const handleSelectSeat = useCallback(
+    (seat: SeatDto) => {
+      setSelectedSeatId((current) => (current === seat.id ? null : seat.id));
+      setShowIdentityPrompt(false);
+      clearError();
+    },
+    [clearError],
+  );
 
-  function closeDetail() {
+  const closeDetail = useCallback(() => {
     setSelectedSeatId(null);
     setShowIdentityPrompt(false);
     clearError();
-  }
+  }, [clearError]);
+
+  const openHowTo = useCallback(() => setShowHowTo(true), []);
+  const closeHowTo = useCallback(() => setShowHowTo(false), []);
 
   // Target seat for a pending "Ya tenés otro lugar marcado" confirmation — set from either the
   // seat detail's "Estoy acá" or the dispute-won banner's "Estoy acá" (D3: both go through the
   // same move confirmation when the caller already holds another seat).
   const [confirmMove, setConfirmMove] = useState<{ seatId: string; fromDisputeWon: boolean } | null>(null);
-  const moveTargetSeat = confirmMove ? map?.seats.find((seat) => seat.id === confirmMove.seatId) ?? null : null;
-  const moveTargetTable = moveTargetSeat ? map?.tables.find((t) => t.id === moveTargetSeat.tableId) ?? null : null;
+  const moveTargetSeat = confirmMove ? seatById.get(confirmMove.seatId) ?? null : null;
+  const moveTargetTable = moveTargetSeat ? tableById.get(moveTargetSeat.tableId) ?? null : null;
 
   function attemptCheckIn(seatId: string, fromDisputeWon: boolean) {
     // Already seated elsewhere: ask before moving (the API frees the old seat on move).
@@ -258,15 +265,39 @@ export default function RoomPage() {
   }
 
   if (loading) {
-    return <main className="p-6 text-center text-muted">Cargando sala…</main>;
+    return <RoomSkeleton />;
   }
 
   // Only a total loss (no map at all — first load failed) blocks the whole page. Once we have a
   // map, a later fetch failure (e.g. a dropped connection) shouldn't yank it away from under
   // whoever's looking at it — that's handled as a small non-blocking notice below instead.
   if (!map) {
-    return <main className="p-6 text-center text-red-600">{error ?? "No encontramos esa sala."}</main>;
+    return (
+      <main className="flex flex-col items-center gap-3 p-6 text-center">
+        <p role="alert" className="text-red-600">
+          {error ?? "No encontramos esa sala."}
+        </p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="rounded-lg border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-[var(--surface-2)]"
+        >
+          Reintentar
+        </button>
+      </main>
+    );
   }
+
+  const roomMap = (
+    <RoomMap
+      map={map}
+      mySeatId={mySeatId}
+      selectedSeatId={selectedSeatId}
+      onSelectSeat={handleSelectSeat}
+      highlightTableCode={highlightTableCode}
+      avatarBySeatId={avatarBySeatId}
+    />
+  );
 
   const detail = selectedSeat ? (
     <SeatDetail
@@ -292,7 +323,6 @@ export default function RoomPage() {
       onOpenDispute={(kind) => void handleOpenDispute(kind)}
       onVoteDispute={(vote) => void handleVoteDispute(vote)}
       onChanged={handleChanged}
-      now={now}
       nearbyOccupants={nearbyOccupants}
       viewBoxWidth={map.viewBox.width}
     />
@@ -351,31 +381,22 @@ export default function RoomPage() {
           />
         </div>
       ) : null}
-      {expiryStatus?.shouldPromptExtend ? (
-        <div className="order-0 sticky top-0 z-50 lg:static lg:z-auto lg:col-span-3">
-          <ExtendBanner
-            minutesLeft={expiryStatus.minutesLeft}
-            pending={pending}
-            onExtend={() => void extend()}
-            onCheckOut={() => void checkOut()}
-          />
-        </div>
-      ) : activeCheckIn ? (
-        <div className="order-0 lg:col-span-3">
-          <MyCheckInBar
-            seatLabel={seatDisplayLabel(myTable, mySeat?.code ?? activeCheckIn.seatCode, mySeat?.seatNumber ?? 0)}
-            expiresAt={activeCheckIn.expiresAt}
-            pending={pending}
-            onShow={() => setSelectedSeatId(activeCheckIn.seatId)}
-            onRelease={() => void checkOut()}
-          />
-        </div>
+      {activeCheckIn ? (
+        <ActiveCheckInBanner
+          activeCheckIn={activeCheckIn}
+          seatLabel={seatDisplayLabel(myTable, mySeat?.code ?? activeCheckIn.seatCode, mySeat?.seatNumber ?? 0)}
+          pending={pending}
+          onShow={() => setSelectedSeatId(activeCheckIn.seatId)}
+          onExtend={() => void extend()}
+          onCheckOut={() => void checkOut()}
+          refetch={refetch}
+        />
       ) : null}
 
       {/* Desktop (lg+) gets the full left info panel; mobile/tablet gets a compact header + counters above the map. */}
       <section className="order-1 flex flex-col gap-4 lg:order-1">
         {isLargeDesktop ? (
-          <RoomInfoPanel map={map} people={people} connected={connected} onOpenHowTo={() => setShowHowTo(true)} />
+          <RoomInfoPanel map={map} people={people} connected={connected} onOpenHowTo={openHowTo} />
         ) : (
           <>
             <div>
@@ -397,61 +418,14 @@ export default function RoomPage() {
       </section>
 
       <section className="order-2 flex flex-col gap-3 lg:order-2">
-        <div className="relative h-[70dvh] w-full overflow-hidden rounded-3xl border border-app bg-surface shadow-sm md:h-[80dvh] lg:mx-auto lg:aspect-[5/8] lg:h-[82dvh] lg:w-auto lg:max-w-full">
-          {isDesktop ? (
-            <div className="flex h-full w-full items-center justify-center">
-              <RoomMap
-                map={map}
-                mySeatId={mySeatId}
-                selectedSeatId={selectedSeatId}
-                onSelectSeat={handleSelectSeat}
-                highlightTableCode={highlightTableCode}
-                avatarBySeatId={avatarBySeatId}
-              />
-            </div>
+        <div
+          onPointerDownCapture={preloadSeatDetail}
+          className="relative h-[70dvh] w-full overflow-hidden rounded-3xl border border-app bg-surface shadow-sm md:h-[80dvh] lg:mx-auto lg:aspect-[5/8] lg:h-[82dvh] lg:w-auto lg:max-w-full"
+        >
+          {isDesktop || !mounted ? (
+            <div className="flex h-full w-full items-center justify-center">{roomMap}</div>
           ) : (
-            <>
-              <TransformWrapper ref={zoomRef} minScale={0.5} maxScale={4} initialScale={1} limitToBounds>
-                <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }} contentStyle={{ width: "100%", height: "100%" }}>
-                  <RoomMap
-                    map={map}
-                    mySeatId={mySeatId}
-                    selectedSeatId={selectedSeatId}
-                    onSelectSeat={handleSelectSeat}
-                    highlightTableCode={highlightTableCode}
-                avatarBySeatId={avatarBySeatId}
-                  />
-                </TransformComponent>
-              </TransformWrapper>
-              <div className="absolute right-3 top-3 flex flex-col overflow-hidden rounded-xl border border-app bg-surface shadow-md">
-                <button
-                  type="button"
-                  onClick={() => zoomRef.current?.zoomIn()}
-                  aria-label="Acercar"
-                  className="flex h-10 w-10 items-center justify-center text-main hover:bg-[var(--surface-2)]"
-                >
-                  <MagnifyingGlassPlusIcon aria-hidden="true" size={20} />
-                </button>
-                <div className="h-px bg-[var(--border)]" />
-                <button
-                  type="button"
-                  onClick={() => zoomRef.current?.zoomOut()}
-                  aria-label="Alejar"
-                  className="flex h-10 w-10 items-center justify-center text-main hover:bg-[var(--surface-2)]"
-                >
-                  <MagnifyingGlassMinusIcon aria-hidden="true" size={20} />
-                </button>
-                <div className="h-px bg-[var(--border)]" />
-                <button
-                  type="button"
-                  onClick={() => zoomRef.current?.resetTransform()}
-                  aria-label="Restablecer zoom"
-                  className="flex h-10 w-10 items-center justify-center text-main hover:bg-[var(--surface-2)]"
-                >
-                  <ArrowsCounterClockwiseIcon aria-hidden="true" size={20} />
-                </button>
-              </div>
-            </>
+            <ZoomableMap>{roomMap}</ZoomableMap>
           )}
         </div>
         <AdSlot placement="room-bottom" />
@@ -485,7 +459,7 @@ export default function RoomPage() {
         </div>
       ) : null}
 
-      <HowToUseModal open={showHowTo} onClose={() => setShowHowTo(false)} />
+      <HowToUseModal open={showHowTo} onClose={closeHowTo} />
       {confirmMove && activeCheckIn ? (
         <MoveSeatDialog
           fromLabel={seatDisplayLabel(myTable, mySeat?.code ?? activeCheckIn.seatCode, mySeat?.seatNumber ?? 0)}

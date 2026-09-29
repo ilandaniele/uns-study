@@ -2,15 +2,14 @@
 
 import type { DisputeKind, DisputeVote, MeDto, SeatDisputeDto, SeatDto, SeatOccupantDto, TableDto } from "@uns/contracts";
 import { ArmchairIcon, ChairIcon, ShieldCheckIcon, TableIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { MessageOccupantButton } from "./MessageOccupantButton";
 import type { ReactNode } from "react";
-import { DisputeSection } from "./DisputeSection";
 import { IdentityPrompt } from "./IdentityPrompt";
 import { NearbyOccupants } from "./NearbyOccupants";
-import { PhotoVerifyCard } from "./PhotoVerifyCard";
-import { TableNameSection } from "./TableNameSection";
 import { TurnstileChallenge } from "./TurnstileChallenge";
+import { useNow } from "@/lib/use-now";
 import {
   confidenceWording,
   recencyLabel,
@@ -20,6 +19,11 @@ import {
   tableSideLabel,
   verifiedUntilLabel,
 } from "./format";
+
+// Secondary sections load lazily so the first seat tap only pays for the core detail panel.
+const DisputeSection = dynamic(() => import("./DisputeSection").then((m) => m.DisputeSection));
+const PhotoVerifyCard = dynamic(() => import("./PhotoVerifyCard").then((m) => m.PhotoVerifyCard));
+const TableNameSection = dynamic(() => import("./TableNameSection").then((m) => m.TableNameSection));
 
 export interface SeatDetailProps {
   seat: SeatDto;
@@ -50,8 +54,6 @@ export interface SeatDetailProps {
   onVoteDispute: (vote: DisputeVote) => void;
   /** Refetches the room/me snapshot — passed to `PhotoVerifyCard` so a photo result updates the map. */
   onChanged: () => void;
-  /** Caller-supplied clock (ticks every 30s in the room page) — keeps this component pure. */
-  now: Date;
   /** Other identified occupants at the same table (from `GET /rooms/:id/occupants`), for "Personas cercanas". */
   nearbyOccupants?: SeatOccupantDto[];
   /** SVG viewBox width, used to derive "(lado izquierdo/derecho)" for main tables. */
@@ -81,10 +83,10 @@ export function SeatDetail({
   onOpenDispute,
   onVoteDispute,
   onChanged,
-  now,
   nearbyOccupants = [],
   viewBoxWidth = 1000,
 }: SeatDetailProps) {
+  const now = useNow(30_000);
   const isBar = table?.type === "WALL_BAR";
   const label = seatDisplayLabel(table, seat.code, seat.seatNumber);
   const recency = recencyLabel(seat);
