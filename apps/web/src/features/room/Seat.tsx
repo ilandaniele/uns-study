@@ -7,14 +7,14 @@ import { AVATAR_BACKDROP, SILHOUETTE_BODY, SILHOUETTE_HEAD, seatAvatarRender } f
 
 // Invisible enlarged tap target (mobile accessibility) — doesn't affect visual spacing since
 // seats are spaced well apart (see packages/database/src/layout.ts) and 2*HIT_RADIUS < that gap.
-const HIT_RADIUS = 26;
+const HIT_RADIUS = 28;
 
 // Glossy sphere footprint, same for main-table chairs and wall-bar stools (the mockup draws
 // both as top-down colored dots) — RING_R is the dark chair/stool base peeking out underneath.
-const SEAT_R = 15;
+const SEAT_R = 19;
 const RING_R = SEAT_R + 4;
 // Occupant photo badge radius — larger than the seat, still under half the seat spacing.
-const PHOTO_R = 20;
+const PHOTO_R = 25;
 
 // One shared radial gradient per status, defined once in RoomMap's <defs> and referenced here —
 // keeps 108 seats cheap to paint (no per-seat filters/gradients).
@@ -133,7 +133,7 @@ export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, is
         textAnchor="middle"
         dominantBaseline="central"
         y={1}
-        fontSize={11}
+        fontSize={14}
         fontWeight={700}
         fill="white"
         transform={`rotate(${-seat.rotation})`}
