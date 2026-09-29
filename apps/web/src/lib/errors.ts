@@ -1,4 +1,4 @@
-import { ApiRequestError } from "./api";
+import { ApiRequestError, ApiTimeoutError } from "./api";
 import { GeolocationRequestError } from "./geolocation";
 
 /**
@@ -6,6 +6,9 @@ import { GeolocationRequestError } from "./geolocation";
  * to the exact Spanish copy from 06_UI_UX_SPEC.md §6.
  */
 export function describeActionError(error: unknown): string {
+  if (error instanceof ApiTimeoutError) {
+    return "El servidor tardó demasiado en responder. Probá de nuevo en unos segundos.";
+  }
   if (error instanceof GeolocationRequestError) {
     if (error.code === "PERMISSION_DENIED") {
       return `Necesitamos tu ubicación sólo para comprobar que estás cerca de la sala. Podés seguir mirando el mapa sin compartirla. Para reactivarla, ${reenableLocationTip()}.`;

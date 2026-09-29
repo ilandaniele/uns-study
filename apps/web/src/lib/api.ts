@@ -31,15 +31,52 @@ export class ApiRequestError extends Error {
  * Thin wrapper around `fetch` for the Sala de Estudio UNS API.
  * Always sends cookies (Better Auth session) and parses the shared ApiError shape on failure.
  */
+/** Requests give up after this long so buttons never hang forever on a slow/booting server. */
+const REQUEST_TIMEOUT_MS = 20_000;
+
+/** Thrown when the API didn't answer within {@link REQUEST_TIMEOUT_MS}. */
+export class ApiTimeoutError extends Error {
+  constructor() {
+    super("El servidor tardó demasiado en responder.");
+    this.name = "ApiTimeoutError";
+  }
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
-  });
+  const method = (init?.method ?? "GET").toUpperCase();
+  const res = await fetchWithTimeout(path, init);
+  // A GET that failed at the gateway (server restarting) is safe to retry once.
+  if (method === "GET" && (res.status === 502 || res.status === 503 || res.status === 504)) {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    return parseResponse<T>(await fetchWithTimeout(path, init));
+  }
+  return parseResponse<T>(res);
+}
+
+async function fetchWithTimeout(path: string, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const outerSignal = init?.signal;
+  outerSignal?.addEventListener("abort", () => controller.abort(), { once: true });
+  try {
+    return await fetch(`${API_URL}${path}`, {
+      ...init,
+      signal: controller.signal,
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...init?.headers,
+      },
+    });
+  } catch (error) {
+    if (controller.signal.aborted && !outerSignal?.aborted) throw new ApiTimeoutError();
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function parseResponse<T>(res: Response): Promise<T> {
 
   if (!res.ok) {
     let body: ApiError | null = null;

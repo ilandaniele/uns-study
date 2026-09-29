@@ -38,6 +38,10 @@ export function buildAuth(db: Db) {
           defaultCookieAttributes: env.crossSiteCookies
             ? { sameSite: "none", secure: true }
             : { sameSite: "lax", secure: true },
+          // Requests arrive via Vercel's rewrite, which sets X-Forwarded-For to the visitor's IP
+          // (Fly appends Vercel's own IP after it). Better Auth takes the first entry, so its
+          // rate limits are per visitor instead of one bucket shared by everyone.
+          ipAddress: { ipAddressHeaders: ["x-forwarded-for"] },
         }
       : undefined,
   });
