@@ -1,4 +1,4 @@
-import type { RoomMapDto, RoomSummary, SeatDisputeLiteDto, SeatDto, SeatStateChangedEvent, TableNicknameChangedEvent } from "@uns/contracts";
+import type { CheckInDto, RoomMapDto, RoomSummary, SeatDisputeLiteDto, SeatDto, SeatStateChangedEvent, TableNicknameChangedEvent } from "@uns/contracts";
 
 /**
  * Client-side merge rules for room seat state. REST snapshots and `seat:state-changed` socket
@@ -84,4 +84,82 @@ export function summarize(roomId: string, seats: SeatDto[]): RoomSummary {
     else summary.unknown += 1;
   }
   return summary;
+}
+
+// ---- Optimistic updates ----
+
+/** Mirrors the API's check-in length (`CHECKIN_MINUTES`). */
+const CHECKIN_MINUTES = 60;
+
+/** Confidence shown for an optimistic seat; the socket event / snapshot replaces it with the server's. */
+const OPTIMISTIC_CONFIDENCE = 0.9;
+
+/** Stamp for a seat that was never updated: later than "never", earlier than any real server time. */
+const EPOCH_PLUS_1MS = "1970-01-01T00:00:00.001Z";
+
+/** What an optimistic seat change replaced, so it can be settled or rolled back. */
+export interface SeatPatch {
+  seatId: string;
+  previous: SeatDto;
+  /** The `lastUpdatedAt` written by the optimistic change; identifies "nobody touched the seat since". */
+  stamp: string;
+}
+
+function withSeat(map: RoomMapDto, seatId: string, update: (seat: SeatDto) => SeatDto): RoomMapDto {
+  const seats = map.seats.map((seat) => (seat.id === seatId ? update(seat) : seat));
+  return { ...map, seats, summary: summarize(map.room.id, seats) };
+}
+
+/**
+ * Optimistically sets a seat's status. The stamp is the seat's `lastUpdatedAt` + 1 ms (no client
+ * clock involved), so an older snapshot can't overwrite it while any real server event — which is
+ * always later — still can.
+ */
+export function applyOptimisticSeat(
+  map: RoomMapDto | null,
+  seatId: string,
+  status: SeatDto["status"],
+): { map: RoomMapDto | null; patch: SeatPatch | null } {
+  const previous = map?.seats.find((seat) => seat.id === seatId);
+  if (!map || !previous) return { map, patch: null };
+  const stamp = previous.lastUpdatedAt ? new Date(ts(previous.lastUpdatedAt) + 1).toISOString() : EPOCH_PLUS_1MS;
+  const next = withSeat(map, seatId, (seat) => ({ ...seat, status, confidence: OPTIMISTIC_CONFIDENCE, lastUpdatedAt: stamp, verified: false }));
+  return { map: next, patch: { seatId, previous, stamp } };
+}
+
+/** Request succeeded: if no event/snapshot replaced the optimistic seat, hand its timestamp back so the next real update applies. */
+export function settleOptimisticSeat(map: RoomMapDto | null, patch: SeatPatch | null): RoomMapDto | null {
+  if (!map || !patch) return map;
+  const current = map.seats.find((seat) => seat.id === patch.seatId);
+  if (!current || current.lastUpdatedAt !== patch.stamp) return map;
+  return withSeat(map, patch.seatId, (seat) => ({ ...seat, lastUpdatedAt: patch.previous.lastUpdatedAt }));
+}
+
+/** Request failed: restore the previous seat, unless something newer already replaced the optimistic state. */
+export function rollbackOptimisticSeat(map: RoomMapDto | null, patch: SeatPatch | null): RoomMapDto | null {
+  if (!map || !patch) return map;
+  const current = map.seats.find((seat) => seat.id === patch.seatId);
+  if (!current || current.lastUpdatedAt !== patch.stamp) return map;
+  return withSeat(map, patch.seatId, () => patch.previous);
+}
+
+/** Placeholder `activeCheckIn` shown until the POST response (the real DTO) replaces it. */
+export function buildOptimisticCheckIn(seat: SeatDto, roomId: string, showIdentity: boolean, nowMs: number): CheckInDto {
+  return {
+    id: `optimistic-${seat.id}`,
+    roomId,
+    seatId: seat.id,
+    seatCode: seat.code,
+    status: "ACTIVE",
+    startedAt: new Date(nowMs).toISOString(),
+    expiresAt: new Date(nowMs + CHECKIN_MINUTES * 60_000).toISOString(),
+    showIdentity,
+    verifiedAt: null,
+    verificationExpiresAt: null,
+  };
+}
+
+/** Optimistic "Seguir acá": a fresh full-length window from now, as the API grants. */
+export function extendCheckIn(checkIn: CheckInDto, nowMs: number): CheckInDto {
+  return { ...checkIn, expiresAt: new Date(nowMs + CHECKIN_MINUTES * 60_000).toISOString() };
 }

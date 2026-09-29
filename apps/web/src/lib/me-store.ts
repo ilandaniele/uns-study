@@ -23,6 +23,11 @@ export function refreshMe(): Promise<MeDto> {
   return meResource.refresh();
 }
 
+/** Patches the cached `/me` locally (optimistic check-in/checkout/extend); no-op until `/me` has loaded. */
+export function mutateMe(updater: (current: MeDto) => MeDto): void {
+  meResource.mutate(updater);
+}
+
 /** Forget the cached identity (sign-in/out, account deletion); mounted `useMe` hooks refetch. */
 export function invalidateMe(): void {
   meResource.invalidate();

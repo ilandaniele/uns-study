@@ -51,7 +51,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
   const isLargeDesktop = useMediaQuery("(min-width: 1024px)");
   const [showHowTo, setShowHowTo] = useState(false);
 
-  const { map, me, connected, loading, error, refetch } = useRoomState(slug);
+  const { map, me, connected, loading, error, refetch, updateMap } = useRoomState(slug);
   const { bySeatId: occupantsBySeatId, markedBySeatId, refetch: refetchOccupants } = useOccupants(slug);
   const { people } = usePeople(slug);
   const { highlightTableCode, qrToken } = useQrContext();
@@ -99,7 +99,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
     openDispute,
     voteDispute,
     respondDispute,
-  } = useSeatActions(map, handleChanged);
+  } = useSeatActions(map, { updateMap, refetch, refetchOccupants });
 
   // The zoom wrapper is mobile-only; wait until the media queries have resolved so desktop never loads it.
   const [mounted, setMounted] = useState(false);

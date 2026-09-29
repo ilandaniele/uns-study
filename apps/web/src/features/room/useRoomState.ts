@@ -21,6 +21,8 @@ export interface RoomState {
   loading: boolean;
   error: string | null;
   refetch: () => void;
+  /** Functional update of the map, for optimistic changes from `useSeatActions`. */
+  updateMap: (updater: (prev: RoomMapDto | null) => RoomMapDto | null) => void;
 }
 
 /** Last map per slug, so revisiting the room paints immediately while it revalidates. */
@@ -92,9 +94,10 @@ export function useRoomState(slug: string): RoomState {
 
     const onSeatStateChanged = (event: SeatStateChangedEvent) => {
       setMap((prev) => applySeatEvent(prev, event));
-      // The change is on the caller's own active check-in seat (e.g. it was cancelled by a
-      // resolved dispute) — refresh /me so a ghost MyCheckInBar/MY_SEAT highlight doesn't linger.
-      if (meRef.current?.activeCheckIn?.seatId === event.seatId) void refreshMe().catch(() => undefined);
+      // The caller's own seat stopped being OCCUPIED (e.g. its check-in was cancelled by a resolved
+      // dispute) — refresh /me so a ghost MyCheckInBar/MY_SEAT highlight doesn't linger. OCCUPIED
+      // is what our own check-in/extend produces, and those already updated /me from the response.
+      if (event.status !== "OCCUPIED" && meRef.current?.activeCheckIn?.seatId === event.seatId) void refreshMe().catch(() => undefined);
     };
 
     const onSummaryChanged = (summary: RoomMapDto["summary"]) => {
@@ -149,5 +152,5 @@ export function useRoomState(slug: string): RoomState {
     });
   }, [roomId, connected, loadMap]);
 
-  return { map, me, connected, loading: mapLoading || meLoading, error, refetch: load };
+  return { map, me, connected, loading: mapLoading || meLoading, error, refetch: load, updateMap: setMap };
 }

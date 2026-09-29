@@ -16,6 +16,8 @@ export interface Resource<T> {
   load: () => Promise<T>;
   /** Always revalidates (sharing an in-flight request) while keeping the last value visible. */
   refresh: () => Promise<T>;
+  /** Replaces the cached value locally (optimistic updates / POST responses); no-op until a value exists. */
+  mutate: (updater: (current: T) => T) => void;
   /** Drops the cached value and discards any in-flight result; subscribers see `data: undefined`. */
   invalidate: () => void;
 }
@@ -68,6 +70,10 @@ export function createResource<T>(fetcher: () => Promise<T>): Resource<T> {
       return refresh();
     },
     refresh,
+    mutate(updater) {
+      if (state.data === undefined) return;
+      set({ ...state, data: updater(state.data) });
+    },
     invalidate() {
       generation += 1;
       inflight = null;

@@ -1,6 +1,15 @@
 import type { RoomMapDto, SeatDto, SeatStateChangedEvent, TableDto } from "@uns/contracts";
 import { describe, expect, it } from "vitest";
-import { applySeatEvent, applyTableNicknameChanged, mergeSnapshot } from "./seat-merge";
+import {
+  applyOptimisticSeat,
+  applySeatEvent,
+  applyTableNicknameChanged,
+  buildOptimisticCheckIn,
+  extendCheckIn,
+  mergeSnapshot,
+  rollbackOptimisticSeat,
+  settleOptimisticSeat,
+} from "./seat-merge";
 
 const ROOM = "room-1";
 
@@ -100,5 +109,76 @@ describe("applyTableNicknameChanged", () => {
 
   it("returns null unchanged", () => {
     expect(applyTableNicknameChanged(null, { tableId: "t1", nickname: "x" })).toBeNull();
+  });
+});
+
+describe("optimistic seat changes", () => {
+  const base = () => map([seat("a", "UNKNOWN", null), seat("b", "FREE", "2026-01-01T10:00:00.000Z")]);
+
+  it("sets status, recounts the summary and stamps just after the previous update", () => {
+    const { map: next, patch } = applyOptimisticSeat(base(), "b", "OCCUPIED");
+    const b = next!.seats.find((s) => s.id === "b")!;
+    expect(b.status).toBe("OCCUPIED");
+    expect(b.lastUpdatedAt).toBe("2026-01-01T10:00:00.001Z");
+    expect(next!.summary.occupied).toBe(1);
+    expect(next!.summary.free).toBe(0);
+    expect(patch?.previous.status).toBe("FREE");
+  });
+
+  it("is a no-op for unknown seats", () => {
+    const m = base();
+    const result = applyOptimisticSeat(m, "zzz", "FREE");
+    expect(result.map).toBe(m);
+    expect(result.patch).toBeNull();
+  });
+
+  it("is not overwritten by an older snapshot but yields to a real server event", () => {
+    const { map: optimistic } = applyOptimisticSeat(base(), "b", "OCCUPIED");
+    const stale = mergeSnapshot(optimistic, base());
+    expect(stale.seats.find((s) => s.id === "b")!.status).toBe("OCCUPIED");
+    const evented = applySeatEvent(optimistic, event("b", "FREE", "2026-01-01T10:00:05.000Z"));
+    expect(evented!.seats.find((s) => s.id === "b")!.status).toBe("FREE");
+  });
+
+  it("rolls back to the previous seat on failure", () => {
+    const { map: optimistic, patch } = applyOptimisticSeat(base(), "b", "OCCUPIED");
+    const rolled = rollbackOptimisticSeat(optimistic, patch);
+    expect(rolled!.seats.find((s) => s.id === "b")).toEqual(base().seats[1]);
+    expect(rolled!.summary.free).toBe(1);
+  });
+
+  it("does not roll back over a newer socket event", () => {
+    const { map: optimistic, patch } = applyOptimisticSeat(base(), "b", "OCCUPIED");
+    const newer = applySeatEvent(optimistic, event("b", "UNCERTAIN", "2026-01-01T10:00:05.000Z"));
+    expect(rollbackOptimisticSeat(newer, patch)).toBe(newer);
+  });
+
+  it("settle hands the old timestamp back only if nothing replaced the optimistic seat", () => {
+    const { map: optimistic, patch } = applyOptimisticSeat(base(), "b", "OCCUPIED");
+    const settled = settleOptimisticSeat(optimistic, patch);
+    const b = settled!.seats.find((s) => s.id === "b")!;
+    expect(b.status).toBe("OCCUPIED");
+    expect(b.lastUpdatedAt).toBe("2026-01-01T10:00:00.000Z");
+    const newer = applySeatEvent(optimistic, event("b", "FREE", "2026-01-01T10:00:05.000Z"));
+    expect(settleOptimisticSeat(newer, patch)).toBe(newer);
+  });
+
+  it("stamps never-updated seats with a value any server event beats", () => {
+    const { map: optimistic } = applyOptimisticSeat(base(), "a", "FREE");
+    const evented = applySeatEvent(optimistic, event("a", "OCCUPIED", "2026-01-01T10:00:00.000Z"));
+    expect(evented!.seats.find((s) => s.id === "a")!.status).toBe("OCCUPIED");
+  });
+});
+
+describe("optimistic check-in helpers", () => {
+  it("builds an ACTIVE 60-minute check-in for the seat", () => {
+    const checkIn = buildOptimisticCheckIn(seat("a", "UNKNOWN", null), ROOM, true, Date.parse("2026-01-01T10:00:00.000Z"));
+    expect(checkIn).toMatchObject({ seatId: "a", seatCode: "a", roomId: ROOM, status: "ACTIVE", showIdentity: true });
+    expect(checkIn.expiresAt).toBe("2026-01-01T11:00:00.000Z");
+  });
+
+  it("extends to a fresh 60 minutes from now", () => {
+    const checkIn = buildOptimisticCheckIn(seat("a", "UNKNOWN", null), ROOM, false, Date.parse("2026-01-01T10:00:00.000Z"));
+    expect(extendCheckIn(checkIn, Date.parse("2026-01-01T10:50:00.000Z")).expiresAt).toBe("2026-01-01T11:50:00.000Z");
   });
 });
