@@ -29,6 +29,7 @@ export function useNotificationPreferences() {
   useEffect(() => {
     // Preferences are per-account; anonymous visitors would only get a 401.
     if (!signedIn) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetch on sign-in, same pattern as the other hooks
     void load();
   }, [load, signedIn]);
 
