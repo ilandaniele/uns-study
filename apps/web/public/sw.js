@@ -3,7 +3,7 @@
 // anyway) or any cross-origin request — PostgreSQL/the API stay the single source of truth.
 // Bump CACHE_VERSION whenever this file (or what it caches) changes — `activate` below deletes any
 // cache under the old name, so a stale shell/build asset can never survive a deploy.
-const CACHE_VERSION = "v4";
+const CACHE_VERSION = "v5";
 const CACHE_NAME = `uns-study-shell-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
@@ -35,21 +35,10 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (url.pathname.startsWith("/_next/static")) {
-    // Cache-first for hashed build assets: they're immutable per build.
-    event.respondWith(
-      caches.open(CACHE_NAME).then((cache) =>
-        cache.match(event.request).then(
-          (cached) =>
-            cached ??
-            fetch(event.request).then((res) => {
-              if (res.ok) cache.put(event.request, res.clone());
-              return res;
-            }),
-        ),
-      ),
-    );
-  }
+  // Build assets (/_next/static) are NOT cached here anymore: some chunk file names stay the same
+  // across builds while their content changes, so a cache-first copy could mix an old chunk with a
+  // new page and leave the app stuck on "Cargando sala…". The browser's HTTP cache already
+  // handles these (Vercel serves them as immutable), which is all we need.
 });
 
 // Only ever navigate to a same-origin, relative path — a push payload or a notification's stored
