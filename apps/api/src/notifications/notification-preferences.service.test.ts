@@ -13,15 +13,15 @@ describe("NotificationPreferencesService", () => {
     await insertUsers(db, ["u1"]);
   });
 
-  it("defaults both switches to off", async () => {
-    expect(await svc.get("u1")).toEqual({ seatFreed: false, adminPresent: false });
+  it("defaults seatFreed and adminPresent off, checkinExpiry on", async () => {
+    expect(await svc.get("u1")).toEqual({ seatFreed: false, adminPresent: false, checkinExpiry: true });
   });
 
   it("updates only the given fields", async () => {
     await svc.update("u1", { seatFreed: true });
-    expect(await svc.get("u1")).toEqual({ seatFreed: true, adminPresent: false });
+    expect(await svc.get("u1")).toEqual({ seatFreed: true, adminPresent: false, checkinExpiry: true });
 
     await svc.update("u1", { adminPresent: true });
-    expect(await svc.get("u1")).toEqual({ seatFreed: true, adminPresent: true });
+    expect(await svc.get("u1")).toEqual({ seatFreed: true, adminPresent: true, checkinExpiry: true });
   });
 });

@@ -34,6 +34,8 @@ export const checkIns = pgTable(
     verificationConfidence: real("verification_confidence"),
     verifierModel: text("verifier_model"),
     verificationPhotoSha256: text("verification_photo_sha256"),
+    // Set once the "expires in 10 min" reminder has been claimed; reset to null when extended.
+    expiryReminderSentAt: timestamp("expiry_reminder_sent_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

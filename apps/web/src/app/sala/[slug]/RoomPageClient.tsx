@@ -23,6 +23,8 @@ import { useRoomAlerts } from "@/features/room/useRoomAlerts";
 import { useRoomState } from "@/features/room/useRoomState";
 import { useSeatActions } from "@/features/room/useSeatActions";
 import { useSeatDispute } from "@/features/room/useSeatDispute";
+import { MarkAllOccupiedCard } from "@/features/admin/MarkAllOccupiedCard";
+import { useAdminAccess } from "@/features/admin/useAdminAccess";
 import { PeopleList } from "@/features/people/PeopleList";
 import { useOccupants } from "@/features/people/useOccupants";
 import { usePeople } from "@/features/people/usePeople";
@@ -45,6 +47,7 @@ const loadSeatDetail = () => import("@/features/room/SeatDetail").then((m) => m.
 const SeatDetail = dynamic(loadSeatDetail);
 
 export function RoomPageClient({ slug }: { slug: string }) {
+  const { isAdmin } = useAdminAccess();
   const isDesktop = useMediaQuery("(min-width: 768px)");
   // Three-column layout (left info panel / map / right detail panel) kicks in at lg; below that,
   // detail stays a bottom sheet and the info panel collapses into a compact header + list.
@@ -417,6 +420,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
             <SummaryCounters summary={map.summary} />
           </>
         )}
+        {isAdmin ? <MarkAllOccupiedCard roomSlug={slug} seats={map.seats} onDone={handleChanged} /> : null}
         {map.summary.free === 0 ? <EnableSeatFreedCta /> : null}
         <AnnouncementsBanner roomSlug={slug} socket={socket} />
       </section>

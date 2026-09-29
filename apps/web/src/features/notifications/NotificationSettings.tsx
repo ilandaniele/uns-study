@@ -28,7 +28,7 @@ function Switch({ checked, disabled, label, onChange }: { checked: boolean; disa
   );
 }
 
-/** "Notificaciones" section for /perfil: the two opt-in switches plus the "activate on this
+/** "Notificaciones" section for /perfil: the opt-in switches plus the "activate on this
  *  device" push flow (with iOS/unsupported/blocked messaging). */
 export function NotificationSettings() {
   const { preferences, loading, saving, update } = useNotificationPreferences();
@@ -76,6 +76,18 @@ export function NotificationSettings() {
             disabled={saving}
             label="Avisame cuando haya un admin en la sala"
             onChange={(v) => void update({ adminPresent: v })}
+          />
+        </div>
+        <div className="flex items-start justify-between gap-4 py-3">
+          <span>
+            <span className="block text-sm font-medium text-main">Avisarme antes de que venza mi lugar</span>
+            <span className="block text-xs text-muted">10 minutos antes, para que puedas seguir acá o liberarlo.</span>
+          </span>
+          <Switch
+            checked={preferences.checkinExpiry}
+            disabled={saving}
+            label="Avisarme antes de que venza mi lugar"
+            onChange={(v) => void update({ checkinExpiry: v })}
           />
         </div>
       </div>

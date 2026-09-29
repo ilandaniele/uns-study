@@ -12,6 +12,11 @@ import { StudySessionService } from "../rankings/study-session.service.js";
 import { QrService } from "../qr/qr.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";
 import { RolesService } from "../users/roles.service.js";
+import { AliasService } from "../users/alias.service.js";
+import { AdminGuard } from "../users/admin.guard.js";
+import { RoomPeopleService } from "../study/room-people.service.js";
+import type { SeatMarkedByDto } from "@uns/contracts";
+import { AdminRoomsController } from "./admin-rooms.controller.js";
 import { AdminRoomsService } from "./admin-rooms.service.js";
 
 describe("AdminRoomsService.stats — Fresh Seat Coverage", () => {
@@ -142,5 +147,113 @@ describe("AdminRoomsService — geofence calibration", () => {
     expect(audit?.actorId).toBe("admin1");
     expect(audit?.targetUserId).toBeNull();
     expect((audit?.metadata as { next?: { radiusM?: number } })?.next?.radiusM).toBe(80);
+  });
+});
+
+describe("AdminRoomsService — mark all occupied", () => {
+  let db: Db;
+  let svc: AdminRoomsService;
+  let roomState: RoomStateService;
+  let checkIns: CheckInService;
+  let people: RoomPeopleService;
+  let roomId: string;
+  let seatIds: string[];
+
+  beforeEach(async () => {
+    db = await freshDb();
+    roomState = new RoomStateService(db);
+    checkIns = new CheckInService(
+      db,
+      roomState,
+      new PresenceService(),
+      new SecurityEventService(db, new ReputationService(db)),
+      new StudySessionService(db),
+      new QrService(db),
+      buildDisputeService(db),
+      new RolesService(db),
+    );
+    svc = new AdminRoomsService(db, new RoomsService(db, roomState), roomState, new PresenceService());
+    people = new RoomPeopleService(db, new AliasService(db));
+
+    const room = await getRoom(db);
+    roomId = room.id;
+    seatIds = (await getSeats(db)).map((s) => s.id);
+    await insertUsers(db, ["admin1", "u1", "u2"]);
+  });
+
+  const loc = async () => {
+    const room = await getRoom(db);
+    return { latitude: room.latitude, longitude: room.longitude, accuracy: 10, capturedAt: new Date().toISOString() };
+  };
+
+  async function audit(action: string) {
+    return db.select().from(schema.moderationActions).where(eq(schema.moderationActions.action, action));
+  }
+
+  it("marks every non-occupied seat, leaves checked-in seats alone and audits it", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location: await loc(), showIdentity: false });
+
+    const before = Date.now();
+    const result = await svc.markAllOccupied(roomId, "admin1", 90);
+    expect(result.count).toBe(seatIds.length - 1);
+    expect(result.expiresAt.getTime()).toBeGreaterThanOrEqual(before + 90 * 60_000);
+    expect(result.changes.map((c) => c.seatId)).not.toContain(seatIds[0]);
+    expect(result.changes.every((c) => c.status === "OCCUPIED")).toBe(true);
+
+    const live = await roomState.getLiveSeatStates(roomId);
+    expect([...live.values()].every((s) => s.status === "OCCUPIED")).toBe(true);
+
+    const obs = await db.select().from(schema.seatObservations);
+    expect(obs).toHaveLength(seatIds.length - 1);
+    expect(obs.every((o) => o.adminOverride && o.userId === "admin1" && o.seatId !== seatIds[0])).toBe(true);
+
+    const [row] = await audit("ADMIN_MARK_ALL_OCCUPIED");
+    expect(row?.actorId).toBe("admin1");
+    expect(row?.metadata).toMatchObject({ count: seatIds.length - 1, minutes: 90 });
+  });
+
+  it("converts FREE-observed seats and skips seats that are already OCCUPIED", async () => {
+    const now = new Date();
+    await db.insert(schema.seatObservations).values([
+      { userId: "u1", roomId, seatId: seatIds[1]!, observedStatus: "FREE", confidenceWeight: 1, observedAt: now, expiresAt: new Date(now.getTime() + 600_000) },
+      { userId: "u2", roomId, seatId: seatIds[2]!, observedStatus: "OCCUPIED", confidenceWeight: 1, observedAt: now, expiresAt: new Date(now.getTime() + 600_000) },
+    ]);
+    await roomState.recomputeSeats([seatIds[1]!, seatIds[2]!], { roomId, eventType: "OBSERVATION" });
+
+    const result = await svc.markAllOccupied(roomId, "admin1", 60);
+    expect(result.count).toBe(seatIds.length - 1);
+    const live = await roomState.getLiveSeatStates(roomId);
+    expect(live.get(seatIds[1]!)?.status).toBe("OCCUPIED");
+  });
+
+  it("undo expires only the admin marks and restores the previous states", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location: await loc(), showIdentity: false });
+    const marked = await svc.markAllOccupied(roomId, "admin1", 60);
+
+    const undone = await svc.undoMarkAllOccupied(roomId, "admin1");
+    expect(undone.count).toBe(marked.count);
+    expect(undone.changes).toHaveLength(marked.count);
+    expect(undone.changes.every((c) => c.status === "UNKNOWN")).toBe(true);
+
+    const live = await roomState.getLiveSeatStates(roomId);
+    expect(live.get(seatIds[0]!)?.status).toBe("OCCUPIED");
+    expect(live.get(seatIds[1]!)?.status).toBe("UNKNOWN");
+    expect(await audit("ADMIN_MARK_ALL_OCCUPIED_UNDO")).toHaveLength(1);
+
+    const again = await svc.undoMarkAllOccupied(roomId, "admin1");
+    expect(again.count).toBe(0);
+  });
+
+  it("shows 'Administración' as the marker without exposing the admin", async () => {
+    await svc.markAllOccupied(roomId, "admin1", 60);
+    const entries = (await people.listOccupants(roomId)) as SeatMarkedByDto[];
+    expect(entries).toHaveLength(seatIds.length);
+    expect(entries.every((e) => e.markedBy.displayName === "Administración")).toBe(true);
+  });
+
+  it("is only reachable through AdminGuard", () => {
+    const guards = Reflect.getMetadata("__guards__", AdminRoomsController) as unknown[];
+    expect(guards).toContain(AdminGuard);
+    expect(Reflect.getMetadata("__guards__", AdminRoomsController.prototype.markAllOccupied)).toBeUndefined();
   });
 });

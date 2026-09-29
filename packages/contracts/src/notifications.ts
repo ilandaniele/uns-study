@@ -5,12 +5,14 @@ import { z } from "zod";
 export interface NotificationPreferencesDto {
   seatFreed: boolean;
   adminPresent: boolean;
+  checkinExpiry: boolean;
 }
 
 export const updateNotificationPreferencesSchema = z
   .object({
     seatFreed: z.boolean(),
     adminPresent: z.boolean(),
+    checkinExpiry: z.boolean(),
   })
   .partial();
 
@@ -57,6 +59,14 @@ export const unsubscribePushSchema = z.object({
 export interface SeatFreedAlertEvent {
   seatIds: string[];
   freeCount: number;
+}
+
+/** Sent to the owner's private `user:{userId}` channel ~10 minutes before their active check-in
+ *  expires, so an open page can prompt "Sigo acá" / release. */
+export interface CheckInExpiringEvent {
+  checkInId: string;
+  seatId: string;
+  expiresAt: string;
 }
 
 /** Broadcast to everyone viewing the room when an ADMIN/MODERATOR creates a fresh check-in there.

@@ -6,6 +6,8 @@ import { useNow } from "@/lib/use-now";
 import { ExtendBanner } from "./ExtendBanner";
 import { MyCheckInBar } from "./MyCheckInBar";
 import { checkInExpiryStatus } from "./format";
+import { isExpiringAlertFor } from "./expiring-alert";
+import { useCheckInExpiring } from "./useCheckInExpiring";
 
 export interface ActiveCheckInBannerProps {
   activeCheckIn: CheckInDto;
@@ -18,7 +20,7 @@ export interface ActiveCheckInBannerProps {
 }
 
 /**
- * Owns the 30 s clock for the caller's check-in: "¿Seguís acá?" when 5 minutes or less remain,
+ * Owns the 30 s clock for the caller's check-in: "¿Seguís acá?" when 5 minutes or less remain (or the server sent `checkin:expiring`),
  * otherwise the always-visible "Tenés marcado" bar. Ticking here (not in the page) keeps the map
  * from re-rendering every 30 s.
  */
@@ -26,6 +28,8 @@ export function ActiveCheckInBanner({ activeCheckIn, seatLabel, pending, onShow,
   const now = useNow(30_000);
   const expiryStatus = checkInExpiryStatus(activeCheckIn.expiresAt, now);
   const locallyExpired = !expiryStatus;
+  // The server's 10-minute heads-up promotes the banner early (only while it still matches this check-in).
+  const expiringAlert = isExpiringAlertFor(useCheckInExpiring(), activeCheckIn);
 
   // The active check-in expired locally (expiresAt passed); refetch /me so MY_SEAT clears once the
   // server has processed the expiration too. Keyed on id+expiresAt (primitives, stable across
@@ -43,7 +47,7 @@ export function ActiveCheckInBanner({ activeCheckIn, seatLabel, pending, onShow,
     };
   }, [activeCheckInKey, locallyExpired, refetch]);
 
-  if (expiryStatus?.shouldPromptExtend) {
+  if (expiryStatus && (expiryStatus.shouldPromptExtend || expiringAlert)) {
     return (
       <div className="order-0 sticky top-0 z-50 lg:static lg:z-auto lg:col-span-3">
         <ExtendBanner minutesLeft={expiryStatus.minutesLeft} pending={pending} onExtend={onExtend} onCheckOut={onCheckOut} />

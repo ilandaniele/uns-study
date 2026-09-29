@@ -20,6 +20,8 @@ export const seatObservations = pgTable(
     observedStatus: observedStatusEnum("observed_status").notNull(),
     presenceVerified: boolean("presence_verified").notNull().default(false),
     qrVerified: boolean("qr_verified").notNull().default(false),
+    /** Set by "Todos los lugares ocupados": an admin bulk-marked this seat; shown as "Administración". */
+    adminOverride: boolean("admin_override").notNull().default(false),
     confidenceWeight: real("confidence_weight").notNull().default(1),
     observedAt: timestamp("observed_at", { withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),

@@ -1,0 +1,2 @@
+ALTER TABLE "check_ins" ADD COLUMN "expiry_reminder_sent_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "notification_preferences" ADD COLUMN "checkin_expiry" boolean DEFAULT true NOT NULL;

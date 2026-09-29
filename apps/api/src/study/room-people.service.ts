@@ -189,6 +189,7 @@ export class RoomPeopleService {
         status: schema.seatObservations.observedStatus,
         observedAt: schema.seatObservations.observedAt,
         userId: schema.seatObservations.userId,
+        adminOverride: schema.seatObservations.adminOverride,
         userName: schema.user.name,
         profile: schema.userProfiles,
       })
@@ -207,7 +208,8 @@ export class RoomPeopleService {
     return marked.map((o) => ({
       seatId: o.seatId,
       markedBy: {
-        displayName: displayName(profileForDisplay(o.profile, aliasByUser.get(o.userId)), null, o.userName),
+        // An admin bulk-mark never exposes which admin did it.
+        displayName: o.adminOverride ? "Administración" : displayName(profileForDisplay(o.profile, aliasByUser.get(o.userId)), null, o.userName),
         observedAt: o.observedAt.toISOString(),
       },
     }));

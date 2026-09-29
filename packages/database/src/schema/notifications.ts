@@ -12,6 +12,8 @@ export const notificationPreferences = pgTable("notification_preferences", {
     .references(() => user.id, { onDelete: "cascade" }),
   seatFreed: boolean("seat_freed").notNull().default(false),
   adminPresent: boolean("admin_present").notNull().default(false),
+  // Unlike the two above this one defaults ON: it only ever concerns the user's own seat.
+  checkinExpiry: boolean("checkin_expiry").notNull().default(true),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

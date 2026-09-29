@@ -16,6 +16,7 @@ import {
   type ChatMessageDto,
   type DirectMessageDto,
   type DisputeChallengedEvent,
+  type CheckInExpiringEvent,
   type DisputeWonEvent,
   type RoomAdminPresentEvent,
   type RoomSummary,
@@ -254,6 +255,11 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
    *  is now free for them to self-check-in. */
   emitDisputeWon(openerUserId: string, payload: DisputeWonEvent): void {
     this.server?.to(userChannel(openerUserId)).emit(SocketEvents.DisputeYouWon, payload);
+  }
+
+  /** Tells a user (private `user:{userId}` channel) their active check-in is about to expire. */
+  emitCheckInExpiring(userId: string, payload: CheckInExpiringEvent): void {
+    this.server?.to(userChannel(userId)).emit(SocketEvents.CheckInExpiring, payload);
   }
 
   /** Broadcasts a table's nickname changing (crossing/leaving the vote threshold, or an admin clearing it). */

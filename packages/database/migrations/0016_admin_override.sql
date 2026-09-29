@@ -1,0 +1,1 @@
+ALTER TABLE "seat_observations" ADD COLUMN "admin_override" boolean DEFAULT false NOT NULL;

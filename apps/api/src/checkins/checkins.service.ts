@@ -264,7 +264,7 @@ export class CheckInService {
     // caller, so a stale `active` can never extend someone else's check-in.
     const [updated] = await this.db
       .update(schema.checkIns)
-      .set({ expiresAt, updatedAt: now, locationAccuracyM: location.accuracy })
+      .set({ expiresAt, expiryReminderSentAt: null, updatedAt: now, locationAccuracyM: location.accuracy })
       .where(
         and(
           eq(schema.checkIns.id, current.id),

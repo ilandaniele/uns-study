@@ -5,9 +5,9 @@ import type { NotificationPreferencesDto } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
 
 type PreferencesRow = typeof schema.notificationPreferences.$inferSelect;
-export type NotificationPreferencesPatch = Partial<Pick<PreferencesRow, "seatFreed" | "adminPresent">>;
+export type NotificationPreferencesPatch = Partial<Pick<PreferencesRow, "seatFreed" | "adminPresent" | "checkinExpiry">>;
 
-/** Per-user opt-in switches, both `false` until the user turns them on (same "everything private
+/** Per-user opt-in switches, the first two `false` until the user turns them on (same "everything private
  *  by default" convention as `user_privacy_settings`). */
 @Injectable()
 export class NotificationPreferencesService {
@@ -37,5 +37,5 @@ export class NotificationPreferencesService {
 }
 
 function toDto(row: PreferencesRow): NotificationPreferencesDto {
-  return { seatFreed: row.seatFreed, adminPresent: row.adminPresent };
+  return { seatFreed: row.seatFreed, adminPresent: row.adminPresent, checkinExpiry: row.checkinExpiry };
 }

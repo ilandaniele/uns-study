@@ -296,6 +296,14 @@ export const updateGeofenceSchema = z.object({
   radiusM: z.number().int().min(20).max(300),
 });
 
+export const ADMIN_MARK_OCCUPIED_MIN_MINUTES = 15;
+export const ADMIN_MARK_OCCUPIED_MAX_MINUTES = 480;
+export const ADMIN_MARK_OCCUPIED_DEFAULT_MINUTES = 60;
+
+export const markAllOccupiedSchema = z.object({
+  minutes: z.number().int().min(ADMIN_MARK_OCCUPIED_MIN_MINUTES).max(ADMIN_MARK_OCCUPIED_MAX_MINUTES).default(ADMIN_MARK_OCCUPIED_DEFAULT_MINUTES),
+});
+
 export const presenceValidateSchema = z.object({
   roomId: z.string(),
   latitude: z.number().min(-90).max(90),

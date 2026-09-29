@@ -11,6 +11,6 @@ import { NotificationService } from "./notification.service.js";
   imports: [RoomsModule],
   controllers: [NotificationPreferencesController, PushSubscriptionsController, VapidPublicKeyController],
   providers: [NotificationPreferencesService, PushSubscriptionsService, PushService, NotificationService],
-  exports: [NotificationService],
+  exports: [NotificationService, PushService],
 })
 export class NotificationsModule {}
