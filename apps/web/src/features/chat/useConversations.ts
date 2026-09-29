@@ -3,7 +3,8 @@
 import { SocketEvents } from "@uns/contracts/events";
 import type { ConversationDto, DirectMessageDto } from "@uns/contracts";
 import { useCallback, useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { DataPaths } from "@/lib/prefetch";
+import { fetchCached, peekCached } from "@/lib/query-cache";
 import { getSocket } from "@/lib/socket";
 
 export interface UseConversationsResult {
@@ -19,12 +20,13 @@ export interface UseConversationsResult {
  * explicit join is needed here to receive `dm:message-created` for any conversation.
  */
 export function useConversations(): UseConversationsResult {
-  const [conversations, setConversations] = useState<ConversationDto[]>([]);
-  const [loading, setLoading] = useState(true);
+  // A cached/prefetched list renders instantly; the mount request always revalidates it.
+  const [conversations, setConversations] = useState<ConversationDto[]>(() => peekCached<ConversationDto[]>(DataPaths.conversations()) ?? []);
+  const [loading, setLoading] = useState(() => peekCached(DataPaths.conversations()) === undefined);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    apiFetch<ConversationDto[]>("/api/v1/conversations")
+    fetchCached<ConversationDto[]>(DataPaths.conversations())
       .then((rows) => {
         setConversations(rows);
         setError(null);

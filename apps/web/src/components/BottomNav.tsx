@@ -9,6 +9,7 @@ import {
   UsersThreeIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
+import { prefetchHandlers } from "@/lib/prefetch";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useAdminAccess } from "@/features/admin/useAdminAccess";
@@ -37,6 +38,7 @@ export function BottomNav() {
           <Link
             key={item.label}
             href={item.href}
+            {...prefetchHandlers(item.href)}
             className={`flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium ${
               active ? "text-primary" : "text-muted"
             }`}

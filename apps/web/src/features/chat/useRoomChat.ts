@@ -4,6 +4,8 @@ import { SocketEvents } from "@uns/contracts/events";
 import type { ChatHistoryDto, ChatMessageDto, Page } from "@uns/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { apiDelete, apiFetch, apiPost, ApiRequestError } from "@/lib/api";
+import { DataPaths } from "@/lib/prefetch";
+import { fetchCached, peekCached } from "@/lib/query-cache";
 import { getSocket, joinChat, leaveChat } from "@/lib/socket";
 
 export interface UseRoomChatResult {
@@ -25,11 +27,21 @@ export interface UseRoomChatResult {
  * `blockedIds` hides messages from authors the caller has blocked (the API only filters
  * blocked authors out of history pages, not realtime broadcasts, so this covers both).
  */
+/** Union of the shown messages and a fresh page (newer copy wins, e.g. deletions), oldest first. */
+export function mergeMessages(prev: ChatMessageDto[], page: ChatMessageDto[]): ChatMessageDto[] {
+  const byId = new Map(prev.map((m) => [m.id, m]));
+  for (const m of page) byId.set(m.id, m);
+  return [...byId.values()].sort((x, y) => (x.createdAt === y.createdAt ? x.id.localeCompare(y.id) : x.createdAt < y.createdAt ? -1 : 1));
+}
+
 export function useRoomChat(roomSlug: string, blockedIds: Set<string>): UseRoomChatResult {
-  const [messages, setMessages] = useState<ChatMessageDto[]>([]);
-  const [chatRoomId, setChatRoomId] = useState<string | null>(null);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const historyPath = DataPaths.roomChat(roomSlug);
+  // A cached/prefetched first page renders instantly; the request below always revalidates it.
+  const [initial] = useState(() => peekCached<ChatHistoryDto>(historyPath));
+  const [messages, setMessages] = useState<ChatMessageDto[]>(() => (initial ? [...initial.items].reverse() : []));
+  const [chatRoomId, setChatRoomId] = useState<string | null>(initial?.chatRoomId ?? null);
+  const [nextCursor, setNextCursor] = useState<string | null>(initial?.nextCursor ?? null);
+  const [loading, setLoading] = useState(!initial);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
@@ -37,11 +49,12 @@ export function useRoomChat(roomSlug: string, blockedIds: Set<string>): UseRoomC
 
   useEffect(() => {
     let cancelled = false;
-    apiFetch<ChatHistoryDto>(`/api/v1/rooms/${roomSlug}/messages`)
+    // maxAge 0: an old page is only for the instant first paint; a prefetch still in flight is shared.
+    fetchCached<ChatHistoryDto>(historyPath)
       .then((page) => {
         if (cancelled) return;
-        const ascending = [...page.items].reverse();
-        setMessages(ascending);
+        // Merge rather than replace: keeps realtime messages that arrived while this page was loading.
+        setMessages((prev) => mergeMessages(prev, page.items));
         setNextCursor(page.nextCursor);
         setChatRoomId(page.chatRoomId);
         setError(null);
@@ -55,7 +68,7 @@ export function useRoomChat(roomSlug: string, blockedIds: Set<string>): UseRoomC
     return () => {
       cancelled = true;
     };
-  }, [roomSlug]);
+  }, [historyPath]);
 
   const loadMore = useCallback(() => {
     if (!nextCursor || loadingMore) return;
@@ -90,6 +103,11 @@ export function useRoomChat(roomSlug: string, blockedIds: Set<string>): UseRoomC
     const onConnect = () => {
       setConnected(true);
       joinChat(chatRoomId);
+      // Messages sent between the history request and this join (or while disconnected) were
+      // never broadcast to us; re-read the latest page once joined and merge it in.
+      apiFetch<ChatHistoryDto>(historyPath)
+        .then((page) => setMessages((prev) => mergeMessages(prev, page.items)))
+        .catch(() => undefined);
     };
     const onDisconnect = () => setConnected(false);
 
@@ -106,7 +124,7 @@ export function useRoomChat(roomSlug: string, blockedIds: Set<string>): UseRoomC
       socket.off(SocketEvents.ChatMessageDeleted, onDeleted);
       leaveChat(chatRoomId);
     };
-  }, [chatRoomId, appendMessage]);
+  }, [chatRoomId, appendMessage, historyPath]);
 
   const send = useCallback(
     async (content: string) => {

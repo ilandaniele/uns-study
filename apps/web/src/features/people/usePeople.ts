@@ -2,7 +2,9 @@
 
 import type { RoomPersonDto } from "@uns/contracts";
 import { useCallback, useEffect, useState } from "react";
-import { apiFetch, ApiRequestError } from "@/lib/api";
+import { ApiRequestError } from "@/lib/api";
+import { DataPaths } from "@/lib/prefetch";
+import { fetchCached, peekCached } from "@/lib/query-cache";
 import { useMe } from "@/lib/me-store";
 
 export interface UsePeopleResult {
@@ -14,17 +16,22 @@ export interface UsePeopleResult {
 
 const SIGN_IN_MESSAGE = "Iniciá sesión para ver quién está en la sala.";
 
-/** GET `/rooms/:idOrSlug/people` — registered users visible in the room right now. */
+/** A list this fresh (typically prefetched on link hover) is used without refetching. */
+const FRESH_MS = 10_000;
+
+/** GET `/rooms/:idOrSlug/people` — registered users visible in the room right now. A cached
+ *  list renders instantly while it revalidates. */
 export function usePeople(roomSlug: string): UsePeopleResult {
   const { me, loading: meLoading } = useMe();
   const anonymous = !meLoading && !me?.user;
-  const [people, setPeople] = useState<RoomPersonDto[]>([]);
-  const [loading, setLoading] = useState(true);
+  const path = DataPaths.people(roomSlug);
+  const [people, setPeople] = useState<RoomPersonDto[]>(() => peekCached<RoomPersonDto[]>(path) ?? []);
+  const [loading, setLoading] = useState(() => peekCached(path) === undefined);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (maxAgeMs = 0) => {
     try {
-      const dto = await apiFetch<RoomPersonDto[]>(`/api/v1/rooms/${roomSlug}/people`);
+      const dto = await fetchCached<RoomPersonDto[]>(path, maxAgeMs);
       setPeople(dto);
       setError(null);
     } catch (err) {
@@ -32,7 +39,7 @@ export function usePeople(roomSlug: string): UsePeopleResult {
     } finally {
       setLoading(false);
     }
-  }, [roomSlug]);
+  }, [path]);
 
   useEffect(() => {
     if (meLoading) return;
@@ -43,7 +50,7 @@ export function usePeople(roomSlug: string): UsePeopleResult {
       setLoading(false);
       return;
     }
-    void load();
+    void load(FRESH_MS);
   }, [load, meLoading, anonymous]);
 
   const refetch = useCallback(() => {

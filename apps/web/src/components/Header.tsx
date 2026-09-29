@@ -2,6 +2,7 @@
 
 import { BookOpenTextIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
+import { prefetchHandlers } from "@/lib/prefetch";
 import { usePathname } from "next/navigation";
 import { signOut } from "@/lib/auth-client";
 import { useAdminAccess } from "@/features/admin/useAdminAccess";
@@ -49,6 +50,7 @@ export function Header() {
             <Link
               key={item.label}
               href={item.href}
+              {...prefetchHandlers(item.href)}
               className={`border-b-2 px-0.5 py-1 transition-colors ${
                 active ? "border-primary text-primary" : "border-transparent text-muted hover:text-main"
               }`}

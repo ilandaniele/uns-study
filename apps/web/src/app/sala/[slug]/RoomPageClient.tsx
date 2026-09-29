@@ -1,5 +1,6 @@
 "use client";
 
+import { prefetchLikelyNextWhenIdle } from "@/lib/prefetch";
 import { primeLocation } from "@/lib/geolocation";
 import type { SeatAvatarDto, SeatDto } from "@uns/contracts";
 import dynamic from "next/dynamic";
@@ -65,6 +66,12 @@ export function RoomPageClient({ slug }: { slug: string }) {
   useEffect(() => {
     trackEvent("room_view", { roomSlug: slug });
   }, [slug]);
+
+  // Once the map is on screen, warm the tabs people usually open next (idle time only).
+  const mapReady = map !== null;
+  useEffect(() => {
+    if (mapReady) prefetchLikelyNextWhenIdle();
+  }, [mapReady]);
 
   // First load failed (no map yet): keep retrying with exponential backoff (2 s, 4 s ... capped at 30 s).
   const [loadAttempts, setLoadAttempts] = useState(0);

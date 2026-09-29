@@ -3,6 +3,7 @@
 import type { MeDto } from "@uns/contracts";
 import { useEffect } from "react";
 import { apiFetch } from "./api";
+import { clearQueryCache } from "./query-cache";
 import { createResource, useResource } from "./resource-cache";
 
 // One shared `/api/v1/me` for Header, BottomNav, the room page, etc.
@@ -31,6 +32,7 @@ export function mutateMe(updater: (current: MeDto) => MeDto): void {
 /** Forget the cached identity (sign-in/out, account deletion); mounted `useMe` hooks refetch. */
 export function invalidateMe(): void {
   meResource.invalidate();
+  clearQueryCache(); // cached responses belong to the previous identity
 }
 
 export interface UseMeResult {
