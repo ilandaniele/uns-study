@@ -6,6 +6,7 @@ import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";
 import { ZodBodyPipe } from "../common/zod-body.pipe.js";
 import { ApiErrors } from "../common/api-error.js";
+import { allInOrder } from "../common/background.js";
 import { RateLimitService } from "../security/rate-limit.service.js";
 import { SecurityEventService, hashIp } from "../security/security-event.service.js";
 import { AbusePolicyService } from "../security/abuse-policy.service.js";
@@ -99,18 +100,19 @@ export class CheckInsController {
     @CurrentUser() user: RequestUser,
     @Body(new ZodBodyPipe(extendRequestSchema)) body: z.infer<typeof extendRequestSchema>,
   ) {
-    await this.restrictions.assertNot(user.id, ["SUSPENDED", "BANNED"]);
-
     // The body carries no roomId for extend — the room is whatever the caller is currently
-    // checked into, never client-supplied.
-    const active = await this.checkIns.getActiveCheckIn(user.id);
+    // checked into, never client-supplied. The restriction check and the lookup run concurrently.
+    const [, active] = await allInOrder(
+      this.restrictions.assertNot(user.id, ["SUSPENDED", "BANNED"]),
+      this.checkIns.getActiveCheckIn(user.id),
+    );
     if (!active) throw ApiErrors.noActiveCheckIn();
     await this.assertPresence(active.roomId, body.location);
 
     const limit = await this.rateLimit.check(`extend:${user.id}`, 5, 60);
     if (!limit.allowed) throw ApiErrors.rateLimited();
 
-    return this.checkIns.extend(user.id, body.location);
+    return this.checkIns.extend(user.id, body.location, active);
   }
 
   @Post(":id/photo")

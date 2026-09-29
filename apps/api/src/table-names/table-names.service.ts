@@ -6,6 +6,7 @@ import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
+import { RoomCache } from "../common/cache/room-cache.service.js";
 import { containsProfanity } from "./profanity.js";
 
 const UNIQUE_VIOLATION = "23505";
@@ -31,6 +32,7 @@ export class TableNamesService {
     @Inject(DB) private readonly db: Db,
     @Inject(RestrictionService) private readonly restrictions: RestrictionService,
     @Inject(RoomRealtimeGateway) private readonly realtime: RoomRealtimeGateway,
+    @Inject(RoomCache) private readonly roomCache: RoomCache = new RoomCache(),
   ) {}
 
   // ---- Reads ----
@@ -195,6 +197,7 @@ export class TableNamesService {
         metadata: { tableId, previousNickname: table.nickname },
       });
     });
+    this.roomCache.invalidate(table.roomId); // nicknames are part of the cached room layout
     this.realtime.emitTableNicknameChanged(table.roomId, { tableId, nickname: null });
   }
 
@@ -258,6 +261,7 @@ export class TableNamesService {
     if (nextNickname === table.nickname) return;
 
     await tx.update(schema.roomTables).set({ nickname: nextNickname, updatedAt: new Date() }).where(eq(schema.roomTables.id, tableId));
+    this.roomCache.invalidate(table.roomId); // nicknames are part of the cached room layout
     this.realtime.emitTableNicknameChanged(table.roomId, { tableId, nickname: nextNickname });
   }
 }

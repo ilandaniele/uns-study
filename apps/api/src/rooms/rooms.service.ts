@@ -1,18 +1,17 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { asc, eq, or } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { schema, type Db } from "@uns/database";
 import type { RoomDto, RoomMapDto, SeatDto, TableDto } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
 import { RoomStateService } from "./room-state.service.js";
-import { ApiErrors } from "../common/api-error.js";
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { RoomCache } from "../common/cache/room-cache.service.js";
 
 @Injectable()
 export class RoomsService {
   constructor(
     @Inject(DB) private readonly db: Db,
     @Inject(RoomStateService) private readonly roomState: RoomStateService,
+    @Inject(RoomCache) private readonly roomCache: RoomCache = new RoomCache(),
   ) {}
 
   async listRooms(): Promise<RoomDto[]> {
@@ -20,13 +19,9 @@ export class RoomsService {
     return rows.map(toRoomDto);
   }
 
+  /** Cached room row by id or slug (see `RoomCache` — writers must invalidate). */
   async findRoomRow(idOrSlug: string) {
-    const condition = UUID_RE.test(idOrSlug)
-      ? or(eq(schema.rooms.id, idOrSlug), eq(schema.rooms.slug, idOrSlug))
-      : eq(schema.rooms.slug, idOrSlug);
-    const [room] = await this.db.select().from(schema.rooms).where(condition).limit(1);
-    if (!room) throw ApiErrors.roomNotFound();
-    return room;
+    return this.roomCache.getRoom(this.db, idOrSlug);
   }
 
   async getRoom(idOrSlug: string): Promise<RoomDto> {
@@ -37,20 +32,11 @@ export class RoomsService {
     const room = await this.findRoomRow(idOrSlug);
     const now = new Date();
 
-    const seatRowsPromise = Promise.resolve(
-      this.db.select().from(schema.seats).where(eq(schema.seats.roomId, room.id)).orderBy(asc(schema.seats.code)),
-    );
-    const [tableRows, seatRows, liveStates] = await Promise.all([
-      this.db.select().from(schema.roomTables).where(eq(schema.roomTables.roomId, room.id)),
-      seatRowsPromise,
-      this.roomState.getLiveSeatStates(
-        room.id,
-        now,
-        seatRowsPromise.then((rows) => rows.filter((s) => s.active)),
-      ),
-    ]);
+    // Tables/seats come from the cache; only the volatile state is read from the database.
+    const layout = await this.roomCache.getLayout(this.db, room.id);
+    const liveStates = await this.roomState.getLiveSeatStates(room.id, now, layout.activeSeats);
 
-    const tables: TableDto[] = tableRows.map((t) => ({
+    const tables: TableDto[] = layout.tables.map((t) => ({
       id: t.id,
       code: t.code,
       label: t.label,
@@ -63,10 +49,8 @@ export class RoomsService {
       nickname: t.nickname,
     }));
 
-    const seats: SeatDto[] = seatRows
-      .filter((s) => s.active)
-      .map((s) => {
-        const live = liveStates.get(s.id);
+    const seats: SeatDto[] = layout.activeSeats.map((s) => {
+      const live = liveStates.get(s.id);
         return {
           id: s.id,
           tableId: s.tableId,

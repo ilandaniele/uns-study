@@ -6,6 +6,7 @@ import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";
 import { ZodBodyPipe } from "../common/zod-body.pipe.js";
 import { ApiErrors } from "../common/api-error.js";
+import { allInOrder } from "../common/background.js";
 import { RateLimitService } from "../security/rate-limit.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
 import { AbusePolicyService } from "../security/abuse-policy.service.js";
@@ -33,11 +34,14 @@ export class ObservationsController {
     @Body(new ZodBodyPipe(observationRequestSchema)) body: z.infer<typeof observationRequestSchema>,
     @Ip() ip: string,
   ) {
-    await this.restrictions.assertNot(user.id, ["RESTRICT_OBSERVATIONS", "SUSPENDED", "BANNED"]);
+    // Independent reads run concurrently; a failed restriction check still wins over the rest.
+    const [, limits] = await allInOrder(
+      this.restrictions.assertNot(user.id, ["RESTRICT_OBSERVATIONS", "SUSPENDED", "BANNED"]),
+      this.abusePolicy.observationLimits(user.id),
+    );
 
     await this.observations.assertPresence(body.roomId, body.location);
 
-    const limits = await this.abusePolicy.observationLimits(user.id);
     const limit = await this.rateLimit.check(`observation:${user.id}`, limits.perMinuteLimit, 60);
     if (!limit.allowed) {
       await this.securityEvents.record({ userId: user.id, eventType: "RATE_LIMITED", ip, metadata: { bucket: "observation" } });
@@ -62,6 +66,7 @@ export class ObservationsController {
       location: body.location,
       ip,
       qrToken: body.qrToken,
+      limits,
     });
     await this.realtime.broadcastSeatChanges(roomId, changes);
     return { ok: true };

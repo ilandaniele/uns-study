@@ -5,6 +5,7 @@ import { buildDisputeService, freshDb, getRoom, getSeats, insertUsers } from "..
 import { PresenceService } from "../presence/presence.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
 import { RoomsService } from "../rooms/rooms.service.js";
+import { RoomCache } from "../common/cache/room-cache.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
 import { ReputationService } from "../reputation/reputation.service.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
@@ -79,7 +80,8 @@ describe("AdminRoomsService — geofence calibration", () => {
   beforeEach(async () => {
     db = await freshDb();
     const roomState = new RoomStateService(db);
-    svc = new AdminRoomsService(db, new RoomsService(db, roomState), roomState, new PresenceService());
+    const roomCache = new RoomCache();
+    svc = new AdminRoomsService(db, new RoomsService(db, roomState, roomCache), roomState, new PresenceService(), roomCache);
 
     const room = await getRoom(db);
     roomId = room.id;

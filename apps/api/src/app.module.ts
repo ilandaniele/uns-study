@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { DatabaseModule } from "./database/database.module.js";
+import { CacheModule } from "./common/cache/cache.module.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { SecurityModule } from "./security/security.module.js";
 import { RealtimeModule } from "./realtime/realtime.module.js";
@@ -32,6 +33,7 @@ import { NotificationsModule } from "./notifications/notifications.module.js";
 @Module({
   imports: [
     DatabaseModule,
+    CacheModule,
     SecurityModule,
     UsersModule,
     ReputationModule,

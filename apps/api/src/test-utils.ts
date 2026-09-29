@@ -68,3 +68,30 @@ export function buildPhotoVerificationService(db: Db, verifier: SeatPhotoVerifie
   const presence = new PresenceService();
   return new PhotoVerificationService(db, roomState, presence, verifier);
 }
+
+/**
+ * Runs `fn` and returns how many database round trips it issued (each statement is one; a
+ * transaction adds two more for BEGIN/COMMIT, like a real Postgres connection would). Counts
+ * globally while `fn` runs, so don't run other database work concurrently.
+ */
+export async function countQueries<T>(fn: () => Promise<T>): Promise<{ result: T; queries: number }> {
+  const { PglitePreparedQuery, PgliteSession } = await import("drizzle-orm/pglite/session");
+  let queries = 0;
+  const execute = PglitePreparedQuery.prototype.execute;
+  const transaction = PgliteSession.prototype.transaction;
+  PglitePreparedQuery.prototype.execute = function (this: unknown, ...args: never[]) {
+    queries++;
+    return (execute as (...a: never[]) => unknown).apply(this, args) as never;
+  } as typeof execute;
+  PgliteSession.prototype.transaction = function (this: unknown, ...args: never[]) {
+    queries += 2;
+    return (transaction as (...a: never[]) => unknown).apply(this, args) as never;
+  } as typeof transaction;
+  try {
+    const result = await fn();
+    return { result, queries };
+  } finally {
+    PglitePreparedQuery.prototype.execute = execute;
+    PgliteSession.prototype.transaction = transaction;
+  }
+}

@@ -11,6 +11,8 @@ import { QrService } from "../qr/qr.service.js";
 import { DisputeService } from "../disputes/disputes.service.js";
 import { RolesService } from "../users/roles.service.js";
 import { ApiErrors } from "../common/api-error.js";
+import { runInBackground } from "../common/background.js";
+import { RoomCache } from "../common/cache/room-cache.service.js";
 import { computeVerificationExpiresAt } from "./verification.js";
 
 const UNIQUE_VIOLATION = "23505";
@@ -40,6 +42,7 @@ export class CheckInService {
     @Inject(QrService) private readonly qr: QrService,
     @Inject(DisputeService) private readonly disputes: DisputeService,
     @Inject(RolesService) private readonly roles: RolesService,
+    @Inject(RoomCache) private readonly roomCache: RoomCache = new RoomCache(),
   ) {}
 
   async getActiveCheckIn(userId: string): Promise<CheckInDto | null> {
@@ -59,34 +62,38 @@ export class CheckInService {
    *  emission, plus whether this was a fresh check-in (not a move/refresh) by an ADMIN/MODERATOR —
    *  the caller uses that to trigger the "admin present" room banner + push notification. */
   async checkIn(input: CreateCheckInInput): Promise<{ checkIn: CheckInDto; changes: SeatStateChange[]; adminPresent: boolean }> {
-    const [room] = await this.db.select().from(schema.rooms).where(eq(schema.rooms.id, input.roomId)).limit(1);
-    if (!room) throw ApiErrors.roomNotFound();
+    // Room + seat come from the in-memory cache (invalidated by geofence/seed writes).
+    const room = await this.roomCache.getRoom(this.db, input.roomId);
 
     const presence = this.presence.validate(room, input.location);
     if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!), presence.details);
 
-    const [seat] = await this.db
-      .select()
-      .from(schema.seats)
-      .where(and(eq(schema.seats.id, input.seatId), eq(schema.seats.roomId, input.roomId), eq(schema.seats.active, true)))
-      .limit(1);
+    const seat = await this.roomCache.getActiveSeat(this.db, input.roomId, input.seatId);
     if (!seat) throw ApiErrors.seatNotFound();
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + CHECKIN_MINUTES * 60_000);
 
-    let previousSeatId: string | null = null;
+    // Independent of the write below, so they overlap with it instead of adding round trips.
+    const qrVerifiedPromise = this.qr.isValidForTable(input.qrToken, input.roomId, seat.tableId);
+    // Guarded: if the write throws first, these rejections must not go unhandled.
+    qrVerifiedPromise.catch(() => undefined);
+    const isAdminPromise = this.roles.hasRole(input.userId, ["ADMIN", "MODERATOR"]).catch((err: unknown) => {
+      this.logger.error("Failed to look up roles for admin-present check", err instanceof Error ? err.stack : String(err));
+      return false;
+    });
+
     let previousCheckInId: string | null = null;
     // True once an attempt finds no pre-existing ACTIVE check-in for this user — i.e. this call is
     // a brand-new check-in, not a move to a different seat or a same-seat refresh. Only this case
     // can trigger the "admin present" notification below (moves/extends never do).
     let isFreshCheckIn = false;
-    let createdId: string;
-    const attempt = async (): Promise<string> => {
-      previousSeatId = null;
+    const attempt = async () => {
       previousCheckInId = null;
       isFreshCheckIn = false;
+      const qrVerified = await qrVerifiedPromise;
       return this.db.transaction(async (tx) => {
+        let previousSeatId: string | null = null;
         const [existing] = await tx
           .select()
           .from(schema.checkIns)
@@ -95,45 +102,62 @@ export class CheckInService {
 
         if (!existing) isFreshCheckIn = true;
 
-        if (existing) {
-          if (existing.seatId === input.seatId) {
-            // Re-checking into the same seat just refreshes the window.
+        let row: typeof schema.checkIns.$inferSelect;
+        if (existing && existing.seatId === input.seatId) {
+          // Re-checking into the same seat just refreshes the window.
+          const [refreshed] = await tx
+            .update(schema.checkIns)
+            .set({ expiresAt, updatedAt: now, showIdentity: input.showIdentity, locationAccuracyM: input.location.accuracy })
+            .where(eq(schema.checkIns.id, existing.id))
+            .returning();
+          if (!refreshed) throw new Error("Check-in vanished during refresh");
+          row = refreshed;
+        } else {
+          if (existing) {
+            previousSeatId = existing.seatId;
+            previousCheckInId = existing.id;
             await tx
               .update(schema.checkIns)
-              .set({ expiresAt, updatedAt: now, showIdentity: input.showIdentity, locationAccuracyM: input.location.accuracy })
+              .set({ status: "COMPLETED", endedAt: now, updatedAt: now })
               .where(eq(schema.checkIns.id, existing.id));
-            return existing.id;
+            await this.studySessions.recordFromCheckIn(tx, existing, now);
           }
-          previousSeatId = existing.seatId;
-          previousCheckInId = existing.id;
-          await tx
-            .update(schema.checkIns)
-            .set({ status: "COMPLETED", endedAt: now, updatedAt: now })
-            .where(eq(schema.checkIns.id, existing.id));
-          await this.studySessions.recordFromCheckIn(tx, existing, now);
+
+          const [created] = await tx
+            .insert(schema.checkIns)
+            .values({
+              userId: input.userId,
+              roomId: input.roomId,
+              seatId: input.seatId,
+              status: "ACTIVE",
+              showIdentity: input.showIdentity,
+              presenceVerified: true,
+              locationAccuracyM: input.location.accuracy,
+              startedAt: now,
+              expiresAt,
+            })
+            .returning();
+          if (!created) throw new Error("Failed to create check-in");
+          row = created;
         }
 
-        const [created] = await tx
-          .insert(schema.checkIns)
-          .values({
-            userId: input.userId,
-            roomId: input.roomId,
-            seatId: input.seatId,
-            status: "ACTIVE",
-            showIdentity: input.showIdentity,
-            presenceVerified: true,
-            locationAccuracyM: input.location.accuracy,
-            startedAt: now,
-            expiresAt,
-          })
-          .returning();
-        if (!created) throw new Error("Failed to create check-in");
-        return created.id;
+        // Same transaction: one BEGIN/COMMIT for the whole action, and the seat state can never
+        // lag behind the check-in it was derived from.
+        const changes = await this.roomState.recomputeSeats(previousSeatId ? [input.seatId, previousSeatId] : [input.seatId], {
+          roomId: input.roomId,
+          now,
+          eventType: "CHECK_IN",
+          actingUserId: input.userId,
+          seatMetadata: qrVerified ? { [input.seatId]: { qrVerified: true } } : undefined,
+          tx,
+        });
+        return { row, changes };
       });
     };
 
+    let written: Awaited<ReturnType<typeof attempt>>;
     try {
-      createdId = await attempt();
+      written = await attempt();
     } catch (err: unknown) {
       if (!isUniqueViolation(err)) throw err;
       const constraint = uniqueViolationConstraint(err);
@@ -141,7 +165,7 @@ export class CheckInService {
       // uq_checkin_active_user: the same user double-submitted a move (e.g. two seat taps in a
       // row) and both transactions raced to complete the old check-in — retry once, then give up.
       try {
-        createdId = await attempt();
+        written = await attempt();
       } catch (retryErr: unknown) {
         if (isUniqueViolation(retryErr) && uniqueViolationConstraint(retryErr) === "uq_checkin_active_seat") {
           throw ApiErrors.seatTaken();
@@ -149,19 +173,7 @@ export class CheckInService {
         throw ApiErrors.validation("Intentá de nuevo.");
       }
     }
-
-    const seatsToRecompute = previousSeatId ? [input.seatId, previousSeatId] : [input.seatId];
-    const qrVerified = await this.qr.isValidForTable(input.qrToken, input.roomId, seat.tableId);
-    const changes = await this.roomState.recomputeSeats(seatsToRecompute, {
-      roomId: input.roomId,
-      now,
-      eventType: "CHECK_IN",
-      actingUserId: input.userId,
-      seatMetadata: qrVerified ? { [input.seatId]: { qrVerified: true } } : undefined,
-    });
-
-    const [checkInRow] = await this.db.select().from(schema.checkIns).where(eq(schema.checkIns.id, createdId)).limit(1);
-    if (!checkInRow) throw new Error("Check-in vanished after creation");
+    const { row: checkInRow, changes } = written;
 
     // Moving away from a seat ends that check-in — resolve any dispute still OPEN against it.
     // A failure here must not turn an otherwise-successful move into a 500.
@@ -173,9 +185,10 @@ export class CheckInService {
       }
     }
 
-    await this.flagRapidToggleIfNeeded(input.userId, now);
+    // Abuse bookkeeping isn't needed for the response.
+    runInBackground(this.logger, "flagRapidToggleIfNeeded", () => this.flagRapidToggleIfNeeded(input.userId, now));
 
-    const adminPresent = isFreshCheckIn && (await this.roles.hasRole(input.userId, ["ADMIN", "MODERATOR"]));
+    const adminPresent = isFreshCheckIn && (await isAdminPromise);
 
     return { checkIn: toDto(checkInRow, seat.code), changes, adminPresent };
   }
@@ -194,7 +207,7 @@ export class CheckInService {
 
   async checkOut(userId: string): Promise<{ roomId: string; changes: SeatStateChange[] } | null> {
     const now = new Date();
-    const existing = await this.db.transaction(async (tx) => {
+    const ended = await this.db.transaction(async (tx) => {
       const [row] = await tx
         .select()
         .from(schema.checkIns)
@@ -207,16 +220,18 @@ export class CheckInService {
         .set({ status: "COMPLETED", endedAt: now, updatedAt: now })
         .where(eq(schema.checkIns.id, row.id));
       await this.studySessions.recordFromCheckIn(tx, row, now);
-      return row;
+      // Same transaction: one BEGIN/COMMIT for the whole action.
+      const changes = await this.roomState.recomputeSeats([row.seatId], {
+        roomId: row.roomId,
+        now,
+        eventType: "CHECK_OUT",
+        actingUserId: userId,
+        tx,
+      });
+      return { existing: row, changes };
     });
-    if (!existing) return null;
-
-    const changes = await this.roomState.recomputeSeats([existing.seatId], {
-      roomId: existing.roomId,
-      now,
-      eventType: "CHECK_OUT",
-      actingUserId: userId,
-    });
+    if (!ended) return null;
+    const { existing, changes } = ended;
 
     // Ending the check-in resolves any dispute still OPEN against it. A failure here must not
     // turn a committed checkout into a 500.
@@ -229,31 +244,38 @@ export class CheckInService {
     return { roomId: existing.roomId, changes };
   }
 
-  async extend(userId: string, location: LocationInput): Promise<CheckInDto> {
+  /**
+   * Extends the caller's active check-in. Pass `active` (from a `getActiveCheckIn` the caller just
+   * did) to skip re-reading it; the conditional UPDATE below still guards against it having ended.
+   */
+  async extend(userId: string, location: LocationInput, active?: CheckInDto): Promise<CheckInDto> {
     const now = new Date();
-    const [existing] = await this.db
-      .select({ checkIn: schema.checkIns, seatCode: schema.seats.code, room: schema.rooms })
-      .from(schema.checkIns)
-      .innerJoin(schema.seats, eq(schema.seats.id, schema.checkIns.seatId))
-      .innerJoin(schema.rooms, eq(schema.rooms.id, schema.checkIns.roomId))
-      .where(and(eq(schema.checkIns.userId, userId), eq(schema.checkIns.status, "ACTIVE"), gt(schema.checkIns.expiresAt, now)))
-      .limit(1);
-    if (!existing) throw ApiErrors.noActiveCheckIn();
+    const current = active ?? (await this.getActiveCheckIn(userId));
+    if (!current) throw ApiErrors.noActiveCheckIn();
 
-    const presence = this.presence.validate(existing.room, location);
+    const room = await this.roomCache.getRoom(this.db, current.roomId);
+    const presence = this.presence.validate(room, location);
     if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!), presence.details);
 
     const expiresAt = new Date(now.getTime() + CHECKIN_MINUTES * 60_000);
     // Conditional on still being ACTIVE (and unexpired) at write time: the expiration sweep may
     // have raced ahead and flipped this row between the read above and this update — if so, the
-    // extension must not resurrect a check-in the sweep already closed out.
+    // extension must not resurrect a check-in the sweep already closed out. Also scoped to the
+    // caller, so a stale `active` can never extend someone else's check-in.
     const [updated] = await this.db
       .update(schema.checkIns)
       .set({ expiresAt, updatedAt: now, locationAccuracyM: location.accuracy })
-      .where(and(eq(schema.checkIns.id, existing.checkIn.id), eq(schema.checkIns.status, "ACTIVE"), gt(schema.checkIns.expiresAt, now)))
+      .where(
+        and(
+          eq(schema.checkIns.id, current.id),
+          eq(schema.checkIns.userId, userId),
+          eq(schema.checkIns.status, "ACTIVE"),
+          gt(schema.checkIns.expiresAt, now),
+        ),
+      )
       .returning();
     if (!updated) throw ApiErrors.noActiveCheckIn();
-    return toDto(updated, existing.seatCode);
+    return toDto(updated, current.seatCode);
   }
 }
 

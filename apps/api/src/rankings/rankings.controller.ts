@@ -1,4 +1,5 @@
-import { Controller, Get, Inject, Param, Query, UseGuards } from "@nestjs/common";
+import { Controller, Get, Inject, Param, Query, Res, UseGuards } from "@nestjs/common";
+import type { Response } from "express";
 import type { RankingCategory, RankingPeriod } from "@uns/contracts";
 import { OptionalAuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
@@ -20,7 +21,12 @@ export class RankingsController {
     @Query("period") period: string | undefined,
     @Query("category") category: string | undefined,
     @CurrentUser() user: RequestUser | undefined,
+    @Res({ passthrough: true }) res: Response,
   ) {
+    // Anonymous responses are identical for everyone, so browsers/CDNs may reuse them briefly;
+    // anything personalised (`me`) stays private. `Vary: Cookie` keeps a shared cache from mixing them.
+    res.setHeader("Vary", "Cookie");
+    res.setHeader("Cache-Control", user ? "private, no-cache" : "public, max-age=30, stale-while-revalidate=60");
     const safePeriod = PERIODS.includes(period as RankingPeriod) ? (period as RankingPeriod) : "today";
     const safeCategory = CATEGORIES.includes(category as RankingCategory) ? (category as RankingCategory) : "study_time";
     return this.rankings.getRankings(idOrSlug, safePeriod, safeCategory, user?.id ?? null);

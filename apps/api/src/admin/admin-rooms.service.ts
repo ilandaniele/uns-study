@@ -7,6 +7,7 @@ import { env } from "../env.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
 import { PresenceService } from "../presence/presence.service.js";
+import { RoomCache } from "../common/cache/room-cache.service.js";
 
 const HOURS_24_MS = 24 * 60 * 60 * 1000;
 
@@ -25,6 +26,7 @@ export class AdminRoomsService {
     @Inject(RoomsService) private readonly rooms: RoomsService,
     @Inject(RoomStateService) private readonly roomState: RoomStateService,
     @Inject(PresenceService) private readonly presence: PresenceService,
+    @Inject(RoomCache) private readonly roomCache: RoomCache = new RoomCache(),
   ) {}
 
   /** Room map plus occupants with real identities (no privacy filtering — admin only). */
@@ -115,6 +117,8 @@ export class AdminRoomsService {
       .update(schema.rooms)
       .set({ latitude: next.latitude, longitude: next.longitude, geofenceRadiusM: next.radiusM, updatedAt: new Date() })
       .where(eq(schema.rooms.id, room.id));
+    // The geofence is cached for presence checks — drop it so the new one applies immediately.
+    this.roomCache.invalidate(room.id);
 
     await this.db.insert(schema.moderationActions).values({
       actorId,
