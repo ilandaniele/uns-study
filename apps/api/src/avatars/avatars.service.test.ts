@@ -104,6 +104,13 @@ describe("AvatarsService", () => {
       expect(avatar.bytes.length).toBeGreaterThan(0);
     });
 
+    it("serves the owner their own photo even while show_avatar is off", async () => {
+      await svc.upload("u1", { mimeType: "image/jpeg", base64: JPEG_BASE64 });
+      const avatar = await svc.getForOwner("u1", true);
+      expect(avatar.bytes.length).toBeGreaterThan(0);
+      await expect(svc.getForOwner("u1", false)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+
     it("404s when there's no uploaded photo, even with show_avatar on", async () => {
       await db.insert(schema.userPrivacySettings).values({ userId: "u1", showAvatar: true });
       await expect(svc.getForOwner("u1")).rejects.toMatchObject({ code: "NOT_FOUND" });
@@ -136,6 +143,29 @@ describe("AvatarsService", () => {
       expect(profile?.avatarUrl).toBe(url);
       const [row] = await db.select().from(schema.userAvatars).where(eq(schema.userAvatars.userId, "u1"));
       expect(row?.mimeType).toBe("image/jpeg");
+    });
+
+    it("replaces previously stored bytes with the freshly fetched Google photo", async () => {
+      await svc.upload("u1", { mimeType: "image/jpeg", base64: JPEG_BASE64 });
+      const newer = Buffer.from([0xff, 0xd8, 0xff, 0xdb, 0x01, 0x02, 0x03]);
+      stubFetchOnce(newer);
+      const url = await svc.useGoogleImage("u1", "https://lh3.googleusercontent.com/a/photo.jpg");
+
+      const [row] = await db.select().from(schema.userAvatars).where(eq(schema.userAvatars.userId, "u1"));
+      expect(row?.bytes.equals(newer)).toBe(true);
+      expect(url).toContain(row!.sha256.slice(0, 12));
+    });
+
+    it("throws (no silent success) and keeps the old photo when the Google fetch fails", async () => {
+      await svc.upload("u1", { mimeType: "image/jpeg", base64: JPEG_BASE64 });
+      const [before] = await db.select().from(schema.userAvatars).where(eq(schema.userAvatars.userId, "u1"));
+      vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("network down"); }));
+      await expect(svc.useGoogleImage("u1", "https://lh3.googleusercontent.com/a/photo.jpg")).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+
+      stubFetchOnce(JPEG_BYTES, { ok: false });
+      await expect(svc.useGoogleImage("u1", "https://lh3.googleusercontent.com/a/photo.jpg")).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+      const [after] = await db.select().from(schema.userAvatars).where(eq(schema.userAvatars.userId, "u1"));
+      expect(after?.sha256).toBe(before?.sha256);
     });
 
     it("rejects a non-https (or missing) Google image without ever fetching", async () => {

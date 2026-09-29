@@ -45,6 +45,8 @@ async function resizeToAvatar(file: File): Promise<string> {
 /** "Foto de perfil" section on `/perfil`: upload/crop, reuse the Google photo, or remove it. */
 export function AvatarUploader({ avatarUrl, displayName, googleImage, showAvatar, onAvatarUrlChange, onEnableShowAvatar }: AvatarUploaderProps) {
   const [busy, setBusy] = useState(false);
+  // Bumped after every successful change so the preview refetches even if the URL (content hash) is unchanged.
+  const [bust, setBust] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,6 +61,7 @@ export function AvatarUploader({ avatarUrl, displayName, googleImage, showAvatar
       const base64 = await resizeToAvatar(file);
       const result = await apiPost<{ avatarUrl: string }>("/api/v1/profiles/me/avatar", { mimeType: OUTPUT_MIME, base64 });
       onAvatarUrlChange(result.avatarUrl);
+      setBust((n) => n + 1);
     } catch (err) {
       setError(err instanceof ApiRequestError && err.code === "RATE_LIMITED" ? "Demasiados intentos, esperá un momento." : "No pudimos subir la foto.");
     } finally {
@@ -72,8 +75,9 @@ export function AvatarUploader({ avatarUrl, displayName, googleImage, showAvatar
     try {
       const result = await apiPost<{ avatarUrl: string }>("/api/v1/profiles/me/avatar/google");
       onAvatarUrlChange(result.avatarUrl);
-    } catch {
-      setError("No pudimos usar tu foto de Google.");
+      setBust((n) => n + 1);
+    } catch (err) {
+      setError(err instanceof ApiRequestError && err.message ? `No pudimos usar tu foto de Google: ${err.message}` : "No pudimos usar tu foto de Google.");
     } finally {
       setBusy(false);
     }
@@ -95,7 +99,7 @@ export function AvatarUploader({ avatarUrl, displayName, googleImage, showAvatar
   return (
     <div>
       <div className="flex items-center gap-4">
-        <AvatarPreview avatarUrl={avatarUrl} name={displayName} />
+        <AvatarPreview avatarUrl={avatarUrl ? `${avatarUrl}${avatarUrl.includes("?") ? "&" : "?"}r=${bust}` : null} name={displayName} />
         <div className="flex flex-wrap gap-2">
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => void handleFileChange(e)} />
           <button

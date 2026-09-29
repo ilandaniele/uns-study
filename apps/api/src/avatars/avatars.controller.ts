@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Headers, Inject, Ip, Param, Post, Res, U
 import type { Response } from "express";
 import type { z } from "zod";
 import { uploadAvatarSchema } from "@uns/contracts";
-import { AuthGuard } from "../auth/auth.guard.js";
+import { AuthGuard, OptionalAuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";
 import { ZodBodyPipe } from "../common/zod-body.pipe.js";
@@ -57,8 +57,10 @@ export class ProfileAvatarController {
   }
 }
 
-/** `GET /avatars/:userId` — public, unauthenticated; gated on the owner's `show_avatar` privacy. */
+/** `GET /avatars/:userId` — public; gated on the owner's `show_avatar` privacy, except that the owner
+ *  themself always gets their own photo (so the /perfil preview works while it is still hidden). */
 @Controller("avatars")
+@UseGuards(OptionalAuthGuard)
 export class PublicAvatarController {
   constructor(
     @Inject(AvatarsService) private readonly avatars: AvatarsService,
@@ -68,6 +70,7 @@ export class PublicAvatarController {
   @Get(":userId")
   async get(
     @Param("userId") userId: string,
+    @CurrentUser() viewer: RequestUser | undefined,
     @Ip() ip: string,
     @Headers("if-none-match") ifNoneMatch: string | undefined,
     @Res({ passthrough: false }) res: Response,
@@ -75,12 +78,14 @@ export class PublicAvatarController {
     const limit = await this.rateLimit.check(`avatar-read-ip:${hashIp(ip)}`, AVATAR_READ_LIMIT_PER_IP, AVATAR_READ_WINDOW_S);
     if (!limit.allowed) throw ApiErrors.rateLimited();
 
-    const avatar = await this.avatars.getForOwner(userId);
+    const avatar = await this.avatars.getForOwner(userId, viewer?.id === userId);
     const etag = `"${avatar.sha256}"`;
     res.setHeader("ETag", etag);
     // Never cached by shared caches (private), and always revalidated — `show_avatar` can be
     // toggled off at any moment and the response must reflect that on the very next request.
-    res.setHeader("Cache-Control", "private, max-age=0, must-revalidate");
+    // The body depends on who is asking (owner vs. others), hence `Vary: Cookie`.
+    res.setHeader("Cache-Control", "private, no-cache");
+    res.setHeader("Vary", "Cookie");
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Content-Security-Policy", "default-src 'none'");
 

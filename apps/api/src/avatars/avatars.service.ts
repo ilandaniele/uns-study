@@ -152,11 +152,14 @@ export class AvatarsService {
     return url;
   }
 
-  /** Bytes for `GET /avatars/:userId`, gated by the owner's `show_avatar` privacy setting. Throws
+  /** Bytes for `GET /avatars/:userId`, gated by the owner's `show_avatar` privacy setting
+   *  (bypassed when `isOwner` — you can always see your own photo). Throws
    *  `NOT_FOUND` (never a distinguishable "hidden") whenever nothing should be served. */
-  async getForOwner(userId: string): Promise<AvatarBytes> {
-    const [privacy] = await this.db.select().from(schema.userPrivacySettings).where(eq(schema.userPrivacySettings.userId, userId)).limit(1);
-    if (!privacy?.showAvatar) throw ApiErrors.notFound();
+  async getForOwner(userId: string, isOwner = false): Promise<AvatarBytes> {
+    if (!isOwner) {
+      const [privacy] = await this.db.select().from(schema.userPrivacySettings).where(eq(schema.userPrivacySettings.userId, userId)).limit(1);
+      if (!privacy?.showAvatar) throw ApiErrors.notFound();
+    }
 
     const [row] = await this.db.select().from(schema.userAvatars).where(eq(schema.userAvatars.userId, userId)).limit(1);
     if (!row) throw ApiErrors.notFound();

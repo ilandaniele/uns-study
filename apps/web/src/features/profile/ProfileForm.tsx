@@ -1,23 +1,26 @@
 "use client";
 
-import type { MyProfileDto } from "@uns/contracts";
+import type { MyProfileDto, PrivacySettingsDto } from "@uns/contracts";
 import { ShuffleIcon } from "@phosphor-icons/react/dist/ssr";
 import type { FormEvent, ReactNode } from "react";
 import { useState } from "react";
 import type { ProfilePatch } from "./useMyProfile";
-import { IDENTITY_MODES, identityModeHint, identityModeLabel } from "./identity-mode";
+import { IDENTITY_MODES, identityModeHint, identityModeLabel, needsRoomVisibility, previewDisplayName } from "./identity-mode";
 import { CareerSelect } from "./CareerSelect";
 import { careerChoiceFromValue, careerValueFromChoice } from "./career-choice";
 
 export interface ProfileFormProps {
   profile: MyProfileDto;
+  privacy: PrivacySettingsDto;
   saving: boolean;
   onSave: (patch: ProfilePatch) => Promise<boolean>;
   onRerollAlias: () => Promise<string | null>;
+  /** Turns on `showInRoom` + `showSeat` (and the active check-in's identity, if any). */
+  onShowMeInRoom: () => Promise<boolean>;
 }
 
 /** "Editar perfil" form: name/nickname/career/bio/instagram/legajo + identity-mode selector. */
-export function ProfileForm({ profile, saving, onSave, onRerollAlias }: ProfileFormProps) {
+export function ProfileForm({ profile, privacy, saving, onSave, onRerollAlias, onShowMeInRoom }: ProfileFormProps) {
   const [firstName, setFirstName] = useState(profile.firstName ?? "");
   const [lastName, setLastName] = useState(profile.lastName ?? "");
   const [nickname, setNickname] = useState(profile.nickname ?? "");
@@ -29,6 +32,8 @@ export function ProfileForm({ profile, saving, onSave, onRerollAlias }: ProfileF
   const [identityMode, setIdentityMode] = useState(profile.identityMode);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [rerolling, setRerolling] = useState(false);
+  const shownName = previewDisplayName(identityMode, { firstName, lastName, nickname });
+  const offerRoomVisibility = shownName !== null && needsRoomVisibility(identityMode, privacy);
 
   async function handleReroll() {
     setRerolling(true);
@@ -95,6 +100,22 @@ export function ProfileForm({ profile, saving, onSave, onRerollAlias }: ProfileF
         </select>
         <p className="mt-1 text-xs text-muted">{identityModeHint(identityMode)}</p>
       </Field>
+
+      {offerRoomVisibility ? (
+        <div className="flex flex-col gap-2 rounded-lg border border-app bg-[var(--surface-2)] px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+          <span className="text-sm text-main">
+            Todavía no aparecés en la sala con este nombre. ¿Querés que te vean como “{shownName}” en “Personas en la sala” y en tu lugar?
+          </span>
+          <button
+            type="button"
+            onClick={() => void onShowMeInRoom()}
+            disabled={saving}
+            className="min-h-9 shrink-0 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+          >
+            Sí, mostrarme
+          </button>
+        </div>
+      ) : null}
 
       {identityMode === "HIDDEN" ? (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-app bg-surface px-3 py-2">
