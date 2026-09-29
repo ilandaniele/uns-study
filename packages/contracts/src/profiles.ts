@@ -82,9 +82,10 @@ export interface SeatOccupantDto {
   avatar: SeatAvatarDto;
 }
 
-/** A seat that reads OCCUPIED only because someone marked it ("Está ocupado"); nobody is checked in. */
+/** A seat that reads OCCUPIED ("Está ocupado") or SAVED ("Está guardado") only because someone marked it; nobody is checked in. */
 export interface SeatMarkedByDto {
   seatId: string;
+  kind: "OCCUPIED" | "SAVED";
   markedBy: { displayName: string; observedAt: string };
 }
 

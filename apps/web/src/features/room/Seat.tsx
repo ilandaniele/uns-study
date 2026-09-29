@@ -9,8 +9,8 @@ import { AVATAR_BACKDROP, SILHOUETTE_BODY, SILHOUETTE_HEAD, seatAvatarRender } f
 // seats are spaced well apart (see packages/database/src/layout.ts) and 2*HIT_RADIUS < that gap.
 const HIT_RADIUS = 28;
 
-// Glossy sphere footprint, same for main-table chairs and wall-bar stools (the mockup draws
-// both as top-down colored dots) — RING_R is the dark chair/stool base peeking out underneath.
+// Top-down chair footprint, same for main-table chairs and wall-bar stools: a rounded-square status cushion
+// on a wooden frame (RING_R bounds the frame; main-table chairs add a dark-wood backrest bar behind it).
 const SEAT_R = 19;
 const RING_R = SEAT_R + 4;
 // Occupant photo badge radius — larger than the seat, still under half the seat spacing.
@@ -90,10 +90,23 @@ export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, is
       <g className={visualStatus === "FREE" ? "seat-glow-free" : undefined}>
         {/* Contact shadow, cast toward the tabletop the chair is tucked under. */}
         <ellipse cx={0} cy={shadowCy} rx={SEAT_R * 0.85} ry={SEAT_R * 0.35} fill="rgb(0 0 0 / 0.22)" />
-        {/* Dark base ring — the chair/stool seen from directly above, peeking out from under the seat. */}
-        <circle r={RING_R} fill="var(--seat-ring)" />
-        {/* Glossy seat sphere. */}
-        <circle r={SEAT_R} fill={`url(#${GRADIENT_ID[visualStatus]})`} stroke="var(--seat-stroke)" strokeWidth={1} />
+        {/* Backrest bar on the side away from the table (stools at wall bars have none). */}
+        {tableType === "WALL_BAR" ? null : (
+          <rect x={-RING_R + 2} y={facing === "up" ? -RING_R - 8 : RING_R} width={(RING_R - 2) * 2} height={8} rx={4} fill="var(--seat-backrest)" />
+        )}
+        {/* Wooden chair frame, seen from directly above, peeking out around the cushion. */}
+        <rect x={-RING_R + 1} y={-RING_R + 1} width={(RING_R - 1) * 2} height={(RING_R - 1) * 2} rx={12} fill="var(--seat-ring)" />
+        {/* Cushion, filled with the seat status. */}
+        <rect
+          x={-SEAT_R + 1}
+          y={-SEAT_R + 1}
+          width={(SEAT_R - 1) * 2}
+          height={(SEAT_R - 1) * 2}
+          rx={10}
+          fill={`url(#${GRADIENT_ID[visualStatus]})`}
+          stroke="var(--seat-stroke)"
+          strokeWidth={1}
+        />
       </g>
       {badge ? (
         // Occupant badge over the seat: white frame plus a ring in the seat's status color, bigger than

@@ -37,7 +37,7 @@ export interface SeatDetailProps {
   /** The occupant who chose to be identified for this seat, if any (from `GET /rooms/:id/occupants`). */
   occupant?: SeatOccupantDto | null;
   /** Who marked this seat "Está ocupado" when nobody is checked in (from `GET /rooms/:id/occupants`). */
-  markedBy?: { displayName: string; observedAt: string } | null;
+  markedBy?: { displayName: string; observedAt: string; kind?: "OCCUPIED" | "SAVED" } | null;
   pending: boolean;
   /** True while `getFreshLocation()` is sampling GPS for the in-flight action; swaps in "Buscando tu ubicación…" on the primary buttons below. Optional so callers can adopt it incrementally. */
   locating?: boolean;
@@ -128,8 +128,8 @@ export function SeatDetail({
             </p>
           ) : null}
           {!isMySeat && occupant?.userId && me?.user && me.user.id !== occupant.userId ? <MessageOccupantButton userId={occupant.userId} /> : null}
-          {!isMySeat && !occupant && markedBy && seat.status === "OCCUPIED" ? (
-            <p className="mt-1.5 text-sm text-muted">{markedByLabel(markedBy.displayName, markedBy.observedAt, now)}</p>
+          {!isMySeat && !occupant && markedBy && (seat.status === "OCCUPIED" || (seat.status === "SAVED" && markedBy.kind === "SAVED")) ? (
+            <p className="mt-1.5 text-sm text-muted">{markedByLabel(markedBy.displayName, markedBy.observedAt, now, markedBy.kind)}</p>
           ) : null}
           {!isMySeat && seat.status === "OCCUPIED" && seat.occupiedUntil ? (
             <p className="mt-1.5 text-sm text-muted">Ocupado hasta las {clockLabel(seat.occupiedUntil)}</p>

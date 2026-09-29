@@ -179,7 +179,7 @@ export class RoomPeopleService {
     return result;
   }
 
-  /** Seats whose freshest live observation says OCCUPIED and that have nobody checked in. */
+  /** Seats whose freshest live observation says OCCUPIED or SAVED and that have nobody checked in. */
   private async listMarkedBy(roomId: string, checkedInSeats: Set<string>): Promise<SeatMarkedByDto[]> {
     const observations = await this.db
       .select({
@@ -199,12 +199,13 @@ export class RoomPeopleService {
 
     const latestBySeat = new Map<string, (typeof observations)[number]>();
     for (const o of observations) if (!latestBySeat.has(o.seatId)) latestBySeat.set(o.seatId, o);
-    const marked = [...latestBySeat.values()].filter((o) => o.status === "OCCUPIED" && !checkedInSeats.has(o.seatId));
+    const marked = [...latestBySeat.values()].filter((o) => (o.status === "OCCUPIED" || o.status === "SAVED") && !checkedInSeats.has(o.seatId));
     if (marked.length === 0) return [];
 
     const aliasByUser = await this.aliases.ensureAliasesForProfiles(marked.flatMap((o) => (o.profile ? [o.profile] : [])));
     return marked.map((o) => ({
       seatId: o.seatId,
+      kind: o.status === "SAVED" ? "SAVED" : "OCCUPIED",
       markedBy: {
         // An admin bulk-mark never exposes which admin did it.
         displayName: o.adminOverride ? "Administración" : displayName(profileForDisplay(o.profile, aliasByUser.get(o.userId)), null, o.userName),

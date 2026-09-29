@@ -33,10 +33,10 @@
   --oak-text: #0f172a;
 
   --room-wall: #a87a3f;
-  --room-floor-a: #dcaea2;
+  --room-floor-a: #d8a89a;
   --room-floor-b: #c4867a;
   --room-floor-grain: #f1ddd2;
-  --room-floor-seam: #b98276;
+  --room-floor-seam: #a9766a;
   --room-aisle: #e6c0b5;
   --room-table-border: var(--oak-border);
   --room-table-label-bg: #0f172a;
@@ -51,16 +51,19 @@
   --room-wall-upper: #efe4cd;
   --room-wainscot: #d2a45f;
   --room-wainscot-dark: #b5823f;
-  --room-light-strip: #fffdf3;
+  --room-radiator: #f4ecd8;
+  --room-table-strip: #f4f2ee;
+  --room-table-strip-edge: #c9c4ba;
   --room-dark-overlay: 0;
   --seat-stroke: #7c8799;
-  --seat-ring: #1f2937;
+  --seat-ring: #8a5a34;
+  --seat-backrest: #5a3b25;
 
   --seat-free: #16a34a;
   --seat-occupied: #dc2626;
   --seat-uncertain: #d9773a;
   --seat-saved: #eab308;
-  --seat-unknown: #b8c2d0;
+  --seat-unknown: #7d6570;
   --seat-mine: #2563eb;
 }
 
@@ -102,16 +105,19 @@
   --room-wall-upper: #efe4cd;
   --room-wainscot: #d2a45f;
   --room-wainscot-dark: #b5823f;
-  --room-light-strip: #fffdf3;
+  --room-radiator: #f4ecd8;
+  --room-table-strip: #f4f2ee;
+  --room-table-strip-edge: #c9c4ba;
   --room-dark-overlay: 0.35;
   --seat-stroke: #0b1120;
-  --seat-ring: #05070d;
+  --seat-ring: #7a4f2d;
+  --seat-backrest: #4a2f1d;
 
   --seat-free: #34c98a;
   --seat-occupied: #f06a6a;
   --seat-uncertain: #e8925a;
   --seat-saved: #fde047;
-  --seat-unknown: #8792ab;
+  --seat-unknown: #7a6270;
   --seat-mine: #60a5fa;
 }
 

@@ -265,6 +265,17 @@ describe("RoomPeopleService", () => {
       expect(marked[0]?.markedBy.displayName).toBe("Beto");
       expect(Date.parse(marked[0]!.markedBy.observedAt)).toBeLessThan(Date.now() - 4 * 60_000);
       expect(JSON.stringify(marked[0])).not.toContain("u2");
+      expect(marked[0]?.kind).toBe("OCCUPIED");
+    });
+
+    it("reports 'markedBy' with kind SAVED for seats whose freshest observation is SAVED", async () => {
+      await setProfile("u2", { firstName: "Beto", identityMode: "FIRST_NAME" });
+      const minutes = (n: number) => new Date(Date.now() + n * 60_000);
+      await db.insert(schema.seatObservations).values({ userId: "u2", roomId, seatId: seatIds[3]!, observedStatus: "SAVED", observedAt: minutes(-3), expiresAt: minutes(30) });
+
+      const marked = (await people.listOccupants(roomId)).filter((e): e is SeatMarkedByDto => "markedBy" in e);
+      expect(marked).toHaveLength(1);
+      expect(marked[0]).toMatchObject({ seatId: seatIds[3], kind: "SAVED", markedBy: { displayName: "Beto" } });
     });
   });
 });

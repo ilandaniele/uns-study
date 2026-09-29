@@ -319,7 +319,10 @@ export function RoomPageClient({ slug }: { slug: string }) {
       me={me}
       isMySeat={selectedSeat.id === mySeatId}
       occupant={occupantsBySeatId.get(selectedSeat.id) ?? null}
-      markedBy={markedBySeatId.get(selectedSeat.id)?.markedBy ?? null}
+      markedBy={(() => {
+        const entry = markedBySeatId.get(selectedSeat.id);
+        return entry ? { ...entry.markedBy, kind: entry.kind } : null;
+      })()}
       pending={pending}
       actionError={actionError}
       turnstileRequired={turnstileRequired}
