@@ -35,7 +35,11 @@ test("table nickname: eligibility gate, then 5 votes promote a proposal to the m
     await expect(proposerPage.getByText("Para proponer o votar tenés que haber marcado un lugar en la sala.")).toBeVisible();
 
     // The proposer checks in (any check-in makes them eligible), then proposes successfully.
+    const proposerCheckIn = proposerPage.waitForResponse(
+      (res) => res.url().endsWith("/api/v1/checkins") && res.request().method() === "POST" && res.ok(),
+    );
     await proposerPage.getByRole("button", { name: "Estoy acá" }).click();
+    await proposerCheckIn;
     await expect(proposerPage.getByRole("button", { name: "Me voy" })).toBeVisible();
 
     await proposerPage.getByPlaceholder("Proponé un nombre").fill(nickname);
@@ -54,7 +58,11 @@ test("table nickname: eligibility gate, then 5 votes promote a proposal to the m
       const page = await context.newPage();
       await page.goto(`/sala/${ROOM_SLUG}`);
       await seatLocator(page, seat.table, seat.seatNumber).click();
+      // The UI updates optimistically, so wait for the server to actually store the check-in
+      // (voting eligibility is checked against the database).
+      const checkInSaved = page.waitForResponse((res) => res.url().endsWith("/api/v1/checkins") && res.request().method() === "POST" && res.ok());
       await page.getByRole("button", { name: "Estoy acá" }).click();
+      await checkInSaved;
       await expect(page.getByRole("button", { name: "Me voy" })).toBeVisible();
 
       const voteRes = await context.request.post(`${API_URL}/api/v1/names/${proposal.id}/vote`, {
