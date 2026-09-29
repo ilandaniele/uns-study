@@ -3,9 +3,10 @@
 import { BookOpenTextIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut, useSession } from "@/lib/auth-client";
+import { signOut } from "@/lib/auth-client";
 import { useAdminAccess } from "@/features/admin/useAdminAccess";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { invalidateMe } from "@/lib/me-store";
 import { resetSocket } from "@/lib/socket";
 
 const NAV_ITEMS: { label: string; href: string }[] = [
@@ -18,8 +19,8 @@ const NAV_ITEMS: { label: string; href: string }[] = [
 ];
 
 export function Header() {
-  const { data: session, isPending } = useSession();
-  const { isAdmin } = useAdminAccess();
+  const { isAdmin, loading, me } = useAdminAccess();
+  const user = me?.user ?? null;
   const pathname = usePathname();
 
   const items = isAdmin ? [...NAV_ITEMS, { label: "Admin", href: "/admin" }] : NAV_ITEMS;
@@ -28,6 +29,7 @@ export function Header() {
   // sign-out so it drops the user's channels and rejoins anonymous instead of lingering.
   async function handleSignOut() {
     await signOut();
+    invalidateMe();
     resetSocket();
   }
 
@@ -59,9 +61,9 @@ export function Header() {
 
       <div className="flex items-center gap-2 text-sm">
         <ThemeToggle />
-        {isPending ? null : session?.user ? (
+        {loading ? null : user ? (
           <div className="flex items-center gap-3">
-            <span className="hidden text-main xl:inline">{session.user.name ?? session.user.email}</span>
+            <span className="hidden text-main xl:inline">{user.name ?? user.email}</span>
             <button
               type="button"
               onClick={() => void handleSignOut()}

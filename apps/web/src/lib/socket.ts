@@ -1,11 +1,16 @@
 import { SocketEvents } from "@uns/contracts";
 import { io, type Socket } from "socket.io-client";
 import { apiFetch, ApiRequestError } from "./api";
+import { peekMe } from "./me-store";
 
 // Resolved at build time in next.config.ts (falls back to API_PROXY_TARGET, then localhost).
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000";
 
 let socket: Socket | null = null;
+
+/** Refresh the cached realtime token this long before the server-side expiry. */
+const TOKEN_EXPIRY_MARGIN_MS = 30_000;
+let cachedToken: RealtimeTokenDto | null = null;
 
 interface RealtimeTokenDto {
   token: string;
@@ -20,9 +25,15 @@ interface RealtimeTokenDto {
  * anonymous visitors, who connect without one.
  */
 async function fetchSocketToken(): Promise<string | null> {
+  // Reuse the token until shortly before it expires (reconnects would otherwise refetch each time).
+  if (cachedToken && Date.now() < cachedToken.expiresAt - TOKEN_EXPIRY_MARGIN_MS) return cachedToken.token;
+  cachedToken = null;
+  // Already known to be signed out: the endpoint would only answer 401.
+  if (peekMe()?.user === null) return null;
   try {
-    const { token } = await apiFetch<RealtimeTokenDto>("/api/v1/realtime/token");
-    return token;
+    const dto = await apiFetch<RealtimeTokenDto>("/api/v1/realtime/token");
+    cachedToken = dto;
+    return dto.token;
   } catch (err) {
     if (err instanceof ApiRequestError && err.status === 401) return null;
     console.error("[socket] failed to fetch realtime token", err);
@@ -46,6 +57,8 @@ export function getSocket(): Socket {
     socket = io(SOCKET_URL, {
       withCredentials: true,
       autoConnect: true,
+      // WebSocket first: skips the polling handshake round-trips; polling stays as a fallback.
+      transports: ["websocket", "polling"],
       auth: (cb) => {
         void fetchSocketToken().then((token) => cb(token ? { token } : {}));
       },
@@ -62,6 +75,7 @@ export function getSocket(): Socket {
  * socket hasn't been created yet (nothing to reconnect).
  */
 export function resetSocket(): void {
+  cachedToken = null; // identity is changing; never reuse the previous user's token
   if (!socket) return;
   socket.disconnect();
   socket.connect();

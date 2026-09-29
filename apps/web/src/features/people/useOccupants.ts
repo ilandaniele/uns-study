@@ -1,7 +1,7 @@
 "use client";
 
-import { SocketEvents, type SeatOccupantDto } from "@uns/contracts";
-import { useCallback, useEffect, useState } from "react";
+import { SocketEvents, type SeatOccupantDto, type SeatStateChangedEvent } from "@uns/contracts";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
 
@@ -35,21 +35,37 @@ export function useOccupants(roomSlug: string): UseOccupantsResult {
   // Debounced refetch on `seat:state-changed` (a check-in/checkout/dispute can change who's seated
   // where) and on socket reconnect (occupants may have changed while we were disconnected).
   // `table:nickname-changed` is irrelevant here — a table rename never changes who's occupying a seat.
+  const bySeatIdRef = useRef(bySeatId);
+  useEffect(() => {
+    bySeatIdRef.current = bySeatId;
+  }, [bySeatId]);
+
   useEffect(() => {
     const socket = getSocket();
     let timeout: ReturnType<typeof setTimeout> | null = null;
+    // The very first `connect` is covered by the initial fetch; only a RE-connect can have missed events.
+    let seenConnect = socket.connected;
     const scheduleReload = () => {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => void load(), REFETCH_DEBOUNCE_MS);
     };
+    // Only seats that become OCCUPIED (a new occupant may be identified) or that we currently list
+    // (occupant may have left) can change this overlay; other seat events are noise.
+    const onSeatStateChanged = (event: SeatStateChangedEvent) => {
+      if (event.status === "OCCUPIED" || bySeatIdRef.current.has(event.seatId)) scheduleReload();
+    };
+    const onConnect = () => {
+      if (seenConnect) scheduleReload();
+      seenConnect = true;
+    };
 
-    socket.on(SocketEvents.SeatStateChanged, scheduleReload);
-    socket.on("connect", scheduleReload);
+    socket.on(SocketEvents.SeatStateChanged, onSeatStateChanged);
+    socket.on("connect", onConnect);
 
     return () => {
       if (timeout) clearTimeout(timeout);
-      socket.off(SocketEvents.SeatStateChanged, scheduleReload);
-      socket.off("connect", scheduleReload);
+      socket.off(SocketEvents.SeatStateChanged, onSeatStateChanged);
+      socket.off("connect", onConnect);
     };
   }, [load]);
 

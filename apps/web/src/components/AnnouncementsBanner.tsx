@@ -2,8 +2,11 @@
 
 import { SocketEvents, type AnnouncementDto } from "@uns/contracts";
 import type { Socket } from "socket.io-client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
+
+/** Minimum gap between tab-visibility refetches. */
+const VISIBILITY_REFETCH_MIN_MS = 60_000;
 
 export interface AnnouncementsBannerProps {
   roomSlug: string;
@@ -13,7 +16,7 @@ export interface AnnouncementsBannerProps {
 }
 
 /** Active announcements for a room, refreshed on `room:announcement-changed` (if a socket is
- *  passed in) and whenever the tab regains focus. Renders nothing when there are none. */
+ *  passed in) and when the tab becomes visible again. Renders nothing when there are none. */
 export function AnnouncementsBanner({ roomSlug, socket }: AnnouncementsBannerProps) {
   const [announcements, setAnnouncements] = useState<AnnouncementDto[]>([]);
 
@@ -31,12 +34,20 @@ export function AnnouncementsBanner({ roomSlug, socket }: AnnouncementsBannerPro
     void load();
   }, [load]);
 
+  // Revalidate when the tab becomes visible again, at most once per minute (socket events cover
+  // live changes while it is open).
+  const lastLoadRef = useRef(0);
   useEffect(() => {
-    function onFocus() {
+    lastLoadRef.current = Date.now();
+    function onVisible() {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastLoadRef.current < VISIBILITY_REFETCH_MIN_MS) return;
+      lastLoadRef.current = now;
       void load();
     }
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, [load]);
 
   useEffect(() => {

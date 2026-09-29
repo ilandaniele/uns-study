@@ -3,6 +3,7 @@
 import type { RoomPersonDto } from "@uns/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch, ApiRequestError } from "@/lib/api";
+import { useMe } from "@/lib/me-store";
 
 export interface UsePeopleResult {
   people: RoomPersonDto[];
@@ -11,8 +12,12 @@ export interface UsePeopleResult {
   refetch: () => void;
 }
 
+const SIGN_IN_MESSAGE = "Iniciá sesión para ver quién está en la sala.";
+
 /** GET `/rooms/:idOrSlug/people` — registered users visible in the room right now. */
 export function usePeople(roomSlug: string): UsePeopleResult {
+  const { me, loading: meLoading } = useMe();
+  const anonymous = !meLoading && !me?.user;
   const [people, setPeople] = useState<RoomPersonDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,16 +28,27 @@ export function usePeople(roomSlug: string): UsePeopleResult {
       setPeople(dto);
       setError(null);
     } catch (err) {
-      setError(err instanceof ApiRequestError && err.code === "UNAUTHENTICATED" ? "Iniciá sesión para ver quién está en la sala." : "No pudimos cargar la lista de personas.");
+      setError(err instanceof ApiRequestError && err.code === "UNAUTHENTICATED" ? SIGN_IN_MESSAGE : "No pudimos cargar la lista de personas.");
     } finally {
       setLoading(false);
     }
   }, [roomSlug]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch on mount/slug change
+    if (meLoading) return;
+    // Anonymous visitors can't see the list; skip the request that would only 401.
+    if (anonymous) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- derived from the shared /me result
+      setError(SIGN_IN_MESSAGE);
+      setLoading(false);
+      return;
+    }
     void load();
-  }, [load]);
+  }, [load, meLoading, anonymous]);
 
-  return { people, loading, error, refetch: load };
+  const refetch = useCallback(() => {
+    if (!anonymous) void load();
+  }, [anonymous, load]);
+
+  return { people, loading, error, refetch };
 }

@@ -1,0 +1,51 @@
+"use client";
+
+import type { MeDto } from "@uns/contracts";
+import { useEffect } from "react";
+import { apiFetch } from "./api";
+import { createResource, useResource } from "./resource-cache";
+
+// One shared `/api/v1/me` for Header, BottomNav, the room page, etc.
+const meResource = createResource<MeDto>(() => apiFetch<MeDto>("/api/v1/me"));
+
+/** Resolves the (cached or freshly fetched) caller identity; concurrent callers share one request. */
+export function getMe(): Promise<MeDto> {
+  return meResource.load();
+}
+
+/** Last known `/me` without fetching (`undefined` = not loaded yet or invalidated). */
+export function peekMe(): MeDto | undefined {
+  return meResource.getState().data;
+}
+
+/** Revalidates `/me` in the background, keeping the previous value visible meanwhile. */
+export function refreshMe(): Promise<MeDto> {
+  return meResource.refresh();
+}
+
+/** Forget the cached identity (sign-in/out, account deletion); mounted `useMe` hooks refetch. */
+export function invalidateMe(): void {
+  meResource.invalidate();
+}
+
+export interface UseMeResult {
+  me: MeDto | null;
+  loading: boolean;
+}
+
+export function useMe(): UseMeResult {
+  const state = useResource(meResource);
+
+  // Initial load (or retry after a failure) once per mount.
+  useEffect(() => {
+    void meResource.load().catch(() => undefined);
+  }, []);
+
+  // Refetch after `invalidateMe()` while the hook is mounted.
+  const idle = state.data === undefined && !state.loading && state.error === undefined;
+  useEffect(() => {
+    if (idle) void meResource.load().catch(() => undefined);
+  }, [idle]);
+
+  return { me: state.data ?? null, loading: state.data === undefined && state.error === undefined };
+}
