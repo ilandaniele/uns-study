@@ -37,14 +37,18 @@ export class RoomsService {
     const room = await this.findRoomRow(idOrSlug);
     const now = new Date();
 
-    const tableRows = await this.db.select().from(schema.roomTables).where(eq(schema.roomTables.roomId, room.id));
-    const seatRows = await this.db
-      .select()
-      .from(schema.seats)
-      .where(eq(schema.seats.roomId, room.id))
-      .orderBy(asc(schema.seats.code));
-
-    const liveStates = await this.roomState.getLiveSeatStates(room.id, now);
+    const seatRowsPromise = Promise.resolve(
+      this.db.select().from(schema.seats).where(eq(schema.seats.roomId, room.id)).orderBy(asc(schema.seats.code)),
+    );
+    const [tableRows, seatRows, liveStates] = await Promise.all([
+      this.db.select().from(schema.roomTables).where(eq(schema.roomTables.roomId, room.id)),
+      seatRowsPromise,
+      this.roomState.getLiveSeatStates(
+        room.id,
+        now,
+        seatRowsPromise.then((rows) => rows.filter((s) => s.active)),
+      ),
+    ]);
 
     const tables: TableDto[] = tableRows.map((t) => ({
       id: t.id,

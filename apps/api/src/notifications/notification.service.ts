@@ -97,17 +97,21 @@ export class NotificationService {
    * of the in-app alert) is sent from here before returning, so the two can't race in tests/callers
    * that do await this.
    */
-  async handleSeatFreed(roomId: string, changes: SeatStateChange[]): Promise<SeatFreedRecipient[]> {
-    const freedSeatIds = changes
-      .filter((c) => c.status === "FREE" && (c.previousStatus === "OCCUPIED" || c.previousStatus === "UNCERTAIN"))
-      .map((c) => c.seatId);
+  async handleSeatFreed(roomId: string, changes: SeatStateChange[], summary?: { free: number }): Promise<SeatFreedRecipient[]> {
+    const freedSeatIds = [
+      ...new Set(
+        changes
+          .filter((c) => c.status === "FREE" && (c.previousStatus === "OCCUPIED" || c.previousStatus === "UNCERTAIN"))
+          .map((c) => c.seatId),
+      ),
+    ];
     if (freedSeatIds.length === 0) return [];
 
     const eligible = await this.eligibleSubscribers(roomId, "seatFreed");
     if (eligible.length === 0) return [];
 
     try {
-      await this.sendSeatFreedPush(roomId, freedSeatIds, eligible);
+      await this.sendSeatFreedPush(roomId, freedSeatIds, eligible, summary);
     } catch (err) {
       this.logger.error("Failed to send seat-freed push batch", err instanceof Error ? err.stack : String(err));
     }
@@ -158,11 +162,11 @@ export class NotificationService {
     return subscriberIds.filter((id) => !checkedIn.has(id));
   }
 
-  private async sendSeatFreedPush(roomId: string, freedSeatIds: string[], recipients: string[]): Promise<void> {
+  private async sendSeatFreedPush(roomId: string, freedSeatIds: string[], recipients: string[], knownSummary?: { free: number }): Promise<void> {
     const toNotify = await this.claimThrottle(recipients, "SEAT_FREED", SEAT_FREED_THROTTLE_MIN);
     if (toNotify.length === 0) return;
 
-    const [slug, summary] = await Promise.all([this.roomSlug(roomId), this.roomState.getRoomSummary(roomId)]);
+    const [slug, summary] = await Promise.all([this.roomSlug(roomId), knownSummary ?? this.roomState.getRoomSummary(roomId)]);
     const single = freedSeatIds.length === 1 ? await this.describeSeat(freedSeatIds[0]!) : null;
 
     const title = single ? "Se liberó un lugar" : `Se liberaron ${freedSeatIds.length} lugares`;

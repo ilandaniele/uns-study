@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@uns/database";
 import { schema } from "@uns/database";
 import { freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
@@ -52,5 +52,28 @@ describe("RoomStateService.getRoomSummary", () => {
     expect(summary.total).toBe(live.size);
     expect(summary.unknown).toBe([...live.values()].filter((s) => s.status === "UNKNOWN").length);
     expect(summary.occupied).toBe(0); // must not still count the stale OCCUPIED row
+  });
+});
+
+describe("RoomStateService query counts", () => {
+  it("getLiveSeatStates runs its reads as one parallel batch and skips the seats read when pre-loaded", async () => {
+    const db = await freshDb();
+    const roomState = new RoomStateService(db);
+    const room = await getRoom(db);
+    const seats = await getSeats(db);
+    let count = 0;
+    const original = db.select.bind(db);
+    const spy = vi.spyOn(db, "select").mockImplementation(((...a: unknown[]) => {
+      count++;
+      return (original as (...x: unknown[]) => unknown)(...a);
+    }) as never);
+
+    await roomState.getLiveSeatStates(room.id);
+    const unloaded = count; // seats, check-ins, open, tied, observations, stored + active-check-in subquery
+    count = 0;
+    await roomState.getLiveSeatStates(room.id, new Date(), seats.filter((s) => s.active));
+    spy.mockRestore();
+    expect(unloaded).toBe(7);
+    expect(count).toBe(6);
   });
 });

@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Auth } from "../auth/auth.instance.js";
-import type { Socket } from "socket.io";
+import type { Socket, Server } from "socket.io";
 import type { RoomStateService } from "../rooms/room-state.service.js";
 import type { NotificationService } from "../notifications/notification.service.js";
 import { RoomRealtimeGateway, resolveSocketUserId } from "./room-realtime.gateway.js";
@@ -59,5 +59,29 @@ describe("RoomRealtimeGateway.onJoin", () => {
 
   it("acks joined=false for an invalid payload", () => {
     expect(gateway.onJoin(fakeSocket(), { roomId: "nope" })).toEqual({ joined: false });
+  });
+});
+
+describe("RoomRealtimeGateway.broadcastSeatChanges", () => {
+  const ROOM_ID = "289306e1-e5f2-4cb6-ac63-9ae49e986e04";
+  const change = (seatId: string) => ({ seatId, status: "FREE" as const, confidence: 0.5, lastUpdatedAt: new Date(), verified: false, previousStatus: "OCCUPIED" as const });
+
+  it("emits seat events immediately, then one coalesced summary + notification pass on flush", async () => {
+    const summary = { roomId: ROOM_ID, total: 2, free: 2, occupied: 0, uncertain: 0, unknown: 0 };
+    const getRoomSummary = vi.fn(async () => summary);
+    const handleSeatFreed = vi.fn(async () => []);
+    const gateway = new RoomRealtimeGateway({ getRoomSummary } as unknown as RoomStateService, {} as Auth, { handleSeatFreed } as unknown as NotificationService);
+    const emit = vi.fn();
+    gateway.server = { to: () => ({ emit }) } as unknown as Server;
+
+    await gateway.broadcastSeatChanges(ROOM_ID, [change("a")]);
+    await gateway.broadcastSeatChanges(ROOM_ID, [change("b")]);
+    expect(emit.mock.calls.map((c) => c[0])).toEqual(["seat:state-changed", "seat:state-changed"]);
+    expect(getRoomSummary).not.toHaveBeenCalled();
+
+    await gateway.flushPending();
+    expect(getRoomSummary).toHaveBeenCalledTimes(1);
+    expect(emit.mock.calls.map((c) => c[0])).toContain("room:summary-changed");
+    expect(handleSeatFreed).toHaveBeenCalledWith(ROOM_ID, [expect.objectContaining({ seatId: "a" }), expect.objectContaining({ seatId: "b" })], summary);
   });
 });

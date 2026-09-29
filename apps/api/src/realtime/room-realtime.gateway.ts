@@ -50,6 +50,9 @@ const chatPayloadSchema = z.object({ roomId: z.string().uuid() });
  *  watching more than a handful of rooms in this MVP. */
 const MAX_JOINED_ROOMS_PER_SOCKET = 5;
 
+/** Summary emits (and seat-freed notifications) for one room are coalesced within this window. */
+const SUMMARY_COALESCE_MS = 250;
+
 /**
  * Resolves the authenticated user id (if any) for a raw Socket.IO handshake. Tries the signed
  * `handshake.auth.token` first (issued by `GET /api/v1/realtime/token` — required in production
@@ -85,6 +88,9 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
   server!: Server;
 
   private readonly logger = new Logger(RoomRealtimeGateway.name);
+
+  /** Per-room deferred summary/notification work, coalesced within `SUMMARY_COALESCE_MS`. */
+  private readonly pendingSummaries = new Map<string, { changes: SeatStateChange[]; timer: NodeJS.Timeout | null; lastFlushAt: number }>();
 
   constructor(
     @Inject(RoomStateService) private readonly roomState: RoomStateService,
@@ -136,7 +142,9 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
     socket.leave(chatChannel(parsed.data.roomId));
   }
 
-  /** Emits `seat:state-changed` per changed seat, then a refreshed `room:summary-changed`. */
+  /** Emits `seat:state-changed` per changed seat immediately, then returns. The refreshed
+   *  `room:summary-changed` and the seat-freed notifications are computed off the request path,
+   *  coalesced per room within `SUMMARY_COALESCE_MS`. */
   async broadcastSeatChanges(roomId: string, changes: SeatStateChange[]): Promise<void> {
     if (changes.length === 0) return;
     const channel = roomChannel(roomId);
@@ -151,22 +159,53 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
       };
       this.server?.to(channel).emit(SocketEvents.SeatStateChanged, event);
     }
-    const summary = await this.roomState.getRoomSummary(roomId);
-    this.server?.to(channel).emit(SocketEvents.RoomSummaryChanged, summary satisfies RoomSummary);
+    this.scheduleSummary(roomId, changes);
+  }
 
-    // Fire-and-forget: figures out who should get a "seat freed" alert (opted in, not currently
-    // checked into this room) and sends any due push notifications itself — never blocks the
-    // request that triggered this broadcast. The in-app toast (for whoever has the page open) is
-    // this gateway's job since it already owns `this.server` and the per-user channels.
-    this.notifications
-      .handleSeatFreed(roomId, changes)
-      .then((recipients) => {
-        for (const { userId, seatIds } of recipients) {
-          const event: SeatFreedAlertEvent = { seatIds, freeCount: summary.free };
-          this.server?.to(userChannel(userId)).emit(SocketEvents.SeatFreedAlert, event);
-        }
-      })
-      .catch((err) => this.logger.error("Failed to process seat-freed notifications", err instanceof Error ? err.stack : String(err)));
+  private scheduleSummary(roomId: string, changes: SeatStateChange[]): void {
+    const pending = this.pendingSummaries.get(roomId) ?? { changes: [], timer: null, lastFlushAt: 0 };
+    pending.changes.push(...changes);
+    this.pendingSummaries.set(roomId, pending);
+    if (pending.timer) return;
+    const delay = Math.max(0, SUMMARY_COALESCE_MS - (Date.now() - pending.lastFlushAt));
+    pending.timer = setTimeout(() => {
+      this.flushRoom(roomId).catch((err) => this.logger.error("Failed to flush room summary", err instanceof Error ? err.stack : String(err)));
+    }, delay);
+    pending.timer.unref?.();
+  }
+
+  private async flushRoom(roomId: string): Promise<void> {
+    const pending = this.pendingSummaries.get(roomId);
+    if (!pending) return;
+    if (pending.timer) clearTimeout(pending.timer);
+    pending.timer = null;
+    const changes = pending.changes;
+    pending.changes = [];
+    pending.lastFlushAt = Date.now();
+    if (changes.length === 0) return;
+
+    // Derived from the live map (via `getRoomSummary`), so the emitted summary always equals what
+    // a fresh map fetch shows.
+    const summary = await this.roomState.getRoomSummary(roomId);
+    this.server?.to(roomChannel(roomId)).emit(SocketEvents.RoomSummaryChanged, summary satisfies RoomSummary);
+
+    // Figures out who should get a "seat freed" alert (opted in, not currently checked into this
+    // room) and sends any due push notifications itself. The in-app toast (for whoever has the page
+    // open) is this gateway's job since it already owns `this.server` and the per-user channels.
+    try {
+      const recipients = await this.notifications.handleSeatFreed(roomId, changes, summary);
+      for (const { userId, seatIds } of recipients) {
+        const event: SeatFreedAlertEvent = { seatIds, freeCount: summary.free };
+        this.server?.to(userChannel(userId)).emit(SocketEvents.SeatFreedAlert, event);
+      }
+    } catch (err) {
+      this.logger.error("Failed to process seat-freed notifications", err instanceof Error ? err.stack : String(err));
+    }
+  }
+
+  /** Runs all pending deferred summary/notification work now (used by tests and shutdown). */
+  async flushPending(): Promise<void> {
+    await Promise.all([...this.pendingSummaries.keys()].map((roomId) => this.flushRoom(roomId)));
   }
 
   /** Room-wide, unconditional in-app banner — everyone currently viewing the room sees it,
