@@ -2,6 +2,7 @@
 
 import type { ChatMessageDto } from "@uns/contracts";
 import { useRouter } from "next/navigation";
+import { useStickToBottom } from "./useStickToBottom";
 import { Avatar } from "@/components/Avatar";
 import { daySeparatorFlags, formatDaySeparator, formatMessageTime, groupMessages } from "./grouping";
 import { MessageMenu } from "./MessageMenu";
@@ -19,8 +20,14 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock }: 
   const grouped = groupMessages(messages.map((m) => ({ id: m.id, authorId: m.author.userId, createdAt: m.createdAt })));
   const showSeparators = daySeparatorFlags(messages);
 
+  const lastMessage = messages[messages.length - 1];
+  const scrollRef = useStickToBottom<HTMLDivElement>(
+    lastMessage?.id ?? null,
+    currentUserId !== null && lastMessage?.author.userId === currentUserId,
+  );
+
   return (
-    <div className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+    <div ref={scrollRef} className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
       {messages.map((message, index) => {
         const showDaySeparator = showSeparators[index]!;
         const isOwn = currentUserId !== null && message.author.userId === currentUserId;

@@ -9,6 +9,7 @@ import { MessageMenu } from "@/features/chat/MessageMenu";
 import { useBlockedUsers } from "@/features/chat/useBlockedUsers";
 import { useConversations } from "@/features/chat/useConversations";
 import { useDmThread } from "@/features/chat/useDmThread";
+import { useStickToBottom } from "@/features/chat/useStickToBottom";
 import { useSession } from "@/lib/auth-client";
 
 const DM_MESSAGE_MAX_LENGTH = 1000;
@@ -45,6 +46,8 @@ function DmThread({ conversationId, currentUserId }: { conversationId: string; c
   const otherUserId = conversation?.otherUser.userId ?? null;
   const grouped = groupMessages(messages.map((m) => ({ id: m.id, authorId: m.senderId, createdAt: m.createdAt })));
   const showSeparators = daySeparatorFlags(messages);
+  const lastMessage = messages[messages.length - 1];
+  const scrollRef = useStickToBottom<HTMLDivElement>(lastMessage?.id ?? null, lastMessage?.senderId === currentUserId);
 
   return (
     <main className="mx-auto flex h-[calc(100dvh_-_57px_-_56px_-_env(safe-area-inset-bottom))] max-w-2xl flex-col lg:h-[calc(100dvh_-_57px)]">
@@ -81,7 +84,7 @@ function DmThread({ conversationId, currentUserId }: { conversationId: string; c
       ) : error ? (
         <p className="flex-1 p-6 text-center text-red-600">{error}</p>
       ) : (
-        <div className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+        <div ref={scrollRef} className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
           {hasMore ? (
             <div className="flex justify-center pb-2">
               <button
