@@ -8,6 +8,9 @@ export type Role = "ADMIN" | "MODERATOR";
 
 @Injectable()
 export class RolesService {
+  /** Users whose admin role was already upserted by this process, so `/me` stops writing on every call. */
+  private readonly ensuredAdmins = new Set<string>();
+
   constructor(@Inject(DB) private readonly db: Db) {}
 
   async rolesFor(userId: string): Promise<Role[]> {
@@ -22,7 +25,9 @@ export class RolesService {
 
   /** If `email` is in the `ADMIN_EMAILS` env list (case-insensitive), upserts the ADMIN role for `userId`. */
   async ensureAdminFromEnv(userId: string, email: string): Promise<void> {
+    if (this.ensuredAdmins.has(userId)) return;
     if (!env.adminEmails.includes(email.trim().toLowerCase())) return;
     await this.db.insert(schema.userRoles).values({ userId, role: "ADMIN" }).onConflictDoNothing();
+    this.ensuredAdmins.add(userId);
   }
 }

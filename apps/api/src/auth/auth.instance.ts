@@ -26,6 +26,9 @@ export function buildAuth(db: Db) {
     secret: env.betterAuthSecret || "dev-only-insecure-secret-change-me",
     trustedOrigins: env.webOrigins,
     emailAndPassword: { enabled: true },
+    // Signed cookie cache: most requests skip the session+user DB lookup. Bans/restrictions are
+    // enforced from the restrictions table (not the session), so the 60 s staleness is harmless.
+    session: { cookieCache: { enabled: true, maxAge: 60 } },
     socialProviders: useGoogle
       ? { google: { clientId: env.googleClientId, clientSecret: env.googleClientSecret } }
       : undefined,

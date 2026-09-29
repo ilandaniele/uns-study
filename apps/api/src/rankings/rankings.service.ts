@@ -13,6 +13,9 @@ const STUDY_TIME_DAILY_CAP_MIN = 720;
 const CONTRIBUTION_OBSERVATION_DAILY_CAP = 20;
 const CONTRIBUTION_CHECKIN_DAILY_CAP = 5;
 const STREAK_MIN_MINUTES = 30;
+/** Streaks only look back this many days (longer streaks are capped at what the window can prove). */
+const STREAK_LOOKBACK_DAYS = 400;
+const RAW_CACHE_TTL_MS = 60_000;
 
 /** 'YYYY-MM-DD' in `tz` for `date`. */
 function localDateOf(date: Date, tz: string): string {
@@ -107,21 +110,34 @@ export class RankingsService {
     @Inject(AliasService) private readonly aliases: AliasService,
   ) {}
 
+  /** Raw (viewer-independent) ranking values per `roomId|period|category`, invalidated by TTL only. */
+  private readonly rawCache = new Map<string, { at: number; values: Map<string, number> }>();
+
   async getRankings(
     idOrSlug: string,
     period: RankingPeriod,
     category: RankingCategory,
     viewerUserId: string | null,
-    now: Date = new Date(),
+    nowOverride?: Date,
   ): Promise<RankingDto> {
     const room = await this.rooms.findRoomRow(idOrSlug);
+    const now = nowOverride ?? new Date();
 
-    const values =
-      category === "study_time"
-        ? await this.studyTimeValues(room, period, now)
-        : category === "streak"
-          ? await this.streakValues(room, now)
-          : await this.contributionValues(room, period, now);
+    // An explicit `now` (tests, backfills) always recomputes; live requests share the TTL cache.
+    const cacheKey = `${room.id}|${period}|${category}`;
+    const cached = nowOverride ? undefined : this.rawCache.get(cacheKey);
+    let values: Map<string, number>;
+    if (cached && Date.now() - cached.at < RAW_CACHE_TTL_MS) {
+      values = cached.values;
+    } else {
+      values =
+        category === "study_time"
+          ? await this.studyTimeValues(room, period, now)
+          : category === "streak"
+            ? await this.streakValues(room, now)
+            : await this.contributionValues(room, period, now);
+      if (!nowOverride) this.rawCache.set(cacheKey, { at: Date.now(), values });
+    }
 
     const userIds = [...values.keys()];
     const visibilityUserIds = viewerUserId && !userIds.includes(viewerUserId) ? [...userIds, viewerUserId] : userIds;
@@ -223,13 +239,13 @@ export class RankingsService {
   }
 
   private async streakValues(room: { id: string; timezone: string }, now: Date): Promise<Map<string, number>> {
+    const today = localDateOf(now, room.timezone);
     const rows = await this.db
       .select({ userId: schema.studySessions.userId, localDate: schema.studySessions.localDate, minutes: schema.studySessions.verifiedMinutes })
       .from(schema.studySessions)
-      .where(eq(schema.studySessions.roomId, room.id));
+      .where(and(eq(schema.studySessions.roomId, room.id), gte(schema.studySessions.localDate, addDaysToLocal(today, -STREAK_LOOKBACK_DAYS))));
 
     const perUserDay = groupByUserDay(rows.map((r) => ({ userId: r.userId, day: r.localDate, value: r.minutes })));
-    const today = localDateOf(now, room.timezone);
 
     const values = new Map<string, number>();
     for (const [userId, byDay] of perUserDay) {

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, notInArray, or } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import { schema, type Db } from "@uns/database";
 import type { RoomPersonDto, SeatOccupantDto } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
@@ -27,6 +27,21 @@ export class RoomPeopleService {
       this.db.select({ id: schema.userBlocks.blockerId }).from(schema.userBlocks).where(eq(schema.userBlocks.blockedId, viewerId)),
     ]);
     const excludedIds = [...new Set([...blockedByMe.map((r) => r.id), ...blockedMe.map((r) => r.id)])];
+
+    // Drive from the (small) sets of active check-ins and active study statuses in this room.
+    const [checkedIn, studying] = await Promise.all([
+      this.db
+        .select({ id: schema.checkIns.userId })
+        .from(schema.checkIns)
+        .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE"))),
+      this.db
+        .select({ id: schema.studyStatus.userId })
+        .from(schema.studyStatus)
+        .where(and(eq(schema.studyStatus.roomId, roomId), eq(schema.studyStatus.active, true))),
+    ]);
+    const excluded = new Set(excludedIds);
+    const candidateIds = [...new Set([...checkedIn, ...studying].map((r) => r.id))].filter((id) => !excluded.has(id));
+    if (candidateIds.length === 0) return [];
 
     const rows = await this.db
       .select({
@@ -59,13 +74,11 @@ export class RoomPeopleService {
         ),
       )
       .where(
-        excludedIds.length > 0
-          ? and(
-              eq(schema.userPrivacySettings.showInRoom, true),
-              or(eq(schema.checkIns.status, "ACTIVE"), eq(schema.studyStatus.active, true)),
-              notInArray(schema.userPrivacySettings.userId, excludedIds),
-            )
-          : and(eq(schema.userPrivacySettings.showInRoom, true), or(eq(schema.checkIns.status, "ACTIVE"), eq(schema.studyStatus.active, true))),
+        and(
+          inArray(schema.userPrivacySettings.userId, candidateIds),
+          eq(schema.userPrivacySettings.showInRoom, true),
+          or(eq(schema.checkIns.status, "ACTIVE"), eq(schema.studyStatus.active, true)),
+        ),
       );
 
     const aliasByUser = await this.aliases.ensureAliasesForProfiles(rows.flatMap((r) => (r.profile ? [r.profile] : [])));
