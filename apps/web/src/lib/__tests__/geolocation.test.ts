@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickBestFix } from "../geolocation";
+import { isReusableFix, pickBestFix } from "../geolocation";
 
 const CACHED_FIX_TOLERANCE_MS = 5_000;
 
@@ -59,4 +59,18 @@ describe("pickBestFix cached fallback", () => {
     const old = { latitude: 0, longitude: 0, accuracy: 10, timestamp: startedAt - 200_000 };
     expect(pickBestFix([old], startedAt, startedAt + 8_000)).toBeNull();
   });
+});
+
+describe("isReusableFix", () => {
+  const now = Date.parse("2026-09-29T20:00:00Z");
+  const fix = (ageMs: number, accuracy: number) => ({
+    latitude: 0,
+    longitude: 0,
+    accuracy,
+    capturedAt: new Date(now - ageMs).toISOString(),
+  });
+  it("reuses a recent precise fix", () => expect(isReusableFix(fix(10_000, 30), now)).toBe(true));
+  it("rejects an old fix", () => expect(isReusableFix(fix(60_000, 30), now)).toBe(false));
+  it("rejects an imprecise fix", () => expect(isReusableFix(fix(5_000, 120), now)).toBe(false));
+  it("rejects nothing cached", () => expect(isReusableFix(null, now)).toBe(false));
 });

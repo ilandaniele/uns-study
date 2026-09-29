@@ -1,5 +1,6 @@
 "use client";
 
+import { primeLocation } from "@/lib/geolocation";
 import type { SeatAvatarDto, SeatDto } from "@uns/contracts";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -173,8 +174,10 @@ export function RoomPageClient({ slug }: { slug: string }) {
       setSelectedSeatId((current) => (current === seat.id ? null : seat.id));
       setShowIdentityPrompt(false);
       clearError();
+      // Warm the GPS while the person reads the seat panel, so "Estoy acá" answers instantly.
+      if (me?.user) primeLocation();
     },
-    [clearError],
+    [clearError, me?.user],
   );
 
   const closeDetail = useCallback(() => {

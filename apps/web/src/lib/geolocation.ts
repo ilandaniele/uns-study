@@ -13,9 +13,9 @@ export class GeolocationRequestError extends Error {
 }
 
 /** Stop sampling as soon as a fix is at least this precise (meters). */
-const GOOD_ENOUGH_ACCURACY_M = 25;
+const GOOD_ENOUGH_ACCURACY_M = 35;
 /** Longest time spent collecting fixes before settling for the best one, counted from the first fix. */
-const SAMPLE_WINDOW_MS = 5_000;
+const SAMPLE_WINDOW_MS = 2_500;
 /** Absolute cap on the whole call, counted from the moment it's invoked (includes the permission prompt). */
 const OVERALL_TIMEOUT_MS = 20_000;
 /** A fix "older" than the call by more than this is a cached reading, not a new sample. */
@@ -67,7 +67,7 @@ export function pickBestFix(samples: Sample[], startedAt: number, now: number = 
  * fix whose own timestamp predates sampling start (a cached fix `watchPosition` handed back
  * instantly despite `maximumAge: 0`).
  */
-export function getFreshLocation(): Promise<LocationInput> {
+function sampleLocation(): Promise<LocationInput> {
   return new Promise((resolve, reject) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       reject(new GeolocationRequestError("UNAVAILABLE", "La geolocalización no está disponible en este dispositivo."));
@@ -173,4 +173,64 @@ export function getFreshLocation(): Promise<LocationInput> {
       },
     );
   });
+}
+
+/** A recent, precise-enough fix is reused for this long instead of sampling the GPS again. */
+const REUSE_FIX_MS = 45_000;
+/** Only fixes at least this precise are worth reusing (the server tolerates up to 150 m). */
+const REUSE_MAX_ACCURACY_M = 80;
+
+let lastFix: LocationInput | null = null;
+let inFlight: Promise<LocationInput> | null = null;
+
+/** Pure check (exported for tests): is a cached fix still fresh and precise enough to reuse now? */
+export function isReusableFix(fix: LocationInput | null, now: number): fix is LocationInput {
+  if (!fix) return false;
+  const age = now - Date.parse(fix.capturedAt);
+  return age >= 0 && age <= REUSE_FIX_MS && fix.accuracy <= REUSE_MAX_ACCURACY_M;
+}
+
+function sampleOnce(): Promise<LocationInput> {
+  if (!inFlight) {
+    inFlight = sampleLocation()
+      .then((fix) => {
+        lastFix = fix;
+        return fix;
+      })
+      .finally(() => {
+        inFlight = null;
+      });
+  }
+  return inFlight;
+}
+
+/**
+ * Device location for presence-checked actions. Reuses a fix from the last {@link REUSE_FIX_MS}
+ * when it's precise enough, so consecutive actions (and actions right after {@link primeLocation})
+ * answer instantly instead of waiting on the GPS each time; otherwise samples (deduped, so two
+ * taps never start two GPS sessions).
+ */
+export function getFreshLocation(): Promise<LocationInput> {
+  if (isReusableFix(lastFix, Date.now())) {
+    return Promise.resolve({ ...lastFix, sentAt: new Date().toISOString() });
+  }
+  return sampleOnce();
+}
+
+/**
+ * Starts sampling in the background (e.g. when a seat is tapped) so the fix is usually ready by the
+ * time the person presses "Estoy acá". Only runs when location permission is already granted —
+ * it must never trigger the browser's permission prompt on its own.
+ */
+export function primeLocation(): void {
+  if (typeof navigator === "undefined" || !navigator.geolocation) return;
+  if (isReusableFix(lastFix, Date.now()) || inFlight) return;
+  const permissions = navigator.permissions;
+  if (!permissions?.query) return;
+  void permissions
+    .query({ name: "geolocation" as PermissionName })
+    .then((status) => {
+      if (status.state === "granted") void sampleOnce().catch(() => undefined);
+    })
+    .catch(() => undefined);
 }
