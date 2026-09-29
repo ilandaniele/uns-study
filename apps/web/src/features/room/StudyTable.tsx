@@ -24,9 +24,9 @@ export const StudyTable = memo(function StudyTable({ table, highlighted = false 
   const pillText = truncatePillText(fullName);
   // "Mesa 12" must read as large as "Mesa 1": only long community nicknames drop to the small size.
   // Small pill sitting on the white centre strip: "Mesa 12" reads the same as "Mesa 1", long nicknames shrink.
-  const pillFontSize = pillText.length > 8 ? 11 : 13;
-  const pillWidth = Math.max(50, 14 + pillText.length * pillFontSize * 0.58);
-  const pillHeight = 18;
+  const pillFontSize = pillText.length > 8 ? 16 : 20;
+  const pillWidth = Math.max(80, 22 + pillText.length * pillFontSize * 0.58);
+  const pillHeight = 30;
   // Divider / power strip running lengthwise down the middle of the table.
   const horizontal = table.width >= table.height;
   const stripThickness = 22;
@@ -90,7 +90,7 @@ export const StudyTable = memo(function StudyTable({ table, highlighted = false 
         y={cy - pillHeight / 2}
         width={pillWidth}
         height={pillHeight}
-        rx={9}
+        rx={15}
         fill="var(--room-table-label-bg)"
       />
       <text

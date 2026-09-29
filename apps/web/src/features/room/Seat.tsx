@@ -150,7 +150,7 @@ export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, is
         y={1}
         fontSize={14}
         fontWeight={700}
-        fill="white"
+        fill={visualStatus === "SAVED" ? "#422006" : "white"}
         transform={`rotate(${-seat.rotation})`}
       >
         {GLYPH[visualStatus]}
