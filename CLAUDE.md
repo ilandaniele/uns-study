@@ -70,7 +70,7 @@ Do not replace this stack unless there is a blocking incompatibility. If there i
 - Initial OCCUPIED observation = 20 minutes.
 - Daily operational reset ≈ 04:00 America/Argentina/Buenos_Aires.
 - Initial room = 108 places.
-- Entrance wall bars run along the side walls.
+- Entrance wall bars run along the front (entrance) wall, one on each side of the door (owner decision, 2026-09-29).
 
 ## Engineering rules
 

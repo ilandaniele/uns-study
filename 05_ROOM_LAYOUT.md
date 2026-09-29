@@ -32,14 +32,14 @@ Right block:
 
 ## Wall bars
 
-- B01: left wall near entrance, 3 positions
-- B02: right wall near entrance, 3 positions
+- B01: front (entrance) wall, left of the door, 3 positions
+- B02: front (entrance) wall, right of the door, 3 positions
 - B03: left wall near back, 3 positions
 - B04: right wall near back, 3 positions
 
 ### Critical correction
 
-B01 and B02 are attached to the **side walls near the entrance** and run along those walls.
+B01 and B02 are attached to the **front (entrance) wall**, one on each side of the door, running from near the corners almost to the door (changed 2026-09-29 at the owner's request; they used to run along the side walls).
 
 They are perpendicular to the front/bottom edge in a top-down floor plan.
 
