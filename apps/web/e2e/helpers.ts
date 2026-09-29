@@ -43,11 +43,20 @@ export function seatLocator(page: Page, tableLabel: string, seatNumber: number, 
   return page.locator(`[aria-label^="${seatAriaPrefix(tableLabel, seatNumber, kind)}"]`);
 }
 
-/** Best-effort checkout so a test doesn't leak an ACTIVE check-in into the next run. */
+/**
+ * Best-effort checkout so a test doesn't leak an ACTIVE check-in into the next run. Swallows
+ * failures (e.g. a closed browser context after a timed-out test, or a transient server hiccup)
+ * so that one context's cleanup failing in a `finally` never skips the others' — a leaked
+ * check-in would otherwise poison the fixed seat every later run of that spec relies on.
+ */
 export async function checkoutCurrent(context: BrowserContext): Promise<void> {
-  await context.request.delete(`${API_URL}/api/v1/checkins/current`, {
-    headers: { Origin: "http://localhost:3000" },
-  });
+  try {
+    await context.request.delete(`${API_URL}/api/v1/checkins/current`, {
+      headers: { Origin: "http://localhost:3000" },
+    });
+  } catch {
+    // Best-effort — see above.
+  }
 }
 
 /** Reads the signed-in user's id via `GET /me` using the context's session cookie. */

@@ -103,12 +103,12 @@ function RankingRow({ entry, value, highlighted }: { entry: RankingEntryDto; val
       {entry.userId ? (
         <Link href={`/u/${entry.userId}`} className="min-w-0 flex-1 truncate text-sm font-medium text-main hover:underline">
           {entry.displayName}
-          {highlighted ? <span className="ml-1.5 text-xs font-medium text-primary">vos</span> : null}
+          {highlighted ? <span className="ml-1.5 text-xs font-medium text-primary"> vos</span> : null}
         </Link>
       ) : (
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-main">
           {entry.displayName}
-          {highlighted ? <span className="ml-1.5 text-xs font-medium text-primary">vos</span> : null}
+          {highlighted ? <span className="ml-1.5 text-xs font-medium text-primary"> vos</span> : null}
         </span>
       )}
       <span className="text-sm font-bold tabular-nums text-main">{value}</span>
