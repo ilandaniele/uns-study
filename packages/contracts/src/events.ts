@@ -30,5 +30,4 @@ export const SocketEvents = {
   RoomAdminPresent: "room:admin-present",
   SeatFreedAlert: "seat:freed-alert",
   CheckInExpiring: "checkin:expiring",
-  CheckInExpiring: "checkin:expiring",
 } as const;
