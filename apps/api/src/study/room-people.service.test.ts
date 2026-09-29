@@ -191,7 +191,7 @@ describe("RoomPeopleService", () => {
     it("shows the photo when the visible user opted into showAvatar and has one", async () => {
       await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: true });
       await setPrivacy("u1", { showSeat: true, showAvatar: true });
-      await setProfile("u1", { firstName: "Ana", identityMode: "FIRST_NAME", avatarUrl: "https://example.test/a.jpg" });
+      await setProfile("u1", { firstName: "Zzyzxa", identityMode: "FIRST_NAME", avatarUrl: "https://example.test/a.jpg" });
 
       const [entry] = (await people.listOccupants(roomId)) as SeatOccupantDto[];
       expect(entry?.avatar).toEqual({ kind: "photo", url: "https://example.test/a.jpg" });
@@ -204,7 +204,7 @@ describe("RoomPeopleService", () => {
 
     it("shows the alias animal for a hidden user and never exposes their userId", async () => {
       await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
-      await setProfile("u1", { firstName: "Ana", identityMode: "FIRST_NAME", avatarUrl: "https://example.test/a.jpg" });
+      await setProfile("u1", { firstName: "Zzyzxa", identityMode: "FIRST_NAME", avatarUrl: "https://example.test/a.jpg" });
       await setPrivacy("u1", { showSeat: true, showAvatar: true });
 
       const [entry] = (await people.listOccupants(roomId)) as SeatOccupantDto[];
@@ -215,7 +215,7 @@ describe("RoomPeopleService", () => {
       expect(isAnimalId(animalId)).toBe(true);
       expect(animalIdFromAlias(entry?.displayName)).toBe(animalId);
       expect(JSON.stringify(entry)).not.toContain("u1");
-      expect(JSON.stringify(entry)).not.toContain("Ana");
+      expect(JSON.stringify(entry)).not.toContain("Zzyzxa");
     });
 
     it("falls back to a silhouette named 'Alguien' when the hidden user turned the animal off", async () => {
