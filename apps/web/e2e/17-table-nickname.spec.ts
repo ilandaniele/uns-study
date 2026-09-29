@@ -1,21 +1,22 @@
-import { expect, test } from "@playwright/test";
+import { type APIRequestContext, expect, test } from "@playwright/test";
 import { API_URL, IN_GEOFENCE_LOCATION, ROOM_SLUG, checkoutCurrent, seatLocator, signUpNewUser } from "./helpers";
 
-// Table/seats reserved for this spec (distinct from other spec files to avoid cross-test collisions).
-// A table's nickname, once locked in by 5+ votes, can only be replaced by a *strictly* higher
-// vote count (a tie favors the incumbent — see `recomputeNickname`), so this spec must always run
-// against a table that has never had a nickname proposal reach the threshold. Table 7's seats
-// 2-7 are free for that: seat 1 briefly hosts a check-in in 05-profile-privacy.spec.ts, but
-// check-ins don't affect nickname eligibility or state, so this doesn't collide with it. IMPORTANT:
-// once this spec has passed once against a given table (in this or any other run against the same
-// database), it permanently "uses up" that table for any later run — pick an unused table number
-// (check `GET /rooms/:id/map` for a table with no `nickname` yet) rather than re-running this file
-// against a table it has already passed on.
-const TABLE = "7";
-const SEAT_PROPOSER = { table: TABLE, seatNumber: 2 };
-const VOTER_SEATS = [3, 4, 5, 6, 7].map((seatNumber) => ({ table: TABLE, seatNumber }));
+// A table's nickname, once locked in by 5+ votes, can only be replaced by a *strictly* higher vote
+// count (a tie favors the incumbent — see `recomputeNickname`). So the spec picks, at run time, a main
+// table that has no nickname yet (preferring 7), which keeps it repeatable against the same database.
+// Specs run sequentially and check out in `finally`, so borrowing seats 2-7 of any table is safe.
+async function pickTableWithoutNickname(request: APIRequestContext): Promise<string | null> {
+  const res = await request.get(`${API_URL}/api/v1/rooms/${ROOM_SLUG}/map`);
+  const map = (await res.json()) as { tables: { label: string; type: string; nickname: string | null }[] };
+  const candidates = map.tables.filter((t) => t.type === "MAIN_TABLE" && t.nickname === null).map((t) => t.label);
+  return candidates.includes("7") ? "7" : (candidates[0] ?? null);
+}
 
-test("table nickname: eligibility gate, then 5 votes promote a proposal to the map pill", async ({ browser }) => {
+test("table nickname: eligibility gate, then 5 votes promote a proposal to the map pill", async ({ browser, request }) => {
+  const TABLE = await pickTableWithoutNickname(request);
+  test.skip(TABLE === null, "every main table already has a nickname in this database");
+  const SEAT_PROPOSER = { table: TABLE!, seatNumber: 2 };
+  const VOTER_SEATS = [3, 4, 5, 6, 7].map((seatNumber) => ({ table: TABLE!, seatNumber }));
   const proposerContext = await browser.newContext({ permissions: ["geolocation"], geolocation: IN_GEOFENCE_LOCATION });
   const voterContexts = await Promise.all(
     VOTER_SEATS.map(() => browser.newContext({ permissions: ["geolocation"], geolocation: IN_GEOFENCE_LOCATION })),
