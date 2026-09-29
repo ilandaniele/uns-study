@@ -13,7 +13,9 @@ export function generateStaticParams() {
   return [{ slug: "principal" }];
 }
 
-export default async function RoomPage(props: PageProps<"/sala/[slug]">) {
+// Explicit props type (instead of the generated global `PageProps`) so `tsc` passes in CI before
+// `next build`/`next typegen` has generated `.next/types`.
+export default async function RoomPage(props: { params: Promise<{ slug: string }> }) {
   const { slug } = await props.params;
   return (
     <Suspense fallback={<RoomSkeleton />}>
