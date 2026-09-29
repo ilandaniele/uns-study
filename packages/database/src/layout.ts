@@ -37,9 +37,9 @@ const BAR_HEIGHT = 220;
  * Deterministic, pure generator for the initial 108-seat room geometry.
  *
  * Two columns of 6 main tables (M01..M06 left, M07..M12 right), bottom (entrance, y large)
- * to top (back/windows, y small). Four wall bars stand vertically against the side walls:
- * B01 left-bottom, B02 right-bottom, B03 left-top, B04 right-top, near the entrance / back
- * respectively, 3 seats each. viewBox is `0 0 1000 1600` (back/windows at y=0, entrance at
+ * to top (back/windows, y small). Four wall bars, 3 seats each: B03/B04 stand vertically against
+ * the side walls near the back; B01/B02 run horizontally along the front wall, left / right of the
+ * entrance door, with their seats on the room side. viewBox is `0 0 1000 1600` (back/windows at y=0, entrance at
  * the bottom / higher y).
  */
 export function generateRoomLayout(): RoomLayout {
@@ -103,8 +103,15 @@ export function generateRoomLayout(): RoomLayout {
     }
   }
 
-  // Wall bars: vertical, hugging the side walls. B01 left/entrance, B02 right/entrance,
-  // B03 left/back, B04 right/back.
+  // Wall bars. B03 left/back and B04 right/back are vertical, hugging the side walls near the
+  // windows. B01 left/entrance and B02 right/entrance are horizontal along the front (bottom) wall,
+  // one on each side of the door, running from near the corner almost to the door; their 3 seats
+  // sit along the bar on the room side (above it).
+  const doorHalfGap = 110; // clear space each side of the room centre for the entrance door (door is 180 wide)
+  const sideMargin = 40;
+  const frontBarHeight = 40;
+  const frontBarY = ROOM_VIEWBOX.height - 40 - frontBarHeight;
+  const frontBarWidth = ROOM_VIEWBOX.width / 2 - doorHalfGap - sideMargin;
   const barDefs: Array<{ code: string; side: "left" | "right"; near: "entrance" | "back" }> = [
     { code: "B01", side: "left", near: "entrance" },
     { code: "B02", side: "right", near: "entrance" },
@@ -113,27 +120,33 @@ export function generateRoomLayout(): RoomLayout {
   ];
 
   for (const bar of barDefs) {
-    const x = bar.side === "left" ? 40 : ROOM_VIEWBOX.width - 40 - BAR_WIDTH;
-    const y = bar.near === "entrance" ? ROOM_VIEWBOX.height - 140 - BAR_HEIGHT : 60;
+    const isFront = bar.near === "entrance";
+    const width = isFront ? frontBarWidth : BAR_WIDTH;
+    const height = isFront ? frontBarHeight : BAR_HEIGHT;
+    const x =
+      bar.side === "left"
+        ? sideMargin
+        : ROOM_VIEWBOX.width - sideMargin - width;
+    const y = isFront ? frontBarY : 60;
     tables.push({
       code: bar.code,
       label: bar.code,
       type: "WALL_BAR",
       x,
       y,
-      width: BAR_WIDTH,
-      height: BAR_HEIGHT,
+      width,
+      height,
       rotation: 0,
     });
 
-    const seatGap = BAR_HEIGHT / 4;
+    const seatGap = (isFront ? width : height) / 4;
     for (let i = 0; i < 3; i++) {
       seats.push({
         tableCode: bar.code,
         code: `${bar.code}-S0${i + 1}`,
         seatNumber: i + 1,
-        x: x + BAR_WIDTH / 2,
-        y: y + seatGap * (i + 1),
+        x: isFront ? x + seatGap * (i + 1) : x + width / 2,
+        y: isFront ? y - 30 : y + seatGap * (i + 1),
         rotation: 0,
       });
     }

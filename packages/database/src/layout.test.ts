@@ -26,29 +26,50 @@ describe("generateRoomLayout", () => {
     expect(seatCodes).toContain("B04-S03");
   });
 
-  it("places wall bars vertically against the side walls", () => {
+  it("places back bars vertically on the side walls and entrance bars horizontally on the front wall", () => {
     const byCode = Object.fromEntries(layout.tables.map((t) => [t.code, t]));
     const b01 = byCode["B01"]!;
     const b02 = byCode["B02"]!;
     const b03 = byCode["B03"]!;
     const b04 = byCode["B04"]!;
 
-    // B01/B03 near the left wall, B02/B04 near the right wall.
-    expect(b01.x).toBeCloseTo(b03.x, 5);
-    expect(b02.x).toBeCloseTo(b04.x, 5);
-    expect(b01.x).toBeLessThan(b02.x);
-
-    // Bars are vertical (taller than wide).
-    for (const bar of [b01, b02, b03, b04]) {
+    // Back bars: vertical (taller than wide), B03 left / B04 right, in the upper half.
+    for (const bar of [b03, b04]) {
       expect(bar.height).toBeGreaterThan(bar.width);
+      expect(bar.y).toBeLessThan(ROOM_VIEWBOX.height / 2);
+    }
+    expect(b03.x).toBeLessThan(b04.x);
+
+    // Entrance bars: horizontal (wider than tall), hugging the front wall, one each side of the door.
+    for (const bar of [b01, b02]) {
+      expect(bar.width).toBeGreaterThan(bar.height);
+      expect(bar.y).toBeGreaterThan(ROOM_VIEWBOX.height - 150);
+      expect(bar.y + bar.height).toBeLessThanOrEqual(ROOM_VIEWBOX.height);
+    }
+    const doorLeft = ROOM_VIEWBOX.width / 2 - 90;
+    const doorRight = ROOM_VIEWBOX.width / 2 + 90;
+    expect(b01.x + b01.width).toBeLessThanOrEqual(doorLeft);
+    expect(b02.x).toBeGreaterThanOrEqual(doorRight);
+    expect(b01.width).toBeGreaterThan(300);
+    expect(b02.width).toBeGreaterThan(300);
+
+    // Entrance-bar seats: 3 evenly spaced along the bar, on the room side (above it), inside its span.
+    for (const bar of [b01, b02]) {
+      const seats = layout.seats.filter((s) => s.tableCode === bar.code).sort((a, b) => a.seatNumber - b.seatNumber);
+      expect(seats).toHaveLength(3);
+      for (const s of seats) {
+        expect(s.y).toBeLessThan(bar.y);
+        expect(s.x).toBeGreaterThan(bar.x);
+        expect(s.x).toBeLessThan(bar.x + bar.width);
+      }
+      expect(seats[1]!.x - seats[0]!.x).toBeCloseTo(seats[2]!.x - seats[1]!.x, 5);
     }
 
-    // B01/B02 sit in the lower half of the room (near the entrance).
-    expect(b01.y).toBeGreaterThan(ROOM_VIEWBOX.height / 2);
-    expect(b02.y).toBeGreaterThan(ROOM_VIEWBOX.height / 2);
-    // B03/B04 sit in the upper half (near the back wall).
-    expect(b03.y).toBeLessThan(ROOM_VIEWBOX.height / 2);
-    expect(b04.y).toBeLessThan(ROOM_VIEWBOX.height / 2);
+    // Entrance-bar seats stay clear of the Mesa 1 / Mesa 7 bottom seat rows (seat radius ~25).
+    const rowBottom = Math.max(...layout.seats.filter((s) => s.tableCode === "M01").map((s) => s.y));
+    for (const s of layout.seats.filter((x) => x.tableCode === "B01" || x.tableCode === "B02")) {
+      expect(s.y - rowBottom).toBeGreaterThanOrEqual(60);
+    }
   });
 
   it("keeps every element inside the 0..1000 x 0..1600 viewBox", () => {

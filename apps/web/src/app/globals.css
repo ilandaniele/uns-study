@@ -31,7 +31,7 @@
   --oak-border: #a56a3a;
   --oak-text: #0f172a;
 
-  --room-wall: #b07a3a;
+  --room-wall: #a87a3f;
   --room-floor-a: #dcaea2;
   --room-floor-b: #c4867a;
   --room-floor-grain: #f1ddd2;
@@ -44,11 +44,13 @@
   --room-bar-label-bg: #ffffff;
   --room-bar-label-text: #0f172a;
   --room-label: #5b6478;
-  --room-window-glass-a: #e4f1fb;
-  --room-window-glass-b: #a9d3ef;
-  --room-window-frame: #ffffff;
-  --room-planter: #7a5230;
-  --room-planter-soil: #5c3c22;
+  --room-window-glass-a: #d6eaf8;
+  --room-window-glass-b: #9fcbe8;
+  --room-window-frame: #fbf6e8;
+  --room-wall-upper: #efe4cd;
+  --room-wainscot: #d2a45f;
+  --room-wainscot-dark: #b5823f;
+  --room-light-strip: #fffdf3;
   --room-dark-overlay: 0;
   --seat-stroke: #7c8799;
   --seat-ring: #1f2937;
@@ -92,11 +94,13 @@
   --room-bar-label-bg: #182238;
   --room-bar-label-text: #f2e3c8;
   --room-label: #9fb0c9;
-  --room-window-glass-a: #2c4258;
-  --room-window-glass-b: #16202f;
-  --room-window-frame: #111a2e;
-  --room-planter: #4a3220;
-  --room-planter-soil: #2d1f14;
+  --room-window-glass-a: #b9d6ea;
+  --room-window-glass-b: #86b4d4;
+  --room-window-frame: #e8dfc8;
+  --room-wall-upper: #efe4cd;
+  --room-wainscot: #d2a45f;
+  --room-wainscot-dark: #b5823f;
+  --room-light-strip: #fffdf3;
   --room-dark-overlay: 0.35;
   --seat-stroke: #0b1120;
   --seat-ring: #05070d;
