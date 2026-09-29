@@ -1,45 +1,31 @@
-// Minimal PWA offline shell. Registered only in production (see ServiceWorkerRegistration.tsx).
-// Never caches `/api` (own-origin API calls go through NEXT_PUBLIC_API_URL on a different origin
-// anyway) or any cross-origin request — PostgreSQL/the API stay the single source of truth.
-// Bump CACHE_VERSION whenever this file (or what it caches) changes — `activate` below deletes any
-// cache under the old name, so a stale shell/build asset can never survive a deploy.
-const CACHE_VERSION = "v5";
-const CACHE_NAME = `uns-study-shell-${CACHE_VERSION}`;
-const OFFLINE_URL = "/offline.html";
+// Service worker for push notifications only. Registered only in production (see
+// ServiceWorkerRegistration.tsx).
+//
+// It deliberately has NO `fetch` handler: earlier versions intercepted page loads and build assets,
+// and a stale worker could leave the app blank or stuck on "Cargando sala…" after a deploy. Without
+// a fetch handler the browser loads everything straight from the network (and its own HTTP cache).
+// On activation it deletes every cache earlier versions created and reloads open tabs once, so
+// visitors still controlled by an old worker recover without clearing site data.
+const SW_VERSION = "v6";
 
-self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.add(OFFLINE_URL)).then(() => self.skipWaiting()));
+self.addEventListener("install", () => {
+  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
-      .then(() => self.clients.claim()),
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => caches.delete(key)));
+      await self.clients.claim();
+      // Tabs that were loaded (or got stuck) under an old worker: reload them once under this one.
+      const windows = await self.clients.matchAll({ type: "window" });
+      await Promise.all(windows.map((client) => client.navigate(client.url).catch(() => undefined)));
+    })(),
   );
 });
 
-self.addEventListener("fetch", (event) => {
-  const url = new URL(event.request.url);
-  const isSameOrigin = url.origin === self.location.origin;
-
-  if (!isSameOrigin) return; // never touch cross-origin requests (API, sockets, ads, GA, etc.)
-  if (url.pathname.startsWith("/api")) return; // never cache API responses
-
-  if (event.request.mode === "navigate") {
-    // Network-first for page navigations, falling back to the cached offline shell.
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match(OFFLINE_URL).then((res) => res ?? Response.error())),
-    );
-    return;
-  }
-
-  // Build assets (/_next/static) are NOT cached here anymore: some chunk file names stay the same
-  // across builds while their content changes, so a cache-first copy could mix an old chunk with a
-  // new page and leave the app stuck on "Cargando sala…". The browser's HTTP cache already
-  // handles these (Vercel serves them as immutable), which is all we need.
-});
+void SW_VERSION;
 
 // Only ever navigate to a same-origin, relative path — a push payload or a notification's stored
 // `data.url` must never be trusted to point somewhere off-origin (e.g. if a payload were ever
