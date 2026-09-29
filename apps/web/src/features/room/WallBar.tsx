@@ -1,11 +1,12 @@
 import type { TableDto } from "@uns/contracts";
+import { memo } from "react";
 
 export interface WallBarProps {
   table: TableDto;
 }
 
 /** Wood counter strip against a side wall. Its human name shows in the seat detail panel. */
-export function WallBar({ table }: WallBarProps) {
+export const WallBar = memo(function WallBar({ table }: WallBarProps) {
   return (
     <g>
       <rect
@@ -41,4 +42,4 @@ export function WallBar({ table }: WallBarProps) {
 
     </g>
   );
-}
+});

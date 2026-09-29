@@ -1,6 +1,7 @@
 "use client";
 
 import type { SeatDto, TableType } from "@uns/contracts";
+import { memo } from "react";
 import { statusLabel } from "./format";
 
 // Invisible enlarged tap target (mobile accessibility) — doesn't affect visual spacing since
@@ -48,7 +49,7 @@ export interface SeatProps {
   avatarUrl?: string | null;
 }
 
-export function Seat({ seat, tableLabel, tableType, facing, isMySeat, isSelected, onSelect, avatarUrl = null }: SeatProps) {
+export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, isMySeat, isSelected, onSelect, avatarUrl = null }: SeatProps) {
   const showPhoto = avatarUrl !== null && (seat.status === "OCCUPIED" || isMySeat);
   const clipId = `seat-photo-${seat.id}`;
   const visualStatus = isMySeat ? "MY_SEAT" : seat.status;
@@ -130,4 +131,4 @@ export function Seat({ seat, tableLabel, tableType, facing, isMySeat, isSelected
       ) : null}
     </g>
   );
-}
+});

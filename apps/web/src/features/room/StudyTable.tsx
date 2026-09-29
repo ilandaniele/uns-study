@@ -1,4 +1,5 @@
 import type { TableDto } from "@uns/contracts";
+import { memo } from "react";
 import { tableDisplayName } from "./format";
 
 export interface StudyTableProps {
@@ -16,7 +17,7 @@ function truncatePillText(text: string): string {
 
 /** Warm wood main table, drawn top-down, with a small rounded pill carrying the table's name —
  *  its community nickname when it has one, else "Mesa N" (see `tableDisplayName`). */
-export function StudyTable({ table, highlighted = false }: StudyTableProps) {
+export const StudyTable = memo(function StudyTable({ table, highlighted = false }: StudyTableProps) {
   const cx = table.x + table.width / 2;
   const cy = table.y + table.height / 2;
   const fullName = table.nickname ?? tableDisplayName(table, table.code);
@@ -94,4 +95,4 @@ export function StudyTable({ table, highlighted = false }: StudyTableProps) {
       </text>
     </g>
   );
-}
+});

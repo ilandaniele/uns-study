@@ -1,7 +1,7 @@
 "use client";
 
-import type { RoomMapDto, SeatDto } from "@uns/contracts";
-import { useMemo } from "react";
+import type { RoomMapDto, SeatDto, TableDto } from "@uns/contracts";
+import { memo, useMemo } from "react";
 import { Seat, type SeatFacing } from "./Seat";
 import { StudyTable } from "./StudyTable";
 import { WallBar } from "./WallBar";
@@ -29,16 +29,64 @@ const AISLE_PLANTS = [
 
 export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlightTableCode = null, avatarBySeatId }: RoomMapProps) {
   const { width, height } = map.viewBox;
-  const tableById = useMemo(() => new Map(map.tables.map((table) => [table.id, table])), [map.tables]);
   const wallBars = useMemo(() => map.tables.filter((table) => table.type === "WALL_BAR"), [map.tables]);
+  // Per-seat facing + table label/type only depend on the layout, not on live seat status.
+  const seatMeta = useMemo(() => {
+    const tableById = new Map(map.tables.map((table) => [table.id, table]));
+    return new Map(
+      map.seats.map((seat) => {
+        const table = tableById.get(seat.tableId);
+        const facing: SeatFacing = table && seat.y < table.y + table.height / 2 ? "up" : "down";
+        return [seat.id, { facing, tableLabel: table?.label ?? seat.code, tableType: table?.type ?? ("MAIN_TABLE" as const) }] as const;
+      }),
+    );
+  }, [map.seats, map.tables]);
 
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
       className="h-full w-full"
-      role="img"
+      role="group"
       aria-label={`Mapa de ${map.room.name}`}
     >
+      <StaticRoomBackdrop width={width} height={height} wallBars={wallBars} />
+
+      {map.tables.map((table) =>
+        table.type === "WALL_BAR" ? (
+          <WallBar key={table.id} table={table} />
+        ) : (
+          <StudyTable key={table.id} table={table} highlighted={highlightTableCode !== null && table.code === highlightTableCode} />
+        ),
+      )}
+
+      {map.seats.map((seat) => {
+        const meta = seatMeta.get(seat.id)!;
+        return (
+          <Seat
+            key={seat.id}
+            seat={seat}
+            tableLabel={meta.tableLabel}
+            tableType={meta.tableType}
+            facing={meta.facing}
+            isMySeat={seat.id === mySeatId}
+            isSelected={seat.id === selectedSeatId}
+            onSelect={onSelectSeat}
+            avatarUrl={avatarBySeatId?.get(seat.id) ?? null}
+          />
+        );
+      })}
+
+      {/* Photo-style vignette on top of everything, then a dark-mode dimmer — the room stays warm, just dimmed. */}
+      <rect x={0} y={0} width={width} height={height} fill="url(#room-vignette)" pointerEvents="none" aria-hidden="true" />
+      <rect x={0} y={0} width={width} height={height} fill="black" style={{ opacity: "var(--room-dark-overlay)" }} pointerEvents="none" aria-hidden="true" />
+    </svg>
+  );
+}
+
+/** Floor, walls, windows, entrance, plants and shared defs: nothing here depends on live seat state. */
+const StaticRoomBackdrop = memo(function StaticRoomBackdrop({ width, height, wallBars }: { width: number; height: number; wallBars: TableDto[] }) {
+  return (
+    <>
       <defs>
         {/* Warm terracotta parquet floor: two plank tones in a basket-weave offset, plus faint grain lines. */}
         <pattern id="floor-parquet" width={120} height={120} patternUnits="userSpaceOnUse">
@@ -209,39 +257,9 @@ export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlight
       {AISLE_PLANTS.map((p, i) => (
         <Plant key={`aisle-plant-${i}`} x={p.x} y={p.y} />
       ))}
-
-      {map.tables.map((table) =>
-        table.type === "WALL_BAR" ? (
-          <WallBar key={table.id} table={table} />
-        ) : (
-          <StudyTable key={table.id} table={table} highlighted={highlightTableCode !== null && table.code === highlightTableCode} />
-        ),
-      )}
-
-      {map.seats.map((seat) => {
-        const table = tableById.get(seat.tableId);
-        const facing: SeatFacing = table && seat.y < table.y + table.height / 2 ? "up" : "down";
-        return (
-          <Seat
-            key={seat.id}
-            seat={seat}
-            tableLabel={table?.label ?? seat.code}
-            tableType={table?.type ?? "MAIN_TABLE"}
-            facing={facing}
-            isMySeat={seat.id === mySeatId}
-            isSelected={seat.id === selectedSeatId}
-            onSelect={onSelectSeat}
-            avatarUrl={avatarBySeatId?.get(seat.id) ?? null}
-          />
-        );
-      })}
-
-      {/* Photo-style vignette on top of everything, then a dark-mode dimmer — the room stays warm, just dimmed. */}
-      <rect x={0} y={0} width={width} height={height} fill="url(#room-vignette)" pointerEvents="none" aria-hidden="true" />
-      <rect x={0} y={0} width={width} height={height} fill="black" style={{ opacity: "var(--room-dark-overlay)" }} pointerEvents="none" aria-hidden="true" />
-    </svg>
+    </>
   );
-}
+});
 
 function RoomLabelPill({ x, y, text }: { x: number; y: number; text: string }) {
   const w = text.length * 13 + 44;
