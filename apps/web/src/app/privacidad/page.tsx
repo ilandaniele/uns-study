@@ -39,6 +39,16 @@ export default function PrivacyPage() {
         resuelto el reporte.
       </p>
 
+      <h2 className="pt-2 text-lg font-semibold text-main">Créditos</h2>
+      <p>
+        Las ilustraciones de animales que se muestran en el mapa son de Twemoji (Graphics by Twemoji, © Twitter, Inc. y
+        otros colaboradores), bajo licencia{" "}
+        <a className="text-primary underline" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">
+          CC-BY 4.0
+        </a>
+        .
+      </p>
+
       <h2 className="pt-2 text-lg font-semibold text-main">Contacto</h2>
       <p>
         Por consultas sobre tus datos escribí a{" "}

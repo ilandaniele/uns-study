@@ -55,6 +55,7 @@ function Podium({ entries, format }: { entries: RankingEntryDto[]; format: (valu
                 userId={entry.userId ?? entry.displayName}
                 name={entry.displayName}
                 url={entry.avatarUrl}
+                aliasAnimal={entry.aliasAnimal}
                 size={entry.rank === 1 ? 64 : 52}
                 ringColor={MEDAL[entry.rank]}
               />
@@ -99,7 +100,7 @@ function RankingRow({ entry, value, highlighted }: { entry: RankingEntryDto; val
       >
         {entry.rank}
       </span>
-      <Avatar userId={entry.userId ?? entry.displayName} name={entry.displayName} url={entry.avatarUrl} size={40} />
+      <Avatar userId={entry.userId ?? entry.displayName} name={entry.displayName} url={entry.avatarUrl} aliasAnimal={entry.aliasAnimal} size={40} />
       {entry.userId ? (
         <Link href={`/u/${entry.userId}`} className="min-w-0 flex-1 truncate text-sm font-medium text-main hover:underline">
           {entry.displayName}

@@ -8,6 +8,8 @@ export interface RankingEntryDto {
   userId: string | null;
   displayName: string;
   avatarUrl: string | null;
+  /** Catalog id of the alias animal when the name shown is the alias (hidden user); the UI draws it instead of initials. */
+  aliasAnimal?: string | null;
   /** True for the viewer's own row, so the UI can highlight it even when `userId` is `null`. */
   isMe: boolean;
   /** minutes | days | points, depending on `category`. */

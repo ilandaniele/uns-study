@@ -14,6 +14,7 @@ const ALL_OFF: PrivacySettingsDto = {
   showSeat: false,
   allowDirectMessages: true,
   showInRanking: true,
+  showAliasAnimalOnMap: true,
 };
 
 describe("PRIVACY_FIELDS", () => {

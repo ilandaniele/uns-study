@@ -8,6 +8,8 @@ import { MessageOccupantButton } from "./MessageOccupantButton";
 import type { ReactNode } from "react";
 import { IdentityPrompt } from "./IdentityPrompt";
 import { NearbyOccupants } from "./NearbyOccupants";
+import { OccupantAvatar } from "./OccupantAvatar";
+import { markedByLabel } from "./seat-avatar";
 import { TurnstileChallenge } from "./TurnstileChallenge";
 import { useNow } from "@/lib/use-now";
 import {
@@ -32,6 +34,8 @@ export interface SeatDetailProps {
   isMySeat: boolean;
   /** The occupant who chose to be identified for this seat, if any (from `GET /rooms/:id/occupants`). */
   occupant?: SeatOccupantDto | null;
+  /** Who marked this seat "Está ocupado" when nobody is checked in (from `GET /rooms/:id/occupants`). */
+  markedBy?: { displayName: string; observedAt: string } | null;
   pending: boolean;
   /** True while `getFreshLocation()` is sampling GPS for the in-flight action; swaps in "Buscando tu ubicación…" on the primary buttons below. Optional so callers can adopt it incrementally. */
   locating?: boolean;
@@ -66,6 +70,7 @@ export function SeatDetail({
   me,
   isMySeat,
   occupant,
+  markedBy = null,
   pending,
   locating = false,
   actionError,
@@ -102,14 +107,24 @@ export function SeatDetail({
           <p className="font-display text-xl font-semibold tracking-tight text-main">{label}</p>
           <StatusPill status={seat.status} isMySeat={isMySeat} />
           {!isMySeat && occupant ? (
-            <p className="mt-1.5 text-sm text-muted">
-              <Link href={`/u/${occupant.userId}`} className="font-medium text-primary hover:underline">
-                {occupant.displayName}
-              </Link>{" "}
-              está acá
+            <p className="mt-1.5 flex items-center gap-2 text-sm text-muted">
+              <OccupantAvatar avatar={occupant.avatar} size={24} />
+              <span>
+                {occupant.userId ? (
+                  <Link href={`/u/${occupant.userId}`} className="font-medium text-primary hover:underline">
+                    {occupant.displayName}
+                  </Link>
+                ) : (
+                  <span className="font-medium text-main">{occupant.displayName}</span>
+                )}{" "}
+                está acá
+              </span>
             </p>
           ) : null}
-          {!isMySeat && occupant && me?.user && me.user.id !== occupant.userId ? <MessageOccupantButton userId={occupant.userId} /> : null}
+          {!isMySeat && occupant?.userId && me?.user && me.user.id !== occupant.userId ? <MessageOccupantButton userId={occupant.userId} /> : null}
+          {!isMySeat && !occupant && markedBy && seat.status === "OCCUPIED" ? (
+            <p className="mt-1.5 text-sm text-muted">{markedByLabel(markedBy.displayName, markedBy.observedAt, now)}</p>
+          ) : null}
           {recency ? <p className="mt-1 text-sm text-muted">{recency}</p> : null}
           {seat.confidence > 0 ? (
             <p className="text-sm text-muted" style={{ opacity: 0.75 }}>

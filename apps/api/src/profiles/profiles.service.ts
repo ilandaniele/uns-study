@@ -192,5 +192,6 @@ function toPrivacyDto(row: PrivacyRow): PrivacySettingsDto {
     showSeat: row.showSeat,
     allowDirectMessages: row.allowDirectMessages,
     showInRanking: row.showInRanking,
+    showAliasAnimalOnMap: row.showAliasAnimalOnMap,
   };
 }

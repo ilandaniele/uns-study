@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { randomAlias } from "./alias-generator.js";
+import { ANIMALS } from "@uns/contracts";
+import { ADJECTIVES, randomAlias } from "./alias-generator.js";
 
 const ALIAS_PATTERN = /^[A-ZÁÉÍÓÚÑÜ][\p{L}]*\s[A-ZÁÉÍÓÚÑÜ][\p{L}]*$/u;
 
@@ -20,6 +21,23 @@ describe("randomAlias", () => {
     for (let i = 0; i < 200; i++) seen.add(randomAlias());
     // 50+ nouns x 40+ adjectives gives a large pool; 200 draws should yield plenty of variety.
     expect(seen.size).toBeGreaterThan(50);
+  });
+
+  it("uses every catalog animal with the adjective form that agrees with its gender", () => {
+    for (const animal of ANIMALS) {
+      for (const adjective of ADJECTIVES) {
+        // rng that lands exactly on this animal, then this adjective
+        const values = [(ANIMALS.indexOf(animal) + 0.5) / ANIMALS.length, (ADJECTIVES.indexOf(adjective) + 0.5) / ADJECTIVES.length];
+        let call = 0;
+        const alias = randomAlias(() => values[call++]!);
+        expect(alias).toBe(`${animal.noun} ${animal.gender === "M" ? adjective.masc : adjective.fem}`);
+      }
+    }
+  });
+
+  it("never yields a noun outside the animal catalog", () => {
+    const nouns = new Set(ANIMALS.map((a) => a.noun));
+    for (let i = 0; i < 300; i++) expect(nouns.has(randomAlias().split(" ")[0]!)).toBe(true);
   });
 
   it("never contains offensive or identity-revealing substrings", () => {

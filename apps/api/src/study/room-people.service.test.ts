@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { animalIdFromAlias, isAnimalId, type SeatMarkedByDto, type SeatOccupantDto } from "@uns/contracts";
 import type { Db } from "@uns/database";
 import { schema } from "@uns/database";
 import { buildDisputeService, freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
@@ -118,17 +119,79 @@ describe("RoomPeopleService", () => {
   });
 
   describe("listOccupants", () => {
-    it("includes only active check-ins with show_identity && show_seat", async () => {
+    it("returns an entry for every active check-in, with identity gated by show_identity && show_seat", async () => {
       await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: true });
       await setPrivacy("u1", { showSeat: true });
+      await setProfile("u1", { firstName: "Ana", identityMode: "FIRST_NAME" });
       await checkIns.checkIn({ userId: "u2", roomId, seatId: seatIds[1]!, location, showIdentity: true });
       await setPrivacy("u2", { showSeat: false });
       await checkIns.checkIn({ userId: "u3", roomId, seatId: seatIds[2]!, location, showIdentity: false });
       await setPrivacy("u3", { showSeat: true });
 
-      const occupants = await people.listOccupants(roomId);
-      expect(occupants.map((o) => o.userId)).toEqual(["u1"]);
-      expect(occupants[0]?.seatId).toBe(seatIds[0]);
+      const occupants = (await people.listOccupants(roomId)) as SeatOccupantDto[];
+      expect(occupants.map((o) => o.seatId).sort()).toEqual([seatIds[0]!, seatIds[1]!, seatIds[2]!].sort());
+      expect(occupants.find((o) => o.seatId === seatIds[0])).toMatchObject({ userId: "u1", displayName: "Ana", avatar: { kind: "silhouette" } });
+      expect(occupants.filter((o) => o.userId !== null).map((o) => o.userId)).toEqual(["u1"]);
+    });
+
+    it("shows the photo when the visible user opted into showAvatar and has one", async () => {
+      await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: true });
+      await setPrivacy("u1", { showSeat: true, showAvatar: true });
+      await setProfile("u1", { firstName: "Ana", identityMode: "FIRST_NAME", avatarUrl: "https://example.test/a.jpg" });
+
+      const [entry] = (await people.listOccupants(roomId)) as SeatOccupantDto[];
+      expect(entry?.avatar).toEqual({ kind: "photo", url: "https://example.test/a.jpg" });
+      expect(entry?.avatarUrl).toBe("https://example.test/a.jpg");
+
+      await setPrivacy("u1", { showAvatar: false });
+      const [withoutPhoto] = (await people.listOccupants(roomId)) as SeatOccupantDto[];
+      expect(withoutPhoto?.avatar).toEqual({ kind: "silhouette" });
+    });
+
+    it("shows the alias animal for a hidden user and never exposes their userId", async () => {
+      await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+      await setProfile("u1", { firstName: "Ana", identityMode: "FIRST_NAME", avatarUrl: "https://example.test/a.jpg" });
+      await setPrivacy("u1", { showSeat: true, showAvatar: true });
+
+      const [entry] = (await people.listOccupants(roomId)) as SeatOccupantDto[];
+      expect(entry?.userId).toBeNull();
+      expect(entry?.avatarUrl).toBeNull();
+      expect(entry?.avatar.kind).toBe("animal");
+      const animalId = entry?.avatar.kind === "animal" ? entry.avatar.animalId : "";
+      expect(isAnimalId(animalId)).toBe(true);
+      expect(animalIdFromAlias(entry?.displayName)).toBe(animalId);
+      expect(JSON.stringify(entry)).not.toContain("u1");
+      expect(JSON.stringify(entry)).not.toContain("Ana");
+    });
+
+    it("falls back to a silhouette named 'Alguien' when the hidden user turned the animal off", async () => {
+      await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+      await setPrivacy("u1", { showAliasAnimalOnMap: false });
+      await setProfile("u1", { identityMode: "HIDDEN" });
+
+      const [entry] = (await people.listOccupants(roomId)) as SeatOccupantDto[];
+      expect(entry).toMatchObject({ userId: null, displayName: "Alguien", avatar: { kind: "silhouette" } });
+    });
+
+    it("reports 'markedBy' for OCCUPIED-observation seats with nobody checked in", async () => {
+      await setProfile("u2", { firstName: "Beto", identityMode: "FIRST_NAME" });
+      const minutes = (n: number) => new Date(Date.now() + n * 60_000);
+      await db.insert(schema.seatObservations).values([
+        { userId: "u2", roomId, seatId: seatIds[3]!, observedStatus: "OCCUPIED", observedAt: minutes(-5), expiresAt: minutes(15) },
+        // Expired, superseded-by-FREE and checked-in seats must not produce entries.
+        { userId: "u2", roomId, seatId: seatIds[4]!, observedStatus: "OCCUPIED", observedAt: minutes(-60), expiresAt: minutes(-40) },
+        { userId: "u2", roomId, seatId: seatIds[5]!, observedStatus: "OCCUPIED", observedAt: minutes(-4), expiresAt: minutes(15) },
+        { userId: "u2", roomId, seatId: seatIds[5]!, observedStatus: "FREE", observedAt: minutes(-2), expiresAt: minutes(15) },
+      ]);
+      await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[6]!, location, showIdentity: false });
+      await db.insert(schema.seatObservations).values({ userId: "u2", roomId, seatId: seatIds[6]!, observedStatus: "OCCUPIED", expiresAt: minutes(15) });
+
+      const marked = (await people.listOccupants(roomId)).filter((e): e is SeatMarkedByDto => "markedBy" in e);
+      expect(marked).toHaveLength(1);
+      expect(marked[0]?.seatId).toBe(seatIds[3]);
+      expect(marked[0]?.markedBy.displayName).toBe("Beto");
+      expect(Date.parse(marked[0]!.markedBy.observedAt)).toBeLessThan(Date.now() - 4 * 60_000);
+      expect(JSON.stringify(marked[0])).not.toContain("u2");
     });
   });
 });

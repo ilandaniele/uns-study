@@ -8,7 +8,7 @@ import { RestrictionService } from "../users/restriction.service.js";
 import { RolesService } from "../users/roles.service.js";
 import { BlocksService } from "../blocks/blocks.service.js";
 import { RoomsService } from "../rooms/rooms.service.js";
-import { displayName, visibleAvatarUrl } from "../users/display-name.js";
+import { displayName, shownAliasAnimal, visibleAvatarUrl } from "../users/display-name.js";
 import { AliasService } from "../users/alias.service.js";
 
 const PAGE_SIZE = 50;
@@ -119,6 +119,7 @@ export class ChatService {
           userId: row.userId,
           displayName: displayName(profileById.get(row.userId) ?? null, privacyById.get(row.userId) ?? null, fallbackName),
           avatarUrl: visibleAvatarUrl(profileById.get(row.userId) ?? null, privacyById.get(row.userId) ?? null),
+          aliasAnimal: shownAliasAnimal(profileById.get(row.userId) ?? null) ?? undefined,
         },
         content: deleted ? null : row.content,
         deleted,

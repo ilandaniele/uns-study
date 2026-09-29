@@ -32,6 +32,8 @@ export interface PrivacySettingsDto {
   allowDirectMessages: boolean;
   /** Whether the user appears in rankings at all (default true) — under their alias when hidden. */
   showInRanking: boolean;
+  /** Hidden users appear on the map as their alias animal (default true); off = generic silhouette. */
+  showAliasAnimalOnMap: boolean;
 }
 
 export interface StudyStatusDto {
@@ -64,12 +66,27 @@ export interface RoomPersonDto {
   studyStatus: StudyStatusDto | null;
 }
 
+/** What to draw on an occupied seat: the person's photo, their alias animal, or a generic silhouette. */
+export type SeatAvatarDto = { kind: "photo"; url: string } | { kind: "animal"; animalId: string } | { kind: "silhouette" };
+
+/** One entry per active check-in seat. `userId` is `null` for hidden users — never linkable. */
 export interface SeatOccupantDto {
   seatId: string;
-  userId: string;
+  userId: string | null;
   displayName: string;
+  /** Photo URL when `avatar.kind === "photo"`, else `null` (kept for older consumers). */
   avatarUrl: string | null;
+  avatar: SeatAvatarDto;
 }
+
+/** A seat that reads OCCUPIED only because someone marked it ("Está ocupado"); nobody is checked in. */
+export interface SeatMarkedByDto {
+  seatId: string;
+  markedBy: { displayName: string; observedAt: string };
+}
+
+/** Entry of `GET /rooms/:id/occupants`: discriminate with `"markedBy" in entry`. */
+export type SeatOccupancyDto = SeatOccupantDto | SeatMarkedByDto;
 
 // ---- zod ----
 
@@ -105,6 +122,7 @@ export const updatePrivacySchema = z
     showSeat: z.boolean(),
     allowDirectMessages: z.boolean(),
     showInRanking: z.boolean(),
+    showAliasAnimalOnMap: z.boolean(),
   })
   .partial();
 

@@ -2,6 +2,7 @@
 
 import type { SeatOccupantDto } from "@uns/contracts";
 import Link from "next/link";
+import { OccupantAvatar } from "./OccupantAvatar";
 
 /** "Personas cercanas" — avatars of other identified occupants at the same table, shown in `SeatDetail`. */
 export function NearbyOccupants({ occupants }: { occupants: SeatOccupantDto[] }) {
@@ -12,11 +13,18 @@ export function NearbyOccupants({ occupants }: { occupants: SeatOccupantDto[] })
       <h2 className="text-sm font-semibold text-main">Personas cercanas</h2>
       <div className="mt-2 flex items-center gap-2">
         <div className="flex -space-x-2">
-          {occupants.slice(0, 5).map((occupant) => (
-            <Link key={occupant.userId} href={`/u/${occupant.userId}`} title={occupant.displayName}>
-              <OccupantAvatar occupant={occupant} />
-            </Link>
-          ))}
+          {occupants.slice(0, 5).map((occupant) => {
+            const avatar = <OccupantAvatar avatar={occupant.avatar} />;
+            return occupant.userId ? (
+              <Link key={occupant.seatId} href={`/u/${occupant.userId}`} title={occupant.displayName}>
+                {avatar}
+              </Link>
+            ) : (
+              <span key={occupant.seatId} title={occupant.displayName}>
+                {avatar}
+              </span>
+            );
+          })}
         </div>
         <p className="text-xs text-muted">
           {occupants.length} {occupants.length === 1 ? "persona en esta mesa" : "personas en esta mesa"}
@@ -26,17 +34,5 @@ export function NearbyOccupants({ occupants }: { occupants: SeatOccupantDto[] })
         Ver perfiles →
       </Link>
     </div>
-  );
-}
-
-function OccupantAvatar({ occupant }: { occupant: SeatOccupantDto }) {
-  if (occupant.avatarUrl) {
-    // eslint-disable-next-line @next/next/no-img-element -- avatars are arbitrary external HTTPS URLs, not a build-time asset
-    return <img src={occupant.avatarUrl} alt="" className="h-8 w-8 rounded-full border-2 border-app object-cover" />;
-  }
-  return (
-    <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-app bg-[var(--surface-2)] text-xs font-semibold text-main">
-      {occupant.displayName.trim().charAt(0).toUpperCase() || "?"}
-    </span>
   );
 }

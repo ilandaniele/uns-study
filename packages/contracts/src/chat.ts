@@ -4,7 +4,7 @@ import type { Page } from "./social.js";
 export interface ChatMessageDto {
   id: string;
   chatRoomId: string;
-  author: { userId: string; displayName: string; avatarUrl: string | null };
+  author: { userId: string; displayName: string; avatarUrl: string | null; /** Alias animal id when the name shown is the alias. */ aliasAnimal?: string | null };
   /** `null` when the message was deleted. */
   content: string | null;
   deleted: boolean;

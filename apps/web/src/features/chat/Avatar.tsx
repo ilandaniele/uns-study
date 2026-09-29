@@ -1,3 +1,6 @@
+import { isAnimalId } from "@uns/contracts";
+import { OccupantAvatar } from "@/features/room/OccupantAvatar";
+
 /**
  * Solid, saturated colors that keep white initials legible in both light and dark themes —
  * deliberately independent of the app's theme tokens since an avatar's color is an identity
@@ -27,12 +30,14 @@ export interface AvatarProps {
   userId: string;
   name: string;
   url: string | null;
+  /** Alias animal id of a hidden user; drawn instead of the initial when there is no photo. */
+  aliasAnimal?: string | null;
   size?: number;
   className?: string;
 }
 
 /** Round avatar: the user's photo when set, otherwise their initial on a deterministic color. */
-export function Avatar({ userId, name, url, size = 40, className = "" }: AvatarProps) {
+export function Avatar({ userId, name, url, aliasAnimal = null, size = 40, className = "" }: AvatarProps) {
   if (url) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- small avatar thumbnails, may be same-origin relative URLs
@@ -44,6 +49,7 @@ export function Avatar({ userId, name, url, size = 40, className = "" }: AvatarP
       />
     );
   }
+  if (isAnimalId(aliasAnimal)) return <OccupantAvatar avatar={{ kind: "animal", animalId: aliasAnimal }} size={size} className={className} />;
   const initial = name.trim().charAt(0).toUpperCase() || "?";
   return (
     <span

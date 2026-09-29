@@ -6,7 +6,7 @@ import { schema, type Db } from "@uns/database";
 import type { RankingCategory, RankingDto, RankingEntryDto, RankingPeriod } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
 import { RoomsService } from "../rooms/rooms.service.js";
-import { displayName, needsAlias, visibleAvatarUrl } from "../users/display-name.js";
+import { displayName, needsAlias, shownAliasAnimal, visibleAvatarUrl } from "../users/display-name.js";
 import { AliasService } from "../users/alias.service.js";
 
 const STUDY_TIME_DAILY_CAP_MIN = 720;
@@ -93,6 +93,7 @@ interface VisibilityInfo {
   hiddenFromRanking: boolean;
   displayName: string;
   avatarUrl: string | null;
+  aliasAnimal: string | undefined;
   /** `false` whenever the entry must not be linkable: not opted into room visibility, or the shown
    *  name is the random alias rather than a chosen identity. */
   linkable: boolean;
@@ -153,6 +154,7 @@ export class RankingsService {
         userId: info.linkable ? userId : null,
         displayName: info.displayName,
         avatarUrl: info.avatarUrl,
+        aliasAnimal: info.aliasAnimal,
         isMe: userId === viewerUserId,
         value,
         realUserId: userId,
@@ -174,6 +176,7 @@ export class RankingsService {
           userId: info.linkable ? viewerUserId : null,
           displayName: info.displayName,
           avatarUrl: info.avatarUrl,
+          aliasAnimal: info.aliasAnimal,
           isMe: true,
           value: values.get(viewerUserId) ?? 0,
         };
@@ -209,6 +212,7 @@ export class RankingsService {
         displayName: displayName(profile, privacy, "Usuario anónimo"),
         // No avatar at all unless both `showAvatar` and `showInRoom` are on (07_SECURITY §privacy).
         avatarUrl: privacy?.showInRoom ? visibleAvatarUrl(profile, privacy) : null,
+        aliasAnimal: shownAliasAnimal(profile) ?? undefined,
         linkable,
       });
     }

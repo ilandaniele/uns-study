@@ -24,6 +24,9 @@ export const userProfiles = pgTable(
     // Fun random Spanish alias shown instead of "Usuario anónimo" while hidden. NULL when the user
     // doesn't currently need one (visible identity with a non-empty name) — freed for reuse.
     alias: text("alias"),
+    // Catalog id (`ANIMALS` in @uns/contracts) of the animal in `alias`. NULL on legacy aliases whose
+    // noun isn't a catalog animal — `AliasService` reassigns those lazily.
+    aliasAnimal: text("alias_animal"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -47,6 +50,8 @@ export const userPrivacySettings = pgTable("user_privacy_settings", {
   // Whether the user appears in rankings at all — default true so opting *out* is the deliberate
   // action. Distinct from `showInRoom`: a user can rank under their alias without being linkable.
   showInRanking: boolean("show_in_ranking").notNull().default(true),
+  // Whether hidden users appear on the map as their alias animal (off = generic silhouette).
+  showAliasAnimalOnMap: boolean("show_alias_animal_on_map").notNull().default(true),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

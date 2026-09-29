@@ -1,8 +1,9 @@
 "use client";
 
-import type { SeatDto, TableType } from "@uns/contracts";
+import type { SeatAvatarDto, SeatDto, TableType } from "@uns/contracts";
 import { memo } from "react";
 import { statusLabel } from "./format";
+import { AVATAR_BACKDROP, SILHOUETTE_BODY, SILHOUETTE_HEAD, seatAvatarRender } from "./seat-avatar";
 
 // Invisible enlarged tap target (mobile accessibility) — doesn't affect visual spacing since
 // seats are spaced well apart (see packages/database/src/layout.ts) and 2*HIT_RADIUS < that gap.
@@ -45,12 +46,13 @@ export interface SeatProps {
   isMySeat: boolean;
   isSelected: boolean;
   onSelect: (seat: SeatDto) => void;
-  /** Photo of the identified occupant (only set when they chose to show themselves and their photo). */
-  avatarUrl?: string | null;
+  /** What to draw for whoever is checked in here: their photo, their alias animal or a silhouette. */
+  avatar?: SeatAvatarDto | null;
 }
 
-export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, isMySeat, isSelected, onSelect, avatarUrl = null }: SeatProps) {
-  const showPhoto = avatarUrl !== null && (seat.status === "OCCUPIED" || isMySeat);
+export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, isMySeat, isSelected, onSelect, avatar = null }: SeatProps) {
+  const badge = seatAvatarRender(avatar, seat.status === "OCCUPIED" || isMySeat);
+  const showPhoto = badge !== null;
   const clipId = `seat-photo-${seat.id}`;
   const visualStatus = isMySeat ? "MY_SEAT" : seat.status;
   const kind = tableType === "WALL_BAR" ? "Barra" : "Mesa";
@@ -91,24 +93,39 @@ export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, is
         {/* Glossy seat sphere. */}
         <circle r={SEAT_R} fill={`url(#${GRADIENT_ID[visualStatus]})`} stroke="var(--seat-stroke)" strokeWidth={1} />
       </g>
-      {showPhoto ? (
-        // Occupant's photo as a round badge over the seat: white frame plus a ring in the seat's
-        // status color, bigger than the plain seat so the face is recognizable on the map.
+      {badge ? (
+        // Occupant badge over the seat: white frame plus a ring in the seat's status color, bigger than
+        // the plain seat so a face / animal is recognizable on the map.
         <g transform={`rotate(${-seat.rotation})`}>
           <clipPath id={clipId}>
             <circle r={PHOTO_R} />
           </clipPath>
           <circle r={PHOTO_R + 4} fill={isMySeat ? "var(--seat-mine)" : "var(--seat-occupied)"} />
           <circle r={PHOTO_R + 1.5} fill="white" />
-          <image
-            href={avatarUrl}
-            x={-PHOTO_R}
-            y={-PHOTO_R}
-            width={PHOTO_R * 2}
-            height={PHOTO_R * 2}
-            preserveAspectRatio="xMidYMid slice"
-            clipPath={`url(#${clipId})`}
-          />
+          {badge.type === "photo" ? (
+            <image
+              href={badge.url}
+              x={-PHOTO_R}
+              y={-PHOTO_R}
+              width={PHOTO_R * 2}
+              height={PHOTO_R * 2}
+              preserveAspectRatio="xMidYMid slice"
+              clipPath={`url(#${clipId})`}
+            />
+          ) : (
+            <>
+              <circle r={PHOTO_R} fill={AVATAR_BACKDROP} />
+              {badge.type === "animal" ? (
+                <image href={badge.src} x={-PHOTO_R * 0.72} y={-PHOTO_R * 0.72} width={PHOTO_R * 1.44} height={PHOTO_R * 1.44} />
+              ) : (
+                // Generic silhouette drawn in a 100x100 box, scaled to the badge and clipped to its circle.
+                <g clipPath={`url(#${clipId})`} transform={`translate(${-PHOTO_R} ${-PHOTO_R}) scale(${(PHOTO_R * 2) / 100})`}>
+                  <circle {...SILHOUETTE_HEAD} fill="white" />
+                  <path d={SILHOUETTE_BODY} fill="white" />
+                </g>
+              )}
+            </>
+          )}
         </g>
       ) : null}
       <text

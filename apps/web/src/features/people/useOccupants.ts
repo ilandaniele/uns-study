@@ -1,6 +1,6 @@
 "use client";
 
-import { SocketEvents, type SeatOccupantDto, type SeatStateChangedEvent } from "@uns/contracts";
+import { SocketEvents, type SeatMarkedByDto, type SeatOccupancyDto, type SeatOccupantDto, type SeatStateChangedEvent } from "@uns/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
@@ -9,19 +9,38 @@ import { getSocket } from "@/lib/socket";
 const REFETCH_DEBOUNCE_MS = 1000;
 
 export interface UseOccupantsResult {
-  /** seatId -> occupant, for the seats whose occupant chose to be identified. */
+  /** seatId -> occupant, for every checked-in seat (hidden users have `userId: null`). */
   bySeatId: Map<string, SeatOccupantDto>;
+  /** seatId -> who marked it "Está ocupado", for OCCUPIED seats with nobody checked in. */
+  markedBySeatId: Map<string, SeatMarkedByDto>;
   refetch: () => void;
 }
 
-/** GET `/rooms/:idOrSlug/occupants` — used by `SeatDetail` to show "<Nombre> está acá" when visible. */
+/** Keeps the previous object when an entry didn't change, so memoized seats don't repaint on every refetch. */
+function reuseEqual<T>(previous: Map<string, T>, next: Map<string, T>): Map<string, T> {
+  for (const [key, value] of next) {
+    const old = previous.get(key);
+    if (old !== undefined && JSON.stringify(old) === JSON.stringify(value)) next.set(key, old);
+  }
+  return next;
+}
+
+/** GET `/rooms/:idOrSlug/occupants` — seat badges, "<Nombre> está acá" and "Marcado por: …" in `SeatDetail`. */
 export function useOccupants(roomSlug: string): UseOccupantsResult {
   const [bySeatId, setBySeatId] = useState<Map<string, SeatOccupantDto>>(new Map());
+  const [markedBySeatId, setMarkedBySeatId] = useState<Map<string, SeatMarkedByDto>>(new Map());
 
   const load = useCallback(async () => {
     try {
-      const dto = await apiFetch<SeatOccupantDto[]>(`/api/v1/rooms/${roomSlug}/occupants`);
-      setBySeatId(new Map(dto.map((o) => [o.seatId, o])));
+      const dto = await apiFetch<SeatOccupancyDto[]>(`/api/v1/rooms/${roomSlug}/occupants`);
+      const occupants = new Map<string, SeatOccupantDto>();
+      const marked = new Map<string, SeatMarkedByDto>();
+      for (const entry of dto) {
+        if ("markedBy" in entry) marked.set(entry.seatId, entry);
+        else occupants.set(entry.seatId, entry);
+      }
+      setBySeatId((previous) => reuseEqual(previous, occupants));
+      setMarkedBySeatId((previous) => reuseEqual(previous, marked));
     } catch {
       // Occupants are a nice-to-have overlay on top of the seat map; a failed fetch just leaves it empty.
     }
@@ -36,9 +55,11 @@ export function useOccupants(roomSlug: string): UseOccupantsResult {
   // where) and on socket reconnect (occupants may have changed while we were disconnected).
   // `table:nickname-changed` is irrelevant here — a table rename never changes who's occupying a seat.
   const bySeatIdRef = useRef(bySeatId);
+  const markedRef = useRef(markedBySeatId);
   useEffect(() => {
     bySeatIdRef.current = bySeatId;
-  }, [bySeatId]);
+    markedRef.current = markedBySeatId;
+  }, [bySeatId, markedBySeatId]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -49,10 +70,10 @@ export function useOccupants(roomSlug: string): UseOccupantsResult {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => void load(), REFETCH_DEBOUNCE_MS);
     };
-    // Only seats that become OCCUPIED (a new occupant may be identified) or that we currently list
+    // Only seats that become OCCUPIED (a new occupant / marker) or that we currently list
     // (occupant may have left) can change this overlay; other seat events are noise.
     const onSeatStateChanged = (event: SeatStateChangedEvent) => {
-      if (event.status === "OCCUPIED" || bySeatIdRef.current.has(event.seatId)) scheduleReload();
+      if (event.status === "OCCUPIED" || bySeatIdRef.current.has(event.seatId) || markedRef.current.has(event.seatId)) scheduleReload();
     };
     const onConnect = () => {
       if (seenConnect) scheduleReload();
@@ -69,5 +90,5 @@ export function useOccupants(roomSlug: string): UseOccupantsResult {
     };
   }, [load]);
 
-  return { bySeatId, refetch: load };
+  return { bySeatId, markedBySeatId, refetch: load };
 }

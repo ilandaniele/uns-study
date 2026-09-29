@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+export * from "./animals";
 export * from "./profiles";
 export * from "./social";
 export * from "./chat";

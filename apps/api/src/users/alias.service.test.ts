@@ -31,6 +31,7 @@ describe("AliasService", () => {
     expect(alias).toBe("Carpincho Estudioso");
     const [row] = await db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, "u1"));
     expect(row?.alias).toBe("Carpincho Estudioso");
+    expect(row?.aliasAnimal).toBe("carpincho");
   });
 
   it("is idempotent: calling twice returns the same alias without regenerating", async () => {
@@ -45,10 +46,10 @@ describe("AliasService", () => {
 
     // u2's first two draws collide with u1's alias; the third is free.
     mockedRandomAlias.mockReset();
-    mockedRandomAlias.mockReturnValueOnce("Carpincho Estudioso").mockReturnValueOnce("Carpincho Estudioso").mockReturnValueOnce("Mate Filosófico");
+    mockedRandomAlias.mockReturnValueOnce("Carpincho Estudioso").mockReturnValueOnce("Carpincho Estudioso").mockReturnValueOnce("Puma Filosófico");
 
     const alias = await svc.ensureAlias("u2");
-    expect(alias).toBe("Mate Filosófico");
+    expect(alias).toBe("Puma Filosófico");
     expect(mockedRandomAlias).toHaveBeenCalledTimes(3);
   });
 
@@ -98,6 +99,32 @@ describe("AliasService", () => {
     mockedRandomAlias.mockReturnValue("Hornero Madrugador");
     const rerolled = await svc.reroll("u1");
     expect(rerolled).toBe("Hornero Madrugador");
+  });
+
+  it("reassigns a legacy alias whose noun isn't a catalog animal, retiring the old one", async () => {
+    await db.update(schema.userProfiles).set({ alias: "Mate Filosófico", aliasAnimal: null }).where(eq(schema.userProfiles.userId, "u1"));
+
+    const alias = await svc.ensureAlias("u1");
+    expect(alias).toBe("Carpincho Estudioso");
+    const [row] = await db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, "u1"));
+    expect(row?.aliasAnimal).toBe("carpincho");
+    const retired = await db.select().from(schema.retiredAliases);
+    expect(retired.map((r) => r.alias)).toEqual(["Mate Filosófico"]);
+  });
+
+  it("keeps a legacy alias that already uses a catalog animal and just records the animal", async () => {
+    await db.update(schema.userProfiles).set({ alias: "Vizcacha Curiosa", aliasAnimal: null }).where(eq(schema.userProfiles.userId, "u1"));
+
+    expect(await svc.ensureAlias("u1")).toBe("Vizcacha Curiosa");
+    const [row] = await db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, "u1"));
+    expect(row?.aliasAnimal).toBe("vizcacha");
+    expect(mockedRandomAlias).not.toHaveBeenCalled();
+  });
+
+  it("batch helper lazily reassigns a profile whose aliasAnimal is null (legacy)", async () => {
+    await db.update(schema.userProfiles).set({ alias: "Termo Prolijo" }).where(eq(schema.userProfiles.userId, "u1"));
+    const map = await svc.ensureAliasesForProfiles([{ userId: "u1", identityMode: "HIDDEN", alias: "Termo Prolijo", aliasAnimal: null }]);
+    expect(map.get("u1")).toBe("Carpincho Estudioso");
   });
 
   it("batch-assigns aliases only for HIDDEN profiles missing one", async () => {

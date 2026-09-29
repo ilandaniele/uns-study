@@ -1,6 +1,6 @@
 "use client";
 
-import type { RoomMapDto, SeatDto } from "@uns/contracts";
+import type { RoomMapDto, SeatAvatarDto, SeatDto } from "@uns/contracts";
 import { memo, useMemo } from "react";
 import { Seat, type SeatFacing } from "./Seat";
 import { StudyTable } from "./StudyTable";
@@ -13,8 +13,8 @@ export interface RoomMapProps {
   onSelectSeat: (seat: SeatDto) => void;
   /** Table code to highlight (e.g. from a scanned QR deep link), see `useQrContext`. */
   highlightTableCode?: string | null;
-  /** Avatar URL per seat id for occupants who chose to show themselves with a photo. */
-  avatarBySeatId?: ReadonlyMap<string, string>;
+  /** Badge descriptor per seat id for every checked-in occupant (photo, alias animal or silhouette). */
+  avatarBySeatId?: ReadonlyMap<string, SeatAvatarDto>;
 }
 
 // Seat status keys that get a shared radial-gradient "glossy sphere" fill, defined once below
@@ -69,7 +69,7 @@ export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlight
             isMySeat={seat.id === mySeatId}
             isSelected={seat.id === selectedSeatId}
             onSelect={onSelectSeat}
-            avatarUrl={avatarBySeatId?.get(seat.id) ?? null}
+            avatar={avatarBySeatId?.get(seat.id) ?? null}
           />
         );
       })}

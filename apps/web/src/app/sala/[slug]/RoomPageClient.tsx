@@ -1,6 +1,6 @@
 "use client";
 
-import type { SeatDto } from "@uns/contracts";
+import type { SeatAvatarDto, SeatDto } from "@uns/contracts";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -51,7 +51,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
   const [showHowTo, setShowHowTo] = useState(false);
 
   const { map, me, connected, loading, error, refetch } = useRoomState(slug);
-  const { bySeatId: occupantsBySeatId, refetch: refetchOccupants } = useOccupants(slug);
+  const { bySeatId: occupantsBySeatId, markedBySeatId, refetch: refetchOccupants } = useOccupants(slug);
   const { people } = usePeople(slug);
   const { highlightTableCode, qrToken } = useQrContext();
   const socket = useMemo(() => getSocket(), []);
@@ -129,21 +129,21 @@ export function RoomPageClient({ slug }: { slug: string }) {
 
   const mySeatId = activeCheckIn?.seatId ?? null;
   const avatarBySeatId = useMemo(() => {
-    const photos = new Map<string, string>();
-    for (const [seatId, occupant] of occupantsBySeatId) if (occupant.avatarUrl) photos.set(seatId, occupant.avatarUrl);
-    return photos;
+    const avatars = new Map<string, SeatAvatarDto>();
+    for (const [seatId, occupant] of occupantsBySeatId) avatars.set(seatId, occupant.avatar);
+    return avatars;
   }, [occupantsBySeatId]);
   const seatById = useMemo(() => new Map((map?.seats ?? []).map((seat) => [seat.id, seat])), [map]);
   const tableById = useMemo(() => new Map((map?.tables ?? []).map((table) => [table.id, table])), [map]);
   const selectedSeat = (selectedSeatId ? seatById.get(selectedSeatId) : null) ?? null;
   const selectedTable = (selectedSeat ? tableById.get(selectedSeat.tableId) : null) ?? null;
-  // Other identified occupants seated at the same table as the selected seat, for "Personas cercanas".
+  // Other identified (linkable) occupants seated at the same table as the selected seat, for "Personas cercanas".
   const nearbyOccupants = useMemo(() => {
     if (!selectedTable) return [];
     return (map?.seats ?? [])
       .filter((seat) => seat.tableId === selectedTable.id && seat.id !== selectedSeatId)
       .map((seat) => occupantsBySeatId.get(seat.id))
-      .filter((occupant): occupant is NonNullable<typeof occupant> => occupant != null);
+      .filter((occupant): occupant is NonNullable<typeof occupant> => occupant != null && occupant.userId !== null);
   }, [map, selectedTable, selectedSeatId, occupantsBySeatId]);
 
   const { dispute: selectedDispute, setDispute: setSelectedDispute } = useSeatDispute(selectedSeat?.id ?? "", selectedSeat?.dispute ?? null);
@@ -307,6 +307,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
       me={me}
       isMySeat={selectedSeat.id === mySeatId}
       occupant={occupantsBySeatId.get(selectedSeat.id) ?? null}
+      markedBy={markedBySeatId.get(selectedSeat.id)?.markedBy ?? null}
       pending={pending}
       actionError={actionError}
       turnstileRequired={turnstileRequired}

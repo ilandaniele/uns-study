@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, or } from "drizzle-orm";
 import { schema, type Db } from "@uns/database";
-import type { RoomPersonDto, SeatOccupantDto } from "@uns/contracts";
+import { animalIdFromAlias, type RoomPersonDto, type SeatMarkedByDto, type SeatOccupancyDto } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
 import { displayName, visibleAvatarUrl, type DisplayNameProfile } from "../users/display-name.js";
 import { AliasService } from "../users/alias.service.js";
@@ -93,36 +93,96 @@ export class RoomPeopleService {
     }));
   }
 
-  /** Seats whose occupant chose to be identified: active check-in with `show_identity` + `show_seat`. */
-  async listOccupants(roomId: string): Promise<SeatOccupantDto[]> {
+  /**
+   * One entry per active check-in (`SeatOccupantDto`) plus one per seat that is OCCUPIED only because
+   * someone marked it (`SeatMarkedByDto`). Identity follows the check-in's `show_identity` + `show_seat`:
+   * visible -> real display name, photo (if `show_avatar`) or silhouette, `userId` set; otherwise
+   * alias + animal (if `show_alias_animal_on_map`) or "Alguien" + silhouette, and `userId` is always
+   * `null` so a hidden user can never be linked to their seat.
+   */
+  async listOccupants(roomId: string): Promise<SeatOccupancyDto[]> {
     const rows = await this.db
       .select({
         seatId: schema.checkIns.seatId,
         userId: schema.checkIns.userId,
         userName: schema.user.name,
+        showIdentity: schema.checkIns.showIdentity,
         profile: schema.userProfiles,
         privacy: schema.userPrivacySettings,
       })
       .from(schema.checkIns)
       .innerJoin(schema.user, eq(schema.user.id, schema.checkIns.userId))
-      .innerJoin(schema.userPrivacySettings, eq(schema.userPrivacySettings.userId, schema.checkIns.userId))
+      .leftJoin(schema.userPrivacySettings, eq(schema.userPrivacySettings.userId, schema.checkIns.userId))
       .leftJoin(schema.userProfiles, eq(schema.userProfiles.userId, schema.checkIns.userId))
-      .where(
-        and(
-          eq(schema.checkIns.roomId, roomId),
-          eq(schema.checkIns.status, "ACTIVE"),
-          eq(schema.checkIns.showIdentity, true),
-          eq(schema.userPrivacySettings.showSeat, true),
-        ),
-      );
+      .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE")));
 
-    const aliasByUser = await this.aliases.ensureAliasesForProfiles(rows.flatMap((r) => (r.profile ? [r.profile] : [])));
+    const visibleProfiles = rows.flatMap((r) => (r.showIdentity && r.privacy?.showSeat && r.profile ? [r.profile] : []));
+    const aliasByUser = await this.aliases.ensureAliasesForProfiles(visibleProfiles);
 
-    return rows.map((r) => ({
-      seatId: r.seatId,
-      userId: r.userId,
-      displayName: displayName(profileForDisplay(r.profile, aliasByUser.get(r.userId)), null, r.userName),
-      avatarUrl: visibleAvatarUrl(r.profile ?? null, r.privacy),
+    const result: SeatOccupancyDto[] = [];
+    for (const r of rows) {
+      if (r.showIdentity && r.privacy?.showSeat) {
+        const url = visibleAvatarUrl(r.profile ?? null, r.privacy);
+        result.push({
+          seatId: r.seatId,
+          userId: r.userId,
+          displayName: displayName(profileForDisplay(r.profile, aliasByUser.get(r.userId)), null, r.userName),
+          avatarUrl: url,
+          avatar: url ? { kind: "photo", url } : { kind: "silhouette" },
+        });
+        continue;
+      }
+
+      // Hidden on the map: never expose the userId, and only the alias animal (if allowed) identifies them.
+      const showAnimal = r.privacy?.showAliasAnimalOnMap ?? true;
+      let alias: string | null = null;
+      if (r.profile && showAnimal) {
+        alias = r.profile.alias && r.profile.aliasAnimal ? r.profile.alias : await this.aliases.ensureAlias(r.userId);
+      }
+      const animalId = animalIdFromAlias(alias);
+      result.push({
+        seatId: r.seatId,
+        userId: null,
+        displayName: alias && animalId ? alias : "Alguien",
+        avatarUrl: null,
+        avatar: alias && animalId ? { kind: "animal", animalId } : { kind: "silhouette" },
+      });
+    }
+
+    const checkedInSeats = new Set(rows.map((r) => r.seatId));
+    result.push(...(await this.listMarkedBy(roomId, checkedInSeats)));
+    return result;
+  }
+
+  /** Seats whose freshest live observation says OCCUPIED and that have nobody checked in. */
+  private async listMarkedBy(roomId: string, checkedInSeats: Set<string>): Promise<SeatMarkedByDto[]> {
+    const observations = await this.db
+      .select({
+        seatId: schema.seatObservations.seatId,
+        status: schema.seatObservations.observedStatus,
+        observedAt: schema.seatObservations.observedAt,
+        userId: schema.seatObservations.userId,
+        userName: schema.user.name,
+        profile: schema.userProfiles,
+      })
+      .from(schema.seatObservations)
+      .innerJoin(schema.user, eq(schema.user.id, schema.seatObservations.userId))
+      .leftJoin(schema.userProfiles, eq(schema.userProfiles.userId, schema.seatObservations.userId))
+      .where(and(eq(schema.seatObservations.roomId, roomId), gt(schema.seatObservations.expiresAt, new Date())))
+      .orderBy(desc(schema.seatObservations.observedAt));
+
+    const latestBySeat = new Map<string, (typeof observations)[number]>();
+    for (const o of observations) if (!latestBySeat.has(o.seatId)) latestBySeat.set(o.seatId, o);
+    const marked = [...latestBySeat.values()].filter((o) => o.status === "OCCUPIED" && !checkedInSeats.has(o.seatId));
+    if (marked.length === 0) return [];
+
+    const aliasByUser = await this.aliases.ensureAliasesForProfiles(marked.flatMap((o) => (o.profile ? [o.profile] : [])));
+    return marked.map((o) => ({
+      seatId: o.seatId,
+      markedBy: {
+        displayName: displayName(profileForDisplay(o.profile, aliasByUser.get(o.userId)), null, o.userName),
+        observedAt: o.observedAt.toISOString(),
+      },
     }));
   }
 }

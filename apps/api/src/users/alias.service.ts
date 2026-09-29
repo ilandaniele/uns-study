@@ -1,5 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { eq, sql } from "drizzle-orm";
+import { animalIdFromAlias } from "@uns/contracts";
 import { schema, type Db } from "@uns/database";
 import { DB } from "../database/database.module.js";
 import { randomAlias } from "./alias-generator.js";
@@ -20,6 +21,8 @@ interface AliasableProfile {
   userId: string;
   identityMode: string;
   alias: string | null;
+  /** `null` = alias predates the animal catalog (reassigned lazily); `undefined` = caller didn't load it. */
+  aliasAnimal?: string | null;
 }
 
 /**
@@ -28,6 +31,9 @@ interface AliasableProfile {
  * users — assignment retries on collision, falling back to a numeric suffix after `MAX_ATTEMPTS`.
  * Every alias ever released is recorded in `retired_aliases` and never handed out again, so a
  * released alias can't later be reassigned to someone else and become ambiguous.
+ * Aliases are always "<catalog animal> <adjective>"; the animal id is stored in `alias_animal`
+ * (it drives the map illustration). A legacy alias whose noun isn't in the catalog is retired and
+ * replaced by a fresh animal alias the next time it's ensured.
  */
 @Injectable()
 export class AliasService {
@@ -44,8 +50,22 @@ export class AliasService {
 
   /** Returns the user's current alias, assigning one if they don't have one yet. */
   async ensureAlias(userId: string): Promise<string> {
-    const [row] = await this.db.select({ alias: schema.userProfiles.alias }).from(schema.userProfiles).where(eq(schema.userProfiles.userId, userId)).limit(1);
-    if (row?.alias) return row.alias;
+    const [row] = await this.db
+      .select({ alias: schema.userProfiles.alias, aliasAnimal: schema.userProfiles.aliasAnimal })
+      .from(schema.userProfiles)
+      .where(eq(schema.userProfiles.userId, userId))
+      .limit(1);
+    if (row?.alias) {
+      if (row.aliasAnimal) return row.alias;
+      const animal = animalIdFromAlias(row.alias);
+      if (animal) {
+        // Alias already uses a catalog animal (e.g. "Vizcacha Curiosa") — just record the animal.
+        await this.db.update(schema.userProfiles).set({ aliasAnimal: animal }).where(eq(schema.userProfiles.userId, userId));
+        return row.alias;
+      }
+      // Legacy noun (object / non-catalog animal): retire it and fall through to a new animal alias.
+      await this.releaseAlias(userId);
+    }
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       const candidate = randomAlias();
@@ -54,7 +74,7 @@ export class AliasService {
       try {
         const [updated] = await this.db
           .update(schema.userProfiles)
-          .set({ alias: candidate, updatedAt: new Date() })
+          .set({ alias: candidate, aliasAnimal: animalIdFromAlias(candidate), updatedAt: new Date() })
           .where(eq(schema.userProfiles.userId, userId))
           .returning({ alias: schema.userProfiles.alias });
         if (updated?.alias) return updated.alias;
@@ -73,7 +93,7 @@ export class AliasService {
       try {
         const [updated] = await this.db
           .update(schema.userProfiles)
-          .set({ alias: fallback, updatedAt: new Date() })
+          .set({ alias: fallback, aliasAnimal: animalIdFromAlias(fallback), updatedAt: new Date() })
           .where(eq(schema.userProfiles.userId, userId))
           .returning({ alias: schema.userProfiles.alias });
         if (updated?.alias) return updated.alias;
@@ -90,7 +110,7 @@ export class AliasService {
    *  and retires it forever so nobody else can ever be assigned the exact same alias again. */
   async releaseAlias(userId: string): Promise<void> {
     const [row] = await this.db.select({ alias: schema.userProfiles.alias }).from(schema.userProfiles).where(eq(schema.userProfiles.userId, userId)).limit(1);
-    await this.db.update(schema.userProfiles).set({ alias: null, updatedAt: new Date() }).where(eq(schema.userProfiles.userId, userId));
+    await this.db.update(schema.userProfiles).set({ alias: null, aliasAnimal: null, updatedAt: new Date() }).where(eq(schema.userProfiles.userId, userId));
     if (row?.alias) {
       await this.db.insert(schema.retiredAliases).values({ alias: row.alias }).onConflictDoNothing();
     }
@@ -110,11 +130,11 @@ export class AliasService {
   async ensureAliasesForProfiles(profiles: AliasableProfile[]): Promise<Map<string, string>> {
     const result = new Map<string, string>();
     for (const profile of profiles) {
-      if (profile.alias) {
+      if (profile.alias && profile.aliasAnimal !== null) {
         result.set(profile.userId, profile.alias);
         continue;
       }
-      if (profile.identityMode !== "HIDDEN") continue;
+      if (!profile.alias && profile.identityMode !== "HIDDEN") continue;
       result.set(profile.userId, await this.ensureAlias(profile.userId));
     }
     return result;

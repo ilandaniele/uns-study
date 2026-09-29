@@ -1,3 +1,4 @@
+import { animalIdFromAlias } from "@uns/contracts";
 import type { IdentityMode } from "@uns/contracts";
 
 /** Minimal shape needed from a `user_profiles` row. */
@@ -79,4 +80,10 @@ export interface AvatarPrivacy {
 export function visibleAvatarUrl(profile: AvatarProfile | null, privacy: AvatarPrivacy | null): string | null {
   if (!profile || !privacy?.showAvatar) return null;
   return profile.avatarUrl;
+}
+
+/** Catalog animal id of the profile's alias, but only while the name shown *is* the alias (else `null`). */
+export function shownAliasAnimal(profile: DisplayNameProfile | null): string | null {
+  if (!profile || !needsAlias(profile)) return null;
+  return animalIdFromAlias(profile.alias);
 }
