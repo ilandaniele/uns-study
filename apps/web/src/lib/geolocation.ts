@@ -15,9 +15,9 @@ export class GeolocationRequestError extends Error {
 /** Stop sampling as soon as a fix is at least this precise (meters). */
 const GOOD_ENOUGH_ACCURACY_M = 25;
 /** Longest time spent collecting fixes before settling for the best one, counted from the first fix. */
-const SAMPLE_WINDOW_MS = 8_000;
+const SAMPLE_WINDOW_MS = 5_000;
 /** Absolute cap on the whole call, counted from the moment it's invoked (includes the permission prompt). */
-const OVERALL_TIMEOUT_MS = 45_000;
+const OVERALL_TIMEOUT_MS = 20_000;
 /** A fix "older" than the call by more than this is a cached reading, not a new sample. */
 const CACHED_FIX_TOLERANCE_MS = 5_000;
 /**
