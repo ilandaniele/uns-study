@@ -12,7 +12,7 @@ const STEPS: { icon: ReactNode; title: string; body: string }[] = [
   {
     icon: <MapPinIcon aria-hidden="true" size={20} weight="bold" />,
     title: "Estoy acá",
-    body: "Marcalo cuando te sientes de verdad. Vale por 60 minutos.",
+    body: "Marcalo cuando te sientes de verdad. Vale por 3 horas.",
   },
   {
     icon: <CheckCircleIcon aria-hidden="true" size={20} weight="bold" />,

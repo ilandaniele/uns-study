@@ -65,7 +65,7 @@ Do not replace this stack unless there is a blocking incompatibility. If there i
 - Presence-sensitive writes require server-side geofence validation.
 - GPS proves approximate room presence, not exact seat.
 - QR is optional and not required for MVP.
-- Check-in = 60 minutes.
+- Check-in = 3 hours (180 minutes; owner decision 2026-09-29, was 60). "Sigo acá" reminder 10 minutes before expiry.
 - Initial FREE observation = 15 minutes.
 - Initial OCCUPIED observation = 20 minutes.
 - Daily operational reset ≈ 04:00 America/Argentina/Buenos_Aires.

@@ -1,4 +1,5 @@
 import type { CheckInDto, RoomMapDto, RoomSummary, SeatDisputeLiteDto, SeatDto, SeatStateChangedEvent, TableNicknameChangedEvent } from "@uns/contracts";
+import { CHECKIN_MINUTES } from "@uns/contracts/events";
 
 /**
  * Client-side merge rules for room seat state. REST snapshots and `seat:state-changed` socket
@@ -88,8 +89,6 @@ function summarize(roomId: string, seats: SeatDto[]): RoomSummary {
 
 // ---- Optimistic updates ----
 
-/** Mirrors the API's check-in length (`CHECKIN_MINUTES`). */
-const CHECKIN_MINUTES = 60;
 
 /** Confidence shown for an optimistic seat; the socket event / snapshot replaces it with the server's. */
 const OPTIMISTIC_CONFIDENCE = 0.9;

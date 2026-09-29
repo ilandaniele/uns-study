@@ -153,20 +153,20 @@ describe("CheckInService", () => {
     expect(sessions).toHaveLength(1);
   });
 
-  it("extends the check-in 60 minutes from now", async () => {
+  it("extends the check-in 3 hours from now", async () => {
     const { checkIn } = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
     const before = new Date(checkIn.expiresAt).getTime();
     await new Promise((r) => setTimeout(r, 5));
     const extended = await svc.extend("u1", location);
     expect(new Date(extended.expiresAt).getTime()).toBeGreaterThan(before - 1000);
-    expect(new Date(extended.expiresAt).getTime()).toBeGreaterThan(Date.now() + 59 * 60_000);
+    expect(new Date(extended.expiresAt).getTime()).toBeGreaterThan(Date.now() + 179 * 60_000);
   });
 
-  it("a check-in expires exactly 60 minutes after creation", async () => {
+  it("a check-in expires exactly CHECKIN_MINUTES (3 hours) after creation", async () => {
     const { checkIn } = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
     const started = new Date(checkIn.startedAt).getTime();
     const expires = new Date(checkIn.expiresAt).getTime();
-    expect(expires - started).toBe(60 * 60_000);
+    expect(expires - started).toBe(180 * 60_000);
   });
 
   it("extend rejects a check-in that has already passed its expires_at, even though the row is still status=ACTIVE", async () => {

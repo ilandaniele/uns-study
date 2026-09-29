@@ -174,7 +174,7 @@ Rules:
 - one active check-in per user;
 - one active self check-in per seat;
 - if a user moves to another seat, previous active check-in is atomically closed;
-- initial duration: 60 minutes.
+- initial duration: 180 minutes (was 60; owner decision 2026-09-29).
 
 Before expiry, the app may ask:
 
@@ -488,7 +488,7 @@ The first useful MVP is complete when:
 4. presence validation works;
 5. a present authenticated user can choose a seat and press “Estoy acá”;
 6. only one active check-in per user is possible;
-7. check-in lasts 60 minutes;
+7. check-in lasts 180 minutes;
 8. other connected clients receive the change in real time;
 9. present users can submit FREE/OCCUPIED observations;
 10. observations influence canonical state;

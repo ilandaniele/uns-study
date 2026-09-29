@@ -117,7 +117,7 @@ Close current active check-in.
 
 Requires fresh location.
 
-Extends another configured interval, initially 60 minutes.
+Extends another configured interval, initially 180 minutes (was 60).
 
 ## 4. Observations
 

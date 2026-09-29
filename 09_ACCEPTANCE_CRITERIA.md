@@ -34,7 +34,7 @@
 
 ### Check-in
 - [ ] Authenticated present user can press `Estoy acá`.
-- [ ] Check-in expires after 60 minutes.
+- [ ] Check-in expires after 180 minutes (3 hours).
 - [ ] User cannot have two active check-ins.
 - [ ] Seat cannot have two active self check-ins.
 - [ ] Moving seats closes previous check-in atomically.

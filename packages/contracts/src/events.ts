@@ -2,7 +2,7 @@
 
 // ---- Durations (minutes) ----
 
-export const CHECKIN_MINUTES = 60;
+export const CHECKIN_MINUTES = 180;
 export const FREE_OBS_MINUTES = 15;
 export const OCCUPIED_OBS_MINUTES = 20;
 export const DISPUTE_MINUTES = 5;
@@ -29,4 +29,5 @@ export const SocketEvents = {
   TableNicknameChanged: "table:nickname-changed",
   RoomAdminPresent: "room:admin-present",
   SeatFreedAlert: "seat:freed-alert",
+  CheckInExpiring: "checkin:expiring",
 } as const;
