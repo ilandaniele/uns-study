@@ -51,6 +51,19 @@ async function bootstrap() {
   httpAdapter.set("trust proxy", env.trustProxyHops); // behind a reverse proxy — @Ip() must see the real client IP
   httpAdapter.use(cors({ origin: env.webOrigins, credentials: true }));
 
+  // Coordinate-free access log for slow or failed requests only, to diagnose "la app tarda" reports
+  // from `fly logs` without logging every hit. Ids in the path are masked; no query strings, no IPs.
+  httpAdapter.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const started = process.hrtime.bigint();
+    res.on("finish", () => {
+      const ms = Number(process.hrtime.bigint() - started) / 1e6;
+      if (ms < 800 && res.statusCode < 500) return;
+      const path = req.path.replace(/[0-9a-f]{8}-[0-9a-f-]{27,}|[A-Za-z0-9]{24,}/g, ":id");
+      console.info(JSON.stringify({ evt: "slow_or_failed_request", method: req.method, path, status: res.statusCode, ms: Math.round(ms) }));
+    });
+    next();
+  });
+
   // CSRF guard for state-changing /api/v1 requests. Better Auth's own routes (/api/auth/*)
   // already validate `trustedOrigins`, so this only needs to cover Nest's routes.
   httpAdapter.use(csrfMiddleware(env.webOrigins));
