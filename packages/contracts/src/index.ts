@@ -9,6 +9,7 @@ export * from "./moderation";
 export * from "./rankings";
 export * from "./qr";
 export * from "./table-names";
+export * from "./seat-labels";
 export * from "./notifications";
 export * from "./events";
 

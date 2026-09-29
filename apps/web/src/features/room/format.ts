@@ -1,24 +1,11 @@
-import type { DisputeKind, RoomMapDto, SeatDto, SeatStatus, TableDto } from "@uns/contracts";
-
-const BAR_NAMES: Record<string, string> = {
-  B01: "Barra entrada izquierda",
-  B02: "Barra entrada derecha",
-  B03: "Barra fondo izquierda",
-  B04: "Barra fondo derecha",
-};
+import { tableNameFromCode, type DisputeKind, type RoomMapDto, type SeatDto, type SeatStatus, type TableDto } from "@uns/contracts";
 
 /**
- * Human, non-"call number" name for a table: "Mesa 4" for main tables, "Barra entrada
- * izquierda" etc. for wall bars. Falls back to the raw code if it doesn't match the known
- * layout (defensive — the layout is generated, but this keeps the UI readable either way).
+ * Human name for a table ("Mesa 4", "Barra entrada izquierda"); see `tableNameFromCode` in
+ * `@uns/contracts`. Takes the table when known, else a code derived from the seat code.
  */
 export function tableDisplayName(table: Pick<TableDto, "code" | "type"> | null, fallbackCode: string): string {
-  const code = table?.code ?? fallbackCode;
-  if (table?.type === "WALL_BAR" || code.startsWith("B")) {
-    return BAR_NAMES[code] ?? `Barra ${code}`;
-  }
-  const number = Number.parseInt(code.replace(/\D/g, ""), 10);
-  return Number.isNaN(number) ? code : `Mesa ${number}`;
+  return tableNameFromCode(table?.code ?? fallbackCode, table?.type);
 }
 
 /** "Mesa 4 · Asiento 3" / "Barra entrada izquierda · Lugar 2" — used wherever we used to show call numbers like M04·3. */
