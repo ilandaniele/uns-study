@@ -57,6 +57,13 @@ async function bootstrap() {
 
   // Better Auth owns its own body parsing; it must run before Nest's global JSON body parser.
   const auth = app.get<Auth>(AUTH);
+  // Better Auth only trusts a single-entry X-Forwarded-For, but ours carries the visitor plus
+  // Vercel's egress IP (Fly appends it). Hand it the IP Express already resolved with
+  // `trust proxy` (the same one @Ip() and our own rate limits use) in a header only we set.
+  httpAdapter.use("/api/auth", (req: express.Request, _res: express.Response, next: express.NextFunction) => {
+    req.headers["x-uns-client-ip"] = req.ip ?? "";
+    next();
+  });
   httpAdapter.all("/api/auth/*", toNodeHandler(auth));
 
   // The photo-verification body carries a base64 image (~2MB decoded, larger encoded) — give just
