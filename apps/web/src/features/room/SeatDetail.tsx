@@ -108,7 +108,7 @@ export function SeatDetail({
           <StatusPill status={seat.status} isMySeat={isMySeat} />
           {!isMySeat && occupant ? (
             <p className="mt-1.5 flex items-center gap-2 text-sm text-muted">
-              <OccupantAvatar avatar={occupant.avatar} size={24} />
+              <OccupantAvatar avatar={occupant.avatar} size={40} />
               <span>
                 {occupant.userId ? (
                   <Link href={`/u/${occupant.userId}`} className="font-medium text-primary hover:underline">

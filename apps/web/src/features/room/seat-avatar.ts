@@ -29,3 +29,20 @@ export function markedByLabel(name: string, observedAt: string, now: Date = new 
   const ago = minutes < 1 ? "hace instantes" : minutes < 60 ? `hace ${minutes} min` : `hace ${Math.floor(minutes / 60)} h`;
   return `Marcado por: ${name} · ${ago}`;
 }
+
+export type OccupantAvatarProps =
+  | { type: "photo"; src: string; style: { width: number; height: number } }
+  | { type: "animal"; src: string; style: { width: number; height: number; padding: number; backgroundColor: string } }
+  | { type: "silhouette"; style: { width: number; height: number } };
+
+/**
+ * Maps a descriptor to the element props of the round HTML avatar. The animal padding is in px (12% of `size`):
+ * a percentage padding resolves against the *container* width, which swallowed the whole image in flex rows.
+ */
+export function occupantAvatarProps(avatar: SeatAvatarDto, size: number): OccupantAvatarProps {
+  const box = { width: size, height: size };
+  const render = seatAvatarRender(avatar, true);
+  if (render?.type === "photo") return { type: "photo", src: render.url, style: box };
+  if (render?.type === "animal") return { type: "animal", src: render.src, style: { ...box, padding: Math.round(size * 0.12), backgroundColor: AVATAR_BACKDROP } };
+  return { type: "silhouette", style: box };
+}

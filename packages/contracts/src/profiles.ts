@@ -58,12 +58,15 @@ export interface PublicProfileDto {
 }
 
 export interface RoomPersonDto {
-  userId: string;
+  /** `null` for users hidden on the map who appear only as their alias animal — never linkable. */
+  userId: string | null;
   displayName: string;
   avatarUrl: string | null;
   career: string | null;
   seatCode: string | null;
   studyStatus: StudyStatusDto | null;
+  /** Alias animal id (hidden users only, when they allow it on the map). */
+  aliasAnimal?: string;
 }
 
 /** What to draw on an occupied seat: the person's photo, their alias animal, or a generic silhouette. */

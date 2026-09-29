@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { ANIMALS } from "@uns/contracts";
-import { markedByLabel, seatAvatarRender } from "./seat-avatar";
+import { AVATAR_BACKDROP, markedByLabel, occupantAvatarProps, seatAvatarRender } from "./seat-avatar";
 
 describe("seatAvatarRender", () => {
   it("draws nothing for seats that aren't occupied or have no avatar info", () => {
@@ -33,5 +33,22 @@ describe("seatAvatarRender", () => {
     for (const animal of ANIMALS) {
       expect(existsSync(path.join(process.cwd(), "public", "avatars", "animals", `${animal.id}.svg`))).toBe(true);
     }
+  });
+});
+
+describe("occupantAvatarProps", () => {
+  it("renders an animal as an image with px padding, never a percentage", () => {
+    const props = occupantAvatarProps({ kind: "animal", animalId: "delfin" }, 40);
+    expect(props).toEqual({
+      type: "animal",
+      src: "/avatars/animals/delfin.svg",
+      style: { width: 40, height: 40, padding: 5, backgroundColor: AVATAR_BACKDROP },
+    });
+  });
+
+  it("maps photos and falls back to a sized silhouette", () => {
+    expect(occupantAvatarProps({ kind: "photo", url: "https://x/a.jpg" }, 24)).toEqual({ type: "photo", src: "https://x/a.jpg", style: { width: 24, height: 24 } });
+    expect(occupantAvatarProps({ kind: "animal", animalId: "nope" }, 32)).toEqual({ type: "silhouette", style: { width: 32, height: 32 } });
+    expect(occupantAvatarProps({ kind: "silhouette" }, 32).type).toBe("silhouette");
   });
 });

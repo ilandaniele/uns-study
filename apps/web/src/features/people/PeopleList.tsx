@@ -2,6 +2,7 @@
 
 import type { RoomPersonDto } from "@uns/contracts";
 import { seatCodeLabel } from "@/features/room/format";
+import { OccupantAvatar } from "@/features/room/OccupantAvatar";
 import Link from "next/link";
 
 export interface PeopleListProps {
@@ -22,12 +23,20 @@ export function PeopleList({ people, limit, emptyLabel = "Nadie está mostrándo
   return (
     <ul className="flex flex-col divide-y divide-[var(--border)]">
       {visible.map((person) => (
-        <li key={person.userId} className="flex items-center gap-3 py-2.5">
-          <PersonAvatar name={person.displayName} avatarUrl={person.avatarUrl} />
+        <li key={person.userId ?? `alias-${person.displayName}-${person.seatCode ?? ""}`} className="flex items-center gap-3 py-2.5">
+          {person.aliasAnimal ? (
+            <OccupantAvatar avatar={{ kind: "animal", animalId: person.aliasAnimal }} size={40} />
+          ) : (
+            <PersonAvatar name={person.displayName} avatarUrl={person.avatarUrl} />
+          )}
           <div className="min-w-0 flex-1">
-            <Link href={`/u/${person.userId}`} className="block truncate text-sm font-medium text-main hover:text-primary">
-              {person.displayName}
-            </Link>
+            {person.userId ? (
+              <Link href={`/u/${person.userId}`} className="block truncate text-sm font-medium text-main hover:text-primary">
+                {person.displayName}
+              </Link>
+            ) : (
+              <span className="block truncate text-sm font-medium text-main">{person.displayName}</span>
+            )}
             <p className="truncate text-xs text-muted">
               {[person.career, person.seatCode ? seatCodeLabel(person.seatCode) : null, person.studyStatus?.subject].filter(Boolean).join(" · ") || "Estudiando"}
             </p>

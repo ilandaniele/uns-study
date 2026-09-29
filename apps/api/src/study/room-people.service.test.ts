@@ -59,12 +59,66 @@ describe("RoomPeopleService", () => {
     });
   }
 
-  it("excludes users without show_in_room even if checked in", async () => {
+  it("lists a checked-in user without show_in_room only as their alias animal (no userId, no profile fields)", async () => {
     await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: true });
-    await setPrivacy("u1", { showInRoom: false, showSeat: true });
+    await setPrivacy("u1", { showInRoom: false, showSeat: true, showCareer: true });
+    await setProfile("u1", { firstName: "Zzyzx", identityMode: "FIRST_NAME", career: "Ingeniería" });
 
     const list = await people.listPeople(roomId, "viewer");
-    expect(list.find((p) => p.userId === "u1")).toBeUndefined();
+    expect(list).toHaveLength(1);
+    const [entry] = list;
+    expect(entry?.userId).toBeNull();
+    expect(entry?.aliasAnimal).toBeDefined();
+    expect(isAnimalId(entry?.aliasAnimal ?? "")).toBe(true);
+    expect(animalIdFromAlias(entry?.displayName)).toBe(entry?.aliasAnimal);
+    expect(entry).toMatchObject({ avatarUrl: null, career: null, studyStatus: null });
+    expect(entry?.seatCode).not.toBeNull();
+    expect(JSON.stringify(entry)).not.toContain("u1");
+    expect(JSON.stringify(entry)).not.toContain("Zzyzx");
+  });
+
+  it("omits the hidden user entirely when the alias animal is off the map", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await setPrivacy("u1", { showInRoom: false, showAliasAnimalOnMap: false });
+    await setProfile("u1", { identityMode: "HIDDEN" });
+
+    expect(await people.listPeople(roomId, "viewer")).toEqual([]);
+  });
+
+  it("does not list a hidden user who only has a study status (no check-in)", async () => {
+    await checkIns.checkIn({ userId: "u2", roomId, seatId: seatIds[1]!, location, showIdentity: false });
+    await study.start("u2", roomId, { subject: "Química", lookingForGroup: false });
+    await checkIns.checkOut("u2");
+    await setPrivacy("u2", { showInRoom: false });
+
+    expect(await people.listPeople(roomId, "viewer")).toEqual([]);
+  });
+
+  it("still block-excludes hidden alias entries both ways", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await checkIns.checkIn({ userId: "u2", roomId, seatId: seatIds[1]!, location, showIdentity: false });
+    await setProfile("u1", { identityMode: "HIDDEN" });
+    await setProfile("u2", { identityMode: "HIDDEN" });
+    await setPrivacy("u1", { showInRoom: false });
+    await setPrivacy("u2", { showInRoom: false });
+    expect(await people.listPeople(roomId, "viewer")).toHaveLength(2);
+
+    await db.insert(schema.userBlocks).values([
+      { blockerId: "viewer", blockedId: "u1" },
+      { blockerId: "u2", blockedId: "viewer" },
+    ]);
+    expect(await people.listPeople(roomId, "viewer")).toEqual([]);
+  });
+
+  it("counts hidden and visible users together", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await checkIns.checkIn({ userId: "u2", roomId, seatId: seatIds[1]!, location, showIdentity: false });
+    await setPrivacy("u1", { showInRoom: true });
+    await setPrivacy("u2", { showInRoom: false });
+    await setProfile("u2", { identityMode: "HIDDEN" });
+
+    const list = await people.listPeople(roomId, "viewer");
+    expect(list.map((p) => p.userId).sort()).toEqual([null, "u1"]);
   });
 
   it("includes a checked-in user with show_in_room, without seatCode unless show_identity && show_seat", async () => {

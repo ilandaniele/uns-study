@@ -20,7 +20,12 @@ export class RoomPeopleService {
     @Inject(AliasService) private readonly aliases: AliasService,
   ) {}
 
-  /** Registered users visible in `roomId`: `show_in_room` + (active check-in or active study status), block-excluded both ways. */
+  /**
+   * Who is in `roomId`, block-excluded both ways. Users with `show_in_room` and (active check-in or active study
+   * status) appear with their profile. Users with an active check-in but without `show_in_room` appear as their
+   * alias animal only (`userId: null`, no profile fields) — mirroring `listOccupants` — and are left out entirely
+   * when `show_alias_animal_on_map` is off (the map shows a nameless "Alguien" silhouette for them).
+   */
   async listPeople(roomId: string, viewerId: string): Promise<RoomPersonDto[]> {
     const [blockedByMe, blockedMe] = await Promise.all([
       this.db.select({ id: schema.userBlocks.blockedId }).from(schema.userBlocks).where(eq(schema.userBlocks.blockerId, viewerId)),
@@ -45,7 +50,7 @@ export class RoomPeopleService {
 
     const rows = await this.db
       .select({
-        userId: schema.userPrivacySettings.userId,
+        userId: schema.user.id,
         userName: schema.user.name,
         profile: schema.userProfiles,
         privacy: schema.userPrivacySettings,
@@ -53,13 +58,13 @@ export class RoomPeopleService {
         seatCode: schema.seats.code,
         study: schema.studyStatus,
       })
-      .from(schema.userPrivacySettings)
-      .innerJoin(schema.user, eq(schema.user.id, schema.userPrivacySettings.userId))
-      .leftJoin(schema.userProfiles, eq(schema.userProfiles.userId, schema.userPrivacySettings.userId))
+      .from(schema.user)
+      .leftJoin(schema.userPrivacySettings, eq(schema.userPrivacySettings.userId, schema.user.id))
+      .leftJoin(schema.userProfiles, eq(schema.userProfiles.userId, schema.user.id))
       .leftJoin(
         schema.checkIns,
         and(
-          eq(schema.checkIns.userId, schema.userPrivacySettings.userId),
+          eq(schema.checkIns.userId, schema.user.id),
           eq(schema.checkIns.roomId, roomId),
           eq(schema.checkIns.status, "ACTIVE"),
         ),
@@ -68,29 +73,51 @@ export class RoomPeopleService {
       .leftJoin(
         schema.studyStatus,
         and(
-          eq(schema.studyStatus.userId, schema.userPrivacySettings.userId),
+          eq(schema.studyStatus.userId, schema.user.id),
           eq(schema.studyStatus.roomId, roomId),
           eq(schema.studyStatus.active, true),
         ),
       )
       .where(
         and(
-          inArray(schema.userPrivacySettings.userId, candidateIds),
-          eq(schema.userPrivacySettings.showInRoom, true),
+          inArray(schema.user.id, candidateIds),
           or(eq(schema.checkIns.status, "ACTIVE"), eq(schema.studyStatus.active, true)),
         ),
       );
 
-    const aliasByUser = await this.aliases.ensureAliasesForProfiles(rows.flatMap((r) => (r.profile ? [r.profile] : [])));
+    const isListed = (r: (typeof rows)[number]) => r.privacy?.showInRoom === true;
+    const aliasByUser = await this.aliases.ensureAliasesForProfiles(rows.flatMap((r) => (isListed(r) && r.profile ? [r.profile] : [])));
 
-    return rows.map((r) => ({
-      userId: r.userId,
-      displayName: displayName(profileForDisplay(r.profile, aliasByUser.get(r.userId)), null, r.userName),
-      avatarUrl: visibleAvatarUrl(r.profile ?? null, r.privacy),
-      career: r.privacy.showCareer ? (r.profile?.career ?? null) : null,
-      seatCode: r.checkIn?.showIdentity && r.privacy.showSeat ? (r.seatCode ?? null) : null,
-      studyStatus: r.study ? toStudyStatusDto(r.study) : null,
-    }));
+    const result: RoomPersonDto[] = [];
+    for (const r of rows) {
+      if (isListed(r) && r.privacy) {
+        result.push({
+          userId: r.userId,
+          displayName: displayName(profileForDisplay(r.profile, aliasByUser.get(r.userId)), null, r.userName),
+          avatarUrl: visibleAvatarUrl(r.profile ?? null, r.privacy),
+          career: r.privacy.showCareer ? (r.profile?.career ?? null) : null,
+          seatCode: r.checkIn?.showIdentity && r.privacy.showSeat ? (r.seatCode ?? null) : null,
+          studyStatus: r.study ? toStudyStatusDto(r.study) : null,
+        });
+        continue;
+      }
+
+      // Not listed by choice: only a checked-in user whose alias animal is on the map shows up, as that alias.
+      if (!r.checkIn || !r.profile || !(r.privacy?.showAliasAnimalOnMap ?? true)) continue;
+      const alias = r.profile.alias && r.profile.aliasAnimal ? r.profile.alias : await this.aliases.ensureAlias(r.userId);
+      const animalId = animalIdFromAlias(alias);
+      if (!animalId) continue;
+      result.push({
+        userId: null,
+        displayName: alias,
+        avatarUrl: null,
+        career: null,
+        seatCode: r.seatCode ?? null,
+        studyStatus: null,
+        aliasAnimal: animalId,
+      });
+    }
+    return result;
   }
 
   /**
