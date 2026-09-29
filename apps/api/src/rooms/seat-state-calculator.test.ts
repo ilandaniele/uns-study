@@ -119,6 +119,60 @@ describe("calculateSeatState", () => {
     expect(result.status).toBe("UNKNOWN");
   });
 
+  it("derives SAVED from a SAVED observation alone", () => {
+    const result = calculateSeatState({
+      hasActiveCheckIn: false,
+      observations: [{ userId: "u1", status: "SAVED", weight: 1, observedAt: now }],
+    });
+    expect(result).toEqual({ status: "SAVED", confidence: 0.5, sourceSummary: "OBSERVATION_SAVED" });
+  });
+
+  it("SAVED vs FREE from different users with equal weight is UNCERTAIN", () => {
+    const result = calculateSeatState({
+      hasActiveCheckIn: false,
+      observations: [
+        { userId: "u1", status: "SAVED", weight: 1, observedAt: minutesAgo(2) },
+        { userId: "u2", status: "FREE", weight: 1, observedAt: now },
+      ],
+    });
+    expect(result.status).toBe("UNCERTAIN");
+  });
+
+  it("a dominant, newest SAVED report beats a lone FREE one", () => {
+    const result = calculateSeatState({
+      hasActiveCheckIn: false,
+      observations: [
+        { userId: "u1", status: "FREE", weight: 1, observedAt: minutesAgo(3) },
+        { userId: "u2", status: "SAVED", weight: 3, observedAt: now },
+      ],
+    });
+    expect(result.status).toBe("SAVED");
+  });
+
+  it("SAVED and OCCUPIED without FREE: the newest report decides", () => {
+    const result = calculateSeatState({
+      hasActiveCheckIn: false,
+      observations: [
+        { userId: "u1", status: "OCCUPIED", weight: 1, observedAt: minutesAgo(5) },
+        { userId: "u2", status: "SAVED", weight: 1, observedAt: now },
+      ],
+    });
+    expect(result.status).toBe("SAVED");
+  });
+
+  it("an active check-in beats a SAVED observation", () => {
+    const result = calculateSeatState({
+      hasActiveCheckIn: true,
+      observations: [{ userId: "u1", status: "SAVED", weight: 1, observedAt: now }],
+    });
+    expect(result.status).toBe("OCCUPIED");
+    expect(result.sourceSummary).toBe("CHECK_IN");
+  });
+
+  it("a SAVED seat with its observation expired (filtered upstream) goes back to UNKNOWN", () => {
+    expect(calculateSeatState({ hasActiveCheckIn: false, observations: [] }).status).toBe("UNKNOWN");
+  });
+
   it("ignores expired observations (caller is expected to pre-filter by expiresAt)", () => {
     // The calculator itself is pure and trusts its input; expiry filtering happens upstream.
     // This test documents that an empty observation list (post-filter) yields UNKNOWN.

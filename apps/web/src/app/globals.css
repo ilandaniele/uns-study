@@ -5,7 +5,8 @@
 @theme {
   --color-free: #16a34a;
   --color-occupied: #dc2626;
-  --color-uncertain: #f59e0b;
+  --color-uncertain: #d9773a;
+  --color-saved: #eab308;
   --color-unknown: #94a3b8;
   --color-my-seat: #2563eb;
   --color-primary: #2563eb;
@@ -57,7 +58,8 @@
 
   --seat-free: #16a34a;
   --seat-occupied: #dc2626;
-  --seat-uncertain: #f59e0b;
+  --seat-uncertain: #d9773a;
+  --seat-saved: #eab308;
   --seat-unknown: #b8c2d0;
   --seat-mine: #2563eb;
 }
@@ -107,7 +109,8 @@
 
   --seat-free: #34c98a;
   --seat-occupied: #f06a6a;
-  --seat-uncertain: #f2b84b;
+  --seat-uncertain: #e8925a;
+  --seat-saved: #fde047;
   --seat-unknown: #8792ab;
   --seat-mine: #60a5fa;
 }

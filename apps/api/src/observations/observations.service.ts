@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, gt, gte, or } from "drizzle-orm";
 import { schema, type Db } from "@uns/database";
-import { FREE_OBS_MINUTES, OCCUPIED_OBS_MINUTES, type LocationInput } from "@uns/contracts";
+import { FREE_OBS_MINUTES, OCCUPIED_OBS_MINUTES, SAVED_OBS_MINUTES, type LocationInput } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { PresenceService } from "../presence/presence.service.js";
@@ -21,7 +21,7 @@ export interface CreateObservationInput {
   userId: string;
   roomId: string;
   seatId: string;
-  status: "FREE" | "OCCUPIED";
+  status: "FREE" | "OCCUPIED" | "SAVED";
   location: LocationInput;
   ip?: string | null;
   /** Optional QR token scanned at the table; invalid/missing tokens are silently ignored. */
@@ -112,7 +112,7 @@ export class ObservationService {
       throw ApiErrors.rateLimited();
     }
 
-    const minutes = input.status === "FREE" ? FREE_OBS_MINUTES : OCCUPIED_OBS_MINUTES;
+    const minutes = input.status === "FREE" ? FREE_OBS_MINUTES : input.status === "SAVED" ? SAVED_OBS_MINUTES : OCCUPIED_OBS_MINUTES;
     const expiresAt = new Date(now.getTime() + minutes * 60_000);
     const confidenceWeight = reputationWeight * (qrVerified ? QR_VERIFIED_FACTOR : 1);
 

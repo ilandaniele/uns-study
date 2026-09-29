@@ -67,7 +67,7 @@ describe("RoomRealtimeGateway.broadcastSeatChanges", () => {
   const change = (seatId: string) => ({ seatId, status: "FREE" as const, confidence: 0.5, lastUpdatedAt: new Date(), verified: false, previousStatus: "OCCUPIED" as const });
 
   it("emits seat events immediately, then one coalesced summary + notification pass on flush", async () => {
-    const summary = { roomId: ROOM_ID, total: 2, free: 2, occupied: 0, uncertain: 0, unknown: 0 };
+    const summary = { roomId: ROOM_ID, total: 2, free: 2, occupied: 0, uncertain: 0, saved: 0, unknown: 0 };
     const getRoomSummary = vi.fn(async () => summary);
     const handleSeatFreed = vi.fn(async () => []);
     const gateway = new RoomRealtimeGateway({ getRoomSummary } as unknown as RoomStateService, {} as Auth, { handleSeatFreed } as unknown as NotificationService);

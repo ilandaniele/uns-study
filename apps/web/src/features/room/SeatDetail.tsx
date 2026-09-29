@@ -5,7 +5,9 @@ import { ArmchairIcon, ChairIcon, ShieldCheckIcon, TableIcon, XIcon } from "@pho
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { MessageOccupantButton } from "./MessageOccupantButton";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { CheckInDurationPicker } from "./CheckInDurationPicker";
+import { clockLabel, DEFAULT_CHECKIN_DURATION } from "./checkin-duration";
 import { IdentityPrompt } from "./IdentityPrompt";
 import { NearbyOccupants } from "./NearbyOccupants";
 import { OccupantAvatar } from "./OccupantAvatar";
@@ -47,9 +49,11 @@ export interface SeatDetailProps {
   showIdentityPrompt: boolean;
   onIdentityChoice: (showIdentity: boolean) => void;
   onClose: () => void;
-  onCheckIn: () => void;
+  /** `durationMinutes` is how long the user chose to occupy the seat. */
+  onCheckIn: (durationMinutes: number) => void;
   onMarkFree: () => void;
   onMarkOccupied: () => void;
+  onMarkSaved: () => void;
   onExtend: () => void;
   onCheckOut: () => void;
   /** Viewer-specific detail for `seat.dispute`, or null while it's loading/absent. */
@@ -82,6 +86,7 @@ export function SeatDetail({
   onCheckIn,
   onMarkFree,
   onMarkOccupied,
+  onMarkSaved,
   onExtend,
   onCheckOut,
   dispute,
@@ -92,6 +97,7 @@ export function SeatDetail({
   viewBoxWidth = 1000,
 }: SeatDetailProps) {
   const now = useNow(30_000);
+  const [durationMinutes, setDurationMinutes] = useState(DEFAULT_CHECKIN_DURATION);
   const isBar = table?.type === "WALL_BAR";
   const label = seatDisplayLabel(table, seat.code, seat.seatNumber);
   const recency = recencyLabel(seat);
@@ -124,6 +130,9 @@ export function SeatDetail({
           {!isMySeat && occupant?.userId && me?.user && me.user.id !== occupant.userId ? <MessageOccupantButton userId={occupant.userId} /> : null}
           {!isMySeat && !occupant && markedBy && seat.status === "OCCUPIED" ? (
             <p className="mt-1.5 text-sm text-muted">{markedByLabel(markedBy.displayName, markedBy.observedAt, now)}</p>
+          ) : null}
+          {!isMySeat && seat.status === "OCCUPIED" && seat.occupiedUntil ? (
+            <p className="mt-1.5 text-sm text-muted">Ocupado hasta las {clockLabel(seat.occupiedUntil)}</p>
           ) : null}
           {recency ? <p className="mt-1 text-sm text-muted">{recency}</p> : null}
           {seat.confidence > 0 ? (
@@ -187,15 +196,19 @@ export function SeatDetail({
           </>
         ) : (
           <>
-            <PrimaryButton onClick={onCheckIn} disabled={pending}>
+            <CheckInDurationPicker minutes={durationMinutes} onChange={setDurationMinutes} disabled={pending} now={now} />
+            <PrimaryButton onClick={() => onCheckIn(durationMinutes)} disabled={pending}>
               {locating ? "Buscando tu ubicación…" : "Estoy acá"}
             </PrimaryButton>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <OutlineButton tone="free" onClick={onMarkFree} disabled={pending}>
                 {locating ? "Buscando tu ubicación…" : "Está libre"}
               </OutlineButton>
               <OutlineButton tone="occupied" onClick={onMarkOccupied} disabled={pending}>
                 {locating ? "Buscando tu ubicación…" : "Está ocupado"}
+              </OutlineButton>
+              <OutlineButton tone="saved" onClick={onMarkSaved} disabled={pending}>
+                {locating ? "Buscando tu ubicación…" : "Está guardado"}
               </OutlineButton>
             </div>
           </>
@@ -242,7 +255,7 @@ export function SeatDetail({
 function StatusPill({ status, isMySeat }: { status: SeatDto["status"]; isMySeat: boolean }) {
   const color = isMySeat
     ? "var(--seat-mine)"
-    : { FREE: "var(--seat-free)", OCCUPIED: "var(--seat-occupied)", UNCERTAIN: "var(--seat-uncertain)", UNKNOWN: "var(--seat-unknown)" }[
+    : { FREE: "var(--seat-free)", OCCUPIED: "var(--seat-occupied)", UNCERTAIN: "var(--seat-uncertain)", SAVED: "var(--seat-saved)", UNKNOWN: "var(--seat-unknown)" }[
         status
       ];
   return (
@@ -286,16 +299,16 @@ function OutlineButton({
   children: ReactNode;
   onClick: () => void;
   disabled?: boolean;
-  tone: "free" | "occupied";
+  tone: "free" | "occupied" | "saved";
 }) {
-  const color = tone === "free" ? "var(--seat-free)" : "var(--seat-occupied)";
+  const color = { free: "var(--seat-free)", occupied: "var(--seat-occupied)", saved: "var(--seat-saved)" }[tone];
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
       style={{ borderColor: color, color }}
-      className="min-h-11 flex-1 rounded-xl border-2 bg-transparent px-3 py-2.5 text-sm font-semibold disabled:opacity-50"
+      className="min-h-11 min-w-[6.5rem] flex-1 rounded-xl border-2 bg-transparent px-3 py-2.5 text-sm font-semibold disabled:opacity-50"
     >
       {children}
     </button>

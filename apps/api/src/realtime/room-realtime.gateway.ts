@@ -157,6 +157,7 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
         confidence: change.confidence,
         lastUpdatedAt: change.lastUpdatedAt.toISOString(),
         verified: change.verified,
+        occupiedUntil: change.occupiedUntil ? change.occupiedUntil.toISOString() : null,
       };
       this.server?.to(channel).emit(SocketEvents.SeatStateChanged, event);
     }

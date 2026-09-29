@@ -36,6 +36,8 @@ export interface SeatActionsSync {
 /** Extra, optional options threaded through presence-sensitive writes. `qrToken` is supplied by C3's QR flow; unset it's a no-op. */
 export interface SeatActionOptions {
   qrToken?: string | null;
+  /** Check-in only: how long the user will occupy the seat, in minutes (15..180). */
+  durationMinutes?: number;
 }
 
 export interface UseSeatActionsResult {
@@ -49,7 +51,8 @@ export interface UseSeatActionsResult {
   checkIn: (seatId: string, showIdentity: boolean, options?: SeatActionOptions) => Promise<CheckInDto | null>;
   markFree: (seatId: string, options?: SeatActionOptions) => Promise<boolean>;
   markOccupied: (seatId: string, options?: SeatActionOptions) => Promise<boolean>;
-  extend: () => Promise<boolean>;
+  markSaved: (seatId: string, options?: SeatActionOptions) => Promise<boolean>;
+  extend: (durationMinutes?: number) => Promise<boolean>;
   checkOut: () => Promise<boolean>;
   /** PATCH `/checkins/current/identity` — toggles "Mostrar mi identidad" on the caller's current check-in. */
   updateIdentity: (showIdentity: boolean) => Promise<CheckInDto | null>;
@@ -144,9 +147,9 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
 
   /** Shows the given seat statuses immediately; the returned handle settles or undoes exactly those changes. */
   const optimisticSeats = useCallback(
-    (changes: [seatId: string, status: SeatDto["status"]][]): Optimistic & { patches: (SeatPatch | null)[] } => {
-      const patches = changes.map(([seatId, status]) => applyOptimisticSeat(mapRef.current, seatId, status).patch);
-      updateMap((prev) => changes.reduce((acc, [seatId, status]) => applyOptimisticSeat(acc, seatId, status).map, prev));
+    (changes: [seatId: string, status: SeatDto["status"], occupiedUntil?: string | null][]): Optimistic & { patches: (SeatPatch | null)[] } => {
+      const patches = changes.map(([seatId, status, until]) => applyOptimisticSeat(mapRef.current, seatId, status, until).patch);
+      updateMap((prev) => changes.reduce((acc, [seatId, status, until]) => applyOptimisticSeat(acc, seatId, status, until).map, prev));
       return {
         patches,
         settle: () => updateMap((prev) => patches.reduce((acc, patch) => settleOptimisticSeat(acc, patch), prev)),
@@ -191,10 +194,11 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
         const current = peekMe()?.activeCheckIn ?? null;
         const changes: Optimistic[] = [];
         if (target && map) {
-          const seatChanges: [string, SeatDto["status"]][] = [[seatId, "OCCUPIED"]];
+          const optimisticCheckIn = buildOptimisticCheckIn(target, map.room.id, showIdentity, Date.now(), options?.durationMinutes);
+          const seatChanges: [string, SeatDto["status"], string?][] = [[seatId, "OCCUPIED", optimisticCheckIn.expiresAt]];
           // Moving: the API frees the old seat in the same transaction.
           if (current && current.seatId !== seatId) seatChanges.push([current.seatId, "FREE"]);
-          changes.push(optimisticSeats(seatChanges), optimisticMe(buildOptimisticCheckIn(target, map.room.id, showIdentity, Date.now())));
+          changes.push(optimisticSeats(seatChanges), optimisticMe(optimisticCheckIn));
         }
         const dto = await withOptimistic(changes, () =>
           apiPost<CheckInDto>("/api/v1/checkins", {
@@ -202,6 +206,7 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
             seatId,
             location,
             showIdentity,
+            durationMinutes: options?.durationMinutes,
             qrToken: options?.qrToken ?? undefined,
             turnstileToken,
           }),
@@ -215,7 +220,7 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
   );
 
   const observe = useCallback(
-    (seatId: string, status: "FREE" | "OCCUPIED", options?: SeatActionOptions) =>
+    (seatId: string, status: "FREE" | "OCCUPIED" | "SAVED", options?: SeatActionOptions) =>
       run(async (turnstileToken) => {
         const location = await locate();
         const seat = optimisticSeats([[seatId, status]]);
@@ -246,14 +251,17 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
 
   const markFree = useCallback((seatId: string, options?: SeatActionOptions) => observe(seatId, "FREE", options), [observe]);
   const markOccupied = useCallback((seatId: string, options?: SeatActionOptions) => observe(seatId, "OCCUPIED", options), [observe]);
+  const markSaved = useCallback((seatId: string, options?: SeatActionOptions) => observe(seatId, "SAVED", options), [observe]);
 
   const extend = useCallback(
-    () =>
+    (durationMinutes?: number) =>
       run(async () => {
         const location = await locate();
         const current = peekMe()?.activeCheckIn ?? null;
-        const changes = current ? [optimisticMe(extendCheckIn(current, Date.now()))] : [];
-        const dto = await withOptimistic(changes, () => apiPost<CheckInDto>("/api/v1/checkins/current/extend", { location }));
+        const changes = current ? [optimisticMe(extendCheckIn(current, Date.now(), durationMinutes))] : [];
+        const dto = await withOptimistic(changes, () =>
+          apiPost<CheckInDto>("/api/v1/checkins/current/extend", { location, durationMinutes }),
+        );
         adoptCheckIn(dto);
         return true;
       }).then((v) => v ?? false),
@@ -330,6 +338,7 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
     checkIn,
     markFree,
     markOccupied,
+    markSaved,
     extend,
     checkOut,
     updateIdentity,

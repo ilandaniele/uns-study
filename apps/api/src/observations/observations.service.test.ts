@@ -74,6 +74,20 @@ describe("ObservationService", () => {
     expect(minutes).toBeLessThanOrEqual(20.01);
   });
 
+  it("a SAVED observation sets the seat SAVED with 30-minute expiry", async () => {
+    const before = Date.now();
+    await observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "SAVED", location });
+
+    const [state] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatIds[0]!));
+    expect(state?.status).toBe("SAVED");
+
+    const [obs] = await db.select().from(schema.seatObservations).where(eq(schema.seatObservations.seatId, seatIds[0]!));
+    expect(obs?.observedStatus).toBe("SAVED");
+    const minutes = (new Date(obs!.expiresAt).getTime() - before) / 60_000;
+    expect(minutes).toBeGreaterThan(29.9);
+    expect(minutes).toBeLessThanOrEqual(30.01);
+  });
+
   it("conflicting observations from different users produce UNCERTAIN", async () => {
     await observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "OCCUPIED", location });
     await observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "FREE", location });

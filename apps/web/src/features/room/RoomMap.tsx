@@ -19,7 +19,7 @@ export interface RoomMapProps {
 
 // Seat status keys that get a shared radial-gradient "glossy sphere" fill, defined once below
 // and referenced by id from Seat.tsx — avoids per-seat gradients/filters across 108 seats.
-const SEAT_GRADIENT_KEYS = ["free", "occupied", "uncertain", "unknown", "mine"] as const;
+const SEAT_GRADIENT_KEYS = ["free", "occupied", "uncertain", "saved", "unknown", "mine"] as const;
 
 // Ceiling fluorescent fixture rows (y) and side-wall window panels (y), all purely decorative.
 const LIGHT_ROWS = [180, 432, 684, 936, 1188, 1440];

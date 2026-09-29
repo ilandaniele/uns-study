@@ -78,6 +78,7 @@ export class ObservationsController {
       confidence: change.confidence,
       lastUpdatedAt: change.lastUpdatedAt.toISOString(),
       verified: change.verified,
+      occupiedUntil: change.occupiedUntil ? change.occupiedUntil.toISOString() : null,
     }));
     return { ok: true, seats };
   }

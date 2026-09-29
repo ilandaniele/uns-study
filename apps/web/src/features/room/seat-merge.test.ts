@@ -32,13 +32,14 @@ function seat(id: string, status: SeatDto["status"], lastUpdatedAt: string | nul
     sourceSummary: null,
     dispute: null,
     verified: false,
+    occupiedUntil: null,
   };
 }
 
 function map(seats: SeatDto[], tables: TableDto[] = []): RoomMapDto {
   return {
     room: { id: ROOM } as RoomMapDto["room"],
-    summary: { roomId: ROOM, total: seats.length, free: 0, occupied: 0, uncertain: 0, unknown: seats.length },
+    summary: { roomId: ROOM, total: seats.length, free: 0, occupied: 0, uncertain: 0, saved: 0, unknown: seats.length },
     tables,
     seats,
     viewBox: { width: 1000, height: 1600 },
@@ -77,7 +78,7 @@ describe("mergeSnapshot", () => {
 
     expect(merged.seats.find((s) => s.id === "a")!.status).toBe("OCCUPIED");
     expect(merged.seats.find((s) => s.id === "b")!.status).toBe("FREE");
-    expect(merged.summary).toEqual({ roomId: ROOM, total: 2, free: 1, occupied: 1, uncertain: 0, unknown: 0 });
+    expect(merged.summary).toEqual({ roomId: ROOM, total: 2, free: 1, occupied: 1, uncertain: 0, saved: 0, unknown: 0 });
   });
 
   it("takes the snapshot when it is as new or newer", () => {
@@ -175,6 +176,12 @@ describe("optimistic check-in helpers", () => {
     const checkIn = buildOptimisticCheckIn(seat("a", "UNKNOWN", null), ROOM, true, Date.parse("2026-01-01T10:00:00.000Z"));
     expect(checkIn).toMatchObject({ seatId: "a", seatCode: "a", roomId: ROOM, status: "ACTIVE", showIdentity: true });
     expect(checkIn.expiresAt).toBe("2026-01-01T13:00:00.000Z");
+  });
+
+  it("uses the chosen duration for the check-in and the extension", () => {
+    const checkIn = buildOptimisticCheckIn(seat("a", "UNKNOWN", null), ROOM, false, Date.parse("2026-01-01T10:00:00.000Z"), 30);
+    expect(checkIn.expiresAt).toBe("2026-01-01T10:30:00.000Z");
+    expect(extendCheckIn(checkIn, Date.parse("2026-01-01T10:10:00.000Z"), 60).expiresAt).toBe("2026-01-01T11:10:00.000Z");
   });
 
   it("extends to a fresh 3 hours from now", () => {

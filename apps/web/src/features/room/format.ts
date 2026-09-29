@@ -33,6 +33,8 @@ export function statusLabel(status: SeatStatus): string {
       return "Ocupado";
     case "UNCERTAIN":
       return "Dudoso";
+    case "SAVED":
+      return "Guardado";
     case "UNKNOWN":
       return "Sin datos";
   }
@@ -90,7 +92,7 @@ export function disputeKindTitle(kind: DisputeKind): string {
     case "ABSENT":
       return "Esa persona no está";
     case "SAVED":
-      return "Está guardado";
+      return "Pedir que se libere";
   }
 }
 
@@ -98,7 +100,7 @@ export function disputeKindTitle(kind: DisputeKind): string {
 export const DISPUTE_OPTIONS: { kind: DisputeKind; label: string; helper: string }[] = [
   { kind: "CLAIM", label: "Me senté acá", helper: "Sos vos quien está en este lugar, no quien figura." },
   { kind: "ABSENT", label: "Esa persona no está", helper: "El lugar figura ocupado, pero no hay nadie ahí." },
-  { kind: "SAVED", label: "Está guardado", helper: "Hay pertenencias pero nadie sentado hace 30 minutos o más." },
+  { kind: "SAVED", label: "Pedir que se libere", helper: "Hay cosas guardadas hace 30 minutos o más y nadie vuelve." },
 ];
 
 /**

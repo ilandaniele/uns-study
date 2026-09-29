@@ -55,6 +55,32 @@ describe("RoomStateService.getRoomSummary", () => {
   });
 });
 
+describe("RoomStateService SAVED seats", () => {
+  it("getRoomSummary counts a SAVED seat under `saved`", async () => {
+    const db = await freshDb();
+    const roomState = new RoomStateService(db);
+    const room = await getRoom(db);
+    const seatId = (await getSeats(db))[0]!.id;
+    await insertUsers(db, ["u1"]);
+    const now = new Date();
+    await db.insert(schema.seatObservations).values({
+      userId: "u1",
+      roomId: room.id,
+      seatId,
+      observedStatus: "SAVED",
+      presenceVerified: true,
+      qrVerified: false,
+      confidenceWeight: 1,
+      observedAt: now,
+      expiresAt: new Date(now.getTime() + 30 * 60_000),
+    });
+
+    const summary = await roomState.getRoomSummary(room.id);
+    expect(summary.saved).toBe(1);
+    expect(summary.occupied).toBe(0);
+  });
+});
+
 describe("RoomStateService query counts", () => {
   it("getLiveSeatStates runs its reads as one parallel batch and skips the seats read when pre-loaded", async () => {
     const db = await freshDb();

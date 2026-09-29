@@ -16,12 +16,12 @@ export interface DisputeSectionProps {
 }
 
 /**
- * "¿Algo no cuadra?" — lets a logged-in visitor dispute an occupied/uncertain seat that isn't
+ * "¿Algo no cuadra?" — lets a logged-in visitor dispute an occupied/saved/uncertain seat that isn't
  * theirs (open a vote), or shows the live tally + vote buttons while a vote is in progress.
  */
 export function DisputeSection({ seat, me, isMySeat, dispute, pending, onOpen, onVote }: DisputeSectionProps) {
   if (!me?.user || isMySeat) return null;
-  if (seat.status !== "OCCUPIED" && seat.status !== "UNCERTAIN") return null;
+  if (seat.status !== "OCCUPIED" && seat.status !== "UNCERTAIN" && seat.status !== "SAVED") return null;
 
   if (seat.dispute) {
     // Viewer-specific detail hasn't loaded yet — avoid flashing the "¿Algo no cuadra?" options.

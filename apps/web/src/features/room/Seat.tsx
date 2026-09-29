@@ -18,19 +18,21 @@ const PHOTO_R = 25;
 
 // One shared radial gradient per status, defined once in RoomMap's <defs> and referenced here —
 // keeps 108 seats cheap to paint (no per-seat filters/gradients).
-const GRADIENT_ID: Record<"FREE" | "OCCUPIED" | "UNCERTAIN" | "UNKNOWN" | "MY_SEAT", string> = {
+const GRADIENT_ID: Record<"FREE" | "OCCUPIED" | "UNCERTAIN" | "SAVED" | "UNKNOWN" | "MY_SEAT", string> = {
   FREE: "seat-sphere-free",
   OCCUPIED: "seat-sphere-occupied",
   UNCERTAIN: "seat-sphere-uncertain",
+  SAVED: "seat-sphere-saved",
   UNKNOWN: "seat-sphere-unknown",
   MY_SEAT: "seat-sphere-mine",
 };
 
 // Short glyph per status so color is never the only signal (accessibility, §7 of the UI spec).
-const GLYPH: Record<"FREE" | "OCCUPIED" | "UNCERTAIN" | "UNKNOWN" | "MY_SEAT", string> = {
+const GLYPH: Record<"FREE" | "OCCUPIED" | "UNCERTAIN" | "SAVED" | "UNKNOWN" | "MY_SEAT", string> = {
   FREE: "L",
   OCCUPIED: "O",
   UNCERTAIN: "?",
+  SAVED: "G",
   UNKNOWN: "-",
   MY_SEAT: "★",
 };

@@ -105,7 +105,7 @@ describe("disputeKindTitle", () => {
   it("translates each dispute kind to Spanish", () => {
     expect(disputeKindTitle("CLAIM")).toBe("Me senté acá");
     expect(disputeKindTitle("ABSENT")).toBe("Esa persona no está");
-    expect(disputeKindTitle("SAVED")).toBe("Está guardado");
+    expect(disputeKindTitle("SAVED")).toBe("Pedir que se libere");
   });
 });
 

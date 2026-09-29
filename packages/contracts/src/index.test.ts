@@ -37,6 +37,15 @@ describe("checkInRequestSchema", () => {
     });
     expect(parsed.showIdentity).toBe(false);
   });
+
+  it("defaults durationMinutes to 180 and bounds it to 15..180", () => {
+    const base = { roomId: "room-1", seatId: "seat-1", location: validLocation };
+    expect(checkInRequestSchema.parse(base).durationMinutes).toBe(180);
+    expect(checkInRequestSchema.parse({ ...base, durationMinutes: 15 }).durationMinutes).toBe(15);
+    expect(checkInRequestSchema.safeParse({ ...base, durationMinutes: 14 }).success).toBe(false);
+    expect(checkInRequestSchema.safeParse({ ...base, durationMinutes: 181 }).success).toBe(false);
+    expect(checkInRequestSchema.safeParse({ ...base, durationMinutes: 30.5 }).success).toBe(false);
+  });
 });
 
 describe("observationRequestSchema", () => {
@@ -49,11 +58,27 @@ describe("observationRequestSchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it("accepts SAVED", () => {
+    const result = observationRequestSchema.safeParse({
+      roomId: "room-1",
+      seatId: "seat-1",
+      status: "SAVED",
+      location: validLocation,
+    });
+    expect(result.success).toBe(true);
+  });
 });
 
 describe("extendRequestSchema", () => {
   it("requires location", () => {
     expect(extendRequestSchema.safeParse({}).success).toBe(false);
+  });
+
+  it("defaults durationMinutes to 180 and bounds it", () => {
+    expect(extendRequestSchema.parse({ location: validLocation }).durationMinutes).toBe(180);
+    expect(extendRequestSchema.parse({ location: validLocation, durationMinutes: 60 }).durationMinutes).toBe(60);
+    expect(extendRequestSchema.safeParse({ location: validLocation, durationMinutes: 10 }).success).toBe(false);
   });
 });
 

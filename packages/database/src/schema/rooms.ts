@@ -1,7 +1,7 @@
 import { boolean, doublePrecision, index, integer, pgEnum, pgTable, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 export const tableTypeEnum = pgEnum("table_type", ["MAIN_TABLE", "WALL_BAR"]);
-export const seatStatusEnum = pgEnum("seat_status", ["UNKNOWN", "FREE", "OCCUPIED", "UNCERTAIN"]);
+export const seatStatusEnum = pgEnum("seat_status", ["UNKNOWN", "FREE", "OCCUPIED", "UNCERTAIN", "SAVED"]);
 
 export const rooms = pgTable("rooms", {
   id: uuid("id").primaryKey().defaultRandom(),

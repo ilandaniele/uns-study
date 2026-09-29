@@ -14,7 +14,7 @@ export interface HeroProps {
  * at a glance, per the design brief. Purely presentational — derives everything from `summary`.
  */
 export function Hero({ summary, seats }: HeroProps) {
-  const known = summary.free + summary.occupied + summary.uncertain;
+  const known = summary.free + summary.occupied + summary.saved + summary.uncertain;
   const hasData = known > 0;
   // "Full" is only a fair claim when most seats have fresh evidence; otherwise say what we know.
   const mostlyKnown = summary.total > 0 && known / summary.total >= 0.8;

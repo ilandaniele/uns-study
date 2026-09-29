@@ -2,7 +2,7 @@ import { boolean, index, jsonb, pgEnum, pgTable, real, text, timestamp, uuid } f
 import { rooms, seats } from "./rooms.js";
 import { user } from "./auth.js";
 
-export const observedStatusEnum = pgEnum("observed_status", ["FREE", "OCCUPIED"]);
+export const observedStatusEnum = pgEnum("observed_status", ["FREE", "OCCUPIED", "SAVED"]);
 
 export const seatObservations = pgTable(
   "seat_observations",

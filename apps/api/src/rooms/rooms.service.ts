@@ -65,14 +65,16 @@ export class RoomsService {
           sourceSummary: live?.sourceSummary ?? null,
           dispute: live?.dispute ? { id: live.dispute.id, closesAt: live.dispute.closesAt.toISOString() } : null,
           verified: live?.verified ?? false,
+          occupiedUntil: live?.occupiedUntil ? live.occupiedUntil.toISOString() : null,
         };
       });
 
-    const summary = { roomId: room.id, total: seats.length, free: 0, occupied: 0, uncertain: 0, unknown: 0 };
+    const summary = { roomId: room.id, total: seats.length, free: 0, occupied: 0, uncertain: 0, saved: 0, unknown: 0 };
     for (const seat of seats) {
       if (seat.status === "FREE") summary.free++;
       else if (seat.status === "OCCUPIED") summary.occupied++;
       else if (seat.status === "UNCERTAIN") summary.uncertain++;
+      else if (seat.status === "SAVED") summary.saved++;
       else summary.unknown++;
     }
 

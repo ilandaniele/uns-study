@@ -101,7 +101,7 @@ export class NotificationService {
     const freedSeatIds = [
       ...new Set(
         changes
-          .filter((c) => c.status === "FREE" && (c.previousStatus === "OCCUPIED" || c.previousStatus === "UNCERTAIN"))
+          .filter((c) => c.status === "FREE" && (c.previousStatus === "OCCUPIED" || c.previousStatus === "SAVED" || c.previousStatus === "UNCERTAIN"))
           .map((c) => c.seatId),
       ),
     ];

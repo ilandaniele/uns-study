@@ -162,6 +162,20 @@ describe("CheckInService", () => {
     expect(new Date(extended.expiresAt).getTime()).toBeGreaterThan(Date.now() + 179 * 60_000);
   });
 
+  it("a check-in with durationMinutes expires that long after creation", async () => {
+    const { checkIn } = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false, durationMinutes: 45 });
+    expect(new Date(checkIn.expiresAt).getTime() - new Date(checkIn.startedAt).getTime()).toBe(45 * 60_000);
+  });
+
+  it("extend with durationMinutes grants that window from now", async () => {
+    await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    const before = Date.now();
+    const extended = await svc.extend("u1", location, undefined, 30);
+    const minutes = (new Date(extended.expiresAt).getTime() - before) / 60_000;
+    expect(minutes).toBeGreaterThan(29.9);
+    expect(minutes).toBeLessThan(30.1);
+  });
+
   it("a check-in expires exactly CHECKIN_MINUTES (3 hours) after creation", async () => {
     const { checkIn } = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
     const started = new Date(checkIn.startedAt).getTime();

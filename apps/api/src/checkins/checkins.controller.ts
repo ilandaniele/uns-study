@@ -76,6 +76,7 @@ export class CheckInsController {
       location: body.location,
       showIdentity: body.showIdentity,
       qrToken: body.qrToken,
+      durationMinutes: body.durationMinutes,
     });
     await this.realtime.broadcastSeatChanges(body.roomId, changes);
     if (adminPresent) {
@@ -112,7 +113,7 @@ export class CheckInsController {
     const limit = await this.rateLimit.check(`extend:${user.id}`, 5, 60);
     if (!limit.allowed) throw ApiErrors.rateLimited();
 
-    return this.checkIns.extend(user.id, body.location, active);
+    return this.checkIns.extend(user.id, body.location, active, body.durationMinutes);
   }
 
   @Post(":id/photo")

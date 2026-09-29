@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CHECKIN_MINUTES, CHECKIN_MIN_MINUTES } from "./events";
 
 export * from "./animals";
 export * from "./careers";
@@ -15,7 +16,7 @@ export * from "./events";
 
 // ---- Domain enums ----
 
-export type SeatStatus = "UNKNOWN" | "FREE" | "OCCUPIED" | "UNCERTAIN";
+export type SeatStatus = "UNKNOWN" | "FREE" | "OCCUPIED" | "UNCERTAIN" | "SAVED";
 export type TableType = "MAIN_TABLE" | "WALL_BAR";
 
 // ---- DTOs ----
@@ -26,6 +27,7 @@ export interface RoomSummary {
   free: number;
   occupied: number;
   uncertain: number;
+  saved: number;
   unknown: number;
 }
 
@@ -67,6 +69,8 @@ export interface SeatDto {
   dispute: { id: string; closesAt: string } | null;
   /** True while the seat's active check-in has unexpired photo-verification protection. */
   verified: boolean;
+  /** ISO time the seat's active check-in runs until; `null` without an active check-in. */
+  occupiedUntil: string | null;
 }
 
 export interface RoomMapDto {
@@ -214,6 +218,8 @@ export interface SeatStateChangedEvent {
   confidence: number;
   lastUpdatedAt: string;
   verified: boolean;
+  /** When the seat's active check-in runs until; `null` without one. */
+  occupiedUntil?: string | null;
 }
 
 // ---- Zod schemas ----
@@ -236,6 +242,8 @@ export const checkInRequestSchema = z.object({
   seatId: z.string(),
   location: locationInputSchema,
   showIdentity: z.boolean().default(false),
+  /** How long the user will occupy the seat, in minutes (15..180, default 180). */
+  durationMinutes: z.number().int().min(CHECKIN_MIN_MINUTES).max(CHECKIN_MINUTES).default(CHECKIN_MINUTES),
   qrToken: z.string().nullable().optional(),
   /** Cloudflare Turnstile token; required only when the API answers TURNSTILE_REQUIRED. */
   turnstileToken: z.string().max(4096).nullable().optional(),
@@ -244,7 +252,7 @@ export const checkInRequestSchema = z.object({
 export const observationRequestSchema = z.object({
   roomId: z.string(),
   seatId: z.string(),
-  status: z.enum(["FREE", "OCCUPIED"]),
+  status: z.enum(["FREE", "OCCUPIED", "SAVED"]),
   location: locationInputSchema,
   qrToken: z.string().nullable().optional(),
   turnstileToken: z.string().max(4096).nullable().optional(),
@@ -252,6 +260,7 @@ export const observationRequestSchema = z.object({
 
 export const extendRequestSchema = z.object({
   location: locationInputSchema,
+  durationMinutes: z.number().int().min(CHECKIN_MIN_MINUTES).max(CHECKIN_MINUTES).default(CHECKIN_MINUTES),
 });
 
 export const checkInPhotoRequestSchema = z.object({

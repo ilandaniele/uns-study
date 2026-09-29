@@ -95,6 +95,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
     checkIn,
     markFree,
     markOccupied,
+    markSaved,
     extend,
     checkOut,
     locating,
@@ -195,23 +196,23 @@ export function RoomPageClient({ slug }: { slug: string }) {
   // Target seat for a pending "Ya tenés otro lugar marcado" confirmation — set from either the
   // seat detail's "Estoy acá" or the dispute-won banner's "Estoy acá" (D3: both go through the
   // same move confirmation when the caller already holds another seat).
-  const [confirmMove, setConfirmMove] = useState<{ seatId: string; fromDisputeWon: boolean } | null>(null);
+  const [confirmMove, setConfirmMove] = useState<{ seatId: string; fromDisputeWon: boolean; durationMinutes?: number } | null>(null);
   const moveTargetSeat = confirmMove ? seatById.get(confirmMove.seatId) ?? null : null;
   const moveTargetTable = moveTargetSeat ? tableById.get(moveTargetSeat.tableId) ?? null : null;
 
-  function attemptCheckIn(seatId: string, fromDisputeWon: boolean) {
+  function attemptCheckIn(seatId: string, fromDisputeWon: boolean, durationMinutes?: number) {
     // Already seated elsewhere: ask before moving (the API frees the old seat on move).
     if (activeCheckIn && activeCheckIn.seatId !== seatId) {
-      setConfirmMove({ seatId, fromDisputeWon });
+      setConfirmMove({ seatId, fromDisputeWon, durationMinutes });
       return;
     }
-    void performCheckIn(seatId, fromDisputeWon);
+    void performCheckIn(seatId, fromDisputeWon, durationMinutes);
   }
 
-  async function performCheckIn(seatId: string, fromDisputeWon: boolean) {
+  async function performCheckIn(seatId: string, fromDisputeWon: boolean, durationMinutes?: number) {
     setConfirmMove(null);
     const showIdentity = hasChosenIdentityVisibility() ? getShowIdentityPreference() : false;
-    const result = await checkIn(seatId, showIdentity, { qrToken });
+    const result = await checkIn(seatId, showIdentity, { qrToken, durationMinutes });
     if (result) {
       trackEvent("check_in", { roomSlug: slug, seatId });
       if (fromDisputeWon) clearDisputeWon();
@@ -219,9 +220,9 @@ export function RoomPageClient({ slug }: { slug: string }) {
     }
   }
 
-  function requestCheckIn() {
+  function requestCheckIn(durationMinutes: number) {
     if (!selectedSeat) return;
-    attemptCheckIn(selectedSeat.id, false);
+    attemptCheckIn(selectedSeat.id, false, durationMinutes);
   }
 
   async function handleMarkFree(seatId: string) {
@@ -232,6 +233,11 @@ export function RoomPageClient({ slug }: { slug: string }) {
   async function handleMarkOccupied(seatId: string) {
     const ok = await markOccupied(seatId, { qrToken });
     if (ok) trackEvent("observation", { roomSlug: slug, seatId, status: "OCCUPIED" });
+  }
+
+  async function handleMarkSaved(seatId: string) {
+    const ok = await markSaved(seatId, { qrToken });
+    if (ok) trackEvent("observation", { roomSlug: slug, seatId, status: "SAVED" });
   }
 
   async function handleOpenDispute(kind: Parameters<typeof openDispute>[1]) {
@@ -324,6 +330,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
       onCheckIn={requestCheckIn}
       onMarkFree={() => void handleMarkFree(selectedSeat.id)}
       onMarkOccupied={() => void handleMarkOccupied(selectedSeat.id)}
+      onMarkSaved={() => void handleMarkSaved(selectedSeat.id)}
       onExtend={() => void extend()}
       onCheckOut={() => void checkOut()}
       dispute={selectedDispute}
@@ -473,7 +480,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
           fromLabel={seatDisplayLabel(myTable, mySeat?.code ?? activeCheckIn.seatCode, mySeat?.seatNumber ?? 0)}
           toLabel={seatDisplayLabel(moveTargetTable, moveTargetSeat?.code ?? disputeWon?.seatCode ?? "", moveTargetSeat?.seatNumber ?? 0)}
           pending={pending}
-          onConfirm={() => void performCheckIn(confirmMove.seatId, confirmMove.fromDisputeWon)}
+          onConfirm={() => void performCheckIn(confirmMove.seatId, confirmMove.fromDisputeWon, confirmMove.durationMinutes)}
           onCancel={() => setConfirmMove(null)}
         />
       ) : null}

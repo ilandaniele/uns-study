@@ -27,6 +27,8 @@ export interface CreateCheckInInput {
   showIdentity: boolean;
   /** Optional QR token scanned at the table; invalid/missing tokens are silently ignored. */
   qrToken?: string | null;
+  /** How long the user will occupy the seat (15..180 min); defaults to CHECKIN_MINUTES. */
+  durationMinutes?: number;
 }
 
 @Injectable()
@@ -72,7 +74,7 @@ export class CheckInService {
     if (!seat) throw ApiErrors.seatNotFound();
 
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + CHECKIN_MINUTES * 60_000);
+    const expiresAt = new Date(now.getTime() + (input.durationMinutes ?? CHECKIN_MINUTES) * 60_000);
 
     // Independent of the write below, so they overlap with it instead of adding round trips.
     const qrVerifiedPromise = this.qr.isValidForTable(input.qrToken, input.roomId, seat.tableId);
@@ -248,7 +250,7 @@ export class CheckInService {
    * Extends the caller's active check-in. Pass `active` (from a `getActiveCheckIn` the caller just
    * did) to skip re-reading it; the conditional UPDATE below still guards against it having ended.
    */
-  async extend(userId: string, location: LocationInput, active?: CheckInDto): Promise<CheckInDto> {
+  async extend(userId: string, location: LocationInput, active?: CheckInDto, durationMinutes: number = CHECKIN_MINUTES): Promise<CheckInDto> {
     const now = new Date();
     const current = active ?? (await this.getActiveCheckIn(userId));
     if (!current) throw ApiErrors.noActiveCheckIn();
@@ -257,7 +259,7 @@ export class CheckInService {
     const presence = this.presence.validate(room, location);
     if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!), presence.details);
 
-    const expiresAt = new Date(now.getTime() + CHECKIN_MINUTES * 60_000);
+    const expiresAt = new Date(now.getTime() + durationMinutes * 60_000);
     // Conditional on still being ACTIVE (and unexpired) at write time: the expiration sweep may
     // have raced ahead and flipped this row between the read above and this update — if so, the
     // extension must not resurrect a check-in the sweep already closed out. Also scoped to the

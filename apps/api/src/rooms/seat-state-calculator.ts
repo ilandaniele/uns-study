@@ -2,7 +2,7 @@ import type { SeatStatus } from "@uns/contracts";
 
 export interface SeatObservationInput {
   userId: string;
-  status: "FREE" | "OCCUPIED";
+  status: "FREE" | "OCCUPIED" | "SAVED";
   weight: number;
   observedAt: Date;
 }
@@ -29,7 +29,7 @@ function observationConfidence(distinctUsers: number): number {
 
 /**
  * Deterministic seat-state derivation. Pure function — no I/O.
- * Priority: active check-in > active observations (FREE/OCCUPIED/conflict) > UNKNOWN.
+ * Priority: active check-in > active observations (FREE/OCCUPIED/SAVED/conflict) > UNKNOWN.
  * Only the latest observation per user counts (distinct users).
  */
 export function calculateSeatState(input: SeatStateInput): SeatStateResult {
@@ -59,34 +59,51 @@ export function calculateSeatState(input: SeatStateInput): SeatStateResult {
 
   const free = latest.filter((o) => o.status === "FREE");
   const occupied = latest.filter((o) => o.status === "OCCUPIED");
+  const saved = latest.filter((o) => o.status === "SAVED");
+  // SAVED (belongings, nobody sitting) counts as "not free" against FREE observations.
+  const notFree = [...occupied, ...saved];
 
-  if (free.length === 0 && occupied.length === 0) {
+  if (free.length === 0 && notFree.length === 0) {
     return { status: "UNKNOWN", confidence: 0, sourceSummary: "NONE" };
   }
 
-  if (occupied.length === 0) {
+  if (notFree.length === 0) {
     return { status: "FREE", confidence: observationConfidence(free.length), sourceSummary: "OBSERVATION_FREE" };
   }
 
+  const newestOf = (list: SeatObservationInput[]) => list.reduce((a, b) => (b.observedAt.getTime() > a.observedAt.getTime() ? b : a));
+
   if (free.length === 0) {
-    return {
-      status: "OCCUPIED",
-      confidence: observationConfidence(occupied.length),
-      sourceSummary: "OBSERVATION_OCCUPIED",
-    };
+    if (saved.length === 0) {
+      return {
+        status: "OCCUPIED",
+        confidence: observationConfidence(occupied.length),
+        sourceSummary: "OBSERVATION_OCCUPIED",
+      };
+    }
+    if (occupied.length === 0) {
+      return { status: "SAVED", confidence: observationConfidence(saved.length), sourceSummary: "OBSERVATION_SAVED" };
+    }
+    // Someone says it's taken and someone says it's just belongings: the newest report decides.
+    return newestOf(notFree).status === "SAVED"
+      ? { status: "SAVED", confidence: 0.5, sourceSummary: "OBSERVATION_SAVED" }
+      : { status: "OCCUPIED", confidence: 0.5, sourceSummary: "OBSERVATION_OCCUPIED" };
   }
 
-  // Conflict: both sides present. Compare weighted totals; the dominant side (>= 2x the other)
+  // Conflict: FREE vs not-free. Compare weighted totals; the dominant side (>= 2x the other)
   // wins only if the single newest observation also belongs to that side.
   const weightFree = free.reduce((sum, o) => sum + o.weight, 0);
-  const weightOccupied = occupied.reduce((sum, o) => sum + o.weight, 0);
-  const newest = latest.reduce((a, b) => (b.observedAt.getTime() > a.observedAt.getTime() ? b : a));
+  const weightNotFree = notFree.reduce((sum, o) => sum + o.weight, 0);
+  const newest = newestOf(latest);
 
-  if (weightFree >= weightOccupied * 2 && newest.status === "FREE") {
+  if (weightFree >= weightNotFree * 2 && newest.status === "FREE") {
     return { status: "FREE", confidence: 0.5, sourceSummary: "OBSERVATION_CONFLICT_FREE" };
   }
-  if (weightOccupied >= weightFree * 2 && newest.status === "OCCUPIED") {
+  if (weightNotFree >= weightFree * 2 && newest.status === "OCCUPIED") {
     return { status: "OCCUPIED", confidence: 0.5, sourceSummary: "OBSERVATION_CONFLICT_OCCUPIED" };
+  }
+  if (weightNotFree >= weightFree * 2 && newest.status === "SAVED") {
+    return { status: "SAVED", confidence: 0.5, sourceSummary: "OBSERVATION_CONFLICT_SAVED" };
   }
   return { status: "UNCERTAIN", confidence: 0.4, sourceSummary: "OBSERVATION_CONFLICT" };
 }

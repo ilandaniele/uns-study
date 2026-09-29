@@ -13,6 +13,8 @@ export interface SeatStateChange {
   lastUpdatedAt: Date;
   /** Whether the seat's active check-in currently has unexpired photo-verification protection. */
   verified: boolean;
+  /** When the seat's active check-in expires; `null`/absent without one. */
+  occupiedUntil?: Date | null;
   /** The seat's persisted status right before this recompute, or `null` if it had none yet (never
    *  persisted / a brand-new seat) — lets subscribers (e.g. `NotificationService`) tell a seat
    *  freeing up (OCCUPIED/UNCERTAIN -> FREE) apart from any other kind of change. Only populated by
@@ -192,7 +194,7 @@ export class RoomStateService {
           metadata: { confidence: result.confidence, sourceSummary: result.sourceSummary, ...(opts.seatMetadata?.[seatId] ?? {}) },
           createdAt: now,
         });
-        changes.push({ seatId, status: result.status, confidence: result.confidence, lastUpdatedAt: now, verified, previousStatus: previous?.status ?? null });
+        changes.push({ seatId, status: result.status, confidence: result.confidence, lastUpdatedAt: now, verified, occupiedUntil: activeCheckIn ? new Date(activeCheckIn.expiresAt) : null, previousStatus: previous?.status ?? null });
       }
     }
 
@@ -209,7 +211,7 @@ export class RoomStateService {
     now: Date = new Date(),
     /** The room's active seats if the caller already loads them (skips re-selecting them). */
     loadedSeats?: { id: string }[] | Promise<{ id: string }[]>,
-  ): Promise<Map<string, SeatStateChange & { sourceSummary: string; dispute: { id: string; closesAt: Date } | null; changed: boolean }>> {
+  ): Promise<Map<string, SeatStateChange & { sourceSummary: string; dispute: { id: string; closesAt: Date } | null; occupiedUntil: Date | null; changed: boolean }>> {
     const activeCheckInIds = this.db
       .select({ id: schema.checkIns.id })
       .from(schema.checkIns)
@@ -276,7 +278,7 @@ export class RoomStateService {
 
     const result = new Map<
       string,
-      SeatStateChange & { sourceSummary: string; dispute: { id: string; closesAt: Date } | null; changed: boolean }
+      SeatStateChange & { sourceSummary: string; dispute: { id: string; closesAt: Date } | null; occupiedUntil: Date | null; changed: boolean }
     >();
     for (const seatId of seatIds) {
       const openDispute = openDisputeBySeat.get(seatId);
@@ -310,6 +312,7 @@ export class RoomStateService {
         lastUpdatedAt: changed ? now : new Date(stored!.lastUpdatedAt),
         dispute: openDispute ? { id: openDispute.id, closesAt: new Date(openDispute.closesAt) } : null,
         verified,
+        occupiedUntil: checkIn ? checkIn.expiresAt : null,
         changed,
       });
     }
@@ -336,12 +339,13 @@ export class RoomStateService {
    */
   async getRoomSummary(roomId: string) {
     const liveStates = await this.getLiveSeatStates(roomId);
-    const summary = { roomId, total: 0, free: 0, occupied: 0, uncertain: 0, unknown: 0 };
+    const summary = { roomId, total: 0, free: 0, occupied: 0, uncertain: 0, saved: 0, unknown: 0 };
     for (const state of liveStates.values()) {
       summary.total += 1;
       if (state.status === "FREE") summary.free += 1;
       else if (state.status === "OCCUPIED") summary.occupied += 1;
       else if (state.status === "UNCERTAIN") summary.uncertain += 1;
+      else if (state.status === "SAVED") summary.saved += 1;
       else summary.unknown += 1;
     }
     return summary;

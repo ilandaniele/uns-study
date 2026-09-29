@@ -20,7 +20,10 @@ export function applySeatEvent(map: RoomMapDto | null, event: SeatStateChangedEv
   const seats: SeatDto[] = map.seats.map((seat) => {
     if (seat.id !== event.seatId || ts(event.lastUpdatedAt) < ts(seat.lastUpdatedAt)) return seat;
     applied = true;
-    return { ...seat, status: event.status, confidence: event.confidence, lastUpdatedAt: event.lastUpdatedAt, verified: event.verified };
+    return { ...seat, status: event.status, confidence: event.confidence, lastUpdatedAt: event.lastUpdatedAt,
+      verified: event.verified,
+      occupiedUntil: event.occupiedUntil ?? null,
+    };
   });
   return applied ? { ...map, seats } : map;
 }
@@ -45,6 +48,7 @@ export function mergeSnapshot(prev: RoomMapDto | null, next: RoomMapDto): RoomMa
       lastUpdatedAt: current.lastUpdatedAt,
       sourceSummary: current.sourceSummary,
       verified: current.verified,
+      occupiedUntil: current.occupiedUntil,
     };
   });
   if (!keptAny) return next;
@@ -77,11 +81,12 @@ export function applyTableNicknameChanged(map: RoomMapDto | null, event: TableNi
 }
 
 function summarize(roomId: string, seats: SeatDto[]): RoomSummary {
-  const summary: RoomSummary = { roomId, total: seats.length, free: 0, occupied: 0, uncertain: 0, unknown: 0 };
+  const summary: RoomSummary = { roomId, total: seats.length, free: 0, occupied: 0, uncertain: 0, saved: 0, unknown: 0 };
   for (const seat of seats) {
     if (seat.status === "FREE") summary.free += 1;
     else if (seat.status === "OCCUPIED") summary.occupied += 1;
     else if (seat.status === "UNCERTAIN") summary.uncertain += 1;
+    else if (seat.status === "SAVED") summary.saved += 1;
     else summary.unknown += 1;
   }
   return summary;
@@ -118,11 +123,12 @@ export function applyOptimisticSeat(
   map: RoomMapDto | null,
   seatId: string,
   status: SeatDto["status"],
+  occupiedUntil: string | null = null,
 ): { map: RoomMapDto | null; patch: SeatPatch | null } {
   const previous = map?.seats.find((seat) => seat.id === seatId);
   if (!map || !previous) return { map, patch: null };
   const stamp = previous.lastUpdatedAt ? new Date(ts(previous.lastUpdatedAt) + 1).toISOString() : EPOCH_PLUS_1MS;
-  const next = withSeat(map, seatId, (seat) => ({ ...seat, status, confidence: OPTIMISTIC_CONFIDENCE, lastUpdatedAt: stamp, verified: false }));
+  const next = withSeat(map, seatId, (seat) => ({ ...seat, status, confidence: OPTIMISTIC_CONFIDENCE, lastUpdatedAt: stamp, verified: false, occupiedUntil }));
   return { map: next, patch: { seatId, previous, stamp } };
 }
 
@@ -143,7 +149,13 @@ export function rollbackOptimisticSeat(map: RoomMapDto | null, patch: SeatPatch 
 }
 
 /** Placeholder `activeCheckIn` shown until the POST response (the real DTO) replaces it. */
-export function buildOptimisticCheckIn(seat: SeatDto, roomId: string, showIdentity: boolean, nowMs: number): CheckInDto {
+export function buildOptimisticCheckIn(
+  seat: SeatDto,
+  roomId: string,
+  showIdentity: boolean,
+  nowMs: number,
+  durationMinutes: number = CHECKIN_MINUTES,
+): CheckInDto {
   return {
     id: `optimistic-${seat.id}`,
     roomId,
@@ -151,14 +163,14 @@ export function buildOptimisticCheckIn(seat: SeatDto, roomId: string, showIdenti
     seatCode: seat.code,
     status: "ACTIVE",
     startedAt: new Date(nowMs).toISOString(),
-    expiresAt: new Date(nowMs + CHECKIN_MINUTES * 60_000).toISOString(),
+    expiresAt: new Date(nowMs + durationMinutes * 60_000).toISOString(),
     showIdentity,
     verifiedAt: null,
     verificationExpiresAt: null,
   };
 }
 
-/** Optimistic "Seguir acá": a fresh full-length window from now, as the API grants. */
-export function extendCheckIn(checkIn: CheckInDto, nowMs: number): CheckInDto {
-  return { ...checkIn, expiresAt: new Date(nowMs + CHECKIN_MINUTES * 60_000).toISOString() };
+/** Optimistic "Seguir acá": a fresh window (full-length by default) from now, as the API grants. */
+export function extendCheckIn(checkIn: CheckInDto, nowMs: number, durationMinutes: number = CHECKIN_MINUTES): CheckInDto {
+  return { ...checkIn, expiresAt: new Date(nowMs + durationMinutes * 60_000).toISOString() };
 }

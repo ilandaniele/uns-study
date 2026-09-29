@@ -90,11 +90,11 @@ export class DisputeService {
     if (!seat) throw ApiErrors.seatNotFound();
 
     if (input.kind === "SAVED") {
-      // SAVED: allowed on a seat currently derived OCCUPIED or UNCERTAIN, with or without a check-in
+      // SAVED: allowed on a seat currently derived OCCUPIED, SAVED or UNCERTAIN, with or without a check-in
       // (e.g. belongings-only, or observation-derived occupancy).
       const live = await this.roomState.getLiveSeatStates(input.roomId, new Date());
       const seatState = live.get(input.seatId);
-      if (!seatState || (seatState.status !== "OCCUPIED" && seatState.status !== "UNCERTAIN")) {
+      if (!seatState || (seatState.status !== "OCCUPIED" && seatState.status !== "UNCERTAIN" && seatState.status !== "SAVED")) {
         throw ApiErrors.disputeNotAllowed("Este asiento no está ocupado.");
       }
     }
@@ -585,7 +585,7 @@ export class DisputeService {
       .where(
         and(
           eq(schema.seatObservations.seatId, row.seatId),
-          eq(schema.seatObservations.observedStatus, "OCCUPIED"),
+          inArray(schema.seatObservations.observedStatus, ["OCCUPIED", "SAVED"]),
           gt(schema.seatObservations.expiresAt, now),
         ),
       );
