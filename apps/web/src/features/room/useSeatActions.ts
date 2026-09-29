@@ -1,6 +1,6 @@
 "use client";
 
-import type { CheckInDto, DisputeKind, DisputeVote, RoomMapDto, SeatDisputeDto, SeatDto } from "@uns/contracts";
+import type { CheckInDto, DisputeKind, DisputeVote, RoomMapDto, SeatDisputeDto, SeatDto, SeatStateChangedEvent } from "@uns/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiDelete, apiFetch, apiPost, ApiRequestError } from "@/lib/api";
 import { describeActionError } from "@/lib/errors";
@@ -8,6 +8,7 @@ import { getFreshLocation } from "@/lib/geolocation";
 import { mutateMe, peekMe, refreshMe } from "@/lib/me-store";
 import {
   applyDisputeOpened,
+  applySeatEvent,
   applyOptimisticSeat,
   buildOptimisticCheckIn,
   extendCheckIn,
@@ -16,8 +17,6 @@ import {
   type SeatPatch,
 } from "./seat-merge";
 
-/** How long after an observation succeeds we wait for its `seat:state-changed` before re-syncing the map. */
-const OBSERVATION_CONFIRM_MS = 2_500;
 
 /** A local, not-yet-confirmed change: `settle` on success, `rollback` on failure. */
 interface Optimistic {
@@ -220,8 +219,8 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
       run(async (turnstileToken) => {
         const location = await locate();
         const seat = optimisticSeats([[seatId, status]]);
-        await withOptimistic([seat], () =>
-          apiPost("/api/v1/observations", {
+        const result = await withOptimistic([seat], () =>
+          apiPost<{ ok: true; seats?: SeatStateChangedEvent[] }>("/api/v1/observations", {
             roomId: map?.room.id,
             seatId,
             status,
@@ -230,18 +229,19 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
             turnstileToken,
           }),
         );
-        // The server may legitimately leave the seat unchanged (e.g. a check-in outranks the
-        // observation), in which case no event follows: re-sync if the optimistic state is all we have.
-        const patch = seat.patches[0];
-        if (patch) {
-          setTimeout(() => {
-            const now = mapRef.current?.seats.find((s) => s.id === seatId);
-            if (now && now.lastUpdatedAt === patch.previous.lastUpdatedAt) refetch();
-          }, OBSERVATION_CONFIRM_MS);
+        const confirmed = result?.seats ?? [];
+        if (confirmed.length > 0) {
+          // Server-confirmed state with its real timestamp (replaces the optimistic seat at once).
+          updateMap((prev) => confirmed.reduce((acc, event) => applySeatEvent(acc, event), prev));
+        }
+        if (!confirmed.some((event) => event.seatId === seatId)) {
+          // The server left this seat unchanged (e.g. a check-in outranks the observation):
+          // re-sync so the optimistic state doesn't linger.
+          refetch();
         }
         return true;
       }).then((v) => v ?? false),
-    [locate, map?.room.id, optimisticSeats, refetch, run, withOptimistic],
+    [locate, map?.room.id, optimisticSeats, refetch, run, updateMap, withOptimistic],
   );
 
   const markFree = useCallback((seatId: string, options?: SeatActionOptions) => observe(seatId, "FREE", options), [observe]);

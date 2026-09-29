@@ -1,6 +1,6 @@
 import { Body, Controller, Inject, Ip, Post, UseGuards } from "@nestjs/common";
 import type { z } from "zod";
-import { observationRequestSchema } from "@uns/contracts";
+import { observationRequestSchema, type SeatStateChangedEvent } from "@uns/contracts";
 import { AuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";
@@ -69,6 +69,16 @@ export class ObservationsController {
       limits,
     });
     await this.realtime.broadcastSeatChanges(roomId, changes);
-    return { ok: true };
+    // The resulting seat states (server timestamps) let the client confirm its optimistic update
+    // right away; an empty list means the observation didn't change any seat.
+    const seats: SeatStateChangedEvent[] = changes.map((change) => ({
+      roomId,
+      seatId: change.seatId,
+      status: change.status,
+      confidence: change.confidence,
+      lastUpdatedAt: change.lastUpdatedAt.toISOString(),
+      verified: change.verified,
+    }));
+    return { ok: true, seats };
   }
 }
