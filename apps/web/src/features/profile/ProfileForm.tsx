@@ -6,6 +6,8 @@ import type { FormEvent, ReactNode } from "react";
 import { useState } from "react";
 import type { ProfilePatch } from "./useMyProfile";
 import { IDENTITY_MODES, identityModeHint, identityModeLabel } from "./identity-mode";
+import { CareerSelect } from "./CareerSelect";
+import { careerChoiceFromValue, careerValueFromChoice } from "./career-choice";
 
 export interface ProfileFormProps {
   profile: MyProfileDto;
@@ -19,7 +21,7 @@ export function ProfileForm({ profile, saving, onSave, onRerollAlias }: ProfileF
   const [firstName, setFirstName] = useState(profile.firstName ?? "");
   const [lastName, setLastName] = useState(profile.lastName ?? "");
   const [nickname, setNickname] = useState(profile.nickname ?? "");
-  const [career, setCareer] = useState(profile.career ?? "");
+  const [career, setCareer] = useState(() => careerChoiceFromValue(profile.career));
   const [currentSubject, setCurrentSubject] = useState(profile.currentSubject ?? "");
   const [bio, setBio] = useState(profile.bio ?? "");
   const [instagram, setInstagram] = useState(profile.instagram ?? "");
@@ -40,7 +42,7 @@ export function ProfileForm({ profile, saving, onSave, onRerollAlias }: ProfileF
       firstName: firstName.trim() || null,
       lastName: lastName.trim() || null,
       nickname: nickname.trim() || null,
-      career: career.trim() || null,
+      career: careerValueFromChoice(career),
       currentSubject: currentSubject.trim() || null,
       bio: bio.trim() || null,
       instagram: instagram.trim() || null,
@@ -62,9 +64,11 @@ export function ProfileForm({ profile, saving, onSave, onRerollAlias }: ProfileF
         <Field label="Apodo">
           <input value={nickname} onChange={(e) => setNickname(e.target.value)} maxLength={30} className={inputClass} />
         </Field>
-        <Field label="Carrera">
-          <input value={career} onChange={(e) => setCareer(e.target.value)} maxLength={80} className={inputClass} />
-        </Field>
+        <div className="sm:col-span-2">
+          <Field label="Carrera">
+            <CareerSelect id="profile-career" value={career} onChange={setCareer} className={inputClass} />
+          </Field>
+        </div>
         <Field label="Materia actual">
           <input value={currentSubject} onChange={(e) => setCurrentSubject(e.target.value)} maxLength={80} className={inputClass} />
         </Field>

@@ -94,7 +94,8 @@ export const updateProfileSchema = z.object({
   firstName: z.string().trim().max(50).nullable().optional(),
   lastName: z.string().trim().max(50).nullable().optional(),
   nickname: z.string().trim().max(30).nullable().optional(),
-  career: z.string().trim().max(80).nullable().optional(),
+  // 120 fits the longest official UNS career name (see careers.ts); still free text.
+  career: z.string().trim().max(120).nullable().optional(),
   currentSubject: z.string().trim().max(80).nullable().optional(),
   bio: z.string().trim().max(280).nullable().optional(),
   instagram: z
