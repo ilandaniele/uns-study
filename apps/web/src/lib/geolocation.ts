@@ -18,8 +18,14 @@ const GOOD_ENOUGH_ACCURACY_M = 25;
 const SAMPLE_WINDOW_MS = 8_000;
 /** Absolute cap on the whole call, counted from the moment it's invoked (includes the permission prompt). */
 const OVERALL_TIMEOUT_MS = 45_000;
-/** A fix "older" than sampling start by more than this is a cached/stale reading, not a new sample. */
+/** A fix "older" than the call by more than this is a cached reading, not a new sample. */
 const CACHED_FIX_TOLERANCE_MS = 5_000;
+/**
+ * A cached fix is still usable as a fallback up to this age — below the server's 120 s freshness
+ * limit. Stationary phones indoors (iOS especially) often never produce a new fix and only hand
+ * back the cached one, so discarding it would leave nothing at all.
+ */
+const MAX_CACHED_FIX_AGE_MS = 100_000;
 /** At or above this accuracy the device is clearly giving a coarse (network/cell) fix, not GPS. */
 const COARSE_ACCURACY_M = 500;
 
@@ -32,17 +38,22 @@ interface Sample {
 }
 
 /**
- * Picks the best sample out of everything collected so far, ignoring anything that looks like a
- * cached fix served instantly by the OS (its timestamp predates when sampling actually started).
- * Exported for unit testing; kept pure (no timers, no globals) on purpose.
+ * Picks the best sample: the most precise *fresh* fix (taken after the call started), falling back
+ * to the most precise cached fix that's still recent enough for the server to accept. A cached fix
+ * must never beat a fresh one (e.g. an outdoor GPS fix from minutes ago), but it's better than no
+ * fix at all. Exported for unit testing; kept pure (no timers, no globals) on purpose.
  */
-export function pickBestFix(samples: Sample[], startedAt: number): Sample | null {
-  let best: Sample | null = null;
+export function pickBestFix(samples: Sample[], startedAt: number, now: number = startedAt): Sample | null {
+  let bestFresh: Sample | null = null;
+  let bestCached: Sample | null = null;
   for (const sample of samples) {
-    if (sample.timestamp < startedAt - CACHED_FIX_TOLERANCE_MS) continue;
-    if (!best || sample.accuracy < best.accuracy) best = sample;
+    if (sample.timestamp >= startedAt - CACHED_FIX_TOLERANCE_MS) {
+      if (!bestFresh || sample.accuracy < bestFresh.accuracy) bestFresh = sample;
+    } else if (now - sample.timestamp <= MAX_CACHED_FIX_AGE_MS) {
+      if (!bestCached || sample.accuracy < bestCached.accuracy) bestCached = sample;
+    }
   }
-  return best;
+  return bestFresh ?? bestCached;
 }
 
 /**
@@ -66,7 +77,9 @@ export function getFreshLocation(): Promise<LocationInput> {
     const samples: Sample[] = [];
     let settled = false;
     let watchId: number | null = null;
-    let startedAt: number | null = null;
+    // Device-clock time of the call: fixes older than this (minus a tolerance) are cached ones.
+    const calledAt = Date.now();
+    let firstFixAt: number | null = null;
     let windowTimer: ReturnType<typeof setTimeout> | null = null;
 
     const clearTimers = () => {
@@ -79,7 +92,7 @@ export function getFreshLocation(): Promise<LocationInput> {
       settled = true;
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
       clearTimers();
-      const best = startedAt !== null ? pickBestFix(samples, startedAt) : null;
+      const best = pickBestFix(samples, calledAt, Date.now());
       if (best) {
         if (best.accuracy >= COARSE_ACCURACY_M) {
           reject(
@@ -117,10 +130,10 @@ export function getFreshLocation(): Promise<LocationInput> {
     watchId = navigator.geolocation.watchPosition(
       (position) => {
         if (settled) return;
-        if (startedAt === null) {
+        if (firstFixAt === null) {
           // The 8 s sampling window starts on the FIRST successful fix, not at call time — the
           // permission prompt's duration must not eat into it.
-          startedAt = Date.now();
+          firstFixAt = Date.now();
           windowTimer = setTimeout(() => finish(), SAMPLE_WINDOW_MS);
         }
         samples.push({
@@ -129,7 +142,8 @@ export function getFreshLocation(): Promise<LocationInput> {
           accuracy: position.coords.accuracy,
           timestamp: position.timestamp,
         });
-        if (position.coords.accuracy <= GOOD_ENOUGH_ACCURACY_M) finish();
+        // Stop early only on a precise *fresh* fix; a precise cached one keeps sampling for a newer read.
+        if (position.coords.accuracy <= GOOD_ENOUGH_ACCURACY_M && position.timestamp >= calledAt - CACHED_FIX_TOLERANCE_MS) finish();
       },
       (error) => {
         if (settled) return;

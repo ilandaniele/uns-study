@@ -37,6 +37,11 @@ async function fetchSocketToken(): Promise<string | null> {
  * dev, where the socket and API share an origin and the session cookie is also readable there.
  */
 export function getSocket(): Socket {
+  // Client components still render once on the server; never open a real connection from there
+  // (it would try to fetch a relative token URL and keep a socket alive inside the SSR function).
+  if (typeof window === "undefined") {
+    return io(SOCKET_URL, { autoConnect: false });
+  }
   if (!socket) {
     socket = io(SOCKET_URL, {
       withCredentials: true,

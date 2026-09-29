@@ -40,9 +40,23 @@ describe("pickBestFix", () => {
     expect(best?.accuracy).toBe(30);
   });
 
-  it("returns null when every sample is a cached fix", () => {
+  it("uses a recent cached fix when it's the only one (never fail a stationary phone)", () => {
     const startedAt = 1_000_000;
     const best = pickBestFix([{ latitude: 0, longitude: 0, accuracy: 5, timestamp: startedAt - CACHED_FIX_TOLERANCE_MS - 1 }], startedAt);
-    expect(best).toBeNull();
+    expect(best?.accuracy).toBe(5);
+  });
+});
+
+describe("pickBestFix cached fallback", () => {
+  it("falls back to a recent cached fix when no fresh fix arrives (stationary phone indoors)", () => {
+    const startedAt = 1_000_000;
+    const cached = { latitude: 0, longitude: 0, accuracy: 35, timestamp: startedAt - 30_000 };
+    expect(pickBestFix([cached], startedAt, startedAt + 8_000)).toEqual(cached);
+  });
+
+  it("drops a cached fix too old for the server to accept", () => {
+    const startedAt = 1_000_000;
+    const old = { latitude: 0, longitude: 0, accuracy: 10, timestamp: startedAt - 200_000 };
+    expect(pickBestFix([old], startedAt, startedAt + 8_000)).toBeNull();
   });
 });
