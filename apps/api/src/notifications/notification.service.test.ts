@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@uns/database";
 import { schema } from "@uns/database";
 import { eq } from "drizzle-orm";
@@ -16,6 +16,14 @@ vi.mock("web-push", () => ({
     sendNotification,
   },
 }));
+// `scheduleAdminPresent`'s delay is normally a random 2-5 minutes (`node:crypto`'s `randomInt`) —
+// pinned to a fixed default here so timer-advancing tests are deterministic; individual tests
+// override it with `mockReturnValueOnce` where the exact delay matters.
+const { randomInt } = vi.hoisted(() => ({ randomInt: vi.fn(() => 3 * 60_000) }));
+vi.mock("node:crypto", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:crypto")>();
+  return { ...actual, randomInt };
+});
 // `env.ts` reads `process.env.VAPID_*` once at module-evaluation time (before this file's
 // `beforeEach` ever runs), so setting the env vars there wouldn't reach it — override the frozen
 // values directly instead.
@@ -37,6 +45,7 @@ describe("NotificationService", () => {
   beforeEach(async () => {
     sendNotification.mockClear();
     sendNotification.mockResolvedValue(undefined);
+    randomInt.mockClear();
 
     db = await freshDb();
     svc = new NotificationService(db, new PushService(db), new RoomStateService(db));
@@ -145,6 +154,63 @@ describe("NotificationService", () => {
 
       await svc.notifyAdminPresent(roomId, "admin2");
       expect(sendNotification).toHaveBeenCalledTimes(1);
+    });
+
+    it("never sends twice for the same throttle window even if two calls race concurrently", async () => {
+      await addPushSubscription("subscriber");
+      await Promise.all([svc.notifyAdminPresent(roomId, "admin2"), svc.notifyAdminPresent(roomId, "admin2")]);
+      expect(sendNotification).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("scheduleAdminPresent", () => {
+    beforeEach(async () => {
+      vi.useFakeTimers();
+      await db.update(schema.notificationPreferences).set({ adminPresent: true }).where(eq(schema.notificationPreferences.userId, "subscriber"));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("fires the banner + push only after the delay, and only if the admin is still checked in", async () => {
+      await addPushSubscription("subscriber");
+      await addActiveCheckIn("admin1", seatIds[0]!);
+      const emitBanner = vi.fn();
+
+      svc.scheduleAdminPresent(roomId, "admin1", emitBanner);
+      expect(emitBanner).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(5 * 60_000);
+
+      expect(emitBanner).toHaveBeenCalledTimes(1);
+      expect(sendNotification).toHaveBeenCalledTimes(1);
+    });
+
+    it("never fires if the admin already checked out before the timer runs", async () => {
+      const emitBanner = vi.fn();
+      svc.scheduleAdminPresent(roomId, "admin1", emitBanner); // no active check-in inserted for admin1
+
+      await vi.advanceTimersByTimeAsync(5 * 60_000);
+
+      expect(emitBanner).not.toHaveBeenCalled();
+      expect(sendNotification).not.toHaveBeenCalled();
+    });
+
+    it("a repeated fresh check-in by the same admin reschedules instead of stacking a second timer", async () => {
+      await addActiveCheckIn("admin1", seatIds[0]!);
+      const emitBanner = vi.fn();
+      randomInt.mockReturnValueOnce(4 * 60_000).mockReturnValueOnce(2 * 60_000);
+
+      svc.scheduleAdminPresent(roomId, "admin1", emitBanner); // would fire at t=4min if left alone
+      await vi.advanceTimersByTimeAsync(3 * 60_000); // t=3min — before the first timer's mark
+      svc.scheduleAdminPresent(roomId, "admin1", emitBanner); // clears it, reschedules 2min from t=3min
+
+      await vi.advanceTimersByTimeAsync(1 * 60_000); // t=4min — first timer's original mark, now moot
+      expect(emitBanner).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1 * 60_000); // t=5min — the rescheduled timer's mark
+      expect(emitBanner).toHaveBeenCalledTimes(1);
     });
   });
 });

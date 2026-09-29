@@ -1,9 +1,16 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import webpush from "web-push";
 import { schema, type Db } from "@uns/database";
 import { DB } from "../database/database.module.js";
 import { env } from "../env.js";
+import { mapWithConcurrency } from "./concurrency.js";
+
+/** At most this many devices are sent to at once per `sendToUser` call. */
+const SEND_CONCURRENCY = 10;
+/** A subscription is deleted after this many consecutive non-HTTP (encryption/argument, never a
+ *  clean 404/410 — those delete immediately) failures, since it's evidently never going to work. */
+const MAX_CONSECUTIVE_FAILURES = 3;
 
 export interface PushPayload {
   title: string;
@@ -38,7 +45,7 @@ export class PushService {
   async sendToUser(userId: string, payload: PushPayload): Promise<void> {
     if (!this.ensureConfigured()) return;
     const subs = await this.db.select().from(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.userId, userId));
-    await Promise.all(subs.map((sub) => this.sendOne(sub, payload)));
+    await mapWithConcurrency(subs, SEND_CONCURRENCY, (sub) => this.sendOne(sub, payload));
   }
 
   private async sendOne(sub: typeof schema.pushSubscriptions.$inferSelect, payload: PushPayload): Promise<void> {
@@ -46,8 +53,12 @@ export class PushService {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
         JSON.stringify(payload),
+        { timeout: 5000, TTL: 600 },
       );
-      await this.db.update(schema.pushSubscriptions).set({ lastSuccessAt: new Date() }).where(eq(schema.pushSubscriptions.id, sub.id));
+      await this.db
+        .update(schema.pushSubscriptions)
+        .set({ lastSuccessAt: new Date(), failureCount: 0 })
+        .where(eq(schema.pushSubscriptions.id, sub.id));
     } catch (err) {
       const statusCode = (err as { statusCode?: number }).statusCode;
       if (statusCode === 404 || statusCode === 410) {
@@ -55,6 +66,18 @@ export class PushService {
         return;
       }
       this.logger.error(`Push delivery failed for subscription ${sub.id} (status ${statusCode ?? "unknown"})`);
+
+      // Non-HTTP failures (bad encryption keys, invalid argument, ...) never delete on their own —
+      // only after `MAX_CONSECUTIVE_FAILURES` in a row, so a single transient error doesn't drop a
+      // device that would otherwise keep working.
+      const [row] = await this.db
+        .update(schema.pushSubscriptions)
+        .set({ failureCount: sql`${schema.pushSubscriptions.failureCount} + 1` })
+        .where(eq(schema.pushSubscriptions.id, sub.id))
+        .returning({ failureCount: schema.pushSubscriptions.failureCount });
+      if (row && row.failureCount >= MAX_CONSECUTIVE_FAILURES) {
+        await this.db.delete(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.id, sub.id));
+      }
     }
   }
 }

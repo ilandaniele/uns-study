@@ -39,6 +39,19 @@ describe("PushSubscriptionsService", () => {
     expect(rows[0]?.p256dh).toBe("p2");
   });
 
+  it("caps subscriptions per user at 10, dropping the oldest beyond that", async () => {
+    for (let i = 0; i < 12; i++) {
+      await svc.subscribe("u1", { endpoint: `https://fcm.googleapis.com/fcm/send/device-${i}`, keys: { p256dh: "p", auth: "a" } }, null);
+    }
+
+    const rows = await db.select().from(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.userId, "u1"));
+    expect(rows).toHaveLength(10);
+    const endpoints = rows.map((r) => r.endpoint);
+    expect(endpoints).not.toContain("https://fcm.googleapis.com/fcm/send/device-0");
+    expect(endpoints).not.toContain("https://fcm.googleapis.com/fcm/send/device-1");
+    expect(endpoints).toContain("https://fcm.googleapis.com/fcm/send/device-11");
+  });
+
   it("unsubscribe only removes the caller's own subscription for that endpoint", async () => {
     const endpoint = "https://fcm.googleapis.com/fcm/send/abc";
     await svc.subscribe("u1", { endpoint, keys: { p256dh: "p", auth: "a" } }, null);

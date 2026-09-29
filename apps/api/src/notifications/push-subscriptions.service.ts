@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { schema, type Db } from "@uns/database";
 import type { z } from "zod";
 import type { pushSubscriptionSchema } from "@uns/contracts";
@@ -8,6 +8,10 @@ import { ApiErrors } from "../common/api-error.js";
 import { isAllowedPushEndpoint } from "./push-endpoint-allowlist.js";
 
 export type PushSubscriptionInput = z.infer<typeof pushSubscriptionSchema>;
+
+/** A user can't usefully have more devices subscribed than this — beyond it, the oldest
+ *  subscriptions are dropped so a single account can't accumulate an unbounded fan-out list. */
+const MAX_SUBSCRIPTIONS_PER_USER = 10;
 
 @Injectable()
 export class PushSubscriptionsService {
@@ -23,8 +27,23 @@ export class PushSubscriptionsService {
       .values({ userId, endpoint: input.endpoint, p256dh: input.keys.p256dh, auth: input.keys.auth, userAgent })
       .onConflictDoUpdate({
         target: schema.pushSubscriptions.endpoint,
-        set: { userId, p256dh: input.keys.p256dh, auth: input.keys.auth, userAgent },
+        set: { userId, p256dh: input.keys.p256dh, auth: input.keys.auth, userAgent, failureCount: 0 },
       });
+
+    await this.enforceSubscriptionCap(userId);
+  }
+
+  /** Deletes the oldest subscriptions for `userId` beyond `MAX_SUBSCRIPTIONS_PER_USER`. */
+  private async enforceSubscriptionCap(userId: string): Promise<void> {
+    const subs = await this.db
+      .select({ id: schema.pushSubscriptions.id })
+      .from(schema.pushSubscriptions)
+      .where(eq(schema.pushSubscriptions.userId, userId))
+      .orderBy(desc(schema.pushSubscriptions.createdAt));
+    if (subs.length <= MAX_SUBSCRIPTIONS_PER_USER) return;
+
+    const staleIds = subs.slice(MAX_SUBSCRIPTIONS_PER_USER).map((s) => s.id);
+    await this.db.delete(schema.pushSubscriptions).where(inArray(schema.pushSubscriptions.id, staleIds));
   }
 
   async unsubscribe(userId: string, endpoint: string): Promise<void> {

@@ -1,4 +1,4 @@
-import { boolean, index, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
 
 /**
@@ -34,6 +34,10 @@ export const pushSubscriptions = pgTable(
     userAgent: text("user_agent"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     lastSuccessAt: timestamp("last_success_at", { withTimezone: true }),
+    // Consecutive delivery failures that weren't a clean 404/410 (those delete the row outright) —
+    // reset to 0 on any successful delivery, and the row is deleted once this hits 3 so a
+    // permanently-broken subscription (bad keys, encryption errors, ...) doesn't get retried forever.
+    failureCount: integer("failure_count").notNull().default(0),
   },
   (table) => [uniqueIndex("uq_push_subscriptions_endpoint").on(table.endpoint), index("idx_push_subscriptions_user").on(table.userId)],
 );

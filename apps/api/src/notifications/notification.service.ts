@@ -1,15 +1,24 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { and, eq, gt, inArray, ne } from "drizzle-orm";
+import { randomInt } from "node:crypto";
+import { and, eq, gt, inArray, lt, ne } from "drizzle-orm";
 import { schema, type Db } from "@uns/database";
 import { DB } from "../database/database.module.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { PushService } from "./push.service.js";
 import { seatLabel } from "./seat-label.js";
+import { mapWithConcurrency } from "./concurrency.js";
 
 /** At most one "seat freed" push per user per this many minutes. */
 const SEAT_FREED_THROTTLE_MIN = 10;
 /** At most one "admin present" push per user per this many minutes. */
 const ADMIN_PRESENT_THROTTLE_MIN = 60;
+/** At most this many pushes are sent concurrently per notification batch. */
+const SEND_CONCURRENCY = 10;
+/** The room-wide "admin present" banner/push fires this long after the check-in, at minimum... */
+const ADMIN_PRESENT_DELAY_MIN_MS = 2 * 60_000;
+/** ...and at most this long — a random delay in between so the timing can't be correlated back to
+ *  a specific check-in/seat (07 §privacy: presence must never pinpoint the admin). */
+const ADMIN_PRESENT_DELAY_MAX_MS = 5 * 60_000;
 
 export interface SeatFreedRecipient {
   userId: string;
@@ -26,11 +35,59 @@ export interface SeatFreedRecipient {
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
 
+  /** One pending "admin present" timer per admin userId — a second fresh check-in by the same
+   *  admin before the first timer fires reschedules it instead of stacking a second banner/push. */
+  private readonly adminPresentTimers = new Map<string, NodeJS.Timeout>();
+
   constructor(
     @Inject(DB) private readonly db: Db,
     @Inject(PushService) private readonly push: PushService,
     @Inject(RoomStateService) private readonly roomState: RoomStateService,
   ) {}
+
+  /**
+   * Schedules the room-wide admin-present banner + throttled push for a random 2-5 minutes from
+   * now, so the timing can never be correlated back to `adminUserId`'s specific check-in. `emitBanner`
+   * (the caller's `RoomRealtimeGateway.emitAdminPresent`) is only invoked if, once the timer fires,
+   * the admin still holds an ACTIVE check-in in `roomId` — if they've since checked out, nothing
+   * happens. The timer is `unref`'d so it never keeps the process alive on its own.
+   */
+  scheduleAdminPresent(roomId: string, adminUserId: string, emitBanner: () => void): void {
+    const existing = this.adminPresentTimers.get(adminUserId);
+    if (existing) clearTimeout(existing);
+
+    const delayMs = randomInt(ADMIN_PRESENT_DELAY_MIN_MS, ADMIN_PRESENT_DELAY_MAX_MS);
+    const timer = setTimeout(() => {
+      this.adminPresentTimers.delete(adminUserId);
+      this.fireAdminPresent(roomId, adminUserId, emitBanner).catch((err) =>
+        this.logger.error("Failed to fire scheduled admin-present alert", err instanceof Error ? err.stack : String(err)),
+      );
+    }, delayMs);
+    timer.unref?.();
+    this.adminPresentTimers.set(adminUserId, timer);
+  }
+
+  private async fireAdminPresent(roomId: string, adminUserId: string, emitBanner: () => void): Promise<void> {
+    if (!(await this.hasActiveCheckIn(adminUserId, roomId))) return;
+    emitBanner();
+    await this.notifyAdminPresent(roomId, adminUserId);
+  }
+
+  private async hasActiveCheckIn(userId: string, roomId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ userId: schema.checkIns.userId })
+      .from(schema.checkIns)
+      .where(
+        and(
+          eq(schema.checkIns.userId, userId),
+          eq(schema.checkIns.roomId, roomId),
+          eq(schema.checkIns.status, "ACTIVE"),
+          gt(schema.checkIns.expiresAt, new Date()),
+        ),
+      )
+      .limit(1);
+    return row !== undefined;
+  }
 
   /**
    * Called after a `RoomStateService.recomputeSeats` batch is broadcast — the caller (the realtime
@@ -67,7 +124,7 @@ export class NotificationService {
       .where(and(eq(schema.notificationPreferences.adminPresent, true), ne(schema.notificationPreferences.userId, adminUserId)));
     if (subscribers.length === 0) return;
 
-    const toNotify = await this.filterThrottled(
+    const toNotify = await this.claimThrottle(
       subscribers.map((s) => s.userId),
       "ADMIN_PRESENT",
       ADMIN_PRESENT_THROTTLE_MIN,
@@ -75,17 +132,14 @@ export class NotificationService {
     if (toNotify.length === 0) return;
 
     const url = await this.roomUrl(roomId);
-    await Promise.all(
-      toNotify.map((userId) =>
-        this.push.sendToUser(userId, {
-          title: "Hay un admin en la sala",
-          body: "Si tenés un problema con un lugar, podés pedir ayuda.",
-          url,
-          tag: "admin-present",
-        }),
-      ),
+    await mapWithConcurrency(toNotify, SEND_CONCURRENCY, (userId) =>
+      this.push.sendToUser(userId, {
+        title: "Hay un admin en la sala",
+        body: "Si tenés un problema con un lugar, podés pedir ayuda.",
+        url,
+        tag: "admin-present",
+      }),
     );
-    await this.markNotified(toNotify, "ADMIN_PRESENT");
   }
 
   /** Users subscribed to `preferenceKey` who don't currently hold an active check-in in `roomId`. */
@@ -105,7 +159,7 @@ export class NotificationService {
   }
 
   private async sendSeatFreedPush(roomId: string, freedSeatIds: string[], recipients: string[]): Promise<void> {
-    const toNotify = await this.filterThrottled(recipients, "SEAT_FREED", SEAT_FREED_THROTTLE_MIN);
+    const toNotify = await this.claimThrottle(recipients, "SEAT_FREED", SEAT_FREED_THROTTLE_MIN);
     if (toNotify.length === 0) return;
 
     const [slug, summary] = await Promise.all([this.roomSlug(roomId), this.roomState.getRoomSummary(roomId)]);
@@ -115,8 +169,7 @@ export class NotificationService {
     const body = single ? `${single} — quedan ${summary.free} libres en la sala` : `Quedan ${summary.free} libres en la sala`;
     const url = single ? `/sala/${slug}?seat=${freedSeatIds[0]}` : `/sala/${slug}`;
 
-    await Promise.all(toNotify.map((userId) => this.push.sendToUser(userId, { title, body, url, tag: "seat-freed" })));
-    await this.markNotified(toNotify, "SEAT_FREED");
+    await mapWithConcurrency(toNotify, SEND_CONCURRENCY, (userId) => this.push.sendToUser(userId, { title, body, url, tag: "seat-freed" }));
   }
 
   private async describeSeat(seatId: string): Promise<string> {
@@ -139,33 +192,26 @@ export class NotificationService {
     return `/sala/${await this.roomSlug(roomId)}`;
   }
 
-  private async filterThrottled(userIds: string[], type: string, minutes: number): Promise<string[]> {
+  /**
+   * Atomically claims the right to notify each of `userIds` of `type`: a single upsert that only
+   * "wins" (and is returned) for a user with no throttle row yet, or whose existing row is older
+   * than `minutes` ago — done as one `INSERT ... ON CONFLICT ... WHERE ... RETURNING` so two
+   * concurrent calls (e.g. two seats freeing in the same instant) can't both read "not throttled"
+   * and both send. Callers must only send to the ids this returns.
+   */
+  private async claimThrottle(userIds: string[], type: string, minutes: number): Promise<string[]> {
     if (userIds.length === 0) return [];
-    const cutoff = new Date(Date.now() - minutes * 60_000);
-    const rows = await this.db
-      .select({ userId: schema.notificationThrottles.userId })
-      .from(schema.notificationThrottles)
-      .where(
-        and(
-          eq(schema.notificationThrottles.type, type),
-          inArray(schema.notificationThrottles.userId, userIds),
-          gt(schema.notificationThrottles.lastNotifiedAt, cutoff),
-        ),
-      );
-    const throttled = new Set(rows.map((r) => r.userId));
-    return userIds.filter((id) => !throttled.has(id));
-  }
-
-  private async markNotified(userIds: string[], type: string): Promise<void> {
     const now = new Date();
-    for (const userId of userIds) {
-      await this.db
-        .insert(schema.notificationThrottles)
-        .values({ userId, type, lastNotifiedAt: now })
-        .onConflictDoUpdate({
-          target: [schema.notificationThrottles.userId, schema.notificationThrottles.type],
-          set: { lastNotifiedAt: now },
-        });
-    }
+    const cutoff = new Date(now.getTime() - minutes * 60_000);
+    const rows = await this.db
+      .insert(schema.notificationThrottles)
+      .values(userIds.map((userId) => ({ userId, type, lastNotifiedAt: now })))
+      .onConflictDoUpdate({
+        target: [schema.notificationThrottles.userId, schema.notificationThrottles.type],
+        set: { lastNotifiedAt: now },
+        where: lt(schema.notificationThrottles.lastNotifiedAt, cutoff),
+      })
+      .returning({ userId: schema.notificationThrottles.userId });
+    return rows.map((r) => r.userId);
   }
 }

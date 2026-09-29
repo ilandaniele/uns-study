@@ -78,9 +78,9 @@ export class CheckInsController {
     });
     await this.realtime.broadcastSeatChanges(body.roomId, changes);
     if (adminPresent) {
-      this.realtime.emitAdminPresent(body.roomId, { since: checkIn.startedAt });
-      // Fire-and-forget — push delivery must never delay the check-in response.
-      void this.notifications.notifyAdminPresent(body.roomId, user.id);
+      // Delayed by `NotificationService` itself (random 2-5 min, only if still checked in when it
+      // fires) so the banner/push timing can't be correlated back to this specific check-in.
+      this.notifications.scheduleAdminPresent(body.roomId, user.id, () => this.realtime.emitAdminPresent(body.roomId, {}));
     }
     return checkIn;
   }

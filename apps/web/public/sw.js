@@ -3,7 +3,7 @@
 // anyway) or any cross-origin request — PostgreSQL/the API stay the single source of truth.
 // Bump CACHE_VERSION whenever this file (or what it caches) changes — `activate` below deletes any
 // cache under the old name, so a stale shell/build asset can never survive a deploy.
-const CACHE_VERSION = "v3";
+const CACHE_VERSION = "v4";
 const CACHE_NAME = `uns-study-shell-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
@@ -52,6 +52,19 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
+// Only ever navigate to a same-origin, relative path — a push payload or a notification's stored
+// `data.url` must never be trusted to point somewhere off-origin (e.g. if a payload were ever
+// malformed or tampered with in transit).
+function toSameOriginPath(rawUrl) {
+  try {
+    const u = new URL(rawUrl, self.location.origin);
+    if (u.origin !== self.location.origin) return "/";
+    return u.pathname + u.search;
+  } catch {
+    return "/";
+  }
+}
+
 // Web Push (see apps/api/src/notifications). Payload is always our own JSON
 // `{ title, body, url, tag }` — the API never sends anything else through this channel.
 self.addEventListener("push", (event) => {
@@ -68,7 +81,7 @@ self.addEventListener("push", (event) => {
       body,
       tag, // same tag replaces any earlier notification of the same kind instead of stacking
       icon: "/icons/icon-192.png",
-      data: { url },
+      data: { url: toSameOriginPath(url) },
     }),
   );
 });
@@ -76,12 +89,12 @@ self.addEventListener("push", (event) => {
 // Focuses an already-open tab on the notification's `url` if one exists, otherwise opens a new one.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = event.notification.data?.url ?? "/";
+  const targetUrl = toSameOriginPath(event.notification.data?.url ?? "/");
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
       for (const client of clients) {
         if ("focus" in client) {
-          client.navigate?.(targetUrl);
+          if (client.navigate) await client.navigate(targetUrl);
           return client.focus();
         }
       }
