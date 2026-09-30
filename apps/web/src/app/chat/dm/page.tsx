@@ -1,14 +1,28 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { Avatar } from "@/components/Avatar";
 import { formatMessageTime } from "@/features/chat/grouping";
 import { useConversations } from "@/features/chat/useConversations";
 import { useSession } from "@/lib/auth-client";
+import { prefetchHandlers, prefetchWhenIdle } from "@/lib/prefetch";
+
+/** Threads warmed in the background once the list loads (unread ones first). */
+const IDLE_PREFETCH_THREADS = 3;
 
 export default function ConversationsPage() {
   const { data: session, isPending } = useSession();
   const { conversations, loading, error } = useConversations();
+
+  const topThreads = [...conversations]
+    .sort((a, b) => Number(b.unread > 0) - Number(a.unread > 0))
+    .slice(0, IDLE_PREFETCH_THREADS)
+    .map((c) => `/chat/dm/${c.id}`)
+    .join(" ");
+  useEffect(() => {
+    if (topThreads) prefetchWhenIdle(topThreads.split(" "));
+  }, [topThreads]);
 
   if (isPending) {
     return <main className="p-6 text-center text-muted">Cargando…</main>;
@@ -43,6 +57,7 @@ export default function ConversationsPage() {
             <li key={conversation.id}>
               <Link
                 href={`/chat/dm/${conversation.id}`}
+                {...prefetchHandlers(`/chat/dm/${conversation.id}`)}
                 className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface-2)]"
               >
                 <Avatar

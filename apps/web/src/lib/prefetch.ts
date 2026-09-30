@@ -10,6 +10,7 @@ export const DataPaths = {
   people: (roomSlug: string) => `/api/v1/rooms/${roomSlug}/people`,
   roomChat: (roomSlug: string) => `/api/v1/rooms/${roomSlug}/messages`,
   conversations: () => "/api/v1/conversations",
+  dmThread: (conversationId: string) => `/api/v1/conversations/${conversationId}/messages`,
 } as const;
 
 /** The ranking view opens on this period/category. */
@@ -21,6 +22,8 @@ function pathsFor(href: string): string[] {
   if (href.startsWith("/ranking")) return [DataPaths.rankings(ROOM_SLUG, DEFAULT_RANKING.period, DEFAULT_RANKING.category)];
   if (!signedIn) return [];
   if (href.startsWith("/personas")) return [DataPaths.people(ROOM_SLUG)];
+  const thread = /^\/chat\/dm\/([^/?#]+)/.exec(href);
+  if (thread) return [DataPaths.dmThread(thread[1]!)];
   if (href.startsWith("/chat/dm")) return [DataPaths.conversations()];
   if (href.startsWith("/chat")) return [DataPaths.roomChat(ROOM_SLUG)];
   return [];
@@ -37,6 +40,24 @@ export function prefetchHandlers(href: string) {
   return { onMouseEnter: run, onTouchStart: run, onFocus: run };
 }
 
+function slowConnection(): boolean {
+  const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  return Boolean(connection?.saveData || connection?.effectiveType === "2g" || connection?.effectiveType === "slow-2g");
+}
+
+function whenIdle(run: () => void): void {
+  if ("requestIdleCallback" in window) window.requestIdleCallback(run, { timeout: 5000 });
+  else setTimeout(run, 3000);
+}
+
+/** When idle, warms the data behind the given links (e.g. the top conversations of the DM list). */
+export function prefetchWhenIdle(hrefs: string[]): void {
+  if (typeof window === "undefined" || hrefs.length === 0 || slowConnection()) return;
+  whenIdle(() => {
+    for (const href of hrefs) prefetchRouteData(href);
+  });
+}
+
 let idleScheduled = false;
 
 /**
@@ -45,13 +66,10 @@ let idleScheduled = false;
  */
 export function prefetchLikelyNextWhenIdle(): void {
   if (idleScheduled || typeof window === "undefined") return;
-  const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
-  if (connection?.saveData || connection?.effectiveType === "2g" || connection?.effectiveType === "slow-2g") return;
+  if (slowConnection()) return;
   idleScheduled = true;
-  const run = () => {
+  whenIdle(() => {
     prefetchRouteData("/ranking");
     prefetchRouteData("/chat");
-  };
-  if ("requestIdleCallback" in window) window.requestIdleCallback(run, { timeout: 5000 });
-  else setTimeout(run, 3000);
+  });
 }

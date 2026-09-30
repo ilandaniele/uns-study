@@ -1,14 +1,7 @@
-import type { ChatMessageDto } from "@uns/contracts";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import { mergeMessages } from "./grouping";
 
-vi.mock("@/lib/api", () => ({}));
-vi.mock("@/lib/socket", () => ({}));
-vi.mock("@/lib/prefetch", () => ({ DataPaths: {} }));
-vi.mock("@/lib/query-cache", () => ({}));
-
-const { mergeMessages } = await import("./useRoomChat");
-
-const msg = (id: string, createdAt: string, deleted = false) => ({ id, createdAt, deleted }) as unknown as ChatMessageDto;
+const msg = (id: string, createdAt: string, deleted = false) => ({ id, createdAt, deleted });
 
 describe("mergeMessages", () => {
   it("fills the gap between the history page and the realtime join, oldest first", () => {

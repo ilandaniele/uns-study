@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { ChatComposer } from "@/features/chat/ChatComposer";
 import { ChatMessageList } from "@/features/chat/ChatMessageList";
 import { IdentityHelp } from "@/features/chat/IdentityHelp";
 import { useBlockedUsers } from "@/features/chat/useBlockedUsers";
 import { useRoomChat } from "@/features/chat/useRoomChat";
 import { useSession } from "@/lib/auth-client";
+import { prefetchHandlers, prefetchWhenIdle } from "@/lib/prefetch";
 
 /** MVP has a single study room (`principal`), which owns the one global chat (`#sala-principal`). */
 const ROOM_SLUG = "principal";
@@ -51,6 +53,9 @@ function ChatRoom({ currentUserId }: { currentUserId: string }) {
     remove,
   } = useRoomChat(ROOM_SLUG, blockedIds);
 
+  // Private messages are the usual next stop from the room chat.
+  useEffect(() => prefetchWhenIdle(["/chat/dm"]), []);
+
   return (
     <div className="mx-auto flex w-full max-w-5xl gap-6 lg:px-4">
       <main className="flex h-[calc(100dvh_-_57px_-_56px_-_env(safe-area-inset-bottom))] min-w-0 flex-1 flex-col lg:h-[calc(100dvh_-_57px)]">
@@ -69,6 +74,7 @@ function ChatRoom({ currentUserId }: { currentUserId: string }) {
           </div>
           <Link
             href="/chat/dm"
+            {...prefetchHandlers("/chat/dm")}
             className="rounded-full border border-app px-3 py-1.5 text-sm font-medium text-main hover:bg-[var(--surface-2)]"
           >
             Mensajes privados

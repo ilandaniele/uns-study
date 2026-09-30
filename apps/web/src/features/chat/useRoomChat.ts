@@ -7,6 +7,7 @@ import { apiDelete, apiFetch, apiPost, ApiRequestError } from "@/lib/api";
 import { DataPaths } from "@/lib/prefetch";
 import { fetchCached, peekCached } from "@/lib/query-cache";
 import { getSocket, joinChat, leaveChat } from "@/lib/socket";
+import { mergeMessages } from "./grouping";
 
 export interface UseRoomChatResult {
   /** Ascending (oldest first), ready to render top-to-bottom. Messages from blocked authors are already removed. */
@@ -27,13 +28,6 @@ export interface UseRoomChatResult {
  * `blockedIds` hides messages from authors the caller has blocked (the API only filters
  * blocked authors out of history pages, not realtime broadcasts, so this covers both).
  */
-/** Union of the shown messages and a fresh page (newer copy wins, e.g. deletions), oldest first. */
-export function mergeMessages(prev: ChatMessageDto[], page: ChatMessageDto[]): ChatMessageDto[] {
-  const byId = new Map(prev.map((m) => [m.id, m]));
-  for (const m of page) byId.set(m.id, m);
-  return [...byId.values()].sort((x, y) => (x.createdAt === y.createdAt ? x.id.localeCompare(y.id) : x.createdAt < y.createdAt ? -1 : 1));
-}
-
 export function useRoomChat(roomSlug: string, blockedIds: Set<string>): UseRoomChatResult {
   const historyPath = DataPaths.roomChat(roomSlug);
   // A cached/prefetched first page renders instantly; the request below always revalidates it.

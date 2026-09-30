@@ -68,3 +68,13 @@ export function daySeparatorFlags(messages: { createdAt: string }[]): boolean[] 
     return formatDaySeparator(message.createdAt) !== formatDaySeparator(messages[index - 1]!.createdAt);
   });
 }
+
+/**
+ * Union of the shown messages and a freshly fetched page (the fresh copy wins, e.g. a deletion),
+ * oldest first. Merging instead of replacing keeps realtime messages that arrived mid-request.
+ */
+export function mergeMessages<T extends { id: string; createdAt: string }>(prev: T[], page: T[]): T[] {
+  const byId = new Map(prev.map((m) => [m.id, m]));
+  for (const m of page) byId.set(m.id, m);
+  return [...byId.values()].sort((x, y) => (x.createdAt === y.createdAt ? x.id.localeCompare(y.id) : x.createdAt < y.createdAt ? -1 : 1));
+}

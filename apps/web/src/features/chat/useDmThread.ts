@@ -4,7 +4,10 @@ import { SocketEvents } from "@uns/contracts/events";
 import type { DirectMessageDto, Page } from "@uns/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch, apiPost, ApiRequestError } from "@/lib/api";
+import { DataPaths } from "@/lib/prefetch";
+import { fetchCached, peekCached } from "@/lib/query-cache";
 import { getSocket } from "@/lib/socket";
+import { mergeMessages } from "./grouping";
 
 export interface UseDmThreadResult {
   /** Ascending (oldest first). */
@@ -20,9 +23,12 @@ export interface UseDmThreadResult {
 
 /** Loads + paginates a DM thread and keeps it live via `dm:message-created`; marks it read on load and on new messages. */
 export function useDmThread(conversationId: string): UseDmThreadResult {
-  const [messages, setMessages] = useState<DirectMessageDto[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const threadPath = DataPaths.dmThread(conversationId);
+  // A cached/prefetched first page renders instantly; the request below always revalidates it.
+  const [initial] = useState(() => peekCached<Page<DirectMessageDto>>(threadPath));
+  const [messages, setMessages] = useState<DirectMessageDto[]>(() => (initial ? [...initial.items].reverse() : []));
+  const [nextCursor, setNextCursor] = useState<string | null>(initial?.nextCursor ?? null);
+  const [loading, setLoading] = useState(!initial);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
@@ -35,10 +41,12 @@ export function useDmThread(conversationId: string): UseDmThreadResult {
 
   useEffect(() => {
     let cancelled = false;
-    apiFetch<Page<DirectMessageDto>>(`/api/v1/conversations/${conversationId}/messages`)
+    // maxAge 0: an old page is only for the instant first paint; a prefetch still in flight is shared.
+    fetchCached<Page<DirectMessageDto>>(threadPath)
       .then((page) => {
         if (cancelled) return;
-        setMessages([...page.items].reverse());
+        // Merge rather than replace: keeps realtime messages that arrived while this page was loading.
+        setMessages((prev) => mergeMessages(prev, page.items));
         setNextCursor(page.nextCursor);
         setError(null);
         markRead();
@@ -52,7 +60,7 @@ export function useDmThread(conversationId: string): UseDmThreadResult {
     return () => {
       cancelled = true;
     };
-  }, [conversationId, markRead]);
+  }, [threadPath, markRead]);
 
   const loadMore = useCallback(() => {
     if (!nextCursor || loadingMore) return;
