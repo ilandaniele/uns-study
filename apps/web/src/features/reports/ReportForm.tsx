@@ -187,7 +187,7 @@ export function ReportForm({ reportedUserId, context, contextMessageId, roomId }
       <button
         type="submit"
         disabled={pending}
-        className="min-h-11 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+        className="min-h-11 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
       >
         {pending ? "Enviando…" : "Enviar reporte"}
       </button>

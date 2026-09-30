@@ -8,25 +8,39 @@
   --color-uncertain: #d9773a;
   --color-saved: #eab308;
   --color-unknown: #94a3b8;
-  --color-my-seat: #2563eb;
-  --color-primary: #2563eb;
-  --color-primary-dark: #1d4ed8;
+  --color-my-seat: #0f6e7e;
+  /* Brand accent: "petróleo" — a deep blue-green ink, distinct from every seat-status hue.
+     Fixed in both themes so filled buttons keep white-text contrast (6.0:1). */
+  --color-primary: #0f6e7e;
+  --color-primary-dark: #0a5562;
+
+  /* One radius scale for the whole app: tight, signage-like corners instead of soft pills.
+     Controls 6–8px, cards/sheets 10–12px. `rounded-full` stays for avatars and dots. */
+  --radius-md: 5px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --radius-2xl: 10px;
+  --radius-3xl: 12px;
+
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
-  --ink: #0f172a;
-  --muted: #5b6478;
-  --bg: #f4f6fa;
-  --surface: #ffffff;
-  --surface-2: #eef1f6;
-  --border: #e3e8f0;
-  --border-strong: #cbd3e1;
+  /* Cool graphite on a grey-green "pizarra clara" paper — no navy, no cream. */
+  --ink: #131816;
+  --muted: #535b57;
+  --bg: #eceee9;
+  --surface: #fbfbf9;
+  --surface-2: #e3e6e0;
+  --border: #d6dad3;
+  --border-strong: #b9bfb6;
   --text: var(--ink);
   --text-muted: var(--muted);
-  --text-faint: #8994ac;
+  --text-faint: #7c847f;
 
-  --primary: #2563eb;
-  --primary-dark: #1d4ed8;
+  --primary: #0f6e7e;
+  --primary-dark: #0a5562;
+  --shadow-tint: 19 24 22;
 
   --oak: #c8955c;
   --oak-border: #a56a3a;
@@ -39,12 +53,12 @@
   --room-floor-seam: #a9766a;
   --room-aisle: #e6c0b5;
   --room-table-border: var(--oak-border);
-  --room-table-label-bg: #0f172a;
+  --room-table-label-bg: #131816;
   --room-table-label-text: #ffffff;
   --room-bar-border: #a56a3a;
   --room-bar-label-bg: #ffffff;
-  --room-bar-label-text: #0f172a;
-  --room-label: #5b6478;
+  --room-bar-label-text: #131816;
+  --room-label: #535b57;
   --room-window-glass-a: #d6eaf8;
   --room-window-glass-b: #9fcbe8;
   --room-window-frame: #fbf6e8;
@@ -64,23 +78,24 @@
   --seat-uncertain: #d9773a;
   --seat-saved: #eab308;
   --seat-unknown: #7d6570;
-  --seat-mine: #2563eb;
+  --seat-mine: #0f6e7e;
 }
 
 .dark {
-  --ink: #e6ebf5;
-  --muted: #9aa6bd;
-  --bg: #0b1120;
-  --surface: #111a2e;
-  --surface-2: #182238;
-  --border: #243049;
-  --border-strong: #33415f;
+  --ink: #e7ebe8;
+  --muted: #a0aaa5;
+  --bg: #0d1110;
+  --surface: #151a19;
+  --surface-2: #1d2422;
+  --border: #29312e;
+  --border-strong: #3a4441;
   --text: var(--ink);
   --text-muted: var(--muted);
-  --text-faint: #6f7c98;
+  --text-faint: #6f7a75;
 
-  --primary: #60a5fa;
-  --primary-dark: #93c5fd;
+  --primary: #5fc4d3;
+  --primary-dark: #8ed7e2;
+  --shadow-tint: 0 0 0;
 
   --oak: #7a5a37;
   --oak-border: #9a774a;
@@ -93,12 +108,12 @@
   --room-floor-seam: #4a302c;
   --room-aisle: #7d5a52;
   --room-table-border: var(--oak-border);
-  --room-table-label-bg: #0b1120;
+  --room-table-label-bg: #0d1110;
   --room-table-label-text: #f2e3c8;
   --room-bar-border: #9a774a;
-  --room-bar-label-bg: #182238;
+  --room-bar-label-bg: #1d2422;
   --room-bar-label-text: #f2e3c8;
-  --room-label: #9fb0c9;
+  --room-label: #a0aaa5;
   --room-window-glass-a: #b9d6ea;
   --room-window-glass-b: #86b4d4;
   --room-window-frame: #e8dfc8;
@@ -109,7 +124,7 @@
   --room-table-strip: #f4f2ee;
   --room-table-strip-edge: #c9c4ba;
   --room-dark-overlay: 0.35;
-  --seat-stroke: #0b1120;
+  --seat-stroke: #0d1110;
   --seat-ring: #7a4f2d;
   --seat-backrest: #4a2f1d;
 
@@ -118,7 +133,7 @@
   --seat-uncertain: #e8925a;
   --seat-saved: #fde047;
   --seat-unknown: #7a6270;
-  --seat-mine: #60a5fa;
+  --seat-mine: #5fc4d3;
 }
 
 html,
@@ -134,10 +149,52 @@ body {
 
 .font-display {
   font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  font-stretch: 118%;
+  letter-spacing: -0.01em;
+}
+
+/* Signage caps: small expanded uppercase labels (eyebrows, board labels, nav). */
+.label-caps {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  font-stretch: 112%;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
 }
 
 .font-mono {
   font-family: var(--font-mono), ui-monospace, "SFMono-Regular", monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tactile press feedback on buttons and button-like links. */
+button:not(:disabled):active,
+a[class*="bg-primary"]:active {
+  transform: translateY(1px);
+}
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled):active,
+  a[class*="bg-primary"]:active {
+    transform: none;
+  }
+}
+
+/* Tinted, low shadows — never pure-black glow on the light paper. */
+.shadow-sm {
+  box-shadow: 0 1px 2px rgb(var(--shadow-tint) / 0.08);
+}
+.shadow,
+.shadow-md {
+  box-shadow: 0 1px 2px rgb(var(--shadow-tint) / 0.08), 0 4px 12px -4px rgb(var(--shadow-tint) / 0.14);
+}
+.shadow-lg,
+.shadow-xl {
+  box-shadow: 0 2px 4px rgb(var(--shadow-tint) / 0.08), 0 16px 32px -12px rgb(var(--shadow-tint) / 0.28);
 }
 
 /*

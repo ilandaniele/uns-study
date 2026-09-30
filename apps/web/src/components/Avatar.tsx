@@ -7,7 +7,7 @@ import { OccupantAvatar } from "@/features/room/OccupantAvatar";
  * cue, not a UI surface.
  */
 const AVATAR_PALETTE = [
-  "#2563EB", // blue
+  "#0f6e7e", // petrol
   "#7C3AED", // violet
   "#DB2777", // pink
   "#DC2626", // red

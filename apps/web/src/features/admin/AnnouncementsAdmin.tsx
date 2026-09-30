@@ -95,7 +95,7 @@ export function AnnouncementsAdmin() {
             <div className="flex items-center justify-between gap-2">
               <span className="font-semibold text-main">{item.title}</span>
               <span
-                className="inline-flex w-fit items-center gap-1.5 rounded-full border border-app px-2.5 py-0.5 text-xs font-semibold"
+                className="inline-flex w-fit items-center gap-1.5 rounded-md border border-app px-2.5 py-0.5 text-xs font-semibold"
                 style={{ color: item.active ? "var(--seat-free)" : "var(--text-faint)" }}
               >
                 <span
@@ -111,14 +111,14 @@ export function AnnouncementsAdmin() {
               <button
                 type="button"
                 onClick={() => void toggleActive(item)}
-                className="rounded-full border border-app px-3 py-1 text-xs font-medium text-muted hover:bg-[var(--surface-2)] hover:text-main"
+                className="rounded-md border border-app px-3 py-1 text-xs font-medium text-muted hover:bg-[var(--surface-2)] hover:text-main"
               >
                 {item.active ? "Desactivar" : "Activar"}
               </button>
               <button
                 type="button"
                 onClick={() => void remove(item)}
-                className="rounded-full border border-app px-3 py-1 text-xs font-medium text-[var(--seat-occupied)] hover:bg-[var(--surface-2)]"
+                className="rounded-md border border-app px-3 py-1 text-xs font-medium text-[var(--seat-occupied)] hover:bg-[var(--surface-2)]"
               >
                 Eliminar
               </button>

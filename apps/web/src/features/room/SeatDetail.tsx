@@ -110,7 +110,7 @@ export function SeatDetail({
     <div className="flex h-full flex-col gap-4 p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-display text-xl font-semibold tracking-tight text-main">{label}</p>
+          <p className="font-display text-xl font-bold text-main">{label}</p>
           <StatusPill status={seat.status} isMySeat={isMySeat} />
           {!isMySeat && occupant ? (
             <p className="mt-1.5 flex items-center gap-2 text-sm text-muted">
@@ -145,7 +145,7 @@ export function SeatDetail({
           type="button"
           onClick={onClose}
           aria-label="Cerrar"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted hover:bg-[var(--surface-2)] hover:text-main"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-[var(--surface-2)] hover:text-main"
         >
           <XIcon aria-hidden="true" size={20} weight="regular" />
         </button>
@@ -179,7 +179,7 @@ export function SeatDetail({
             </QuietDangerButton>
             {isPhotoVerified && myCheckIn?.verificationExpiresAt ? (
               <p
-                className="inline-flex w-fit items-center gap-1.5 rounded-full border border-app px-2.5 py-1 text-xs font-semibold"
+                className="inline-flex w-fit items-center gap-1.5 rounded-md border border-app px-2.5 py-1 text-xs font-semibold"
                 style={{ color: "var(--primary)" }}
               >
                 <ShieldCheckIcon aria-hidden="true" size={14} weight="fill" />
@@ -200,7 +200,8 @@ export function SeatDetail({
             <PrimaryButton onClick={() => onCheckIn(durationMinutes)} disabled={pending}>
               {locating ? "Buscando tu ubicación…" : "Estoy acá"}
             </PrimaryButton>
-            <div className="flex flex-wrap gap-2">
+            <p className="label-caps mt-2 text-muted">¿Cómo ves este lugar?</p>
+            <div className="grid grid-cols-3 gap-2">
               <OutlineButton tone="free" onClick={onMarkFree} disabled={pending}>
                 {locating ? "Buscando tu ubicación…" : "Está libre"}
               </OutlineButton>
@@ -260,10 +261,9 @@ function StatusPill({ status, isMySeat }: { status: SeatDto["status"]; isMySeat:
       ];
   return (
     <p
-      className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-app px-2.5 py-1 text-xs font-semibold"
-      style={{ color }}
+      className="mt-1.5 inline-flex items-center gap-1.5 rounded-md border border-app bg-[var(--surface-2)] px-2 py-1 text-xs font-semibold text-main"
     >
-      <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+      <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: color }} />
       {isMySeat ? "Tu lugar" : statusLabel(status)}
     </p>
   );
@@ -283,7 +283,7 @@ function PrimaryButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="min-h-11 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+      className="min-h-12 w-full rounded-xl bg-primary px-4 py-3 text-[15px] font-bold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
     >
       {children}
     </button>
@@ -307,9 +307,10 @@ function OutlineButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      style={{ borderColor: color, color }}
-      className="min-h-11 min-w-[6.5rem] flex-1 rounded-xl border-2 bg-transparent px-3 py-2.5 text-sm font-semibold disabled:opacity-50"
+      className="flex min-h-12 flex-col items-center justify-center gap-1.5 rounded-xl border border-app bg-[var(--surface-2)] px-2 py-2 text-[13px] font-semibold leading-tight text-main transition-colors hover:border-[var(--border-strong)] disabled:opacity-50"
     >
+      {/* Status color lives in the swatch, not the text, so every label keeps full contrast. */}
+      <span aria-hidden="true" className="h-2 w-6 rounded-sm" style={{ backgroundColor: color }} />
       {children}
     </button>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpenTextIcon } from "@phosphor-icons/react/dist/ssr";
+import { ArmchairIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { prefetchHandlers } from "@/lib/prefetch";
 import { usePathname } from "next/navigation";
@@ -35,15 +35,20 @@ export function Header() {
   }
 
   return (
-    <header className="flex items-center justify-between gap-2 border-b border-app bg-surface px-4 py-3">
+    <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-app bg-surface/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-surface/85">
       <div className="flex min-w-0 items-center gap-3">
-        <Link href="/sala/principal" className="flex shrink-0 items-center gap-2 whitespace-nowrap font-display text-[17px] font-semibold text-main sm:text-lg">
-          <BookOpenTextIcon aria-hidden="true" size={24} weight="duotone" className="text-primary" />
-          Sala de Estudio UNS
+        <Link href="/sala/principal" aria-label="Sala de Estudio UNS" className="flex shrink-0 items-center gap-2.5 whitespace-nowrap text-main">
+          <span aria-hidden="true" className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-white">
+            <ArmchairIcon size={20} weight="bold" />
+          </span>
+          <span aria-hidden="true" className="flex flex-col leading-none">
+            <span className="font-display text-[15px] font-extrabold uppercase tracking-[0.01em]">Sala de Estudio</span>
+            <span className="label-caps mt-1 !text-[10px] text-muted">UNS · Bahía Blanca</span>
+          </span>
         </Link>
       </div>
 
-      <nav className="hidden items-center gap-5 text-sm font-medium lg:flex">
+      <nav className="hidden items-center gap-1 text-sm font-semibold lg:flex">
         {items.map((item) => {
           const active = pathname?.startsWith(item.href);
           return (
@@ -51,8 +56,9 @@ export function Header() {
               key={item.label}
               href={item.href}
               {...prefetchHandlers(item.href)}
-              className={`border-b-2 px-0.5 py-1 transition-colors ${
-                active ? "border-primary text-primary" : "border-transparent text-muted hover:text-main"
+              aria-current={active ? "page" : undefined}
+              className={`rounded-lg px-3 py-2 transition-colors ${
+                active ? "bg-[var(--surface-2)] text-main shadow-[inset_0_-2px_0_var(--primary)]" : "text-muted hover:bg-[var(--surface-2)] hover:text-main"
               }`}
             >
               {item.label}
@@ -69,7 +75,7 @@ export function Header() {
             <button
               type="button"
               onClick={() => void handleSignOut()}
-              className="shrink-0 rounded-full border border-app px-3 py-1.5 font-semibold text-main hover:bg-[var(--surface-2)]"
+              className="min-h-9 shrink-0 rounded-lg border border-app px-3 py-1.5 font-semibold text-main hover:bg-[var(--surface-2)]"
             >
               <span className="lg:hidden">Salir</span>
               <span className="hidden lg:inline">Cerrar sesión</span>
@@ -78,7 +84,7 @@ export function Header() {
         ) : (
           <Link
             href="/login"
-            className="shrink-0 rounded-full bg-primary px-3 py-1.5 font-semibold text-white hover:bg-primary-dark"
+            className="min-h-9 shrink-0 rounded-lg bg-primary px-3.5 py-1.5 font-semibold text-white hover:bg-primary-dark"
           >
             Ingresar
           </Link>

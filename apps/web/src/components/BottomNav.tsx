@@ -31,7 +31,7 @@ export function BottomNav() {
   const items = isAdmin ? [...ITEMS, { label: "Admin", href: "/admin", icon: <ShieldCheckIcon size={ICON_SIZE} /> }] : ITEMS;
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-app bg-surface pb-safe lg:hidden">
+    <nav aria-label="Secciones" className="fixed inset-x-0 bottom-0 z-30 flex border-t border-app bg-surface/95 pb-safe backdrop-blur supports-[backdrop-filter]:bg-surface/85 lg:hidden">
       {items.map((item) => {
         const active = pathname?.startsWith(item.href);
         return (
@@ -39,11 +39,19 @@ export function BottomNav() {
             key={item.label}
             href={item.href}
             {...prefetchHandlers(item.href)}
-            className={`flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium ${
-              active ? "text-primary" : "text-muted"
+            aria-current={active ? "page" : undefined}
+            className={`relative flex min-h-12 flex-1 flex-col items-center justify-center gap-1 pb-1.5 pt-2.5 text-[11px] transition-colors ${
+              active ? "font-bold text-main" : "font-medium text-muted hover:text-main"
             }`}
           >
-            <span aria-hidden="true">{item.icon}</span>
+            {/* Active tab: a short petrol bar on the top edge, like a tab plate. */}
+            <span
+              aria-hidden="true"
+              className={`absolute inset-x-1/2 top-0 h-[3px] -translate-x-1/2 rounded-b-sm bg-primary transition-[width] ${active ? "w-8" : "w-0"}`}
+            />
+            <span aria-hidden="true" className={active ? "text-primary" : undefined}>
+              {item.icon}
+            </span>
             <span>{item.label}</span>
           </Link>
         );

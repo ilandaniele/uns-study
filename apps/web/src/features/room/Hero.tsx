@@ -39,7 +39,7 @@ export function Hero({ summary, seats }: HeroProps) {
   } else {
     const n = summary.free;
     const places = n === 1 ? "lugar libre" : "lugares libres";
-    const count = <span style={{ color: "var(--seat-free)" }}>{n}</span>;
+    const count = <span className="font-mono" style={{ color: "var(--seat-free)" }}>{n}</span>;
     if (!mostlyKnown) {
       headline = (
         <>
@@ -63,7 +63,7 @@ export function Hero({ summary, seats }: HeroProps) {
 
   return (
     <div>
-      <h2 className="font-display text-lg font-semibold leading-tight text-main sm:text-xl">{headline}</h2>
+      <h2 className="font-display text-xl font-bold leading-tight text-main sm:text-[22px]">{headline}</h2>
       <p className="mt-1 text-sm text-muted">{subline}</p>
     </div>
   );

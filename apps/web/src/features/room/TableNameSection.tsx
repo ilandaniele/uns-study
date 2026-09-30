@@ -68,7 +68,7 @@ export function TableNameSection({ tableId, loggedIn }: TableNameSectionProps) {
                 disabled={!loggedIn || pending}
                 onClick={() => handleVoteToggle(proposal.id, proposal.myVote)}
                 aria-pressed={proposal.myVote}
-                className="flex shrink-0 items-center gap-1 rounded-full border border-app px-2 py-1 text-xs font-semibold disabled:opacity-50"
+                className="flex shrink-0 items-center gap-1 rounded-md border border-app px-2 py-1 text-xs font-semibold disabled:opacity-50"
                 style={proposal.myVote ? { color: "var(--primary)", borderColor: "var(--primary)" } : undefined}
               >
                 <ThumbsUpIcon aria-hidden="true" size={14} weight={proposal.myVote ? "fill" : "regular"} />

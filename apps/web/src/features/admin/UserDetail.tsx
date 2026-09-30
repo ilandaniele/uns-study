@@ -96,7 +96,7 @@ export function UserDetail({ userId }: { userId: string }) {
               {user.restrictions.map((r) => (
                 <span
                   key={r.id}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-app bg-[var(--surface-2)] px-2.5 py-1 text-xs font-medium text-main"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-app bg-[var(--surface-2)] px-2.5 py-1 text-xs font-medium text-main"
                 >
                   <span className="font-mono font-semibold text-[var(--seat-occupied)]">{r.type}</span>
                   <span className="text-muted">— {r.reason}</span>

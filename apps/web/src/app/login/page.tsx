@@ -66,11 +66,11 @@ export default function LoginPage() {
           Marcá tu lugar. Ayudá a que otros encuentren el suyo.
         </h1>
 
-        <div className="mt-6 mb-4 flex rounded-full bg-[var(--surface-2)] p-1 text-sm font-semibold">
+        <div className="mt-6 mb-4 flex rounded-lg bg-[var(--surface-2)] p-1 text-sm font-semibold">
           <button
             type="button"
             onClick={() => setTab("signin")}
-            className={`flex-1 rounded-full py-2 transition-colors ${
+            className={`flex-1 rounded-md py-2 transition-colors ${
               tab === "signin" ? "bg-primary text-white" : "text-muted"
             }`}
           >
@@ -79,7 +79,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => setTab("signup")}
-            className={`flex-1 rounded-full py-2 transition-colors ${
+            className={`flex-1 rounded-md py-2 transition-colors ${
               tab === "signup" ? "bg-primary text-white" : "text-muted"
             }`}
           >

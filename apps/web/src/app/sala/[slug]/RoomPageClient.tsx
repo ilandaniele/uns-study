@@ -424,8 +424,8 @@ export function RoomPageClient({ slug }: { slug: string }) {
         ) : (
           <>
             <div>
-              <h1 className="font-display text-2xl font-bold text-main">{map.room.name}</h1>
-              <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
+              <h1 className="font-display text-[26px] font-extrabold uppercase leading-none tracking-[0.01em] text-main">{map.room.name}</h1>
+              <p className="mt-2 flex items-center gap-1.5 text-sm text-muted">
                 <span
                   aria-hidden="true"
                   className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-[var(--seat-free)]" : "bg-[var(--seat-unknown)]"}`}
@@ -445,7 +445,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
       <section className="order-2 flex flex-col gap-3 lg:order-2">
         <div
           onPointerDownCapture={preloadSeatDetail}
-          className="relative h-[70dvh] w-full overflow-hidden rounded-3xl border border-app bg-surface shadow-sm md:h-[80dvh] lg:mx-auto lg:aspect-[5/8] lg:h-[82dvh] lg:w-auto lg:max-w-full"
+          className="relative h-[70dvh] w-full overflow-hidden rounded-2xl border border-app bg-surface md:h-[80dvh] lg:mx-auto lg:aspect-[5/8] lg:h-[82dvh] lg:w-auto lg:max-w-full"
         >
           {isDesktop || !mounted ? (
             <div className="flex h-full w-full items-center justify-center">{roomMap}</div>
@@ -463,7 +463,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
             <div className="mb-2 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-main">Personas en la sala ({people.length})</h2>
               <Link href="/personas" className="text-xs font-semibold text-primary hover:underline">
-                Ver todas →
+                Ver todas
               </Link>
             </div>
             <PeopleList people={people} limit={5} />

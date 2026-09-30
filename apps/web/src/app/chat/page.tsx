@@ -27,7 +27,7 @@ export default function ChatPage() {
         <p className="text-muted">Iniciá sesión para usar el chat.</p>
         <Link
           href="/login"
-          className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark"
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark"
         >
           Iniciar sesión
         </Link>
@@ -75,7 +75,7 @@ function ChatRoom({ currentUserId }: { currentUserId: string }) {
           <Link
             href="/chat/dm"
             {...prefetchHandlers("/chat/dm")}
-            className="rounded-full border border-app px-3 py-1.5 text-sm font-medium text-main hover:bg-[var(--surface-2)]"
+            className="rounded-lg border border-app px-3 py-1.5 text-sm font-medium text-main hover:bg-[var(--surface-2)]"
           >
             Mensajes privados
           </Link>
@@ -101,7 +101,7 @@ function ChatRoom({ currentUserId }: { currentUserId: string }) {
                   type="button"
                   onClick={loadMore}
                   disabled={loadingMore}
-                  className="rounded-full border border-app px-3 py-1.5 text-xs font-semibold text-muted hover:bg-[var(--surface-2)] disabled:opacity-50"
+                  className="rounded-lg border border-app px-3 py-1.5 text-xs font-semibold text-muted hover:bg-[var(--surface-2)] disabled:opacity-50"
                 >
                   {loadingMore ? "Cargando…" : "Cargar anteriores"}
                 </button>

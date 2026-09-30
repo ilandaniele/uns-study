@@ -105,7 +105,7 @@ export function ProfileForm({ profile, saving, onSave, onRerollAlias }: ProfileF
             type="button"
             onClick={() => void handleReroll()}
             disabled={rerolling}
-            className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-app px-3 text-xs font-semibold text-main disabled:opacity-50"
+            className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-app px-3 text-xs font-semibold text-main disabled:opacity-50"
           >
             <ShuffleIcon size={14} aria-hidden="true" />
             Otro nombre
@@ -117,7 +117,7 @@ export function ProfileForm({ profile, saving, onSave, onRerollAlias }: ProfileF
         <button
           type="submit"
           disabled={saving}
-          className="min-h-11 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+          className="min-h-11 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
         >
           Guardar
         </button>

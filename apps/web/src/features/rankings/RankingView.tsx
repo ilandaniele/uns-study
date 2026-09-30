@@ -15,7 +15,7 @@ export function RankingView({ roomSlug }: { roomSlug: string }) {
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pb-24 pt-6 md:pb-10">
       <header>
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-main">Ranking</h1>
+        <h1 className="font-display text-[22px] font-extrabold uppercase leading-none tracking-[0.01em] text-main">Ranking</h1>
         <p className="mt-1 text-sm text-muted">{CATEGORY_DESCRIPTIONS[category]}</p>
       </header>
       <div className="flex flex-col gap-2.5">

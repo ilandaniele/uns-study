@@ -75,7 +75,7 @@ function Chip({
       aria-pressed={active}
       onClick={onClick}
       disabled={disabled}
-      className={`min-h-9 rounded-full border px-3 text-xs font-semibold disabled:opacity-50 ${
+      className={`min-h-9 rounded-lg border px-3 text-xs font-semibold disabled:opacity-50 ${
         active ? "border-primary bg-primary text-white" : "border-app text-main hover:bg-[var(--surface-2)]"
       }`}
     >

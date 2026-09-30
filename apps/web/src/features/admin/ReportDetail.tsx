@@ -107,7 +107,7 @@ export function ReportDetail({ reportId }: { reportId: string }) {
                 type="button"
                 disabled={saving}
                 onClick={() => void changeStatus(s)}
-                className="rounded-full border border-app px-3 py-1.5 text-sm font-medium text-muted hover:bg-[var(--surface-2)] hover:text-main disabled:opacity-50"
+                className="rounded-lg border border-app px-3 py-1.5 text-sm font-medium text-muted hover:bg-[var(--surface-2)] hover:text-main disabled:opacity-50"
               >
                 Marcar {REPORT_STATUS_LABELS[s]}
               </button>

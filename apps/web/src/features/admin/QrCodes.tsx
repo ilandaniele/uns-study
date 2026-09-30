@@ -114,7 +114,7 @@ export function QrCodes({ roomSlug }: { roomSlug: string }) {
                 <button
                   type="button"
                   onClick={() => void deactivate(item.id)}
-                  className="qr-print-hide rounded-full border border-app px-3 py-1 text-xs font-medium text-[var(--seat-occupied)] hover:bg-[var(--surface-2)]"
+                  className="qr-print-hide rounded-md border border-app px-3 py-1 text-xs font-medium text-[var(--seat-occupied)] hover:bg-[var(--surface-2)]"
                 >
                   Desactivar
                 </button>

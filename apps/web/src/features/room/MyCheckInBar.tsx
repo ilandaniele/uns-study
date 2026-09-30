@@ -29,7 +29,7 @@ export function MyCheckInBar({ seatLabel, expiresAt, pending, onShow, onRelease 
         <button
           type="button"
           onClick={onShow}
-          className="min-h-9 rounded-full border border-app px-3 text-sm font-medium text-main hover:bg-[var(--surface-2)]"
+          className="min-h-9 rounded-lg border border-app px-3 text-sm font-medium text-main hover:bg-[var(--surface-2)]"
         >
           Ver
         </button>
@@ -37,7 +37,7 @@ export function MyCheckInBar({ seatLabel, expiresAt, pending, onShow, onRelease 
           type="button"
           onClick={onRelease}
           disabled={pending}
-          className="min-h-9 rounded-full bg-primary px-4 text-sm font-semibold text-white active:scale-[0.98] disabled:opacity-60"
+          className="min-h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-white active:scale-[0.98] disabled:opacity-60"
         >
           Liberar lugar
         </button>

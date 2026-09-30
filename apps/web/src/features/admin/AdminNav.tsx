@@ -23,7 +23,7 @@ export function AdminNav() {
           <Link
             key={item.href}
             href={item.href}
-            className={`rounded-full px-3 py-1.5 transition-colors ${
+            className={`rounded-lg px-3 py-1.5 transition-colors ${
               active ? "bg-primary text-white" : "text-muted hover:text-main"
             }`}
           >

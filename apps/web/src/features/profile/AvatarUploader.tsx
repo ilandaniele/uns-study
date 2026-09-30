@@ -106,7 +106,7 @@ export function AvatarUploader({ avatarUrl, displayName, googleImage, showAvatar
             type="button"
             disabled={busy}
             onClick={() => fileInputRef.current?.click()}
-            className="min-h-11 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+            className="min-h-11 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
           >
             Subir foto
           </button>
@@ -115,7 +115,7 @@ export function AvatarUploader({ avatarUrl, displayName, googleImage, showAvatar
               type="button"
               disabled={busy}
               onClick={() => void handleUseGoogle()}
-              className="min-h-11 rounded-full border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-50"
+              className="min-h-11 rounded-lg border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-50"
             >
               Usar mi foto de Google
             </button>
@@ -125,7 +125,7 @@ export function AvatarUploader({ avatarUrl, displayName, googleImage, showAvatar
               type="button"
               disabled={busy}
               onClick={() => void handleRemove()}
-              className="min-h-11 rounded-full border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-50"
+              className="min-h-11 rounded-lg border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-50"
             >
               Quitar
             </button>

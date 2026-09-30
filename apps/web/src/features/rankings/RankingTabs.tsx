@@ -13,7 +13,7 @@ const CATEGORIES: { value: RankingCategory; icon: ReactNode }[] = [
 /** Period picker: the primary choice, a clean full-width segmented control. */
 export function PeriodPicker({ value, onChange }: { value: RankingPeriod; onChange: (value: RankingPeriod) => void }) {
   return (
-    <div role="radiogroup" aria-label="Período" className="grid grid-cols-4 rounded-full border border-app bg-[var(--surface-2)] p-1">
+    <div role="radiogroup" aria-label="Período" className="grid grid-cols-4 rounded-lg border border-app bg-[var(--surface-2)] p-1">
       {PERIODS.map((option) => {
         const selected = option === value;
         return (
@@ -23,7 +23,7 @@ export function PeriodPicker({ value, onChange }: { value: RankingPeriod; onChan
             role="radio"
             aria-checked={selected}
             onClick={() => onChange(option)}
-            className={`min-h-9 rounded-full px-3 text-sm font-medium transition ${
+            className={`min-h-9 rounded-md px-3 text-sm font-medium transition ${
               selected ? "bg-surface text-main shadow-sm" : "text-muted hover:text-main"
             }`}
           >
@@ -48,7 +48,7 @@ export function CategoryPicker({ value, onChange }: { value: RankingCategory; on
             role="radio"
             aria-checked={selected}
             onClick={() => onChange(option.value)}
-            className={`inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition active:scale-[0.98] ${
+            className={`inline-flex min-h-8 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition active:scale-[0.98] ${
               selected
                 ? "border-transparent bg-primary text-white shadow-sm"
                 : "border-app bg-surface text-main hover:bg-[var(--surface-2)]"

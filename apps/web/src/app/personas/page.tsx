@@ -21,7 +21,7 @@ export default function PersonasPage() {
 
   return (
     <main className="mx-auto max-w-2xl p-4">
-      <h1 className="mb-1 font-display text-xl font-semibold text-main">Personas en la sala</h1>
+      <h1 className="mb-2 font-display text-[22px] font-extrabold uppercase leading-none tracking-[0.01em] text-main">Personas en la sala</h1>
       <p className="mb-4 text-sm text-muted">Sólo se muestran las personas registradas que decidieron aparecer acá.</p>
 
       {loading ? (

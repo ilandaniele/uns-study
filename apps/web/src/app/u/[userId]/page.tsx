@@ -136,7 +136,7 @@ export default function PublicProfilePage() {
               type="button"
               onClick={() => void handleMessage()}
               disabled={busy || !profile.allowsDirectMessages || profile.blockedByMe}
-              className="min-h-11 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+              className="min-h-11 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
             >
               Enviar mensaje
             </button>
@@ -144,13 +144,13 @@ export default function PublicProfilePage() {
               type="button"
               onClick={() => void handleBlockToggle()}
               disabled={busy}
-              className="min-h-11 rounded-full border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-50"
+              className="min-h-11 rounded-lg border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-50"
             >
               {profile.blockedByMe ? "Desbloquear" : "Bloquear"}
             </button>
             <Link
               href={`/reportar/${userId}?context=PROFILE`}
-              className="flex min-h-11 items-center rounded-full px-4 py-2 text-sm font-semibold text-[var(--seat-occupied)] hover:bg-[var(--surface-2)]"
+              className="flex min-h-11 items-center rounded-lg px-4 py-2 text-sm font-semibold text-[var(--seat-occupied)] hover:bg-[var(--surface-2)]"
             >
               Reportar
             </Link>
@@ -163,7 +163,7 @@ export default function PublicProfilePage() {
 
 function Chip({ children }: { children: string }) {
   return (
-    <span className="rounded-full border border-app px-2 py-0.5 text-xs font-medium text-muted">{children}</span>
+    <span className="rounded-md border border-app px-2 py-0.5 text-xs font-medium text-muted">{children}</span>
   );
 }
 

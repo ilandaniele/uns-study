@@ -32,7 +32,7 @@ export default function ConversationsPage() {
     return (
       <main className="mx-auto flex max-w-md flex-col items-center gap-3 p-10 text-center">
         <p className="text-muted">Iniciá sesión para usar el chat.</p>
-        <Link href="/login" className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark">
+        <Link href="/login" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark">
           Iniciar sesión
         </Link>
       </main>
@@ -41,7 +41,7 @@ export default function ConversationsPage() {
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-3 p-4">
-      <h1 className="font-display text-xl font-semibold text-main">Mensajes</h1>
+      <h1 className="font-display text-[22px] font-extrabold uppercase leading-none tracking-[0.01em] text-main">Mensajes</h1>
 
       {loading ? (
         <p className="p-6 text-center text-muted">Cargando conversaciones…</p>

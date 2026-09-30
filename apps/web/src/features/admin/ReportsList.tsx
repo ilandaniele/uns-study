@@ -34,7 +34,7 @@ export function ReportsList() {
             key={s}
             type="button"
             onClick={() => setStatus(s)}
-            className={`rounded-full px-3 py-1.5 transition-colors ${
+            className={`rounded-lg px-3 py-1.5 transition-colors ${
               s === status ? "bg-primary text-white" : "text-muted hover:text-main"
             }`}
           >

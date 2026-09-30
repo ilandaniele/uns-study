@@ -9,7 +9,7 @@ export default function GlobalError({ retry }: { error: Error & { digest?: strin
         <button
           type="button"
           onClick={() => retry()}
-          style={{ marginTop: "1rem", padding: "0.5rem 1.25rem", borderRadius: "9999px", border: 0, background: "#2563EB", color: "#fff", fontWeight: 600 }}
+          style={{ marginTop: "1rem", padding: "0.5rem 1.25rem", borderRadius: "8px", border: 0, background: "#0f6e7e", color: "#fff", fontWeight: 600 }}
         >
           Reintentar
         </button>

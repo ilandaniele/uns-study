@@ -30,14 +30,14 @@ export function DeleteAccountDialog({ pending, onConfirm, onCancel }: DeleteAcco
           className="mt-3 w-full rounded-lg border border-app bg-surface px-3 py-2 text-base uppercase text-main sm:text-sm"
         />
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onCancel} className="min-h-11 rounded-full border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-[var(--surface-2)]">
+          <button type="button" onClick={onCancel} className="min-h-11 rounded-lg border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-[var(--surface-2)]">
             Cancelar
           </button>
           <button
             type="button"
             onClick={onConfirm}
             disabled={!canConfirm}
-            className="min-h-11 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+            className="min-h-11 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
           >
             Eliminar cuenta
           </button>

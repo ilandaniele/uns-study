@@ -59,7 +59,7 @@ export default function PerfilPage() {
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-8 p-4 pb-16">
       <div>
-        <h1 className="font-display text-xl font-semibold text-main">Perfil</h1>
+        <h1 className="font-display text-[22px] font-extrabold uppercase leading-none tracking-[0.01em] text-main">Perfil</h1>
         <p className="text-sm text-muted">{profile.email}</p>
       </div>
 
@@ -109,7 +109,7 @@ export default function PerfilPage() {
         <button
           type="button"
           onClick={() => setShowDelete(true)}
-          className="min-h-11 rounded-full border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+          className="min-h-11 rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
         >
           Eliminar cuenta
         </button>

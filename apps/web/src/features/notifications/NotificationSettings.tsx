@@ -112,7 +112,7 @@ export function NotificationSettings() {
               type="button"
               onClick={() => void handleEnableDevice()}
               disabled={deviceState === "enabling"}
-              className="self-start rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+              className="self-start rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
             >
               {deviceState === "enabling" ? "Activando…" : "Activar notificaciones en este dispositivo"}
             </button>

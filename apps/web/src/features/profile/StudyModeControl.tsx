@@ -91,7 +91,7 @@ export function StudyModeControl({ roomId, initialStatus }: StudyModeControlProp
             type="button"
             onClick={() => void stop()}
             disabled={pending}
-            className="min-h-11 rounded-full border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-50"
+            className="min-h-11 rounded-lg border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-50"
           >
             Desactivar Modo Estudio
           </button>
@@ -100,7 +100,7 @@ export function StudyModeControl({ roomId, initialStatus }: StudyModeControlProp
             type="button"
             onClick={() => void start()}
             disabled={pending}
-            className="min-h-11 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+            className="min-h-11 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
           >
             Activar Modo Estudio
           </button>

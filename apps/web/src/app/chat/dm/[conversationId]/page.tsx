@@ -26,7 +26,7 @@ export default function DmThreadPage() {
     return (
       <main className="mx-auto flex max-w-md flex-col items-center gap-3 p-10 text-center">
         <p className="text-muted">Iniciá sesión para usar el chat.</p>
-        <Link href="/login" className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark">
+        <Link href="/login" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark">
           Iniciar sesión
         </Link>
       </main>
@@ -91,7 +91,7 @@ function DmThread({ conversationId, currentUserId }: { conversationId: string; c
                 type="button"
                 onClick={loadMore}
                 disabled={loadingMore}
-                className="rounded-full border border-app px-3 py-1.5 text-xs font-semibold text-muted hover:bg-[var(--surface-2)] disabled:opacity-50"
+                className="rounded-lg border border-app px-3 py-1.5 text-xs font-semibold text-muted hover:bg-[var(--surface-2)] disabled:opacity-50"
               >
                 {loadingMore ? "Cargando…" : "Cargar anteriores"}
               </button>

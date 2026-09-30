@@ -1,17 +1,29 @@
-import { Geist, Outfit } from "next/font/google";
+import { Archivo, Geist_Mono } from "next/font/google";
 
-/** Display face: headings, hero sentence, table/pill labels. */
-export const fontDisplay = Outfit({
+/**
+ * Display face: Archivo at its expanded width, bold. Reads like the room's wayfinding signage
+ * (table plates, door signs) rather than a generic app heading.
+ */
+export const fontDisplay = Archivo({
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  weight: "variable",
+  axes: ["wdth"],
   variable: "--font-display",
   display: "swap",
 });
 
-/** Body face: everything else — chosen for legibility on phones. */
-export const fontBody = Geist({
+/** Body face: Archivo at normal width — same family keeps the voice consistent, legible on phones. */
+export const fontBody = Archivo({
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
+  weight: "variable",
   variable: "--font-body",
+  display: "swap",
+});
+
+/** Data face: counts, times and seat numbers use tabular mono figures so they never jitter. */
+export const fontMono = Geist_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-mono",
   display: "swap",
 });

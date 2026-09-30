@@ -157,7 +157,7 @@ export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, is
       </text>
       {seat.verified ? (
         <g transform={`translate(${SEAT_R - 3} ${-SEAT_R + 3}) rotate(${-seat.rotation})`}>
-          <circle r={6} fill="#2563eb" stroke="white" strokeWidth={1.5} />
+          <circle r={6} fill="#0f6e7e" stroke="white" strokeWidth={1.5} />
           <path d="M -2.5 0 L -0.5 2 L 2.5 -2.5" stroke="white" strokeWidth={1.3} fill="none" strokeLinecap="round" strokeLinejoin="round" />
         </g>
       ) : null}

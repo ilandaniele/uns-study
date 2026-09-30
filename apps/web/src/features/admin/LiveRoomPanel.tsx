@@ -52,7 +52,7 @@ export function LiveRoomPanel({ roomSlug }: { roomSlug: string }) {
             <div key={occupant.seatId} className="flex flex-col gap-0.5 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
               <span className="font-medium text-main">{occupant.name}</span>
               <span className="truncate text-muted">{occupant.email}</span>
-              <span className="w-fit shrink-0 rounded-full border border-app px-2 py-0.5 text-xs text-muted">
+              <span className="w-fit shrink-0 rounded-md border border-app px-2 py-0.5 text-xs text-muted">
                 {friendlySeatLabel(occupant.seatCode)}
               </span>
             </div>
