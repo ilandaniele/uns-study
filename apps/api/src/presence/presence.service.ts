@@ -23,6 +23,8 @@ const EARTH_RADIUS_M = 6_371_000;
 const MAX_CLOCK_SKEW_S = 15 * 60;
 /** A fix slightly "from the future" is clock jitter, not tampering. */
 const FUTURE_TOLERANCE_S = 30;
+/** Cap on the reported accuracy credited on top of the geofence radius (50 m + 50 m = 100 m max). */
+const MAX_ACCURACY_SLACK_M = 50;
 
 @Injectable()
 export class PresenceService {
@@ -100,11 +102,11 @@ export class PresenceService {
       return reject("STALE_LOCATION");
     }
 
-    // Indoor fixes are often off by tens of meters, so the full reported accuracy (capped, so a wildly
-    // inaccurate fix doesn't buy unlimited slack) is tolerated on top of the radius (50 m radius + 100 m
-    // accuracy -> reading up to 150 m from the room center).
+    // Indoor fixes are often off by tens of meters, so the reported accuracy (capped, so a wildly
+    // inaccurate fix doesn't buy unlimited slack) is tolerated on top of the radius (50 m radius + 50 m
+    // accuracy -> reading up to 100 m from the room center).
     const distanceM = this.haversineDistanceM(room, { latitude, longitude });
-    const allowedM = room.geofenceRadiusM + Math.min(accuracy, 100);
+    const allowedM = room.geofenceRadiusM + Math.min(accuracy, MAX_ACCURACY_SLACK_M);
     const details: PresenceDetails = {
       distanceM: Math.round(distanceM),
       accuracyM: Math.round(accuracy),
