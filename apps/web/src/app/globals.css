@@ -336,11 +336,31 @@ input:focus-visible,
 .seat-pulse-dispute {
   animation: seat-pulse 1.4s ease-in-out infinite;
 }
+/* Expanding ring around the selected seat on the map. */
+@keyframes seat-spot {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+.seat-spot-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: seat-spot 1.6s ease-out infinite;
+}
 @media (prefers-reduced-motion: reduce) {
   .seat-glow-free,
   .seat-pulse-mine,
-  .seat-pulse-dispute {
+  .seat-pulse-dispute,
+  .seat-spot-ring {
     animation: none;
+  }
+  .seat-spot-ring {
+    opacity: 0;
   }
 }
 

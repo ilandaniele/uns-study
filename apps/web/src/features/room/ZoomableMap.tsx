@@ -9,7 +9,18 @@ export default function ZoomableMap({ children }: { children: ReactNode }) {
   const zoomRef = useRef<ReactZoomPanPinchRef>(null);
   return (
     <>
-      <TransformWrapper ref={zoomRef} minScale={0.5} maxScale={4} initialScale={1} limitToBounds>
+      {/* No double-tap zoom, pan inertia or snap-back animation: tapping a seat must never move the map. Pinch, drag and the buttons still zoom/pan. */}
+      <TransformWrapper
+        ref={zoomRef}
+        minScale={1}
+        maxScale={4}
+        initialScale={1}
+        limitToBounds
+        doubleClick={{ disabled: true }}
+        panning={{ velocityDisabled: true }}
+        autoAlignment={{ disabled: true }}
+        velocityAnimation={{ disabled: true }}
+      >
         <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }} contentStyle={{ width: "100%", height: "100%" }}>
           {children}
         </TransformComponent>

@@ -43,6 +43,7 @@ export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlight
       }),
     );
   }, [map.seats, map.tables]);
+  const selectedSeat = selectedSeatId ? map.seats.find((seat) => seat.id === selectedSeatId) ?? null : null;
 
   return (
     <svg
@@ -83,6 +84,21 @@ export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlight
       {/* Photo-style vignette on top of everything, then a dark-mode dimmer — the room stays warm, just dimmed. */}
       <rect x={0} y={0} width={width} height={height} fill="url(#room-vignette)" pointerEvents="none" aria-hidden="true" />
       <rect x={0} y={0} width={width} height={height} fill="black" style={{ opacity: "var(--room-dark-overlay)" }} pointerEvents="none" aria-hidden="true" />
+
+      {/* Selected seat: dim the rest of the room and ring the seat, so it stays findable while the detail sheet is open. */}
+      {selectedSeat ? (
+        <g pointerEvents="none" aria-hidden="true">
+          {/* Room-sized rect with a circular hole (even-odd) around the seat. */}
+          <path
+            d={`M0 0H${width}V${height}H0Z M${selectedSeat.x - 62} ${selectedSeat.y}a62 62 0 1 0 124 0a62 62 0 1 0 -124 0Z`}
+            fill="black"
+            fillRule="evenodd"
+            opacity={0.4}
+          />
+          <circle cx={selectedSeat.x} cy={selectedSeat.y} r={40} fill="none" stroke="var(--primary)" strokeWidth={6} />
+          <circle cx={selectedSeat.x} cy={selectedSeat.y} r={40} fill="none" stroke="var(--primary)" strokeWidth={4} className="seat-spot-ring" />
+        </g>
+      ) : null}
     </svg>
   );
 }

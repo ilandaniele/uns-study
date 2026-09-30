@@ -45,6 +45,7 @@ const HowToUseModal = dynamic(() => import("@/features/room/HowToUseModal").then
 const MoveSeatDialog = dynamic(() => import("@/features/room/MoveSeatDialog").then((m) => m.MoveSeatDialog));
 const SeatFreedToast = dynamic(() => import("@/features/room/SeatFreedToast").then((m) => m.SeatFreedToast));
 const TurnstileChallenge = dynamic(() => import("@/features/room/TurnstileChallenge").then((m) => m.TurnstileChallenge));
+import { SeatSheet } from "@/features/room/SeatSheet";
 const ZoomableMap = dynamic(() => import("@/features/room/ZoomableMap"));
 const loadSeatDetail = () => import("@/features/room/SeatDetail").then((m) => m.SeatDetail);
 const SeatDetail = dynamic(loadSeatDetail);
@@ -155,6 +156,14 @@ export function RoomPageClient({ slug }: { slug: string }) {
   const tableById = useMemo(() => new Map((map?.tables ?? []).map((table) => [table.id, table])), [map]);
   const selectedSeat = (selectedSeatId ? seatById.get(selectedSeatId) : null) ?? null;
   const selectedTable = (selectedSeat ? tableById.get(selectedSeat.tableId) : null) ?? null;
+  // Mobile seat sheet: short "peek" by default; collapses again whenever another seat is picked.
+  const [expandedSeatId, setExpandedSeatId] = useState<string | null>(null);
+  const sheetExpanded = selectedSeatId !== null && expandedSeatId === selectedSeatId;
+  const setSheetExpanded = useCallback((expanded: boolean) => setExpandedSeatId(expanded ? selectedSeatId : null), [selectedSeatId]);
+  const selectedTableSeats = useMemo(
+    () => (selectedSeat ? (map?.seats ?? []).filter((seat) => seat.tableId === selectedSeat.tableId) : []),
+    [map, selectedSeat],
+  );
   // Other identified (linkable) occupants seated at the same table as the selected seat, for "Personas cercanas".
   const nearbyOccupants = useMemo(() => {
     if (!selectedTable) return [];
@@ -391,11 +400,19 @@ export function RoomPageClient({ slug }: { slug: string }) {
       onDismissSavedPrompt={() => setSavedPromptSeatId(null)}
       isFavorite={favoriteSeatId === selectedSeat.id}
       onToggleFavorite={() => toggleFavorite(selectedSeat.id)}
+      tableSeats={selectedTableSeats}
+      mySeatId={mySeatId}
+      onSelectSeat={openSeat}
+      compact={!isLargeDesktop}
+      expanded={sheetExpanded}
+      onExpandedChange={setSheetExpanded}
     />
   ) : null;
 
   return (
-    <main className="mx-auto flex max-w-7xl flex-col gap-4 p-4 lg:grid lg:grid-cols-[320px_1fr_340px] lg:items-start">
+    <main
+      className={`mx-auto flex max-w-7xl flex-col gap-4 p-4 lg:grid ${detail && !isLargeDesktop ? "pb-[48dvh]" : ""} lg:grid-cols-[320px_1fr_340px] lg:items-start`}
+    >
       {error ? (
         <div className="order-0 flex items-center justify-between gap-3 rounded-xl border border-app bg-surface px-3 py-2 text-sm text-muted lg:col-span-3">
           <span>Sin conexión, reintentando…</span>
@@ -519,12 +536,9 @@ export function RoomPageClient({ slug }: { slug: string }) {
           {detail ?? <RightPanelEmptyState hasActiveCheckIn={activeCheckIn != null} />}
         </section>
       ) : detail ? (
-        <div className="sheet-enter fixed inset-x-0 bottom-0 z-40 max-h-[70dvh] overflow-y-auto rounded-t-2xl border-t border-app bg-surface pb-safe shadow-2xl">
-          <div className="flex justify-center pt-2">
-            <span aria-hidden="true" className="h-1.5 w-10 rounded-full bg-[var(--border-strong)]" />
-          </div>
+        <SeatSheet expanded={sheetExpanded} onExpandedChange={setSheetExpanded} onClose={closeDetail}>
           {detail}
-        </div>
+        </SeatSheet>
       ) : null}
 
       <HowToUseModal open={showHowTo} onClose={closeHowTo} />

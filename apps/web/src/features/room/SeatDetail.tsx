@@ -1,17 +1,18 @@
 "use client";
 
 import type { DisputeKind, DisputeVote, MeDto, SeatDisputeDto, SeatDto, SeatOccupantDto, TableDto } from "@uns/contracts";
-import { ArmchairIcon, ChairIcon, EyeIcon, ShieldCheckIcon, StarIcon, TableIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
+import { ArmchairIcon, CaretDownIcon, ChairIcon, EyeIcon, ShieldCheckIcon, StarIcon, TableIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { MessageOccupantButton } from "./MessageOccupantButton";
 import { useState, type ReactNode } from "react";
 import { CheckInDurationPicker } from "./CheckInDurationPicker";
-import { clockLabel, DEFAULT_CHECKIN_DURATION } from "./checkin-duration";
+import { clockLabel, clockTimeAfter, DEFAULT_CHECKIN_DURATION } from "./checkin-duration";
 import { IdentityPrompt } from "./IdentityPrompt";
 import { NearbyOccupants } from "./NearbyOccupants";
 import { OccupantAvatar } from "./OccupantAvatar";
 import { SavedReportPrompt } from "./SavedReportPrompt";
+import { TableLocator } from "./TableLocator";
 import { markedByLabel } from "./seat-avatar";
 import { TurnstileChallenge } from "./TurnstileChallenge";
 import { useNow } from "@/lib/use-now";
@@ -74,6 +75,15 @@ export interface SeatDetailProps {
   /** Whether this seat is the viewer's favorite (kept on the device). */
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
+  /** Every seat at this seat's table, for the small locator diagram in the header. */
+  tableSeats?: SeatDto[];
+  mySeatId?: string | null;
+  /** Switch the detail to another seat (tapping a chair in the locator diagram). */
+  onSelectSeat?: (seatId: string) => void;
+  /** Mobile bottom sheet: a short "peek" layout; table info, nickname and nearby people only when `expanded`. */
+  compact?: boolean;
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
 }
 
 export function SeatDetail({
@@ -108,9 +118,17 @@ export function SeatDetail({
   onDismissSavedPrompt,
   isFavorite = false,
   onToggleFavorite,
+  tableSeats = [],
+  mySeatId = null,
+  onSelectSeat,
+  compact = false,
+  expanded = false,
+  onExpandedChange,
 }: SeatDetailProps) {
   const now = useNow(30_000);
   const [durationMinutes, setDurationMinutes] = useState(DEFAULT_CHECKIN_DURATION);
+  const [showPicker, setShowPicker] = useState(false);
+  const peek = compact && !expanded;
   const isBar = table?.type === "WALL_BAR";
   const label = seatDisplayLabel(table, seat.code, seat.seatNumber);
   const recency = recencyLabel(seat);
@@ -119,64 +137,104 @@ export function SeatDetail({
   const isPhotoVerified =
     myCheckIn?.verificationExpiresAt != null && new Date(myCheckIn.verificationExpiresAt).getTime() > now.getTime();
 
+  const unit = isBar ? "Lugar" : "Asiento";
+  const tableLine = [tableDisplayName(table, seat.code), table?.nickname ? `"${table.nickname}"` : null, side].filter(Boolean).join(" · ");
+  const facts = [recency, seat.confidence > 0 ? confidenceWording(seat.confidence) : null].filter(Boolean).join(" · ");
+  const showMarkedBy = !isMySeat && !occupant && markedBy != null && (seat.status === "OCCUPIED" || (seat.status === "SAVED" && markedBy.kind === "SAVED"));
+  const showOccupiedUntil = !isMySeat && seat.status === "OCCUPIED" && seat.occupiedUntil != null;
+  const showOccupant = !isMySeat && occupant != null;
+
+  const extras = (
+    <>
+      <div className="border-t border-app pt-3">
+        <h3 className="label-caps text-muted">Información</h3>
+        <ul className="mt-2 flex flex-col gap-2 text-sm text-muted">
+          <li className="flex items-center gap-2">
+            <TableIcon aria-hidden="true" size={18} />
+            {tableDisplayName(table, seat.code)}
+            {table?.nickname ? ` · "${table.nickname}"` : ""}
+            {side ? ` (${side})` : ""}
+          </li>
+          <li className="flex items-center gap-2">
+            <ChairIcon aria-hidden="true" size={18} />
+            {isBar ? `Lugar ${seat.seatNumber} de 3` : `Asiento ${seat.seatNumber} de 8`}
+          </li>
+          <li className="flex items-center gap-2">
+            <ArmchairIcon aria-hidden="true" size={18} />
+            Tipo: {isBar ? "Barra" : "Mesa principal"}
+          </li>
+        </ul>
+      </div>
+
+      {!isBar && table ? <TableNameSection tableId={table.id} loggedIn={me?.user != null} /> : null}
+
+      <NearbyOccupants occupants={nearbyOccupants} />
+    </>
+  );
+
   return (
-    <div className="flex h-full flex-col gap-4 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="font-display text-xl font-bold text-main">{label}</p>
+    <div className={`flex h-full flex-col ${compact ? "gap-3 px-4 pb-4 pt-0" : "gap-4 p-4"}`}>
+      <div className="flex items-start gap-3">
+        <div className="shrink-0 rounded-xl bg-[var(--surface-2)] p-1.5">
+          <TableLocator table={table} seats={tableSeats} selectedSeatId={seat.id} mySeatId={mySeatId} onSelectSeat={onSelectSeat} />
+        </div>
+        <div className="min-w-0 flex-1 pt-0.5">
+          <p className="label-caps truncate text-muted">{tableLine}</p>
+          <h2 className="mt-1 whitespace-nowrap font-display text-[26px] font-extrabold uppercase leading-none text-main">
+            <span className="sr-only">{label}</span>
+            <span aria-hidden="true">
+              {unit} {seat.seatNumber}
+            </span>
+          </h2>
           <StatusPill status={seat.status} isMySeat={isMySeat} />
-          {!isMySeat && occupant ? (
-            <p className="mt-1.5 flex items-center gap-2 text-sm text-muted">
-              <OccupantAvatar avatar={occupant.avatar} size={40} />
-              <span>
+        </div>
+        <div className="-mr-2 -mt-1 flex shrink-0 items-center">
+          {onToggleFavorite ? (
+            <button
+              type="button"
+              onClick={onToggleFavorite}
+              aria-label={isFavorite ? "Quitar de favoritos" : "Guardar como lugar favorito"}
+              aria-pressed={isFavorite}
+              title={isFavorite ? "Tu lugar favorito" : "Marcar como favorito"}
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-muted hover:bg-[var(--surface-2)] hover:text-main"
+            >
+              <StarIcon aria-hidden="true" size={20} weight={isFavorite ? "fill" : "regular"} style={isFavorite ? { color: "var(--seat-saved)" } : undefined} />
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-[var(--surface-2)] hover:text-main"
+          >
+            <XIcon aria-hidden="true" size={20} weight="regular" />
+          </button>
+        </div>
+      </div>
+
+      {showOccupant || showMarkedBy || showOccupiedUntil || (facts && !peek) ? (
+        <div className="-mt-1 flex flex-col gap-1 border-l-2 border-[var(--border-strong)] pl-3 text-sm text-muted">
+          {showOccupant && occupant ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <OccupantAvatar avatar={occupant.avatar} size={32} />
+              <span className="min-w-0 flex-1">
                 {occupant.userId ? (
-                  <Link href={`/u/${occupant.userId}`} className="font-medium text-primary hover:underline">
+                  <Link href={`/u/${occupant.userId}`} className="font-semibold text-primary hover:underline">
                     {occupant.displayName}
                   </Link>
                 ) : (
-                  <span className="font-medium text-main">{occupant.displayName}</span>
+                  <span className="font-semibold text-main">{occupant.displayName}</span>
                 )}{" "}
                 está acá
               </span>
-            </p>
+              {occupant.userId && me?.user && me.user.id !== occupant.userId ? <MessageOccupantButton userId={occupant.userId} /> : null}
+            </div>
           ) : null}
-          {!isMySeat && occupant?.userId && me?.user && me.user.id !== occupant.userId ? <MessageOccupantButton userId={occupant.userId} /> : null}
-          {!isMySeat && !occupant && markedBy && (seat.status === "OCCUPIED" || (seat.status === "SAVED" && markedBy.kind === "SAVED")) ? (
-            <p className="mt-1.5 text-sm text-muted">{markedByLabel(markedBy.displayName, markedBy.observedAt, now, markedBy.kind)}</p>
-          ) : null}
-          {!isMySeat && seat.status === "OCCUPIED" && seat.occupiedUntil ? (
-            <p className="mt-1.5 text-sm text-muted">Ocupado hasta las {clockLabel(seat.occupiedUntil)}</p>
-          ) : null}
-          {recency ? <p className="mt-1 text-sm text-muted">{recency}</p> : null}
-          {seat.confidence > 0 ? (
-            <p className="text-sm text-muted" style={{ opacity: 0.75 }}>
-              {confidenceWording(seat.confidence)}
-            </p>
-          ) : null}
+          {showMarkedBy && markedBy ? <p>{markedByLabel(markedBy.displayName, markedBy.observedAt, now, markedBy.kind)}</p> : null}
+          {showOccupiedUntil && seat.occupiedUntil ? <p>Ocupado hasta las {clockLabel(seat.occupiedUntil)}</p> : null}
+          {facts && !peek ? <p className="text-[13px]">{facts}</p> : null}
         </div>
-        <div className="flex shrink-0 items-center">
-        {onToggleFavorite ? (
-          <button
-            type="button"
-            onClick={onToggleFavorite}
-            aria-label={isFavorite ? "Quitar de favoritos" : "Guardar como lugar favorito"}
-            aria-pressed={isFavorite}
-            title={isFavorite ? "Tu lugar favorito" : "Marcar como favorito"}
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-muted hover:bg-[var(--surface-2)] hover:text-main"
-          >
-            <StarIcon aria-hidden="true" size={20} weight={isFavorite ? "fill" : "regular"} style={isFavorite ? { color: "var(--seat-saved)" } : undefined} />
-          </button>
-        ) : null}
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Cerrar"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-[var(--surface-2)] hover:text-main"
-        >
-          <XIcon aria-hidden="true" size={20} weight="regular" />
-        </button>
-        </div>
-      </div>
+      ) : null}
 
       {actionError ? (
         <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -247,21 +305,54 @@ export function SeatDetail({
           </>
         ) : (
           <>
-            <CheckInDurationPicker minutes={durationMinutes} onChange={setDurationMinutes} disabled={pending} now={now} />
-            <PrimaryButton onClick={() => onCheckIn(durationMinutes)} disabled={pending}>
-              {locating ? "Buscando tu ubicación…" : "Estoy acá"}
-            </PrimaryButton>
-            <p className="label-caps mt-2 text-muted">¿Cómo ves este lugar?</p>
+            {compact ? (
+              <>
+                <div className="flex gap-2">
+                  <div className="min-w-0 flex-1">
+                    <PrimaryButton
+                      onClick={() => onCheckIn(durationMinutes)}
+                      disabled={pending}
+                      hint={locating ? undefined : `hasta las ${clockTimeAfter(durationMinutes, now)}`}
+                    >
+                      {locating ? "Buscando tu ubicación…" : "Estoy acá"}
+                    </PrimaryButton>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPicker((value) => !value)}
+                    aria-expanded={showPicker}
+                    aria-label={`Duración: ${durationLabel(durationMinutes)}. Cambiar`}
+                    className="flex min-h-[52px] shrink-0 items-center gap-1 rounded-2xl bg-[var(--surface-2)] px-3.5 text-sm font-bold tabular-nums text-main active:scale-[0.97]"
+                  >
+                    {durationLabel(durationMinutes)}
+                    <CaretDownIcon aria-hidden="true" size={14} weight="bold" className={`transition-transform ${showPicker ? "rotate-180" : ""}`} />
+                  </button>
+                </div>
+                {showPicker ? <CheckInDurationPicker minutes={durationMinutes} onChange={setDurationMinutes} disabled={pending} now={now} /> : null}
+              </>
+            ) : (
+              <>
+                <CheckInDurationPicker minutes={durationMinutes} onChange={setDurationMinutes} disabled={pending} now={now} />
+                <PrimaryButton
+                  onClick={() => onCheckIn(durationMinutes)}
+                  disabled={pending}
+                  hint={locating ? undefined : `hasta las ${clockTimeAfter(durationMinutes, now)}`}
+                >
+                  {locating ? "Buscando tu ubicación…" : "Estoy acá"}
+                </PrimaryButton>
+              </>
+            )}
+            <p className="label-caps mt-1 text-muted">¿Cómo ves este lugar?</p>
             <div className="grid grid-cols-3 gap-2">
-              <OutlineButton tone="free" onClick={onMarkFree} disabled={pending}>
-                {locating ? "Buscando tu ubicación…" : "Está libre"}
-              </OutlineButton>
-              <OutlineButton tone="occupied" onClick={onMarkOccupied} disabled={pending}>
-                {locating ? "Buscando tu ubicación…" : "Está ocupado"}
-              </OutlineButton>
-              <OutlineButton tone="saved" onClick={onMarkSaved} disabled={pending}>
-                {locating ? "Buscando tu ubicación…" : "Está guardado"}
-              </OutlineButton>
+              <ObservationChip tone="free" onClick={onMarkFree} disabled={pending}>
+                {locating ? "Buscando…" : "Está libre"}
+              </ObservationChip>
+              <ObservationChip tone="occupied" onClick={onMarkOccupied} disabled={pending}>
+                {locating ? "Buscando…" : "Está ocupado"}
+              </ObservationChip>
+              <ObservationChip tone="saved" onClick={onMarkSaved} disabled={pending}>
+                {locating ? "Buscando…" : "Está guardado"}
+              </ObservationChip>
             </div>
           </>
         )}
@@ -277,29 +368,22 @@ export function SeatDetail({
         onVote={onVoteDispute}
       />
 
-      <div className="border-t border-app pt-3">
-        <h2 className="text-sm font-semibold text-main">Información</h2>
-        <ul className="mt-2 flex flex-col gap-2 text-sm text-muted">
-          <li className="flex items-center gap-2">
-            <TableIcon aria-hidden="true" size={18} />
-            {tableDisplayName(table, seat.code)}
-            {table?.nickname ? ` · "${table.nickname}"` : ""}
-            {side ? ` (${side})` : ""}
-          </li>
-          <li className="flex items-center gap-2">
-            <ChairIcon aria-hidden="true" size={18} />
-            {isBar ? `Lugar ${seat.seatNumber} de 3` : `Asiento ${seat.seatNumber} de 8`}
-          </li>
-          <li className="flex items-center gap-2">
-            <ArmchairIcon aria-hidden="true" size={18} />
-            Tipo: {isBar ? "Barra" : "Mesa principal"}
-          </li>
-        </ul>
-      </div>
-
-      {!isBar && table ? <TableNameSection tableId={table.id} loggedIn={me?.user != null} /> : null}
-
-      <NearbyOccupants occupants={nearbyOccupants} />
+      {compact ? (
+        <>
+          {expanded ? extras : null}
+          <button
+            type="button"
+            onClick={() => onExpandedChange?.(!expanded)}
+            aria-expanded={expanded}
+            className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl text-[13px] font-semibold text-muted active:bg-[var(--surface-2)]"
+          >
+            {expanded ? "Ver menos" : "Ver más de la mesa"}
+            <CaretDownIcon aria-hidden="true" size={14} weight="bold" className={expanded ? "" : "rotate-180"} />
+          </button>
+        </>
+      ) : (
+        extras
+      )}
     </div>
   );
 }
@@ -311,10 +395,8 @@ function StatusPill({ status, isMySeat }: { status: SeatDto["status"]; isMySeat:
         status
       ];
   return (
-    <p
-      className="mt-1.5 inline-flex items-center gap-1.5 rounded-md border border-app bg-[var(--surface-2)] px-2 py-1 text-xs font-semibold text-main"
-    >
-      <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: color }} />
+    <p className="mt-2 inline-flex items-center gap-2 text-sm font-bold text-main">
+      <span aria-hidden className="inline-block h-3 w-3 rounded-[3px]" style={{ backgroundColor: color }} />
       {isMySeat ? "Tu lugar" : statusLabel(status)}
     </p>
   );
@@ -324,24 +406,28 @@ function PrimaryButton({
   children,
   onClick,
   disabled,
+  hint,
 }: {
   children: ReactNode;
   onClick: () => void;
   disabled?: boolean;
+  /** Small secondary text inside the button (e.g. "hasta las 18:40"). */
+  hint?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="min-h-12 w-full rounded-xl bg-primary px-4 py-3 text-[15px] font-bold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
+      className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-base font-bold text-white transition-[background-color,transform] hover:bg-primary-dark active:scale-[0.98] disabled:opacity-50"
     >
       {children}
+      {hint ? <span className="text-[13px] font-medium tabular-nums text-white/85">· {hint}</span> : null}
     </button>
   );
 }
 
-function OutlineButton({
+function ObservationChip({
   children,
   onClick,
   disabled,
@@ -358,13 +444,19 @@ function OutlineButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex min-h-12 flex-col items-center justify-center gap-1.5 rounded-xl border border-app bg-[var(--surface-2)] px-2 py-2 text-[13px] font-semibold leading-tight text-main transition-colors hover:border-[var(--border-strong)] disabled:opacity-50"
+      className="flex min-h-14 flex-col items-center justify-center gap-1.5 whitespace-nowrap rounded-2xl bg-[var(--surface-2)] px-1 text-[13px] font-semibold leading-tight text-main transition-transform active:scale-[0.96] disabled:opacity-50"
     >
-      {/* Status color lives in the swatch, not the text, so every label keeps full contrast. */}
-      <span aria-hidden="true" className="h-2 w-6 rounded-sm" style={{ backgroundColor: color }} />
+      {/* Status color lives in the dot, not the text, so every label keeps full contrast. */}
+      <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
       {children}
     </button>
   );
+}
+
+function durationLabel(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const hours = minutes / 60;
+  return Number.isInteger(hours) ? `${hours} h` : `${Math.floor(hours)} h ${minutes % 60}`;
 }
 
 function QuietDangerButton({
@@ -381,7 +473,7 @@ function QuietDangerButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="min-h-11 w-full rounded-xl px-4 py-2.5 text-sm font-semibold text-[var(--seat-occupied)] hover:bg-[var(--surface-2)] disabled:opacity-50"
+      className="min-h-11 w-full rounded-2xl px-4 py-2.5 text-sm font-semibold text-[var(--seat-occupied)] hover:bg-[var(--surface-2)] disabled:opacity-50"
     >
       {children}
     </button>
