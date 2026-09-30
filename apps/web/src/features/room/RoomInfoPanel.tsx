@@ -3,6 +3,7 @@
 import type { RoomMapDto, RoomPersonDto } from "@uns/contracts";
 import { QuestionIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Hero } from "./Hero";
 import { PeopleList } from "@/features/people/PeopleList";
 import { SummaryCounters } from "./SummaryCounters";
@@ -13,10 +14,12 @@ export interface RoomInfoPanelProps {
   people: RoomPersonDto[];
   connected: boolean;
   onOpenHowTo: () => void;
+  /** Toolbar rendered under the counters (find free seat, filter, favorite, share). */
+  quickActions?: ReactNode;
 }
 
 /** Desktop (lg+) left column: room header, honest headline, counters, capacity breakdown and the "who's here" preview. */
-export function RoomInfoPanel({ map, people, connected, onOpenHowTo }: RoomInfoPanelProps) {
+export function RoomInfoPanel({ map, people, connected, onOpenHowTo, quickActions }: RoomInfoPanelProps) {
   const breakdown = roomCapacityBreakdown(map);
 
   return (
@@ -34,6 +37,7 @@ export function RoomInfoPanel({ map, people, connected, onOpenHowTo }: RoomInfoP
 
       <Hero summary={map.summary} seats={map.seats} />
       <SummaryCounters summary={map.summary} />
+      {quickActions}
 
       <div className="rounded-2xl border border-app bg-surface p-3">
         <p className="text-sm font-semibold text-main">Total: {map.summary.total} lugares</p>

@@ -1,9 +1,10 @@
 "use client";
 
-import type { ReportContext } from "@uns/contracts";
+import type { ReportContext, ReportReason } from "@uns/contracts";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { ReportForm } from "@/features/reports/ReportForm";
+import { REPORT_REASONS } from "@/features/reports/reportReasons";
 import { useSession } from "@/lib/auth-client";
 
 const VALID_CONTEXTS: ReportContext[] = ["PROFILE", "CHAT", "DM"];
@@ -17,6 +18,9 @@ export default function ReportUserPage() {
   const context: ReportContext = VALID_CONTEXTS.includes(rawContext as ReportContext) ? (rawContext as ReportContext) : "PROFILE";
   const contextMessageId = searchParams.get("messageId") ?? undefined;
   const roomId = searchParams.get("roomId") ?? undefined;
+  const rawReason = searchParams.get("reason");
+  const initialReason = REPORT_REASONS.includes(rawReason as ReportReason) ? (rawReason as ReportReason) : undefined;
+  const initialDescription = searchParams.get("description") ?? undefined;
 
   if (isPending) {
     return <main className="p-6 text-center text-muted">Cargando…</main>;
@@ -39,7 +43,7 @@ export default function ReportUserPage() {
 
   return (
     <main className="mx-auto max-w-lg p-4">
-      <ReportForm reportedUserId={userId} context={context} contextMessageId={contextMessageId} roomId={roomId} />
+      <ReportForm reportedUserId={userId} context={context} contextMessageId={contextMessageId} roomId={roomId} initialReason={initialReason} initialDescription={initialDescription} />
     </main>
   );
 }

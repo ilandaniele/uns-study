@@ -15,6 +15,8 @@ import { AdminPresentBanner } from "@/features/room/AdminPresentBanner";
 import { Hero } from "@/features/room/Hero";
 import { RoomInfoPanel } from "@/features/room/RoomInfoPanel";
 import { RoomMap } from "@/features/room/RoomMap";
+import { RoomQuickActions } from "@/features/room/RoomQuickActions";
+import { useFavoriteSeat } from "@/features/room/useFavoriteSeat";
 import { RightPanelEmptyState } from "@/features/room/RightPanelEmptyState";
 import { SummaryCounters } from "@/features/room/SummaryCounters";
 import { freedSeatsToastMessage, seatDisplayLabel, todayLabel } from "@/features/room/format";
@@ -124,6 +126,10 @@ export function RoomPageClient({ slug }: { slug: string }) {
   }, []);
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
   const [showIdentityPrompt, setShowIdentityPrompt] = useState(false);
+  // Seat the viewer just marked "Está guardado" — SeatDetail offers to report / ask to free it.
+  const [savedPromptSeatId, setSavedPromptSeatId] = useState<string | null>(null);
+  const [onlyFree, setOnlyFree] = useState(false);
+  const { favoriteSeatId, toggleFavorite } = useFavoriteSeat(slug);
 
   // Deep link (?seat=<id>, e.g. from a "seat freed" push notification): select it once the map has
   // loaded and confirms the seat actually exists. Only runs once per landing — after that, seat
@@ -184,6 +190,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
     (seat: SeatDto) => {
       setSelectedSeatId((current) => (current === seat.id ? null : seat.id));
       setShowIdentityPrompt(false);
+      setSavedPromptSeatId(null);
       clearError();
       // Warm the GPS while the person reads the seat panel, so "Estoy acá" answers instantly.
       if (me?.user) primeLocation();
@@ -194,8 +201,21 @@ export function RoomPageClient({ slug }: { slug: string }) {
   const closeDetail = useCallback(() => {
     setSelectedSeatId(null);
     setShowIdentityPrompt(false);
+    setSavedPromptSeatId(null);
     clearError();
   }, [clearError]);
+
+  // Programmatic open (quick actions): always selects, never toggles closed.
+  const openSeat = useCallback(
+    (seatId: string) => {
+      setSelectedSeatId(seatId);
+      setShowIdentityPrompt(false);
+      setSavedPromptSeatId(null);
+      clearError();
+      if (me?.user) primeLocation();
+    },
+    [clearError, me?.user],
+  );
 
   const openHowTo = useCallback(() => setShowHowTo(true), []);
   const closeHowTo = useCallback(() => setShowHowTo(false), []);
@@ -244,7 +264,10 @@ export function RoomPageClient({ slug }: { slug: string }) {
 
   async function handleMarkSaved(seatId: string) {
     const ok = await markSaved(seatId, { qrToken });
-    if (ok) trackEvent("observation", { roomSlug: slug, seatId, status: "SAVED" });
+    if (ok) {
+      trackEvent("observation", { roomSlug: slug, seatId, status: "SAVED" });
+      setSavedPromptSeatId(seatId);
+    }
   }
 
   async function handleOpenDispute(kind: Parameters<typeof openDispute>[1]) {
@@ -315,6 +338,20 @@ export function RoomPageClient({ slug }: { slug: string }) {
       onSelectSeat={handleSelectSeat}
       highlightTableCode={highlightTableCode}
       avatarBySeatId={avatarBySeatId}
+      onlyFree={onlyFree}
+      favoriteSeatId={favoriteSeatId}
+    />
+  );
+
+  const favoriteSeat = (favoriteSeatId ? seatById.get(favoriteSeatId) : null) ?? null;
+  const quickActions = (
+    <RoomQuickActions
+      map={map}
+      onlyFree={onlyFree}
+      onToggleOnlyFree={() => setOnlyFree((value) => !value)}
+      favoriteSeat={favoriteSeat}
+      favoriteTable={favoriteSeat ? tableById.get(favoriteSeat.tableId) ?? null : null}
+      onSelectSeat={openSeat}
     />
   );
 
@@ -349,6 +386,11 @@ export function RoomPageClient({ slug }: { slug: string }) {
       onChanged={handleChanged}
       nearbyOccupants={nearbyOccupants}
       viewBoxWidth={map.viewBox.width}
+      roomId={map.room.id}
+      showSavedPrompt={savedPromptSeatId === selectedSeat.id}
+      onDismissSavedPrompt={() => setSavedPromptSeatId(null)}
+      isFavorite={favoriteSeatId === selectedSeat.id}
+      onToggleFavorite={() => toggleFavorite(selectedSeat.id)}
     />
   ) : null;
 
@@ -420,7 +462,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
       {/* Desktop (lg+) gets the full left info panel; mobile/tablet gets a compact header + counters above the map. */}
       <section className="order-1 flex flex-col gap-4 lg:order-1">
         {isLargeDesktop ? (
-          <RoomInfoPanel map={map} people={people} connected={connected} onOpenHowTo={openHowTo} />
+          <RoomInfoPanel map={map} people={people} connected={connected} onOpenHowTo={openHowTo} quickActions={quickActions} />
         ) : (
           <>
             <div>
@@ -435,6 +477,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
             </div>
             <Hero summary={map.summary} seats={map.seats} />
             <SummaryCounters summary={map.summary} />
+            {quickActions}
           </>
         )}
         {isAdmin ? <MarkAllOccupiedCard roomSlug={slug} seats={map.seats} onDone={handleChanged} /> : null}

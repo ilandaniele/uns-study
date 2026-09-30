@@ -10,7 +10,7 @@ const TILES: { key: keyof RoomSummary; label: string; color: string }[] = [
 
 /**
  * The room's status board: one plate with a column per state (Libres/Ocupados/Guardados/Dudosos/
- * Sin datos), a colored tick on top of each and tabular figures, plus a proportional strip below
+ * Sin datos), a colored swatch above each figure (tabular numerals), plus a proportional strip below
  * so the mix of the whole room reads at a glance.
  */
 export function SummaryCounters({ summary }: { summary: RoomSummary }) {
@@ -19,8 +19,8 @@ export function SummaryCounters({ summary }: { summary: RoomSummary }) {
     <div className="overflow-hidden rounded-xl border border-app bg-surface">
       <dl className="grid grid-cols-5 divide-x divide-[var(--border)]">
         {TILES.map((tile) => (
-          <div key={tile.key} className="relative flex flex-col items-center px-1 pb-2.5 pt-3">
-            <span aria-hidden="true" className="absolute inset-x-2 top-0 h-[3px] rounded-b-sm" style={{ backgroundColor: tile.color }} />
+          <div key={tile.key} className="flex flex-col items-center px-1 pb-2.5 pt-2.5">
+            <span aria-hidden="true" className="mb-2 h-1 w-5 rounded-full" style={{ backgroundColor: tile.color }} />
             <dd className="font-mono text-[22px] font-semibold leading-none text-main sm:text-2xl">{summary[tile.key] as number}</dd>
             <dt className="mt-1.5 text-[11px] font-semibold leading-tight text-muted">{tile.label}</dt>
           </div>

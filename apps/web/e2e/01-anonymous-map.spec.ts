@@ -18,5 +18,5 @@ test("anonymous visitor sees the room map and is prompted to log in to collabora
   const seat = seatLocator(page, "12", 4);
   await seat.click();
 
-  await expect(page.getByText("Iniciá sesión para colaborar.")).toBeVisible();
+  await expect(page.getByText("Sin cuenta solo podés ver el mapa")).toBeVisible();
 });

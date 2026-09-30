@@ -50,9 +50,13 @@ export interface SeatProps {
   onSelect: (seat: SeatDto) => void;
   /** What to draw for whoever is checked in here: their photo, their alias animal or a silhouette. */
   avatar?: SeatAvatarDto | null;
+  /** Faded out by the "Solo libres" filter. */
+  dimmed?: boolean;
+  /** The viewer's favorite seat — gets a small star badge. */
+  isFavorite?: boolean;
 }
 
-export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, isMySeat, isSelected, onSelect, avatar = null }: SeatProps) {
+export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, isMySeat, isSelected, onSelect, avatar = null, dimmed = false, isFavorite = false }: SeatProps) {
   const badge = seatAvatarRender(avatar, seat.status === "OCCUPIED" || isMySeat);
   const showPhoto = badge !== null;
   const clipId = `seat-photo-${seat.id}`;
@@ -68,7 +72,9 @@ export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, is
       tabIndex={0}
       aria-label={ariaLabel}
       aria-pressed={isSelected}
-      className="cursor-pointer outline-none"
+      data-status={seat.status}
+      className="cursor-pointer outline-none transition-opacity"
+      opacity={dimmed ? 0.18 : 1}
       onClick={() => onSelect(seat)}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -155,6 +161,15 @@ export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, is
       >
         {GLYPH[visualStatus]}
       </text>
+      {isFavorite ? (
+        <g transform={`translate(${-SEAT_R + 3} ${-SEAT_R + 3}) rotate(${-seat.rotation})`}>
+          <circle r={6.5} fill="var(--seat-saved)" stroke="white" strokeWidth={1.5} />
+          <path
+            d="M 0 -3.6 L 1.05 -1.1 L 3.6 -1 L 1.65 0.65 L 2.3 3.2 L 0 1.8 L -2.3 3.2 L -1.65 0.65 L -3.6 -1 L -1.05 -1.1 Z"
+            fill="#422006"
+          />
+        </g>
+      ) : null}
       {seat.verified ? (
         <g transform={`translate(${SEAT_R - 3} ${-SEAT_R + 3}) rotate(${-seat.rotation})`}>
           <circle r={6} fill="#0f6e7e" stroke="white" strokeWidth={1.5} />

@@ -1,7 +1,7 @@
 "use client";
 
 import type { DisputeKind, DisputeVote, MeDto, SeatDisputeDto, SeatDto, SeatOccupantDto, TableDto } from "@uns/contracts";
-import { ArmchairIcon, ChairIcon, ShieldCheckIcon, TableIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
+import { ArmchairIcon, ChairIcon, EyeIcon, ShieldCheckIcon, StarIcon, TableIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { MessageOccupantButton } from "./MessageOccupantButton";
@@ -11,6 +11,7 @@ import { clockLabel, DEFAULT_CHECKIN_DURATION } from "./checkin-duration";
 import { IdentityPrompt } from "./IdentityPrompt";
 import { NearbyOccupants } from "./NearbyOccupants";
 import { OccupantAvatar } from "./OccupantAvatar";
+import { SavedReportPrompt } from "./SavedReportPrompt";
 import { markedByLabel } from "./seat-avatar";
 import { TurnstileChallenge } from "./TurnstileChallenge";
 import { useNow } from "@/lib/use-now";
@@ -66,6 +67,13 @@ export interface SeatDetailProps {
   nearbyOccupants?: SeatOccupantDto[];
   /** SVG viewBox width, used to derive "(lado izquierdo/derecho)" for main tables. */
   viewBoxWidth?: number;
+  roomId?: string;
+  /** True right after the viewer marked this seat "Está guardado" — offers to report / ask to free it. */
+  showSavedPrompt?: boolean;
+  onDismissSavedPrompt?: () => void;
+  /** Whether this seat is the viewer's favorite (kept on the device). */
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 export function SeatDetail({
@@ -95,6 +103,11 @@ export function SeatDetail({
   onChanged,
   nearbyOccupants = [],
   viewBoxWidth = 1000,
+  roomId = "",
+  showSavedPrompt = false,
+  onDismissSavedPrompt,
+  isFavorite = false,
+  onToggleFavorite,
 }: SeatDetailProps) {
   const now = useNow(30_000);
   const [durationMinutes, setDurationMinutes] = useState(DEFAULT_CHECKIN_DURATION);
@@ -141,6 +154,19 @@ export function SeatDetail({
             </p>
           ) : null}
         </div>
+        <div className="flex shrink-0 items-center">
+        {onToggleFavorite ? (
+          <button
+            type="button"
+            onClick={onToggleFavorite}
+            aria-label={isFavorite ? "Quitar de favoritos" : "Guardar como lugar favorito"}
+            aria-pressed={isFavorite}
+            title={isFavorite ? "Tu lugar favorito" : "Marcar como favorito"}
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-muted hover:bg-[var(--surface-2)] hover:text-main"
+          >
+            <StarIcon aria-hidden="true" size={20} weight={isFavorite ? "fill" : "regular"} style={isFavorite ? { color: "var(--seat-saved)" } : undefined} />
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={onClose}
@@ -149,6 +175,7 @@ export function SeatDetail({
         >
           <XIcon aria-hidden="true" size={20} weight="regular" />
         </button>
+        </div>
       </div>
 
       {actionError ? (
@@ -161,14 +188,38 @@ export function SeatDetail({
 
       {isMySeat && showIdentityPrompt ? <IdentityPrompt onChoose={onIdentityChoice} /> : null}
 
+      {showSavedPrompt && !isMySeat && me?.user && onDismissSavedPrompt ? (
+        <SavedReportPrompt
+          seat={seat}
+          roomId={roomId}
+          occupant={occupant ?? null}
+          seatLabel={label}
+          pending={pending}
+          onAskToFree={() => {
+            onOpenDispute("SAVED");
+            onDismissSavedPrompt();
+          }}
+          onDismiss={onDismissSavedPrompt}
+        />
+      ) : null}
+
       <div className="flex flex-col gap-2">
         {!me?.user ? (
-          <p className="text-sm text-muted">
-            <Link href="/login" className="font-semibold text-primary hover:underline">
-              Iniciá sesión
-            </Link>{" "}
-            para colaborar.
-          </p>
+          <div className="rounded-xl border border-app bg-[var(--surface-2)] p-3">
+            <p className="flex items-center gap-2 text-sm font-semibold text-main">
+              <EyeIcon aria-hidden="true" size={18} weight="bold" />
+              Sin cuenta solo podés ver el mapa
+            </p>
+            <p className="mt-1 text-xs text-muted">
+              Para ocupar este lugar o avisar si está libre, ocupado o guardado, ingresá con tu cuenta.
+            </p>
+            <Link
+              href="/login"
+              className="mt-3 flex min-h-11 w-full items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark"
+            >
+              Ingresar para ocupar
+            </Link>
+          </div>
         ) : isMySeat ? (
           <>
             <PrimaryButton onClick={onExtend} disabled={pending}>

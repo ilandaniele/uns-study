@@ -13,13 +13,17 @@ export interface ReportFormProps {
   context: ReportContext;
   contextMessageId?: string;
   roomId?: string;
+  /** Preselected reason (e.g. SEAT_TROLLING when coming from a "guardado" seat). */
+  initialReason?: ReportReason;
+  /** Prefilled description the user can edit before sending. */
+  initialDescription?: string;
 }
 
 const DESCRIPTION_MAX_LENGTH = 1000;
 
-export function ReportForm({ reportedUserId, context, contextMessageId, roomId }: ReportFormProps) {
-  const [reason, setReason] = useState<ReportReason>(REPORT_REASONS[0]!);
-  const [description, setDescription] = useState("");
+export function ReportForm({ reportedUserId, context, contextMessageId, roomId, initialReason, initialDescription }: ReportFormProps) {
+  const [reason, setReason] = useState<ReportReason>(initialReason ?? REPORT_REASONS[0]!);
+  const [description, setDescription] = useState((initialDescription ?? "").slice(0, DESCRIPTION_MAX_LENGTH));
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
