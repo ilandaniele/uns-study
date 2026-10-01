@@ -18,6 +18,13 @@ test("mobile viewport smoke: room map, bottom sheet, check-in, and bottom nav ac
     await page.goto(`/sala/${ROOM_SLUG}`);
     // "Total: N lugares" is desktop-only (RoomInfoPanel); the compact mobile header still has the counters.
     await expect(page.getByText("Libres", { exact: true })).toBeVisible();
+
+    // The weekly donation prompt opens shortly after load on mobile; dismiss it and check it stays away.
+    const donate = page.getByRole("dialog", { name: "¿Querés donar?" });
+    await expect(donate).toBeVisible({ timeout: 10_000 });
+    await expect(donate.getByText("golf.cabina.mulita")).toBeVisible();
+    await donate.getByRole("button", { name: "Ahora no" }).click();
+    await expect(donate).toBeHidden();
     await expect(page.getByText("Ocupados")).toBeVisible();
 
     // Tapping a seat opens the bottom sheet.

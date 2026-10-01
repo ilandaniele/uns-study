@@ -46,6 +46,7 @@ const MoveSeatDialog = dynamic(() => import("@/features/room/MoveSeatDialog").th
 const SeatFreedToast = dynamic(() => import("@/features/room/SeatFreedToast").then((m) => m.SeatFreedToast));
 const TurnstileChallenge = dynamic(() => import("@/features/room/TurnstileChallenge").then((m) => m.TurnstileChallenge));
 import { SeatSheet } from "@/features/room/SeatSheet";
+import { DonateCard, DonatePrompt } from "@/features/room/Donate";
 const ZoomableMap = dynamic(() => import("@/features/room/ZoomableMap"));
 const loadSeatDetail = () => import("@/features/room/SeatDetail").then((m) => m.SeatDetail);
 const SeatDetail = dynamic(loadSeatDetail);
@@ -530,11 +531,22 @@ export function RoomPageClient({ slug }: { slug: string }) {
           </div>
         </section>
       ) : null}
+      {!isLargeDesktop ? (
+        <section className="order-3">
+          <DonateCard />
+        </section>
+      ) : null}
+      {mounted && !isLargeDesktop ? (
+        <DonatePrompt blocked={detail != null || challenge != null || disputeWon != null || showHowTo || confirmMove != null} />
+      ) : null}
 
       {isLargeDesktop ? (
-        <section className="order-4 rounded-2xl border border-app bg-surface lg:order-3">
-          {detail ?? <RightPanelEmptyState hasActiveCheckIn={activeCheckIn != null} />}
-        </section>
+        <div className="order-4 flex flex-col gap-4 lg:order-3">
+          <section className="rounded-2xl border border-app bg-surface">
+            {detail ?? <RightPanelEmptyState hasActiveCheckIn={activeCheckIn != null} />}
+          </section>
+          <DonateCard />
+        </div>
       ) : detail ? (
         <SeatSheet expanded={sheetExpanded} onExpandedChange={setSheetExpanded} onClose={closeDetail}>
           {detail}
