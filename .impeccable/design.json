@@ -1,0 +1,649 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-02T15:32:03.227Z",
+  "title": "Design System: Sala de Estudio",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Pizarra Teal",
+        "canonical": "#0f6e7e",
+        "oklch": "oklch(49.6% 0.083 212)",
+        "tonalRamp": [
+          "#00111f",
+          "#002d3b",
+          "#004a5a",
+          "#046979",
+          "#3a8d9e",
+          "#61b2c4",
+          "#88d9eb",
+          "#d0f7ff"
+        ]
+      },
+      "primary-deep": {
+        "role": "primary",
+        "displayName": "Deep Pizarra Teal",
+        "canonical": "#0a5562",
+        "oklch": "oklch(41.4% 0.069 213)",
+        "tonalRamp": [
+          "#00101c",
+          "#002c38",
+          "#004956",
+          "#256875",
+          "#4b8b99",
+          "#70b0bf",
+          "#95d7e6",
+          "#d5f5fd"
+        ]
+      },
+      "primary-night": {
+        "role": "primary",
+        "displayName": "Night Teal",
+        "canonical": "#5fc4d3",
+        "oklch": "oklch(76.6% 0.096 208)",
+        "tonalRamp": [
+          "#00111c",
+          "#002e3c",
+          "#004c5a",
+          "#006c7a",
+          "#1f909e",
+          "#4fb5c4",
+          "#78dceb",
+          "#caf8ff"
+        ]
+      },
+      "on-primary": {
+        "role": "neutral",
+        "displayName": "On Primary White",
+        "canonical": "#ffffff",
+        "oklch": "oklch(100.0% 0.000 89)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#808080",
+          "#a4a4a4",
+          "#cacaca",
+          "#eeeeee"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Graphite Ink",
+        "canonical": "#131816",
+        "oklch": "oklch(20.3% 0.009 169)",
+        "tonalRamp": [
+          "#080c0b",
+          "#202523",
+          "#3c413f",
+          "#595f5d",
+          "#7b827f",
+          "#a0a6a4",
+          "#c5ccc9",
+          "#ecefee"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Graphite Muted",
+        "canonical": "#535b57",
+        "oklch": "oklch(46.3% 0.012 164)",
+        "tonalRamp": [
+          "#070d0a",
+          "#1f2622",
+          "#3a423e",
+          "#58605c",
+          "#7a837e",
+          "#9ea7a3",
+          "#c4cdc8",
+          "#ebf0ed"
+        ]
+      },
+      "faint": {
+        "role": "neutral",
+        "displayName": "Graphite Faint",
+        "canonical": "#646c67",
+        "oklch": "oklch(52.3% 0.012 158)",
+        "tonalRamp": [
+          "#070d09",
+          "#1f2622",
+          "#3a423d",
+          "#58605b",
+          "#7a837d",
+          "#9ea7a2",
+          "#c4cdc7",
+          "#ebf0ed"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Pizarra Paper",
+        "canonical": "#eceee9",
+        "oklch": "oklch(94.6% 0.007 124)",
+        "tonalRamp": [
+          "#0a0c09",
+          "#232521",
+          "#3f403c",
+          "#5d5e5a",
+          "#7f817c",
+          "#a3a5a1",
+          "#c9cbc6",
+          "#eeefec"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Chalk Surface",
+        "canonical": "#fbfbf9",
+        "oklch": "oklch(98.8% 0.003 106)",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#242423",
+          "#40403e",
+          "#5e5e5c",
+          "#80807e",
+          "#a5a5a3",
+          "#cacac9",
+          "#eeeeed"
+        ]
+      },
+      "surface-2": {
+        "role": "neutral",
+        "displayName": "Slate Wash",
+        "canonical": "#e3e6e0",
+        "oklch": "oklch(92.1% 0.009 128)",
+        "tonalRamp": [
+          "#0a0c08",
+          "#232520",
+          "#3e413c",
+          "#5c5f59",
+          "#7f817c",
+          "#a3a6a0",
+          "#c9ccc6",
+          "#edefec"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#d6dad3",
+        "oklch": "oklch(88.3% 0.010 131)",
+        "tonalRamp": [
+          "#0a0c08",
+          "#222520",
+          "#3e413b",
+          "#5b5f59",
+          "#7e827b",
+          "#a2a69f",
+          "#c8ccc5",
+          "#edefec"
+        ]
+      },
+      "border-strong": {
+        "role": "neutral",
+        "displayName": "Strong Hairline",
+        "canonical": "#b9bfb6",
+        "oklch": "oklch(79.7% 0.014 134)",
+        "tonalRamp": [
+          "#090d07",
+          "#21261f",
+          "#3d413a",
+          "#5a5f58",
+          "#7d827a",
+          "#a1a79e",
+          "#c7cdc4",
+          "#ecf0eb"
+        ]
+      },
+      "night-bg": {
+        "role": "neutral",
+        "displayName": "Night Paper",
+        "canonical": "#0d1110",
+        "oklch": "oklch(17.3% 0.007 178)",
+        "tonalRamp": [
+          "#080c0b",
+          "#212524",
+          "#3c4140",
+          "#5a5f5e",
+          "#7c8180",
+          "#a0a6a4",
+          "#c6ccca",
+          "#ecefee"
+        ]
+      },
+      "night-surface": {
+        "role": "neutral",
+        "displayName": "Night Surface",
+        "canonical": "#151a19",
+        "oklch": "oklch(21.2% 0.008 182)",
+        "tonalRamp": [
+          "#080c0b",
+          "#202524",
+          "#3b4140",
+          "#595f5e",
+          "#7b8280",
+          "#a0a6a5",
+          "#c5cccb",
+          "#ecefef"
+        ]
+      },
+      "night-surface-2": {
+        "role": "neutral",
+        "displayName": "Night Wash",
+        "canonical": "#1d2422",
+        "oklch": "oklch(25.3% 0.011 176)",
+        "tonalRamp": [
+          "#070d0b",
+          "#1f2624",
+          "#3a423f",
+          "#58605d",
+          "#7a8280",
+          "#9ea7a4",
+          "#c4cdca",
+          "#ebf0ee"
+        ]
+      },
+      "night-ink": {
+        "role": "neutral",
+        "displayName": "Night Ink",
+        "canonical": "#e7ebe8",
+        "oklch": "oklch(93.6% 0.006 153)",
+        "tonalRamp": [
+          "#090c0a",
+          "#222523",
+          "#3d413e",
+          "#5b5f5c",
+          "#7e817f",
+          "#a2a6a3",
+          "#c8ccc9",
+          "#edefed"
+        ]
+      },
+      "seat-free": {
+        "role": "state",
+        "displayName": "Libre Green",
+        "canonical": "#16a34a",
+        "oklch": "oklch(62.7% 0.170 149)",
+        "tonalRamp": [
+          "#001500",
+          "#003300",
+          "#005500",
+          "#00751b",
+          "#009a42",
+          "#43c166",
+          "#6fe98b",
+          "#d3fbd8"
+        ]
+      },
+      "seat-occupied": {
+        "role": "state",
+        "displayName": "Ocupado Red",
+        "canonical": "#dc2626",
+        "oklch": "oklch(57.7% 0.215 27)",
+        "tonalRamp": [
+          "#250000",
+          "#510000",
+          "#840000",
+          "#b90000",
+          "#e4312e",
+          "#ff6a5e",
+          "#ffada2",
+          "#ffe7e3"
+        ]
+      },
+      "seat-uncertain": {
+        "role": "state",
+        "displayName": "Dudoso Amber",
+        "canonical": "#d9773a",
+        "oklch": "oklch(66.9% 0.143 49)",
+        "tonalRamp": [
+          "#250000",
+          "#530000",
+          "#761a00",
+          "#9a3d00",
+          "#c26221",
+          "#eb874b",
+          "#ffb17c",
+          "#ffe9dd"
+        ]
+      },
+      "seat-saved": {
+        "role": "state",
+        "displayName": "Guardado Yellow",
+        "canonical": "#eab308",
+        "oklch": "oklch(79.5% 0.162 86)",
+        "tonalRamp": [
+          "#250000",
+          "#441200",
+          "#643200",
+          "#855200",
+          "#aa7600",
+          "#d19b00",
+          "#f9c22c",
+          "#ffedc2"
+        ]
+      },
+      "seat-unknown": {
+        "role": "state",
+        "displayName": "Sin Datos Mauve",
+        "canonical": "#7d6570",
+        "oklch": "oklch(53.4% 0.035 349)",
+        "tonalRamp": [
+          "#15050d",
+          "#311d27",
+          "#4e3843",
+          "#6d5661",
+          "#917883",
+          "#b69ca8",
+          "#ddc2ce",
+          "#f8eaf0"
+        ]
+      },
+      "oak": {
+        "role": "material",
+        "displayName": "Oak",
+        "canonical": "#c8955c",
+        "oklch": "oklch(70.6% 0.096 68)",
+        "tonalRamp": [
+          "#220000",
+          "#401600",
+          "#603300",
+          "#815214",
+          "#a6753c",
+          "#cc9960",
+          "#f4bf85",
+          "#ffead3"
+        ]
+      },
+      "oak-border": {
+        "role": "material",
+        "displayName": "Oak Edge",
+        "canonical": "#a56a3a",
+        "oklch": "oklch(57.8% 0.099 58)",
+        "tonalRamp": [
+          "#250000",
+          "#441100",
+          "#652f00",
+          "#864e1b",
+          "#ac7141",
+          "#d39565",
+          "#fcbb8a",
+          "#ffeada"
+        ]
+      },
+      "seat-backrest": {
+        "role": "material",
+        "displayName": "Chair Backrest",
+        "canonical": "#5a3b25",
+        "oklch": "oklch(38.3% 0.056 55)",
+        "tonalRamp": [
+          "#1b0300",
+          "#381c05",
+          "#563822",
+          "#76553f",
+          "#9b7860",
+          "#c19c83",
+          "#e8c2a8",
+          "#feeadd"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Signage Display",
+        "purpose": "Seat heading in the detail panel; uppercase, 800, expanded Archivo."
+      },
+      "headline": {
+        "displayName": "Signage Headline",
+        "purpose": "Screen and panel headings and the wordmark; uppercase, 800, expanded."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Sentence-case dialog and card titles that are not place names."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Descriptions, lists and helper copy; 16px in mobile inputs."
+      },
+      "label": {
+        "displayName": "Signage Caps",
+        "purpose": "Small uppercase signage labels: subtitle, section labels, location line, field captions."
+      },
+      "data": {
+        "displayName": "Data Figures",
+        "purpose": "Geist Mono tabular figures for counts, times and the alias."
+      }
+    },
+    "shadows": [
+      {
+        "name": "hairline-lift",
+        "value": "0 1px 2px rgb(19 24 22 / 0.08)",
+        "purpose": "Barely raised card such as the login panel."
+      },
+      {
+        "name": "float",
+        "value": "0 1px 2px rgb(19 24 22 / 0.08), 0 4px 12px -4px rgb(19 24 22 / 0.14)",
+        "purpose": "Small floating controls such as the map zoom stack and toggles."
+      },
+      {
+        "name": "overlay",
+        "value": "0 2px 4px rgb(19 24 22 / 0.08), 0 16px 32px -12px rgb(19 24 22 / 0.28)",
+        "purpose": "Menus and dialogs."
+      },
+      {
+        "name": "sheet-lift",
+        "value": "0 -10px 40px rgba(0,0,0,0.22)",
+        "purpose": "Mobile bottom sheets lifted over the map only."
+      },
+      {
+        "name": "nav-active-underline",
+        "value": "inset 0 -2px 0 var(--primary)",
+        "purpose": "Active desktop nav pill underline."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-settle",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Sheet settle after drag and status-strip scale."
+      },
+      {
+        "name": "sheet-enter",
+        "value": "translateY(16px) + opacity 0 to rest, 220ms ease-out",
+        "purpose": "Bottom sheet entrance."
+      },
+      {
+        "name": "press",
+        "value": "translateY(1px); scale(0.98) on large buttons, scale(0.96) on chips",
+        "purpose": "Tactile press feedback."
+      },
+      {
+        "name": "status-strip",
+        "value": "transform 500ms cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Proportional occupancy strip under the status board."
+      },
+      {
+        "name": "seat-glow",
+        "value": "2.6s ease-in-out infinite",
+        "purpose": "Free-seat breathing glow (map only)."
+      },
+      {
+        "name": "seat-pulse",
+        "value": "1.8s (mine) / 1.4s (dispute) ease-in-out infinite",
+        "purpose": "Ring pulse on your seat and on open disputes (map only)."
+      },
+      {
+        "name": "seat-spot",
+        "value": "1.6s ease-out infinite, scale 1 to 1.7",
+        "purpose": "Ripple around the selected seat (map only)."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce",
+        "purpose": "Disables every loop, the sheet entrance, the strip transition and press offsets."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Full-width main seat action (\"Estoy acá\") with an optional tabular time hint.",
+      "html": "<button class=\"ds-btn-primary\">Estoy acá <span class=\"ds-btn-primary-hint\">· hasta las 18:40</span></button>",
+      "css": ".ds-btn-primary { display: flex; width: 100%; min-height: 52px; align-items: center; justify-content: center; gap: 8px; padding: 12px 16px; border: none; border-radius: 10px; background: var(--primary); color: #ffffff; font-size: 16px; font-weight: 700; cursor: pointer; transition: background-color 0.15s, transform 0.15s; } .ds-btn-primary:hover { background: var(--primary-dark); } .ds-btn-primary:active { transform: scale(0.98); } .ds-btn-primary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.5; } .ds-btn-primary-hint { font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; color: rgb(255 255 255 / 0.85); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Bordered surface button for secondary actions such as signing out or Google sign-in.",
+      "html": "<button class=\"ds-btn-secondary\">Cerrar sesión</button>",
+      "css": ".ds-btn-secondary { min-height: 36px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color 0.15s; } .ds-btn-secondary:hover { background: var(--surface-2); } .ds-btn-secondary:active { transform: translateY(1px); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }"
+    },
+    {
+      "name": "Quiet Button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Tonal, borderless dismissal button at the foot of sheets (\"Ahora no\").",
+      "html": "<button class=\"ds-btn-quiet\">Ahora no</button>",
+      "css": ".ds-btn-quiet { width: 100%; min-height: 48px; padding: 0 16px; border: none; border-radius: 10px; background: var(--surface-2); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; } .ds-btn-quiet:hover { background: var(--border); } .ds-btn-quiet:active { transform: translateY(1px); } .ds-btn-quiet:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Hairline-bordered surface field used in login and forms.",
+      "html": "<input class=\"ds-input\" type=\"email\" placeholder=\"Tu email\" />",
+      "css": ".ds-input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font-size: 16px; caret-color: var(--primary); } .ds-input::placeholder { color: var(--text-faint); } .ds-input:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; } .ds-input:disabled { opacity: 0.5; }"
+    },
+    {
+      "name": "Bottom Tab Nav",
+      "kind": "nav",
+      "refersTo": "nav-tab",
+      "description": "Mobile tab bar; the active tab gets a teal icon and a short teal plate bar on its top edge.",
+      "html": "<nav class=\"ds-tabnav\" aria-label=\"Secciones\"><a class=\"ds-tab\" aria-current=\"page\" href=\"#\"><span class=\"ds-tab-bar\"></span><svg width=\"22\" height=\"22\" viewBox=\"0 0 256 256\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M104 40H56a16 16 0 0 0-16 16v48a16 16 0 0 0 16 16h48a16 16 0 0 0 16-16V56a16 16 0 0 0-16-16Zm0 64H56V56h48Zm96-64h-48a16 16 0 0 0-16 16v48a16 16 0 0 0 16 16h48a16 16 0 0 0 16-16V56a16 16 0 0 0-16-16Zm0 64h-48V56h48Zm-96 32H56a16 16 0 0 0-16 16v48a16 16 0 0 0 16 16h48a16 16 0 0 0 16-16v-48a16 16 0 0 0-16-16Zm0 64H56v-48h48Zm96-64h-48a16 16 0 0 0-16 16v48a16 16 0 0 0 16 16h48a16 16 0 0 0 16-16v-48a16 16 0 0 0-16-16Zm0 64h-48v-48h48Z\"/></svg><span>Sala</span></a><a class=\"ds-tab\" href=\"#\"><span class=\"ds-tab-bar\"></span><svg width=\"22\" height=\"22\" viewBox=\"0 0 256 256\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M128 24a104 104 0 0 0-91.82 152.88l-11.35 34.05a16 16 0 0 0 20.24 20.24l34.05-11.35A104 104 0 1 0 128 24Zm0 192a87.87 87.87 0 0 1-44.06-11.81 8 8 0 0 0-6.54-.67L40 216l12.47-37.4a8 8 0 0 0-.66-6.54A88 88 0 1 1 128 216Z\"/></svg><span>Chat</span></a><a class=\"ds-tab\" href=\"#\"><span class=\"ds-tab-bar\"></span><svg width=\"22\" height=\"22\" viewBox=\"0 0 256 256\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M128 24a104 104 0 1 0 104 104A104.11 104.11 0 0 0 128 24ZM74.08 197.5a64 64 0 0 1 107.84 0 87.83 87.83 0 0 1-107.84 0ZM96 120a32 32 0 1 1 32 32 32 32 0 0 1-32-32Zm97.76 66.41a79.66 79.66 0 0 0-36.06-28.75 48 48 0 1 0-59.4 0 79.66 79.66 0 0 0-36.06 28.75 88 88 0 1 1 131.52 0Z\"/></svg><span>Perfil</span></a></nav>",
+      "css": ".ds-tabnav { display: flex; border-top: 1px solid var(--border); background: color-mix(in srgb, var(--surface) 85%, transparent); backdrop-filter: blur(8px); } .ds-tab { position: relative; display: flex; flex: 1; min-height: 48px; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 10px 0 6px; font-size: 11px; font-weight: 500; color: var(--text-muted); text-decoration: none; transition: color 0.15s; } .ds-tab:hover { color: var(--text); } .ds-tab:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; } .ds-tab-bar { position: absolute; top: 0; left: 50%; height: 3px; width: 0; transform: translateX(-50%); border-radius: 0 0 2px 2px; background: var(--primary); transition: width 0.2s; } .ds-tab[aria-current=\"page\"] { font-weight: 700; color: var(--text); } .ds-tab[aria-current=\"page\"] svg { color: var(--primary); } .ds-tab[aria-current=\"page\"] .ds-tab-bar { width: 32px; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card-tonal",
+      "description": "Bordered 10px panel; Chalk Surface for primary content, Slate Wash for secondary panels like the donation card. Heading in signage caps.",
+      "html": "<section class=\"ds-card\"><h2 class=\"ds-card-title\">¿Querés donar?</h2><p class=\"ds-card-body\">La app es gratis. Si te sirve, cualquier aporte ayuda a pagar el servidor.</p></section>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); } .ds-card-title { margin: 0; font-family: var(--font-display), Archivo, ui-sans-serif, system-ui, sans-serif; font-stretch: 118%; font-size: 16px; font-weight: 800; letter-spacing: 0.01em; text-transform: uppercase; color: var(--text); } .ds-card-body { margin: 0; font-size: 14px; line-height: 1.6; color: var(--text-muted); }"
+    },
+    {
+      "name": "Observation Chips and Status Board",
+      "kind": "chip",
+      "refersTo": "chip-observation",
+      "description": "State reported with a color dot or swatch plus ink text: the three observation chips and the five-column status board with tabular counts.",
+      "html": "<div class=\"ds-chips\"><button class=\"ds-chip\"><span class=\"ds-dot\" style=\"background: var(--seat-free)\"></span>Está libre</button><button class=\"ds-chip\"><span class=\"ds-dot\" style=\"background: var(--seat-occupied)\"></span>Está ocupado</button><button class=\"ds-chip\"><span class=\"ds-dot\" style=\"background: var(--seat-saved)\"></span>Está guardado</button></div><dl class=\"ds-board\"><div><span class=\"ds-swatch\" style=\"background: var(--seat-free)\"></span><dd>42</dd><dt>Libres</dt></div><div><span class=\"ds-swatch\" style=\"background: var(--seat-occupied)\"></span><dd>51</dd><dt>Ocupados</dt></div><div><span class=\"ds-swatch\" style=\"background: var(--seat-saved)\"></span><dd>3</dd><dt>Guardados</dt></div><div><span class=\"ds-swatch\" style=\"background: var(--seat-uncertain)\"></span><dd>4</dd><dt>Dudosos</dt></div><div><span class=\"ds-swatch\" style=\"background: var(--seat-unknown)\"></span><dd>8</dd><dt>Sin datos</dt></div></dl>",
+      "css": ".ds-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; } .ds-chip { display: flex; min-height: 56px; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0 4px; border: none; border-radius: 10px; background: var(--surface-2); color: var(--text); font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: transform 0.15s; } .ds-chip:active { transform: scale(0.96); } .ds-chip:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; } .ds-dot { width: 10px; height: 10px; border-radius: 9999px; } .ds-board { display: grid; grid-template-columns: repeat(5, 1fr); margin: 0; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); overflow: hidden; } .ds-board > div { display: flex; flex-direction: column; align-items: center; padding: 10px 4px; border-left: 1px solid var(--border); } .ds-board > div:first-child { border-left: none; } .ds-swatch { width: 20px; height: 4px; margin-bottom: 8px; border-radius: 9999px; } .ds-board dd { margin: 0; font-family: var(--font-mono), \"Geist Mono\", ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 22px; font-weight: 600; line-height: 1; color: var(--text); } .ds-board dt { margin-top: 6px; font-size: 11px; font-weight: 600; color: var(--text-muted); }"
+    },
+    {
+      "name": "Alias Ticket",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "The donation alias as a dashed tear-off ticket; tapping anywhere copies it.",
+      "html": "<button class=\"ds-ticket\"><span class=\"ds-ticket-text\"><span class=\"ds-ticket-label\">Alias Banco Provincia</span><span class=\"ds-ticket-alias\">golf.cabina.mulita</span></span><span class=\"ds-ticket-tag\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 256 256\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M216 28H88a12 12 0 0 0-12 12v36H40a12 12 0 0 0-12 12v128a12 12 0 0 0 12 12h128a12 12 0 0 0 12-12v-36h36a12 12 0 0 0 12-12V40a12 12 0 0 0-12-12Zm-60 176H52V100h104Zm48-48h-24V88a12 12 0 0 0-12-12h-68V52h104Z\"/></svg>Copiar</span></button>",
+      "css": ".ds-ticket { display: flex; width: 100%; align-items: center; gap: 12px; padding: 10px 12px; border: 1px dashed var(--border-strong); border-radius: 8px; background: var(--surface); text-align: left; cursor: pointer; transition: transform 0.15s; } .ds-ticket:active { transform: scale(0.98); } .ds-ticket:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; } .ds-ticket-text { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 2px; } .ds-ticket-label { font-family: var(--font-display), Archivo, ui-sans-serif, system-ui, sans-serif; font-stretch: 112%; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); } .ds-ticket-alias { font-family: var(--font-mono), \"Geist Mono\", ui-monospace, monospace; font-size: 15px; font-weight: 600; color: var(--text); } .ds-ticket-tag { display: flex; height: 36px; align-items: center; gap: 6px; padding: 0 10px; border-radius: 6px; background: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary); font-size: 12px; font-weight: 700; } .ds-ticket:hover .ds-ticket-tag { background: color-mix(in srgb, var(--primary) 15%, transparent); }"
+    },
+    {
+      "name": "The Seat",
+      "kind": "custom",
+      "refersTo": "chip-observation",
+      "description": "Signature map seat: top-down chair with backrest, wooden frame and a state-filled cushion carrying its state letter; dashed teal ring on keyboard focus, slow glow when free, pulsing ring on your own seat.",
+      "html": "<svg class=\"ds-seat\" width=\"132\" height=\"76\" viewBox=\"-66 -38 132 76\" role=\"img\" aria-label=\"Asiento libre y tu lugar\"><defs><radialGradient id=\"ds-seat-free\" cx=\"35%\" cy=\"28%\" r=\"75%\"><stop offset=\"0%\" stop-color=\"#ffffff\" stop-opacity=\"0.4\"/><stop offset=\"55%\" stop-color=\"var(--seat-free)\"/><stop offset=\"100%\" stop-color=\"var(--seat-free)\" stop-opacity=\"0.88\"/></radialGradient><radialGradient id=\"ds-seat-mine\" cx=\"35%\" cy=\"28%\" r=\"75%\"><stop offset=\"0%\" stop-color=\"#ffffff\" stop-opacity=\"0.4\"/><stop offset=\"55%\" stop-color=\"var(--seat-mine)\"/><stop offset=\"100%\" stop-color=\"var(--seat-mine)\" stop-opacity=\"0.88\"/></radialGradient></defs><g class=\"ds-seat-btn\" tabindex=\"0\" transform=\"translate(-30 4)\"><circle r=\"28\" fill=\"transparent\"/><circle class=\"ds-seat-focus\" r=\"28\" fill=\"none\" stroke=\"var(--primary)\" stroke-width=\"3\" stroke-dasharray=\"4 3\"/><g class=\"ds-seat-glow\"><ellipse cx=\"0\" cy=\"12.6\" rx=\"16\" ry=\"6.6\" fill=\"rgb(0 0 0 / 0.22)\"/><rect x=\"-21\" y=\"-31\" width=\"42\" height=\"8\" rx=\"4\" fill=\"var(--seat-backrest)\"/><rect x=\"-22\" y=\"-22\" width=\"44\" height=\"44\" rx=\"12\" fill=\"var(--seat-ring)\"/><rect x=\"-18\" y=\"-18\" width=\"36\" height=\"36\" rx=\"10\" fill=\"url(#ds-seat-free)\" stroke=\"var(--seat-stroke)\" stroke-width=\"1\"/></g><text text-anchor=\"middle\" dominant-baseline=\"central\" y=\"1\" font-size=\"14\" font-weight=\"700\" fill=\"white\">L</text></g><g transform=\"translate(32 4)\"><circle class=\"ds-seat-pulse\" r=\"30\" fill=\"none\" stroke=\"var(--seat-mine)\" stroke-width=\"2\"/><ellipse cx=\"0\" cy=\"12.6\" rx=\"16\" ry=\"6.6\" fill=\"rgb(0 0 0 / 0.22)\"/><rect x=\"-21\" y=\"-31\" width=\"42\" height=\"8\" rx=\"4\" fill=\"var(--seat-backrest)\"/><rect x=\"-22\" y=\"-22\" width=\"44\" height=\"44\" rx=\"12\" fill=\"var(--seat-ring)\"/><rect x=\"-18\" y=\"-18\" width=\"36\" height=\"36\" rx=\"10\" fill=\"url(#ds-seat-mine)\" stroke=\"var(--seat-stroke)\" stroke-width=\"1\"/></g></svg>",
+      "css": ".ds-seat { overflow: visible; } .ds-seat-btn { cursor: pointer; outline: none; } .ds-seat-focus { opacity: 0; } .ds-seat-btn:focus-visible .ds-seat-focus { opacity: 1; } .ds-seat-glow { animation: ds-seat-glow 2.6s ease-in-out infinite; } .ds-seat-pulse { animation: ds-seat-pulse 1.8s ease-in-out infinite; } @keyframes ds-seat-glow { 0%, 100% { filter: drop-shadow(0 0 0 rgba(22, 163, 74, 0)); } 50% { filter: drop-shadow(0 0 6px rgba(22, 163, 74, 0.55)); } } @keyframes ds-seat-pulse { 0%, 100% { opacity: 0.35; stroke-width: 2; } 50% { opacity: 0.9; stroke-width: 3.5; } } @media (prefers-reduced-motion: reduce) { .ds-seat-glow, .ds-seat-pulse { animation: none; } }"
+    }
+  ],
+  "narrative": {
+    "northStar": "La Sala Señalizada",
+    "overview": "The room is drawn as wayfinding signage: a building plan you can read in seconds. Everything on screen behaves like the plates, door signs and boards of a real study hall. Table names sit on dark plates over oak tabletops, the entrance carries a marker, headings are set in expanded uppercase capitals, and the counts on the status board never jitter. The interface around the map stays quiet so the map and its seat states do the talking.\n\nThe mood is calm, functional, institutional-but-unofficial, and honest about freshness. It borrows the clarity of public signage without borrowing any institution's identity. Density is moderate and phone-first: one column of plain, tactile, signposted controls on mobile; three columns on desktop with the map in the centre. Light mode is cool graphite ink on a grey-green \"pizarra clara\" paper; dark mode is the same layering at night, a near-black green with lifted teal.\n\nColor is rationed. One petrol-teal accent drives action and focus; the only saturated palette belongs to seat state, and state is never told by color alone. The one place the system becomes illustrative is the room itself: oak tables, wooden chairs with backrests, terracotta floor, windows and wall bars. That warmth stays inside the map. Navy and cream UI paper are rejected.",
+    "keyCharacteristics": [
+      "Grey-green paper, graphite ink, one petrol-teal accent.",
+      "Saturated hues only for seat state, always paired with a word, letter or count.",
+      "Expanded uppercase Archivo for place names and screen headings, like signage plates.",
+      "Tabular mono figures for counts, times and the donation alias.",
+      "Flat tonal layering at rest; the strong shadow is reserved for sheets lifted over the map.",
+      "Tight, signage-like corners (5 to 12px), never soft pills except avatars, dots and the entrance marker.",
+      "Motion is transform and opacity only; the only loops live on seats."
+    ],
+    "rules": [
+      {
+        "name": "The State Palette Rule",
+        "body": "Green, red, amber, yellow and mauve exist only to report seat state: on seats, counters, legend swatches, status pills and observation chips. They are never decoration, never a brand color, never a section tint.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Accent Rule",
+        "body": "Pizarra Teal is the only accent. If a second thing on the screen needs emphasis, use weight, size or a Slate Wash fill, not a new hue.",
+        "section": "colors"
+      },
+      {
+        "name": "The Never Color Alone Rule",
+        "body": "Every state color travels with a word, a letter or a number: the seat letter (L, O, ?, G, -), the status pill label, the counter caption, the chip text. Color lives in the dot or swatch; the text stays ink so it keeps full contrast.",
+        "section": "colors"
+      },
+      {
+        "name": "The Signage Caps Rule",
+        "body": "Uppercase extrabold expanded Archivo is for names of places and screens, the things a sign would say. Body copy, buttons and messages stay sentence case.",
+        "section": "typography"
+      },
+      {
+        "name": "The Steady Figures Rule",
+        "body": "Any number that updates live (counts, times, durations) uses tabular figures so the board never jitters.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Paper Rule",
+        "body": "A card that sits in the page flow gets a border and a tonal step, not a shadow.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Lifted Sheet Rule",
+        "body": "The upward sheet shadow is used only by bottom sheets that rise over the map; nothing else casts upward.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** keep the UI on Pizarra Paper, Chalk Surface and Slate Wash with Graphite Ink text; step depth by tone and a 1px hairline.",
+      "**Do** use Pizarra Teal for the one primary action per view, the active nav marker, focus and selection.",
+      "**Do** pair every seat-state color with its label, letter or count, and keep that text in ink.",
+      "**Do** set place and screen names in uppercase extrabold expanded Archivo, and everything else in sentence case.",
+      "**Do** use Geist Mono tabular figures for counts, times and the alias.",
+      "**Do** keep corners between 5px and 12px, with 22px only on the top edge of bottom sheets.",
+      "**Do** keep touch targets at 44px or more and primary actions at 48 to 56px.",
+      "**Do** animate with transform and opacity only, and switch every loop off under reduced motion."
+    ],
+    "donts": [
+      "**Don't** use seat-state colors for decoration, icons, section tints or brand moments.",
+      "**Don't** introduce a second accent hue, navy, or cream UI paper. Warm wood and cream tones belong to the room illustration only.",
+      "**Don't** set body copy, buttons or messages in uppercase signage caps.",
+      "**Don't** put shadows on in-flow cards, or the upward sheet shadow on anything but a bottom sheet over the map.",
+      "**Don't** add looping animation outside the seats on the map.",
+      "**Don't** use soft pill shapes for buttons or cards; full rounding is for avatars, dots and the entrance marker.",
+      "**Don't** use the UNS logo, crest or institutional colors."
+    ]
+  }
+}
