@@ -83,11 +83,12 @@ function DailyTrend({ days }: { days: RoomDailyStatDto[] }) {
   }
   const avgPct = Math.round((days.reduce((sum, d) => sum + d.freshSeatCoverage, 0) / days.length) * 100);
   const last = days[days.length - 1]!;
-  const summary = `Lugares con datos en el día, últimos ${days.length} días: promedio ${avgPct}%, último día (${last.day}) ${Math.round(last.freshSeatCoverage * 100)}%.`;
+  const span = days.length === 1 ? "último día" : `últimos ${days.length} días`;
+  const summary = `Lugares con datos en el día, ${span}: promedio ${avgPct}%, último día (${last.day}) ${Math.round(last.freshSeatCoverage * 100)}%.`;
 
   return (
     <div className="mt-4">
-      <p className="text-xs text-muted">Lugares con datos en el día (últimos {days.length} días)</p>
+      <p className="text-xs text-muted">Lugares con datos en el día ({span})</p>
       <div role="img" aria-label={summary} className="mt-1.5 flex h-12 items-end gap-0.5">
         {days.map((d) => (
           <div key={d.day} className="flex h-full min-w-0 flex-1 items-end rounded-sm bg-[var(--surface-2)]" title={`${d.day}: ${Math.round(d.freshSeatCoverage * 100)}%`}>
