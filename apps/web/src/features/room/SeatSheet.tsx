@@ -58,7 +58,7 @@ export function SeatSheet({ expanded, onExpandedChange, onClose, children }: Sea
       }`}
       style={{
         transform: dragY ? `translateY(${dragY}px)` : undefined,
-        transition: dragY ? "none" : "transform 200ms ease-out, max-height 240ms ease-out",
+        transition: dragY ? "none" : "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
       }}
     >
       <div

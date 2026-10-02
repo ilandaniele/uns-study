@@ -20,7 +20,7 @@ export function MessageMenu({ isOwn, onDelete, onReport, onBlock }: MessageMenuP
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="Más opciones"
-        className="rounded-lg p-1.5 text-muted hover:bg-[var(--surface-2)] hover:text-main"
+        className="relative rounded-lg p-1.5 text-muted before:absolute before:-inset-1.5 before:content-[''] hover:bg-[var(--surface-2)] hover:text-main"
       >
         <DotsThreeVerticalIcon aria-hidden="true" size={18} weight="bold" />
       </button>

@@ -36,7 +36,7 @@
   --border-strong: #b9bfb6;
   --text: var(--ink);
   --text-muted: var(--muted);
-  --text-faint: #7c847f;
+  --text-faint: #646c67;
 
   --primary: #0f6e7e;
   --primary-dark: #0a5562;
@@ -91,7 +91,7 @@
   --border-strong: #3a4441;
   --text: var(--ink);
   --text-muted: var(--muted);
-  --text-faint: #6f7a75;
+  --text-faint: #838e89;
 
   --primary: #5fc4d3;
   --primary-dark: #8ed7e2;
@@ -288,6 +288,17 @@ a[class*="bg-primary"]:active {
   color: var(--text-muted);
 }
 
+/* Browser surfaces themed from the palette: selection, caret, native controls, scrollbars. */
+::selection {
+  background: color-mix(in srgb, var(--primary) 28%, transparent);
+  color: var(--text);
+}
+html {
+  accent-color: var(--primary);
+  caret-color: var(--primary);
+  scrollbar-color: var(--border-strong) transparent;
+}
+
 /* Visible focus rings everywhere, per the design brief. */
 a,
 button,
@@ -370,7 +381,8 @@ input:focus-visible,
 
 /* Occupancy bar segment width transitions — reduced-motion aware. */
 .occupancy-segment {
-  transition: width 0.5s ease;
+  transform-origin: left;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 @media (prefers-reduced-motion: reduce) {
   .occupancy-segment {
@@ -433,4 +445,16 @@ input:focus-visible,
     break-inside: avoid;
     page-break-inside: avoid;
   }
+}
+
+/* Map seats are SVG groups: draw the keyboard focus as a dashed ring around the chair instead
+   of a box outline around the group's bounding rect. */
+.seat-button:focus-visible {
+  outline: none;
+}
+.seat-focus-ring {
+  opacity: 0;
+}
+.seat-button:focus-visible .seat-focus-ring {
+  opacity: 1;
 }

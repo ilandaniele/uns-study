@@ -73,7 +73,7 @@ export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, is
       aria-label={ariaLabel}
       aria-pressed={isSelected}
       data-status={seat.status}
-      className="cursor-pointer outline-none transition-opacity"
+      className="seat-button cursor-pointer outline-none transition-opacity"
       opacity={dimmed ? 0.18 : 1}
       onClick={() => onSelect(seat)}
       onKeyDown={(event) => {
@@ -88,6 +88,7 @@ export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, is
       {isMySeat ? (
         <circle r={RING_R + 7} fill="none" stroke="var(--seat-mine)" strokeWidth={2} className="seat-pulse-mine" />
       ) : null}
+      <circle r={RING_R + 5} fill="none" stroke="var(--primary)" strokeWidth={3} strokeDasharray="4 3" className="seat-focus-ring" />
       {isSelected ? <circle r={RING_R + 5} fill="none" stroke="var(--primary)" strokeWidth={3} /> : null}
       {hasOpenDispute ? (
         <circle r={RING_R + 9} fill="none" stroke="var(--seat-uncertain)" strokeWidth={2} className="seat-pulse-dispute" />

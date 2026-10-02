@@ -14,7 +14,7 @@ function Switch({ checked, disabled, label, onChange }: { checked: boolean; disa
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full border border-app transition-colors disabled:opacity-40 ${
+      className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full border border-app transition-colors before:absolute before:-inset-y-2.5 before:-inset-x-1 before:content-[''] disabled:opacity-40 ${
         checked ? "bg-primary" : "bg-[var(--surface-2)]"
       }`}
     >

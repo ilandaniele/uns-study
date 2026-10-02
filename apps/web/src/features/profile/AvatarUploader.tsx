@@ -138,7 +138,7 @@ export function AvatarUploader({ avatarUrl, displayName, googleImage, showAvatar
       {!showAvatar ? (
         <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-[var(--surface-2)] px-3 py-2 text-sm text-muted">
           <span>Tu foto no se muestra: activá &ldquo;Mostrar foto de perfil&rdquo; más abajo.</span>
-          <button type="button" onClick={onEnableShowAvatar} className="font-semibold text-primary hover:underline">
+          <button type="button" onClick={onEnableShowAvatar} className="relative font-semibold text-primary underline-offset-2 hover:underline before:absolute before:-inset-x-2 before:-inset-y-3 before:content-['']">
             Activar ahora
           </button>
         </div>

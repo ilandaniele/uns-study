@@ -27,15 +27,16 @@ export function SummaryCounters({ summary }: { summary: RoomSummary }) {
         ))}
       </dl>
       {total > 0 ? (
-        <div aria-hidden="true" className="flex h-1.5 w-full bg-[var(--surface-2)]">
-          {TILES.map((tile) => {
-            const value = summary[tile.key] as number;
-            if (value === 0) return null;
+        <div aria-hidden="true" className="relative h-1.5 w-full overflow-hidden bg-[var(--surface-2)]">
+          {/* Stacked bar drawn as layers scaled to each status's cumulative share, so changes
+              animate on transform only. Earlier statuses paint on top of later ones. */}
+          {TILES.map((tile, index) => {
+            const cumulative = TILES.slice(0, index + 1).reduce((sum, t) => sum + (summary[t.key] as number), 0);
             return (
               <span
                 key={tile.key}
-                className="occupancy-segment h-full"
-                style={{ width: `${(value / total) * 100}%`, backgroundColor: tile.color }}
+                className="occupancy-segment absolute inset-0"
+                style={{ transform: `scaleX(${cumulative / total})`, backgroundColor: tile.color, zIndex: TILES.length - index }}
               />
             );
           })}

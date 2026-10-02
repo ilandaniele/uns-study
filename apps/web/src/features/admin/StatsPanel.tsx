@@ -37,7 +37,7 @@ export function StatsPanel({ roomSlug }: { roomSlug: string }) {
         <span className="font-mono font-semibold text-main">{coveragePct}%</span>
       </div>
       <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-2)]" role="img" aria-label="Cobertura de datos frescos">
-        <div className="occupancy-segment h-full rounded-full bg-primary" style={{ width: `${coveragePct}%` }} />
+        <div className="occupancy-segment h-full bg-primary" style={{ transform: `scaleX(${coveragePct / 100})` }} />
       </div>
 
       <dl className="mt-4 grid grid-cols-3 gap-3 border-t border-app pt-3 text-center">
