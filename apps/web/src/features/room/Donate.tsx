@@ -83,7 +83,7 @@ export function DonateCard() {
   return (
     <section aria-labelledby="donate-card-title" className="flex flex-col gap-3 rounded-2xl border border-app bg-[var(--surface-2)] p-4">
       <h2 id="donate-card-title" className="flex items-center gap-2 font-display text-base font-extrabold uppercase tracking-[0.01em] text-main">
-        <HeartIcon aria-hidden="true" size={18} weight="fill" className="text-[var(--seat-occupied)]" />
+        <HeartIcon aria-hidden="true" size={18} weight="fill" className="text-primary" />
         ¿Querés donar?
       </h2>
       <DonateBody />
@@ -135,7 +135,7 @@ export function DonatePrompt({ blocked }: { blocked: boolean }) {
       >
         <span aria-hidden="true" className="mx-auto h-1.5 w-11 rounded-full bg-[var(--border-strong)]" />
         <div className="flex items-start gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--seat-occupied)]/12 text-[var(--seat-occupied)]">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
             <HeartIcon aria-hidden="true" size={22} weight="fill" />
           </span>
           <div className="min-w-0 flex-1">

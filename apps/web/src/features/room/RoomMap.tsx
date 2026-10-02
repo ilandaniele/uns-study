@@ -278,8 +278,8 @@ function RoomLabelPill({ x, y, text }: { x: number; y: number; text: string }) {
   const w = text.length * 13 + 44;
   return (
     <g aria-hidden="true">
-      <rect x={x - w / 2} y={y - 21} width={w} height={42} rx={21} fill="white" stroke="var(--border)" strokeWidth={1} opacity={0.95} />
-      <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize={22} fontWeight={600} className="font-display" fill="#0F172A">
+      <rect x={x - w / 2} y={y - 21} width={w} height={42} rx={21} fill="var(--surface)" stroke="var(--border)" strokeWidth={1} opacity={0.95} />
+      <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize={22} fontWeight={600} className="font-display" fill="var(--text)">
         {text}
       </text>
     </g>

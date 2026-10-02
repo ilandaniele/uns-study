@@ -7,7 +7,7 @@
   --color-occupied: #dc2626;
   --color-uncertain: #d9773a;
   --color-saved: #eab308;
-  --color-unknown: #94a3b8;
+  --color-unknown: #7d6570;
   --color-my-seat: #0f6e7e;
   /* Brand accent: "petróleo" — a deep blue-green ink, distinct from every seat-status hue.
      Fixed in both themes so filled buttons keep white-text contrast (6.0:1). */
@@ -44,7 +44,7 @@
 
   --oak: #c8955c;
   --oak-border: #a56a3a;
-  --oak-text: #0f172a;
+  --oak-text: #131816;
 
   --room-wall: #a87a3f;
   --room-floor-a: #d8a89a;
@@ -421,7 +421,7 @@ input:focus-visible,
   }
 }
 
-/* `--color-primary` is a fixed navy so filled buttons keep white-text contrast in both themes;
+/* `--color-primary` is a fixed petrol teal so filled buttons keep white-text contrast in both themes;
    primary-colored *text* (links) must lighten on dark surfaces instead. */
 .dark .text-primary,
 .dark .hover\:text-primary:hover {
