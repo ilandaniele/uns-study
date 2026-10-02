@@ -32,6 +32,18 @@ describe("QrService", () => {
     expect(resolved).toEqual({ roomSlug: room.slug, tableCode: null });
   });
 
+  it("increments scan_count and last_scanned_at on each successful resolve only", async () => {
+    const created = await svc.create(roomId, null);
+    expect(created.scanCount).toBe(0);
+    expect(created.lastScannedAt).toBeNull();
+    await svc.resolve(created.token);
+    await svc.resolve(created.token);
+    await expect(svc.resolve("bogus")).rejects.toBeDefined();
+    const [listed] = await svc.list(roomId);
+    expect(listed?.scanCount).toBe(2);
+    expect(listed?.lastScannedAt).not.toBeNull();
+  });
+
   it("creates a table-scoped QR code and resolves it with the table code", async () => {
     const created = await svc.create(roomId, tableCode);
     const resolved = await svc.resolve(created.token);

@@ -1,7 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, count, eq, gt, gte } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
+import { and, count, desc, eq, gt, gte, sql } from "drizzle-orm";
 import { schema, type Db } from "@uns/database";
-import type { GeofenceTestResultDto, LocationInput, RoomGeofenceDto, RoomStatsDto } from "@uns/contracts";
+import type { GeofenceTestResultDto, LocationInput, RoomDailyStatDto, RoomGeofenceDto, RoomStatsDto } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
 import { env } from "../env.js";
 import { RoomsService } from "../rooms/rooms.service.js";
@@ -10,6 +11,8 @@ import { PresenceService } from "../presence/presence.service.js";
 import { RoomCache } from "../common/cache/room-cache.service.js";
 
 const HOURS_24_MS = 24 * 60 * 60 * 1000;
+const DAY_MS = HOURS_24_MS;
+const BA_TZ = "America/Argentina/Buenos_Aires";
 /** Far above any user's reputation weight, so an admin mark wins the weighted-conflict rule against user FREE observations. */
 const ADMIN_OVERRIDE_WEIGHT = 1000;
 
@@ -69,13 +72,95 @@ export class AdminRoomsService {
       .from(schema.checkIns)
       .where(and(eq(schema.checkIns.roomId, room.id), gte(schema.checkIns.createdAt, dayAgo)));
 
+    const usage = await this.usageMetrics(room.id, now);
+    const dailyStats = await this.dailyStats(room.id);
+    const [qr30d] = await this.db
+      .select({
+        total: count(),
+        verified: sql<number>`count(*) filter (where ${schema.seatObservations.qrVerified})`,
+      })
+      .from(schema.seatObservations)
+      .where(
+        and(
+          eq(schema.seatObservations.roomId, room.id),
+          eq(schema.seatObservations.adminOverride, false),
+          gte(schema.seatObservations.createdAt, new Date(now.getTime() - 30 * DAY_MS)),
+        ),
+      );
+    const observations30d = Number(qr30d?.total ?? 0);
+    const qrVerifiedObservations30d = Number(qr30d?.verified ?? 0);
+
     return {
+      ...usage,
+      dailyStats,
+      observations30d,
+      qrVerifiedObservations30d,
+      qrVerifiedObservationShare30d: observations30d > 0 ? qrVerifiedObservations30d / observations30d : null,
       roomId: room.id,
       freshSeatCoverage,
       activeCheckIns: Number(activeCheckIns?.value ?? 0),
       observationsLast24h: Number(observations24h?.value ?? 0),
       checkInsLast24h: Number(checkIns24h?.value ?? 0),
     };
+  }
+
+  /** Last 30 closed days written by the daily reset job, oldest first. */
+  private async dailyStats(roomId: string): Promise<RoomDailyStatDto[]> {
+    const rows = await this.db
+      .select()
+      .from(schema.roomDailyStats)
+      .where(eq(schema.roomDailyStats.roomId, roomId))
+      .orderBy(desc(schema.roomDailyStats.day))
+      .limit(30);
+    return rows
+      .sort((a, b) => a.day.localeCompare(b.day))
+      .map((r) => ({ day: r.day, freshSeatCoverage: r.freshSeatCoverage, checkIns: r.checkIns, observations: r.observations, activeUsers: r.activeUsers }));
+  }
+
+  /**
+   * Active / returning users over 7 and 30 days. One query: distinct (user, Buenos Aires day) pairs from
+   * check-ins and observations in the last 30 days; windows are folded in memory (pairs are bounded by users x 30).
+   */
+  private async usageMetrics(
+    roomId: string,
+    now: Date,
+  ): Promise<Pick<RoomStatsDto, "activeUsers7d" | "activeUsers30d" | "returningUsers7d" | "returningUsers30d">> {
+    const since30 = new Date(now.getTime() - 30 * DAY_MS);
+    const since7 = new Date(now.getTime() - 7 * DAY_MS);
+    const localDay = (col: AnyPgColumn) => sql<string>`(${col} at time zone ${sql.raw(`'${BA_TZ}'`)})::date::text`;
+
+    const rows = await this.db
+      .select({ userId: schema.checkIns.userId, day: localDay(schema.checkIns.createdAt), at: sql<Date>`max(${schema.checkIns.createdAt})` })
+      .from(schema.checkIns)
+      .where(and(eq(schema.checkIns.roomId, roomId), gte(schema.checkIns.createdAt, since30)))
+      .groupBy(schema.checkIns.userId, localDay(schema.checkIns.createdAt))
+      .union(
+        this.db
+          .select({ userId: schema.seatObservations.userId, day: localDay(schema.seatObservations.createdAt), at: sql<Date>`max(${schema.seatObservations.createdAt})` })
+          .from(schema.seatObservations)
+          .where(
+            and(
+              eq(schema.seatObservations.roomId, roomId),
+              eq(schema.seatObservations.adminOverride, false),
+              gte(schema.seatObservations.createdAt, since30),
+            ),
+          )
+          .groupBy(schema.seatObservations.userId, localDay(schema.seatObservations.createdAt)),
+      );
+
+    const fold = (from: Date) => {
+      const daysByUser = new Map<string, Set<string>>();
+      for (const r of rows) {
+        if (new Date(r.at).getTime() < from.getTime()) continue;
+        const set = daysByUser.get(r.userId) ?? new Set<string>();
+        set.add(r.day);
+        daysByUser.set(r.userId, set);
+      }
+      return { active: daysByUser.size, returning: [...daysByUser.values()].filter((d) => d.size >= 2).length };
+    };
+    const w7 = fold(since7);
+    const w30 = fold(since30);
+    return { activeUsers7d: w7.active, activeUsers30d: w30.active, returningUsers7d: w7.returning, returningUsers30d: w30.returning };
   }
 
   async getGeofence(idOrSlug: string): Promise<RoomGeofenceDto> {

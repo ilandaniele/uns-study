@@ -78,6 +78,25 @@ describe("DailyResetJob", () => {
     expect(events.length).toBeGreaterThan(0); // events are kept, not deleted
   });
 
+  it("snapshots the ending day into room_daily_stats before clearing state, once per day", async () => {
+    const { checkIn } = await checkIns.checkIn({ userId: "u1", roomId, seatId, location, showIdentity: false });
+    const room = await getRoom(db);
+    const resetInstant = resetInstantFor(room, new Date());
+    const after = new Date(resetInstant.getTime() + 60_000);
+    const earlier = new Date(resetInstant.getTime() - 60 * 60_000);
+    await db.update(schema.checkIns).set({ startedAt: earlier, createdAt: earlier }).where(eq(schema.checkIns.id, checkIn.id));
+
+    expect(await job.runReset(roomId, after)).toBe(true);
+    const rows = await db.select().from(schema.roomDailyStats).where(eq(schema.roomDailyStats.roomId, roomId));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ checkIns: 1, observations: 0, activeUsers: 1 });
+    expect(rows[0]!.freshSeatCoverage).toBeCloseTo(1 / 108, 5); // 1 seat touched during the day
+
+    // A second tick the same day is a no-op and leaves exactly one row.
+    expect(await job.runReset(roomId, new Date(after.getTime() + 60_000))).toBe(false);
+    expect(await db.select().from(schema.roomDailyStats)).toHaveLength(1);
+  });
+
   it("records exactly one study session per active check-in it expires", async () => {
     const { checkIn } = await checkIns.checkIn({ userId: "u1", roomId, seatId, location, showIdentity: false });
     const room = await getRoom(db);

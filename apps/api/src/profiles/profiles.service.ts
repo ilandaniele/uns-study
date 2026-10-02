@@ -7,6 +7,7 @@ import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { displayName, needsAlias, visibleAvatarUrl } from "../users/display-name.js";
 import { AliasService } from "../users/alias.service.js";
+import { RestrictionService } from "../users/restriction.service.js";
 import { StudyService } from "../study/study.service.js";
 import { toDto as toCheckInDto } from "../checkins/checkins.service.js";
 
@@ -21,6 +22,7 @@ export class ProfilesService {
     @Inject(DB) private readonly db: Db,
     @Inject(StudyService) private readonly study: StudyService,
     @Inject(AliasService) private readonly aliases: AliasService,
+    @Inject(RestrictionService) private readonly restrictions: RestrictionService,
   ) {}
 
   /** Rows are created lazily on first read/write — there's no signup-time profile step. Also
@@ -48,6 +50,7 @@ export class ProfilesService {
   }
 
   async updateMyProfile(userId: string, email: string, patch: ProfilePatch): Promise<MyProfileDto> {
+    await this.restrictions.assertNot(userId, ["SUSPENDED", "BANNED"]);
     await this.ensureProfile(userId);
     const [row] = await this.db
       .update(schema.userProfiles)
@@ -127,12 +130,12 @@ export class ProfilesService {
       displayName: name,
       // `bio` has no dedicated privacy flag — it rides along with the chosen identity mode: fully
       // hidden profiles (the default) never leak it.
-      avatarUrl: visibleAvatarUrl(profile ?? null, privacy ?? null),
-      career: privacy?.showCareer ? (profile?.career ?? null) : null,
-      currentSubject: privacy?.showCurrentSubject ? (profile?.currentSubject ?? null) : null,
+      avatarUrl: identityMode !== "HIDDEN" ? visibleAvatarUrl(profile ?? null, privacy ?? null) : null,
+      career: identityMode !== "HIDDEN" && privacy?.showCareer ? (profile?.career ?? null) : null,
+      currentSubject: identityMode !== "HIDDEN" && privacy?.showCurrentSubject ? (profile?.currentSubject ?? null) : null,
       bio: identityMode !== "HIDDEN" ? (profile?.bio ?? null) : null,
-      instagram: privacy?.showInstagram ? (profile?.instagram ?? null) : null,
-      studentNumber: privacy?.showStudentNumber ? (profile?.studentNumber ?? null) : null,
+      instagram: identityMode !== "HIDDEN" && privacy?.showInstagram ? (profile?.instagram ?? null) : null,
+      studentNumber: identityMode !== "HIDDEN" && privacy?.showStudentNumber ? (profile?.studentNumber ?? null) : null,
       studyStatus: profile && !needsAlias(profile) ? await this.study.getActiveStatusForUser(targetUserId) : null,
       allowsDirectMessages: privacy?.allowDirectMessages ?? true,
       blockedByMe: Boolean(blockedByMe),

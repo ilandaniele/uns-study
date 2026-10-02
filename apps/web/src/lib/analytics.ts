@@ -12,7 +12,16 @@ declare global {
   }
 }
 
-export type AnalyticsEvent = "check_in" | "observation" | "room_view";
+export type AnalyticsEvent = 
+  | "check_in"
+  | "observation"
+  | "room_view"
+  | "chat_message_sent"
+  | "dm_sent"
+  | "report_submitted"
+  | "ranking_view"
+  | "study_mode_started"
+  | "qr_scan";
 
 let loaded = false;
 

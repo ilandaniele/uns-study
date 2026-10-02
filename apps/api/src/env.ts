@@ -60,6 +60,8 @@ export const env = {
   // (web and API on different domains, no proxy).
   crossSiteCookies: bool("CROSS_SITE_COOKIES", false),
   presenceDevBypass: bool("PRESENCE_DEV_BYPASS", false),
+  // E2E-only hooks (e.g. force-expire a check-in). Hard-disabled in production, like the presence bypass.
+  e2eTestHooks: !isProduction && bool("E2E_TEST_HOOKS", false),
   presenceMaxAgeS: num("PRESENCE_MAX_AGE_S", 120),
   presenceMaxAccuracyM: num("PRESENCE_MAX_ACCURACY_M", 150),
   turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY ?? "",

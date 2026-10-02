@@ -3,6 +3,7 @@ export interface RequestUser {
   name: string;
   email: string;
   image: string | null;
+  emailVerified?: boolean;
 }
 
 /** Converts Express request headers into a standard `Headers` instance for Better Auth's API. */

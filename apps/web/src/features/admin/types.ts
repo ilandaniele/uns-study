@@ -39,4 +39,6 @@ export interface RoomQrCodeDto {
   tableCode: string | null;
   active: boolean;
   createdAt: string;
+  scanCount: number;
+  lastScannedAt: string | null;
 }

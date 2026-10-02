@@ -76,7 +76,8 @@ export class AdminReportsService {
       .from(schema.userReportAttachments)
       .where(and(eq(schema.userReportAttachments.id, attachmentId), eq(schema.userReportAttachments.reportId, reportId)))
       .limit(1);
-    if (!attachment) throw ApiErrors.notFound("Adjunto no encontrado.");
+    // A PENDING row has no confirmed upload behind its object key — never presign it.
+    if (!attachment || attachment.status !== "UPLOADED") throw ApiErrors.notFound("Adjunto no encontrado.");
 
     const url = await this.storage.presignGet(attachment.objectKey);
 

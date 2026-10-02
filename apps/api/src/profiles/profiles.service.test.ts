@@ -23,7 +23,7 @@ async function build(db: Db) {
   const checkIns = new CheckInService(db, roomState, presence, security, new StudySessionService(db), new QrService(db), buildDisputeService(db), new RolesService(db));
   const study = new StudyService(db, new RestrictionService(db));
   const aliases = new AliasService(db);
-  const profiles = new ProfilesService(db, study, aliases);
+  const profiles = new ProfilesService(db, study, aliases, new RestrictionService(db));
   return { profiles, checkIns, study };
 }
 
@@ -123,6 +123,44 @@ describe("ProfilesService", () => {
 
       const pub = await profiles.getPublicProfile("viewer", "u1");
       expect(pub.career).toBe("Ingeniería");
+    });
+
+    it("never leaks avatar/career/subject/instagram/student number for a HIDDEN identity, even with every privacy flag on", async () => {
+      await profiles.updateMyProfile("u1", "u1@example.test", {
+        identityMode: "HIDDEN",
+        career: "Ingeniería",
+        currentSubject: "Análisis",
+        instagram: "ana.uns",
+        studentNumber: "12345",
+      });
+      await profiles.updateMyPrivacy("u1", {
+        showAvatar: true,
+        showCareer: true,
+        showCurrentSubject: true,
+        showInstagram: true,
+        showStudentNumber: true,
+      });
+      await db.update(schema.userProfiles).set({ avatarUrl: "/api/v1/avatars/u1?v=abc" }).where(eq(schema.userProfiles.userId, "u1"));
+
+      const pub = await profiles.getPublicProfile("viewer", "u1");
+      expect(pub.avatarUrl).toBeNull();
+      expect(pub.career).toBeNull();
+      expect(pub.currentSubject).toBeNull();
+      expect(pub.instagram).toBeNull();
+      expect(pub.studentNumber).toBeNull();
+
+      await profiles.updateMyProfile("u1", "u1@example.test", { firstName: "Ana", identityMode: "FIRST_NAME" });
+      const visible = await profiles.getPublicProfile("viewer", "u1");
+      expect(visible.career).toBe("Ingeniería");
+      expect(visible.instagram).toBe("ana.uns");
+      expect(visible.avatarUrl).toBe("/api/v1/avatars/u1?v=abc");
+    });
+
+    it("rejects profile updates from SUSPENDED and BANNED users", async () => {
+      await db.insert(schema.userRestrictions).values({ userId: "u1", type: "BANNED", reason: "t" });
+      await expect(profiles.updateMyProfile("u1", "u1@example.test", { nickname: "x" })).rejects.toMatchObject({ code: "RESTRICTED" });
+      await db.insert(schema.userRestrictions).values({ userId: "u2", type: "SUSPENDED", reason: "t" });
+      await expect(profiles.updateMyProfile("u2", "u2@example.test", { nickname: "x" })).rejects.toMatchObject({ code: "RESTRICTED" });
     });
 
     it("returns 404 NOT_FOUND when the target blocked the viewer", async () => {

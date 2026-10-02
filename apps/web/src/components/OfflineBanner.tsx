@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-/** Shows a small banner while `navigator.onLine` is false. Purely informational — the PWA's
- *  cached shell keeps working, but live seat/chat data can't refresh until reconnected. */
+/** Shows a small banner while `navigator.onLine` is false. Purely informational — only what this tab
+ *  already loaded stays on screen (possibly stale); no data cache is promised. */
 export function OfflineBanner() {
   const [offline, setOffline] = useState(false);
 
@@ -24,7 +24,7 @@ export function OfflineBanner() {
 
   return (
     <div className="bg-amber-500 px-4 py-1.5 text-center text-xs font-semibold text-white">
-      Sin conexión — mostrando el último estado conocido
+      Sin conexión — ves lo que ya cargó en esta pestaña, puede estar desactualizado
     </div>
   );
 }

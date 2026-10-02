@@ -1,16 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 
 export interface ChatComposerProps {
   maxLength: number;
   placeholder?: string;
   disabled?: boolean;
   onSend: (content: string) => Promise<void>;
+  /** Analytics event fired after a successful send (room chat by default, `dm_sent` for DM threads). */
+  analyticsEvent?: "chat_message_sent" | "dm_sent";
 }
 
 /** Text composer with a character counter, shared by the room chat and DM threads. */
-export function ChatComposer({ maxLength, placeholder = "Escribí un mensaje…", disabled, onSend }: ChatComposerProps) {
+export function ChatComposer({ maxLength, placeholder = "Escribí un mensaje…", disabled, onSend, analyticsEvent = "chat_message_sent" }: ChatComposerProps) {
   const [value, setValue] = useState("");
   const [sending, setSending] = useState(false);
   const trimmed = value.trim();
@@ -20,6 +23,7 @@ export function ChatComposer({ maxLength, placeholder = "Escribí un mensaje…"
     setSending(true);
     try {
       await onSend(trimmed);
+      trackEvent(analyticsEvent);
       setValue("");
     } finally {
       setSending(false);

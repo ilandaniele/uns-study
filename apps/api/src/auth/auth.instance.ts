@@ -1,10 +1,29 @@
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
+import { and, eq, gt, isNull, or } from "drizzle-orm";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import type { Db } from "@uns/database";
 import { schema } from "@uns/database";
 import { env } from "../env.js";
 
 export type Auth = ReturnType<typeof buildAuth>;
+
+/** True when `userId` has an active (unlifted, unexpired) BANNED restriction. */
+export async function hasActiveBan(db: Db, userId: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: schema.userRestrictions.id })
+    .from(schema.userRestrictions)
+    .where(
+      and(
+        eq(schema.userRestrictions.userId, userId),
+        eq(schema.userRestrictions.type, "BANNED"),
+        isNull(schema.userRestrictions.liftedAt),
+        or(isNull(schema.userRestrictions.until), gt(schema.userRestrictions.until, new Date())),
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
+}
 
 /** Builds the Better Auth instance against the shared Drizzle db. Called once at boot. */
 export function buildAuth(db: Db) {
@@ -29,6 +48,18 @@ export function buildAuth(db: Db) {
     // Signed cookie cache: most requests skip the session+user DB lookup. Bans/restrictions are
     // enforced from the restrictions table (not the session), so the 60 s staleness is harmless.
     session: { cookieCache: { enabled: true, maxAge: 60 } },
+    // A banned user must not be able to log in again (AuthGuard also rejects their requests).
+    databaseHooks: {
+      session: {
+        create: {
+          before: async (session) => {
+            if (await hasActiveBan(db, session.userId)) {
+              throw new APIError("FORBIDDEN", { message: "Tu cuenta está suspendida.", code: "ACCOUNT_BANNED" });
+            }
+          },
+        },
+      },
+    },
     socialProviders: useGoogle
       ? { google: { clientId: env.googleClientId, clientSecret: env.googleClientSecret } }
       : undefined,

@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { schema, type Db } from "@uns/database";
 import type { QrResolveDto } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
@@ -12,6 +12,8 @@ export interface RoomQrCodeDto {
   tableCode: string | null;
   active: boolean;
   createdAt: string;
+  scanCount: number;
+  lastScannedAt: string | null;
 }
 
 /** Admin-managed QR codes (`room_qr_codes`) that resolve to a room, optionally scoped to a table. */
@@ -55,12 +57,19 @@ export class QrService {
 
   /** Public resolve: an active token maps to its room's slug and (if table-scoped) the table code. */
   async resolve(token: string): Promise<QrResolveDto> {
+    // Atomic scan counter: a single UPDATE both validates the token and increments.
+    const [scanned] = await this.db
+      .update(schema.roomQrCodes)
+      .set({ scanCount: sql`${schema.roomQrCodes.scanCount} + 1`, lastScannedAt: new Date() })
+      .where(and(eq(schema.roomQrCodes.token, token), eq(schema.roomQrCodes.active, true)))
+      .returning({ id: schema.roomQrCodes.id });
+    if (!scanned) throw ApiErrors.invalidQr();
     const [row] = await this.db
       .select({ roomSlug: schema.rooms.slug, tableCode: schema.roomTables.code })
       .from(schema.roomQrCodes)
       .innerJoin(schema.rooms, eq(schema.rooms.id, schema.roomQrCodes.roomId))
       .leftJoin(schema.roomTables, eq(schema.roomTables.id, schema.roomQrCodes.tableId))
-      .where(and(eq(schema.roomQrCodes.token, token), eq(schema.roomQrCodes.active, true)))
+      .where(eq(schema.roomQrCodes.id, scanned.id))
       .limit(1);
     if (!row) throw ApiErrors.invalidQr();
     return { roomSlug: row.roomSlug, tableCode: row.tableCode ?? null };
@@ -83,5 +92,13 @@ export class QrService {
 }
 
 function toDto(row: typeof schema.roomQrCodes.$inferSelect, tableCode: string | null): RoomQrCodeDto {
-  return { id: row.id, token: row.token, tableCode, active: row.active, createdAt: new Date(row.createdAt).toISOString() };
+  return {
+    id: row.id,
+    token: row.token,
+    tableCode,
+    active: row.active,
+    createdAt: new Date(row.createdAt).toISOString(),
+    scanCount: row.scanCount,
+    lastScannedAt: row.lastScannedAt ? new Date(row.lastScannedAt).toISOString() : null,
+  };
 }

@@ -66,6 +66,38 @@ describe("AdminRoomsService.stats — Fresh Seat Coverage", () => {
     expect(stats.checkInsLast24h).toBe(2);
   });
 
+  it("reports active/returning users by distinct Buenos Aires day, QR share and stored daily stats", async () => {
+    const now = Date.now();
+    const at = (daysAgo: number) => new Date(now - daysAgo * 24 * 3600_000);
+    const obs = (userId: string, createdAt: Date, qrVerified = false) => ({
+      userId,
+      roomId,
+      seatId: seatIds[0]!,
+      observedStatus: "FREE" as const,
+      qrVerified,
+      observedAt: createdAt,
+      expiresAt: new Date(createdAt.getTime() + 900_000),
+      createdAt,
+    });
+    await db.insert(schema.seatObservations).values([
+      obs("u1", at(1), true),
+      obs("u1", at(3)), // u1: two days within 7d
+      obs("u2", at(2)), // u2: one day in 7d
+      obs("u2", at(20)), // u2: second day only within 30d
+    ]);
+    await db.insert(schema.roomDailyStats).values({ roomId, day: "2026-01-01", freshSeatCoverage: 0.5, checkIns: 3, observations: 4, activeUsers: 2 });
+
+    const stats = await svc.stats(roomId);
+    expect(stats.activeUsers7d).toBe(2);
+    expect(stats.activeUsers30d).toBe(2);
+    expect(stats.returningUsers7d).toBe(1);
+    expect(stats.returningUsers30d).toBe(2);
+    expect(stats.observations30d).toBe(4);
+    expect(stats.qrVerifiedObservations30d).toBe(1);
+    expect(stats.qrVerifiedObservationShare30d).toBeCloseTo(0.25, 5);
+    expect(stats.dailyStats).toEqual([{ day: "2026-01-01", freshSeatCoverage: 0.5, checkIns: 3, observations: 4, activeUsers: 2 }]);
+  });
+
   it("is 1 when every seat has evidence", async () => {
     for (const [i, seatId] of seatIds.entries()) {
       await insertUsers(db, [`bulk${i}`]);

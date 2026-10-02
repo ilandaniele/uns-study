@@ -46,6 +46,8 @@ async function bootstrap() {
   const { AUTH } = await import("./auth/auth.tokens.js");
   const { ApiExceptionFilter } = await import("./common/api-exception.filter.js");
   const { csrfMiddleware } = await import("./common/csrf.middleware.js");
+  const { authRateLimitMiddleware } = await import("./common/auth-rate-limit.middleware.js");
+  const { RateLimitService } = await import("./security/rate-limit.service.js");
   const { env } = await import("./env.js");
   type Auth = import("./auth/auth.instance.js").Auth;
 
@@ -83,6 +85,8 @@ async function bootstrap() {
     req.headers["x-uns-client-ip"] = req.ip ?? "";
     next();
   });
+  // Per-email + Fly-Client-IP limits on email sign-in/sign-up (defense in depth: `req.ip` is spoofable on direct hits).
+  httpAdapter.use("/api/auth", authRateLimitMiddleware(app.get(RateLimitService)));
   httpAdapter.all("/api/auth/*", toNodeHandler(auth));
 
   // The photo-verification body carries a base64 image (~2MB decoded, larger encoded) — give just

@@ -24,7 +24,7 @@ export class MeController {
   async get(@CurrentUser() user: RequestUser | undefined): Promise<MeDto> {
     if (!user) return { user: null, activeCheckIn: null, roles: [], restrictions: [], profileCompleted: false };
 
-    await this.roles.ensureAdminFromEnv(user.id, user.email);
+    await this.roles.ensureAdminFromEnv(user.id, user.email, user.emailVerified === true);
 
     const [activeCheckIn, roles, activeRestrictions, [profile]] = await Promise.all([
       this.checkIns.getActiveCheckIn(user.id),

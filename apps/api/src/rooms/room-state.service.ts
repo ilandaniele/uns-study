@@ -156,6 +156,13 @@ export class RoomStateService {
 
       const previous = previousBySeat.get(seatId);
 
+      // `now` is captured by the caller *before* it waits on the advisory lock, so a slower writer
+      // (e.g. a check-in) can carry an older stamp than a recompute that already ran for the same
+      // seat (e.g. the expiration sweep). Clients merge by `lastUpdatedAt`, so the later write
+      // (the truth in PostgreSQL) must always carry the strictly greater stamp.
+      const prevStamp = previous ? new Date(previous.lastUpdatedAt).getTime() : null;
+      const stamp = prevStamp !== null && prevStamp >= now.getTime() ? new Date(prevStamp + 1) : now;
+
       // `seat_current_state` doesn't persist `verified` (it's derived fresh from the active
       // check-in each time), so a verification-only change can't be detected by diffing it against
       // `previous` — the PHOTO_VERIFIED event type itself is the signal that something changed.
@@ -169,8 +176,8 @@ export class RoomStateService {
           status: result.status,
           confidence: result.confidence,
           sourceSummary: result.sourceSummary,
-          lastUpdatedAt: now,
-          updatedAt: now,
+          lastUpdatedAt: stamp,
+          updatedAt: stamp,
         })
         .onConflictDoUpdate({
           target: schema.seatCurrentState.seatId,
@@ -178,8 +185,8 @@ export class RoomStateService {
             status: result.status,
             confidence: result.confidence,
             sourceSummary: result.sourceSummary,
-            lastUpdatedAt: now,
-            updatedAt: now,
+            lastUpdatedAt: stamp,
+            updatedAt: stamp,
           },
         });
 
@@ -192,9 +199,9 @@ export class RoomStateService {
           oldStatus: previous?.status ?? null,
           newStatus: result.status,
           metadata: { confidence: result.confidence, sourceSummary: result.sourceSummary, ...(opts.seatMetadata?.[seatId] ?? {}) },
-          createdAt: now,
+          createdAt: stamp,
         });
-        changes.push({ seatId, status: result.status, confidence: result.confidence, lastUpdatedAt: now, verified, occupiedUntil: activeCheckIn ? new Date(activeCheckIn.expiresAt) : null, previousStatus: previous?.status ?? null });
+        changes.push({ seatId, status: result.status, confidence: result.confidence, lastUpdatedAt: stamp, verified, occupiedUntil: activeCheckIn ? new Date(activeCheckIn.expiresAt) : null, previousStatus: previous?.status ?? null });
       }
     }
 

@@ -25,10 +25,13 @@ export class DmController {
   }
 
   @Post()
-  create(
+  async create(
     @CurrentUser() user: RequestUser,
     @Body(new ZodBodyPipe(createConversationSchema)) body: z.infer<typeof createConversationSchema>,
   ) {
+    const limit = await this.rateLimit.check(`dm-create:${user.id}`, 10, 3600);
+    if (!limit.allowed) throw ApiErrors.rateLimited();
+
     return this.dm.getOrCreateConversation(user.id, body.userId);
   }
 

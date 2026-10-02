@@ -36,7 +36,7 @@ describe("RolesService", () => {
     const RolesService = await importRolesService("Admin@Example.com, other@example.com");
     const svc = new RolesService(db);
 
-    await svc.ensureAdminFromEnv("u1", "ADMIN@EXAMPLE.COM");
+    await svc.ensureAdminFromEnv("u1", "ADMIN@EXAMPLE.COM", true);
     await expect(svc.hasRole("u1", ["ADMIN"])).resolves.toBe(true);
   });
 
@@ -44,8 +44,8 @@ describe("RolesService", () => {
     const RolesService = await importRolesService("admin@example.com");
     const svc = new RolesService(db);
 
-    await svc.ensureAdminFromEnv("u1", "admin@example.com");
-    await svc.ensureAdminFromEnv("u1", "admin@example.com");
+    await svc.ensureAdminFromEnv("u1", "admin@example.com", true);
+    await svc.ensureAdminFromEnv("u1", "admin@example.com", true);
     await expect(svc.rolesFor("u1")).resolves.toEqual(["ADMIN"]);
   });
 
@@ -53,7 +53,19 @@ describe("RolesService", () => {
     const RolesService = await importRolesService("someone-else@example.com");
     const svc = new RolesService(db);
 
-    await svc.ensureAdminFromEnv("u1", "admin@example.com");
+    await svc.ensureAdminFromEnv("u1", "admin@example.com", true);
     await expect(svc.hasRole("u1", ["ADMIN"])).resolves.toBe(false);
+  });
+
+  it("ensureAdminFromEnv does nothing when the email is not verified", async () => {
+    const RolesService = await importRolesService("admin@example.com");
+    const svc = new RolesService(db);
+
+    await svc.ensureAdminFromEnv("u1", "admin@example.com", false);
+    await expect(svc.hasRole("u1", ["ADMIN"])).resolves.toBe(false);
+
+    // Verifying later still works: the unverified attempt must not be cached as "ensured".
+    await svc.ensureAdminFromEnv("u1", "admin@example.com", true);
+    await expect(svc.hasRole("u1", ["ADMIN"])).resolves.toBe(true);
   });
 });

@@ -17,6 +17,12 @@ export class ProfilesController {
     @Inject(RateLimitService) private readonly rateLimit: RateLimitService,
   ) {}
 
+  // Profile and privacy edits share one bucket.
+  private async checkWriteLimit(userId: string): Promise<void> {
+    const limit = await this.rateLimit.check(`profile-write:${userId}`, 30, 3600);
+    if (!limit.allowed) throw ApiErrors.rateLimited();
+  }
+
   @Get("profiles/me")
   async getMe(@CurrentUser() user: RequestUser) {
     return this.profiles.getMyProfile(user.id, user.email);
@@ -27,6 +33,7 @@ export class ProfilesController {
     @CurrentUser() user: RequestUser,
     @Body(new ZodBodyPipe(updateProfileSchema)) body: z.infer<typeof updateProfileSchema>,
   ) {
+    await this.checkWriteLimit(user.id);
     return this.profiles.updateMyProfile(user.id, user.email, body);
   }
 
@@ -40,6 +47,7 @@ export class ProfilesController {
     @CurrentUser() user: RequestUser,
     @Body(new ZodBodyPipe(updatePrivacySchema)) body: z.infer<typeof updatePrivacySchema>,
   ) {
+    await this.checkWriteLimit(user.id);
     return this.profiles.updateMyPrivacy(user.id, body);
   }
 

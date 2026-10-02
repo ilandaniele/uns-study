@@ -110,6 +110,10 @@ export function QrCodes({ roomSlug }: { roomSlug: string }) {
               >
                 {item.active ? "Activo" : "Desactivado"}
               </p>
+              <p className="qr-print-hide text-center text-xs text-muted">
+                {item.scanCount} {item.scanCount === 1 ? "escaneo" : "escaneos"}
+                {item.lastScannedAt ? ` · último ${new Date(item.lastScannedAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}` : ""}
+              </p>
               {item.active ? (
                 <button
                   type="button"

@@ -2,7 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { format } from "date-fns";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
-import { and, eq, isNull, lt, or } from "drizzle-orm";
+import { and, eq, gte, isNull, lt, or } from "drizzle-orm";
 import { schema, type Db } from "@uns/database";
 import type { SeatDisputeLiteDto } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
@@ -38,6 +38,49 @@ export class DailyResetJob {
   }
 
   /**
+   * Upserts `room_daily_stats` for the operational day ending at `resetInstant` (labelled with its local
+   * calendar date). Idempotent per (room, day). Coverage = share of active seats that got at least one
+   * check-in or non-admin observation during the day (the 24h before the reset instant).
+   */
+  private async snapshotDailyStats(
+    tx: Parameters<Parameters<Db["transaction"]>[0]>[0],
+    room: { id: string; timezone: string },
+    seatRows: { id: string }[],
+    resetInstant: Date,
+  ): Promise<void> {
+    const windowStart = new Date(resetInstant.getTime() - 24 * 60 * 60 * 1000);
+    const day = format(toZonedTime(new Date(resetInstant.getTime() - 1), room.timezone), "yyyy-MM-dd");
+    const roomId = room.id;
+    const activeSeatIds = seatRows.map((s) => s.id);
+
+    const checkInUsers = await tx
+      .select({ userId: schema.checkIns.userId, seatId: schema.checkIns.seatId })
+      .from(schema.checkIns)
+      .where(and(eq(schema.checkIns.roomId, roomId), gte(schema.checkIns.createdAt, windowStart), lt(schema.checkIns.createdAt, resetInstant)));
+    const observationUsers = await tx
+      .select({ userId: schema.seatObservations.userId, seatId: schema.seatObservations.seatId })
+      .from(schema.seatObservations)
+      .where(
+        and(
+          eq(schema.seatObservations.roomId, roomId),
+          eq(schema.seatObservations.adminOverride, false),
+          gte(schema.seatObservations.createdAt, windowStart),
+          lt(schema.seatObservations.createdAt, resetInstant),
+        ),
+      );
+    // Daily seat coverage: share of active seats with >= 1 check-in or non-admin observation during the day.
+    const touched = new Set([...checkInUsers, ...observationUsers].map((r) => r.seatId));
+    const freshSeatCoverage = activeSeatIds.length > 0 ? activeSeatIds.filter((id) => touched.has(id)).length / activeSeatIds.length : 0;
+    const activeUsers = new Set([...checkInUsers, ...observationUsers].map((r) => r.userId)).size;
+
+    const values = { freshSeatCoverage, checkIns: checkInUsers.length, observations: observationUsers.length, activeUsers };
+    await tx
+      .insert(schema.roomDailyStats)
+      .values({ roomId, day, ...values })
+      .onConflictDoUpdate({ target: [schema.roomDailyStats.roomId, schema.roomDailyStats.day], set: values });
+  }
+
+  /**
    * Runs (or no-ops) the reset for a single room. Exposed for tests. Returns `true` if a reset
    * was actually applied.
    */
@@ -59,6 +102,9 @@ export class DailyResetJob {
         .where(and(eq(schema.rooms.id, roomId), or(isNull(schema.rooms.lastResetAt), lt(schema.rooms.lastResetAt, resetInstant))))
         .returning({ id: schema.rooms.id });
       if (claimed.length === 0) return null; // another instance already reset this room today
+
+      // Snapshot the day that is ending BEFORE anything below clears state.
+      await this.snapshotDailyStats(tx, room, seatRows, resetInstant);
 
       // Only touch check-ins/observations that actually predate this reset instant — a tick can
       // run a little late (the cron fires every minute, not exactly at 04:00), and anything

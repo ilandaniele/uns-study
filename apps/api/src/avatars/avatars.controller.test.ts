@@ -3,6 +3,7 @@ import type { Response } from "express";
 import type { Db } from "@uns/database";
 import { schema } from "@uns/database";
 import { freshDb, insertUsers } from "../test-utils.js";
+import { RestrictionService } from "../users/restriction.service.js";
 import type { RateLimitService } from "../security/rate-limit.service.js";
 import type { RequestUser } from "../auth/request-user.js";
 import { AvatarsService } from "./avatars.service.js";
@@ -38,7 +39,7 @@ describe("PublicAvatarController", () => {
   beforeEach(async () => {
     db = await freshDb();
     await insertUsers(db, ["u1", "u2"]);
-    const avatars = new AvatarsService(db);
+    const avatars = new AvatarsService(db, new RestrictionService(db));
     await avatars.upload("u1", { mimeType: "image/jpeg", base64: JPEG_BASE64 });
     const rateLimit = { check: async () => ({ allowed: true }) } as unknown as RateLimitService;
     ctrl = new PublicAvatarController(avatars, rateLimit);

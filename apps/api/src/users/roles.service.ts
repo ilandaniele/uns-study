@@ -23,9 +23,10 @@ export class RolesService {
     return mine.some((r) => roles.includes(r));
   }
 
-  /** If `email` is in the `ADMIN_EMAILS` env list (case-insensitive), upserts the ADMIN role for `userId`. */
-  async ensureAdminFromEnv(userId: string, email: string): Promise<void> {
+  /** If `email` is in the `ADMIN_EMAILS` env list (case-insensitive) and verified, upserts the ADMIN role for `userId`. */
+  async ensureAdminFromEnv(userId: string, email: string, emailVerified: boolean): Promise<void> {
     if (this.ensuredAdmins.has(userId)) return;
+    if (emailVerified !== true) return; // an unverified signup must not claim an admin address
     if (!env.adminEmails.includes(email.trim().toLowerCase())) return;
     await this.db.insert(schema.userRoles).values({ userId, role: "ADMIN" }).onConflictDoNothing();
     this.ensuredAdmins.add(userId);

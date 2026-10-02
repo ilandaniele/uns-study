@@ -5,6 +5,7 @@ import { schema, type Db } from "@uns/database";
 import type { AvatarMimeType } from "@uns/contracts";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
+import { RestrictionService } from "../users/restriction.service.js";
 import { stripImageMetadata } from "../common/image-metadata.js";
 
 const MAX_AVATAR_BYTES = 300 * 1024;
@@ -62,10 +63,14 @@ function avatarUrlFor(userId: string, sha256: string): string {
  */
 @Injectable()
 export class AvatarsService {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(
+    @Inject(DB) private readonly db: Db,
+    @Inject(RestrictionService) private readonly restrictions: RestrictionService,
+  ) {}
 
   /** Decodes/validates the upload, strips metadata, stores it, and points `avatar_url` at it. */
   async upload(userId: string, image: { mimeType: AvatarMimeType; base64: string }): Promise<string> {
+    await this.restrictions.assertNot(userId, ["SUSPENDED", "BANNED"]);
     const bytes = decodeAndValidateAvatar(image);
     const stripped = stripImageMetadata(image.mimeType, bytes);
     return this.storeBytes(userId, image.mimeType, stripped);
@@ -84,6 +89,7 @@ export class AvatarsService {
    * uploaded photo, so every avatar — Google or uploaded — is served from `/api/v1/avatars/:userId`.
    */
   async useGoogleImage(userId: string, googleImage: string | null): Promise<string> {
+    await this.restrictions.assertNot(userId, ["SUSPENDED", "BANNED"]);
     const bytes = await this.fetchGoogleImageBytes(googleImage);
     const mimeType = sniffMimeType(bytes);
     if (!mimeType) throw ApiErrors.validation("No hay una foto de Google para usar.");

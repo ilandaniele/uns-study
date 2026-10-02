@@ -3,6 +3,7 @@
 import type { ReportContext, ReportReason } from "@uns/contracts";
 import { PlusIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 import { ApiRequestError } from "@/lib/api";
 import { describeEvidenceError, validateEvidenceFile } from "./evidence";
 import { REPORT_REASONS, reportReasonLabel } from "./reportReasons";
@@ -90,6 +91,7 @@ export function ReportForm({ reportedUserId, context, contextMessageId, roomId, 
         roomId,
         file,
       });
+      trackEvent("report_submitted", { context, reason });
       setResult({ warning: attachmentWarning });
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "RATE_LIMITED") {

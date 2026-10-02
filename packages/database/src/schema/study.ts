@@ -1,4 +1,4 @@
-import { boolean, index, integer, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, date, index, integer, pgEnum, pgTable, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { rooms } from "./rooms.js";
 import { user } from "./auth.js";
 
@@ -39,7 +39,28 @@ export const roomQrCodes = pgTable(
     tableId: uuid("table_id"),
     token: text("token").notNull().unique(),
     active: boolean("active").notNull().default(true),
+    scanCount: integer("scan_count").notNull().default(0),
+    lastScannedAt: timestamp("last_scanned_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
+);
+
+/** One row per room per local (America/Argentina/Buenos_Aires) day, written by the daily reset job before it clears state. */
+export const roomDailyStats = pgTable(
+  "room_daily_stats",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    // End-of-day snapshot, taken just before the reset: share (0..1) of seats with live evidence.
+    freshSeatCoverage: real("fresh_seat_coverage").notNull().default(0),
+    checkIns: integer("check_ins").notNull().default(0),
+    observations: integer("observations").notNull().default(0),
+    activeUsers: integer("active_users").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("uq_room_daily_stats_room_day").on(table.roomId, table.day)],
 );

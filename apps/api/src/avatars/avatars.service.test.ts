@@ -3,6 +3,7 @@ import type { Db } from "@uns/database";
 import { schema } from "@uns/database";
 import { eq } from "drizzle-orm";
 import { freshDb, insertUsers } from "../test-utils.js";
+import { RestrictionService } from "../users/restriction.service.js";
 import { AvatarsService } from "./avatars.service.js";
 
 // A minimal-but-valid JPEG signature (FF D8 FF ...) — enough to pass the magic-byte check without
@@ -33,7 +34,7 @@ describe("AvatarsService", () => {
 
   beforeEach(async () => {
     db = await freshDb();
-    svc = new AvatarsService(db);
+    svc = new AvatarsService(db, new RestrictionService(db));
     await insertUsers(db, ["u1", "u2"]);
   });
 
@@ -86,6 +87,15 @@ describe("AvatarsService", () => {
       await svc.upload("u1", { mimeType: "image/jpeg", base64: jpeg.toString("base64") });
       const [row] = await db.select().from(schema.userAvatars).where(eq(schema.userAvatars.userId, "u1"));
       expect(row!.bytes.includes("GPS secret")).toBe(false);
+    });
+  });
+
+  describe("restrictions", () => {
+    it("blocks upload and use-Google-image for SUSPENDED/BANNED users", async () => {
+      await db.insert(schema.userRestrictions).values({ userId: "u1", type: "BANNED", reason: "t" });
+      await db.insert(schema.userRestrictions).values({ userId: "u2", type: "SUSPENDED", reason: "t" });
+      await expect(svc.upload("u1", { mimeType: "image/jpeg", base64: JPEG_BASE64 })).rejects.toMatchObject({ code: "RESTRICTED" });
+      await expect(svc.useGoogleImage("u2", "https://lh3.googleusercontent.com/a")).rejects.toMatchObject({ code: "RESTRICTED" });
     });
   });
 

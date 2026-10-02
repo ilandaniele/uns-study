@@ -13,8 +13,6 @@ export interface PrivacyFieldDef {
  * Pure data — kept out of the component so it's unit-testable and easy to reorder.
  */
 export const PRIVACY_FIELDS: PrivacyFieldDef[] = [
-  { key: "showFullName", label: "Mostrar nombre completo", hint: "Permite que tu nombre completo se use según tu modo de identidad." },
-  { key: "showNickname", label: "Mostrar apodo", hint: "Permite que tu apodo se use según tu modo de identidad." },
   { key: "showCareer", label: "Mostrar carrera", hint: "Tu carrera aparece en tu perfil público." },
   { key: "showCurrentSubject", label: "Mostrar materia actual", hint: "La materia que estás cursando aparece en tu perfil público." },
   { key: "showInstagram", label: "Mostrar Instagram", hint: "Tu usuario de Instagram aparece en tu perfil público." },

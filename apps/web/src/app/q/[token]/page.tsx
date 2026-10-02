@@ -3,6 +3,7 @@
 import type { QrResolveDto } from "@uns/contracts";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 import { apiFetch, ApiRequestError } from "@/lib/api";
 
 /** Resolves a scanned QR token and redirects into the room, highlighting the target table
@@ -17,6 +18,7 @@ export default function QrRedirectPage() {
     apiFetch<QrResolveDto>(`/api/v1/qr/${params.token}`)
       .then((dto) => {
         if (cancelled) return;
+        trackEvent("qr_scan");
         const search = new URLSearchParams({ source: "qr", qr: params.token });
         if (dto.tableCode) search.set("table", dto.tableCode);
         router.replace(`/sala/${dto.roomSlug}?${search.toString()}`);

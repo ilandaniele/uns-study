@@ -126,7 +126,7 @@ function DmThread({ conversationId, currentUserId }: { conversationId: string; c
       )}
 
       {sendError ? <p className="px-4 text-sm text-red-600">{sendError}</p> : null}
-      <ChatComposer maxLength={DM_MESSAGE_MAX_LENGTH} onSend={send} />
+      <ChatComposer maxLength={DM_MESSAGE_MAX_LENGTH} onSend={send} analyticsEvent="dm_sent" />
     </main>
   );
 }

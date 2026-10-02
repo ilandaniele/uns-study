@@ -21,7 +21,9 @@ describe("PRIVACY_FIELDS", () => {
   it("covers every live boolean field of PrivacySettingsDto exactly once", () => {
     const keys = PRIVACY_FIELDS.map((f) => f.key);
     expect(new Set(keys).size).toBe(keys.length);
-    // showInRoom / showSeat are legacy columns: they no longer decide visibility, so there is no toggle for them.
-    expect(keys.sort()).toEqual(Object.keys(ALL_OFF).filter((k) => k !== "showInRoom" && k !== "showSeat").sort());
+    // showInRoom / showSeat / showFullName / showNickname are legacy columns: they no longer decide visibility
+    // (the displayed name comes from identityMode), so there is no toggle for them.
+    const legacy = ["showInRoom", "showSeat", "showFullName", "showNickname"];
+    expect(keys.sort()).toEqual(Object.keys(ALL_OFF).filter((k) => !legacy.includes(k)).sort());
   });
 });

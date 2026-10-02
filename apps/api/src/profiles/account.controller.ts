@@ -2,6 +2,7 @@ import { Body, Controller, HttpCode, Inject, Post, UseGuards } from "@nestjs/com
 import { deleteAccountSchema } from "@uns/contracts";
 import type { z } from "zod";
 import { AuthGuard } from "../auth/auth.guard.js";
+import { AllowRestricted } from "../auth/allow-restricted.decorator.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";
 import { ZodBodyPipe } from "../common/zod-body.pipe.js";
@@ -20,6 +21,7 @@ export class AccountController {
   ) {}
 
   @Post("delete")
+  @AllowRestricted()
   @HttpCode(200)
   async delete(
     @CurrentUser() user: RequestUser,

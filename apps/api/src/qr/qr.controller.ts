@@ -1,6 +1,9 @@
-import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Inject, Ip, Param, Post, UseGuards } from "@nestjs/common";
 import { AdminOnlyGuard } from "../users/admin.guard.js";
 import { RoomsService } from "../rooms/rooms.service.js";
+import { ApiErrors } from "../common/api-error.js";
+import { RateLimitService } from "../security/rate-limit.service.js";
+import { hashIp } from "../security/security-event.service.js";
 import { QrService } from "./qr.service.js";
 
 /** Admin CRUD for a room's QR codes — role-sensitive, ADMIN only. */
@@ -37,10 +40,16 @@ export class AdminQrController {
 /** Public resolve used by the `/q/[token]` redirect page. */
 @Controller("qr")
 export class QrResolveController {
-  constructor(@Inject(QrService) private readonly qr: QrService) {}
+  constructor(
+    @Inject(QrService) private readonly qr: QrService,
+    @Inject(RateLimitService) private readonly rateLimit: RateLimitService,
+  ) {}
 
   @Get(":token")
-  resolve(@Param("token") token: string) {
+  async resolve(@Param("token") token: string, @Ip() ip: string) {
+    const limit = await this.rateLimit.check(`qr-resolve-ip:${hashIp(ip)}`, 60, 60);
+    if (!limit.allowed) throw ApiErrors.rateLimited();
+
     return this.qr.resolve(token);
   }
 }

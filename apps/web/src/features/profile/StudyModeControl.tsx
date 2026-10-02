@@ -2,6 +2,7 @@
 
 import type { StudyStatusDto } from "@uns/contracts";
 import { useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 import { apiFetch, apiPost, ApiRequestError } from "@/lib/api";
 
 export interface StudyModeControlProps {
@@ -28,6 +29,7 @@ export function StudyModeControl({ roomId, initialStatus }: StudyModeControlProp
         message: message.trim() || undefined,
         lookingForGroup,
       });
+      trackEvent("study_mode_started", { lookingForGroup });
       setStatus(result);
     } catch (err) {
       setError(

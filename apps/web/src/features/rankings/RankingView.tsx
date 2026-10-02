@@ -1,7 +1,8 @@
 "use client";
 
 import type { RankingCategory, RankingPeriod } from "@uns/contracts";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 import { CATEGORY_DESCRIPTIONS } from "./labels";
 import { RankingSkeleton, RankingTable } from "./RankingTable";
 import { CategoryPicker, PeriodPicker } from "./RankingTabs";
@@ -11,6 +12,10 @@ export function RankingView({ roomSlug }: { roomSlug: string }) {
   const [period, setPeriod] = useState<RankingPeriod>("week");
   const [category, setCategory] = useState<RankingCategory>("study_time");
   const { ranking, loading, error } = useRankings(roomSlug, period, category);
+
+  useEffect(() => {
+    trackEvent("ranking_view");
+  }, []);
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pb-24 pt-6 md:pb-10">

@@ -30,6 +30,8 @@ export class DmService {
   async getOrCreateConversation(requesterId: string, targetId: string): Promise<ConversationDto> {
     if (requesterId === targetId) throw ApiErrors.validation("No podés iniciar una conversación con vos mismo.");
 
+    await this.restrictions.assertNot(requesterId, ["SUSPENDED", "BANNED"]);
+
     if (await this.blocks.isBlockedEitherDirection(requesterId, targetId)) throw ApiErrors.blocked();
 
     const [privacy] = await this.db.select().from(schema.userPrivacySettings).where(eq(schema.userPrivacySettings.userId, targetId));

@@ -33,6 +33,13 @@ describe("DmService", () => {
     expect(rows).toHaveLength(1);
   });
 
+  it("refuses to open a conversation for a SUSPENDED or BANNED requester", async () => {
+    await db.insert(schema.userRestrictions).values({ userId: "u1", type: "BANNED", reason: "t" });
+    await db.insert(schema.userRestrictions).values({ userId: "u3", type: "SUSPENDED", reason: "t" });
+    await expect(svc.getOrCreateConversation("u1", "u2")).rejects.toMatchObject({ code: "RESTRICTED" });
+    await expect(svc.getOrCreateConversation("u3", "u2")).rejects.toMatchObject({ code: "RESTRICTED" });
+  });
+
   it("rejects DMs when the target disabled direct messages", async () => {
     await db.insert(schema.userPrivacySettings).values({ userId: "u2", allowDirectMessages: false });
     await expect(svc.getOrCreateConversation("u1", "u2")).rejects.toMatchObject({ code: "DM_NOT_ALLOWED" });
