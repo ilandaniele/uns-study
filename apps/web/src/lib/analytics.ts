@@ -3,7 +3,13 @@
  * `anonymize_ip` is enabled and no advertising/personalization signals are sent.
  */
 
-const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
+/** Public GA4 measurement ID of the production property; only used on the production host. */
+const PROD_GA_ID = "G-63PGVEW5T2";
+const PROD_HOST = "uns-study.vercel.app";
+
+const GA_ID =
+  process.env.NEXT_PUBLIC_GA_ID ||
+  (typeof window !== "undefined" && window.location.hostname === PROD_HOST ? PROD_GA_ID : undefined);
 
 declare global {
   interface Window {
@@ -36,8 +42,10 @@ export function loadAnalytics(): void {
   document.head.appendChild(script);
 
   window.dataLayer = window.dataLayer ?? [];
-  window.gtag = function gtag(...args: unknown[]) {
-    window.dataLayer?.push(args);
+  // gtag.js only processes `arguments` objects; pushing a plain array silently drops the command.
+  window.gtag = function gtag() {
+    // eslint-disable-next-line prefer-rest-params
+    window.dataLayer?.push(arguments);
   };
   window.gtag("js", new Date());
   window.gtag("config", GA_ID, { anonymize_ip: true });
