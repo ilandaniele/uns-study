@@ -22,7 +22,7 @@ export interface MessagesClient {
   };
 }
 
-const SYSTEM_PROMPT = [
+export const SYSTEM_PROMPT = [
   "You locate which seat of a university study room a photo was taken from.",
   "You get a labelled floor plan of the room, then a photo taken by a person sitting at one seat looking forward over the desk, then the seat layout with coordinates.",
   "Tables are symmetric, so use landmarks (windows, entrance door, wall bars, plants, columns, neighbouring tables) to tell sides and rows apart.",
@@ -50,7 +50,7 @@ const toolInputSchema = z.object({
 });
 
 let planBase64: string | undefined;
-function loadPlan(): string {
+export function loadPlan(): string {
   planBase64 ??= readFileSync(new URL("../assets/plano.png", import.meta.url)).toString("base64");
   return planBase64;
 }

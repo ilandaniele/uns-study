@@ -10,7 +10,8 @@ primary_region = "gru"
   NODE_ENV = "production"
   PORT = "8080"
 
-# Secrets (not set here, `fly secrets set -c fly.verifier.toml`): VERIFIER_TOKEN, ANTHROPIC_API_KEY.
+# Secrets (not set here, `fly secrets set -c fly.verifier.toml`): VERIFIER_TOKEN, GEMINI_API_KEY
+# (or ANTHROPIC_API_KEY; Gemini wins when both are set).
 # API side (`fly secrets set` on the API app): SEAT_VERIFIER_URL=https://sala-de-estudio-verifier.fly.dev/
 # and SEAT_VERIFIER_TOKEN (same value as VERIFIER_TOKEN).
 

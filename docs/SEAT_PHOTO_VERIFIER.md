@@ -92,9 +92,9 @@ malformed body counts as "could not verify". The user is not penalised for it.
 ## Reference implementation: apps/verifier
 
 `apps/verifier` (`@sala/verifier`) is a small Node 22 HTTP service that follows
-this contract using Claude vision. It sends the model a labelled floor plan, the
-user's photo and a text description of the seat layout, and forces a
-`report_seat` tool call so the output is strict JSON. A seat code that is not in
+this contract using Gemini vision (or Claude vision). It sends the model a labelled floor plan, the
+user's photo and a text description of the seat layout, and forces structured JSON output (a
+`report_seat` tool call on Claude) so the answer is strict JSON. A seat code that is not in
 the request's `seats` is turned into `null` with confidence 0, and any model
 error or timeout answers `{ "seatCode": null, "confidence": 0 }` with HTTP 200.
 The static system prompt and the floor plan are prompt-cached.
@@ -104,15 +104,15 @@ Endpoints: `POST /` (the contract above, `Authorization: Bearer`), `GET /health`
 | Variable | Meaning |
 |---|---|
 | `VERIFIER_TOKEN` | Required in production. Must equal the API's `SEAT_VERIFIER_TOKEN`. |
-| `ANTHROPIC_API_KEY` | Required in production. |
-| `VERIFIER_MODEL` | Optional, default `claude-sonnet-5-5`. Reported as `modelVersion: "sala-seat-v1:<model>"`. |
+| `GEMINI_API_KEY` | Required in production (free tier from Google AI Studio). `ANTHROPIC_API_KEY` is used instead when no Gemini key is set. |
+| `VERIFIER_MODEL` | Optional, default `gemini-2.5-flash` (`claude-sonnet-5-5` with the Anthropic key). Reported as `modelVersion: "sala-seat-v1:<model>"`. |
 | `PORT` | Optional, default `8080`. |
 
 Deploy:
 
 ```
 fly deploy -c fly.verifier.toml --remote-only
-fly secrets set -c fly.verifier.toml VERIFIER_TOKEN=... ANTHROPIC_API_KEY=...
+fly secrets set -c fly.verifier.toml VERIFIER_TOKEN=... GEMINI_API_KEY=...
 # on the API app:
 fly secrets set SEAT_VERIFIER_URL=https://sala-de-estudio-verifier.fly.dev/ SEAT_VERIFIER_TOKEN=...
 ```
@@ -123,4 +123,4 @@ verify" and the user can simply try again.
 
 No-storage guarantee: the service keeps no database or disk state, never writes
 the photo anywhere and never logs it. It logs only `{evt, claimed, predicted,
-confidence, ms}`. The photo is sent to the Anthropic API for inference only.
+confidence, ms}`. The photo is sent to the Gemini API (or the Anthropic API). On the Gemini free tier Google may use prompts and images to improve its products; use a paid Gemini key if that is not acceptable.
