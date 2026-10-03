@@ -22,7 +22,7 @@ export function HouseAd({ variant, onNavigate }: HouseAdProps) {
   const Icon = promoteSubscription ? ProhibitIcon : DeviceMobileIcon;
   const title = promoteSubscription ? "Sala de Estudio sin anuncios" : "Tu sala, a un toque";
   const body = promoteSubscription
-    ? `Estudiá sin pausas, en todos tus dispositivos. $${price}/mes y cancelás cuando quieras.`
+    ? `Estudiá sin pausas, en todos tus dispositivos. $${(price ?? 1500).toLocaleString("es-AR")} por mes y cancelás cuando quieras.`
     : "Agregá Sala de Estudio a tu pantalla de inicio y mirá los lugares libres sin abrir el navegador.";
   const hint = "Desde el menú del navegador: Agregar a pantalla de inicio.";
 

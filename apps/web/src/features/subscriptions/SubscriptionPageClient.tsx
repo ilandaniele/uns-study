@@ -106,7 +106,7 @@ export function SubscriptionPageClient() {
     <main className="mx-auto max-w-prose space-y-6 px-4 py-8 text-main">
       <header className="space-y-2">
         <h1 className="font-display text-2xl font-semibold uppercase tracking-wide">Sala de Estudio sin anuncios</h1>
-        {price !== undefined && <p className="text-lg font-semibold text-primary">${price}/mes</p>}
+        {price !== undefined && <p className="text-lg font-semibold text-primary tabular-nums">${price.toLocaleString("es-AR")} por mes</p>}
       </header>
 
       <ul className="list-disc space-y-2 pl-5 text-sm">
@@ -118,7 +118,7 @@ export function SubscriptionPageClient() {
         {meLoading ? (
           <p className="text-sm text-muted">Cargando…</p>
         ) : !enabled ? (
-          <p className="text-sm text-muted">Muy pronto</p>
+          <p className="text-sm text-muted">La suscripción todavía no está disponible. Te avisamos por mail cuando la habilitemos.</p>
         ) : !signedIn ? (
           <Link
             href="/login"

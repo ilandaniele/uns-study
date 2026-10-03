@@ -52,7 +52,12 @@ export function UnsubscribeClient() {
   }
 
   if (view === "loading") return <p className="text-muted">Cargando…</p>;
-  if (view === "invalid") return <p className="text-[var(--seat-occupied)]">El enlace no es válido.</p>;
+  if (view === "invalid")
+    return (
+      <p className="text-[var(--seat-occupied)]">
+        El enlace no es válido o está incompleto. Abrí el enlace del último mail o desactivá las novedades desde tu perfil.
+      </p>
+    );
   if (view === "done") return <p>Listo, no vas a recibir más novedades. Podés volver a activarlas en tu perfil.</p>;
   if (view === "already") return <p>Ya no recibís novedades por mail. Podés volver a activarlas en tu perfil.</p>;
 
