@@ -8,12 +8,21 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { fontBody, fontDisplay, fontMono } from "@/lib/fonts";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
+import { SITE_URL } from "./sitemap";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "Sala de Estudio", template: "%s · Sala de Estudio" },
   description: "Disponibilidad de lugares en la sala de estudio en tiempo real.",
   manifest: "/manifest.webmanifest",
+  metadataBase: new URL(SITE_URL),
+  icons: { icon: "/icons/icon-192.png", apple: "/icons/icon-192.png" },
+  openGraph: {
+    type: "website",
+    siteName: "Sala de Estudio",
+    locale: "es_AR",
+    images: [{ url: "/icons/icon-512.png", width: 512, height: 512 }],
+  },
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Sala de Estudio" },
 };
 
