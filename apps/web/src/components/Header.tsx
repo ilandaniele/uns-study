@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "@/lib/auth-client";
 import { useAdminAccess } from "@/features/admin/useAdminAccess";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { FocusHeaderButton } from "@/features/focus/FocusHeaderButton";
 import { invalidateMe } from "@/lib/me-store";
 import { resetSocket } from "@/lib/socket";
 
@@ -16,6 +17,7 @@ const NAV_ITEMS: { label: string; href: string }[] = [
   { label: "Comunidad", href: "/comunidad" },
   { label: "Chat", href: "/chat" },
   { label: "Ranking", href: "/ranking" },
+  { label: "Foco", href: "/foco" },
   { label: "Perfil", href: "/perfil" },
 ];
 
@@ -76,6 +78,7 @@ export function Header() {
             Sin anuncios
           </Link>
         ) : null}
+        <FocusHeaderButton />
         <ThemeToggle />
         {loading ? null : user ? (
           <div className="flex items-center gap-3">

@@ -458,3 +458,13 @@ input:focus-visible,
 .seat-button:focus-visible .seat-focus-ring {
   opacity: 1;
 }
+
+/* Pomodoro (/foco): one shared easing for the sliding phase thumb and the stat bars. */
+.focus-ease {
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .focus-ease {
+    transition-duration: 0ms !important;
+  }
+}

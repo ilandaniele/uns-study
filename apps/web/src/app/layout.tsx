@@ -4,6 +4,7 @@ import { AdsRoot } from "@/features/ads/AdsRoot";
 import { AnalyticsLoader } from "@/components/AnalyticsLoader";
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
+import { FocusRuntime } from "@/features/focus/FocusRuntime";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { fontBody, fontDisplay, fontMono } from "@/lib/fonts";
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Header />
         {children}
         <BottomNav />
+        <FocusRuntime />
         <AdsRoot />
         <ServiceWorkerRegistration />
         <AnalyticsLoader />
