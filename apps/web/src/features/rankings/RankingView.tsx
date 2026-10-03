@@ -1,6 +1,6 @@
 "use client";
 
-import type { RankingCategory, RankingPeriod } from "@uns/contracts";
+import type { RankingCategory, RankingPeriod } from "@sala/contracts";
 import { useEffect, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { CATEGORY_DESCRIPTIONS } from "./labels";

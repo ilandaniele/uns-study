@@ -1,4 +1,4 @@
-import { VERIFIED_PROTECTION_MINUTES } from "@uns/contracts";
+import { VERIFIED_PROTECTION_MINUTES } from "@sala/contracts";
 
 /**
  * When a verified check-in's photo protection ends: `VERIFIED_PROTECTION_MINUTES` after the

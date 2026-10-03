@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Response } from "express";
-import type { RoomMapDto } from "@uns/contracts";
-import { schema, type Db } from "@uns/database";
+import type { RoomMapDto } from "@sala/contracts";
+import { schema, type Db } from "@sala/database";
 import { eq } from "drizzle-orm";
 import { freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { RoomCache } from "../common/cache/room-cache.service.js";

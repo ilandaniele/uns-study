@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { Db } from "@uns/database";
-import { schema } from "@uns/database";
+import type { Db } from "@sala/database";
+import { schema } from "@sala/database";
 import { eq } from "drizzle-orm";
 import { buildDisputeService, freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { PresenceService } from "../presence/presence.service.js";
@@ -130,7 +130,7 @@ describe("ProfilesService", () => {
         identityMode: "HIDDEN",
         career: "Ingeniería",
         currentSubject: "Análisis",
-        instagram: "ana.uns",
+        instagram: "ana.estudia",
         studentNumber: "12345",
       });
       await profiles.updateMyPrivacy("u1", {
@@ -152,7 +152,7 @@ describe("ProfilesService", () => {
       await profiles.updateMyProfile("u1", "u1@example.test", { firstName: "Ana", identityMode: "FIRST_NAME" });
       const visible = await profiles.getPublicProfile("viewer", "u1");
       expect(visible.career).toBe("Ingeniería");
-      expect(visible.instagram).toBe("ana.uns");
+      expect(visible.instagram).toBe("ana.estudia");
       expect(visible.avatarUrl).toBe("/api/v1/avatars/u1?v=abc");
     });
 

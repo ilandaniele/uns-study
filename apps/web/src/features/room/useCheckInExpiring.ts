@@ -1,7 +1,7 @@
 "use client";
 
-import { SocketEvents } from "@uns/contracts/events";
-import type { CheckInExpiringEvent } from "@uns/contracts";
+import { SocketEvents } from "@sala/contracts/events";
+import type { CheckInExpiringEvent } from "@sala/contracts";
 import { useEffect, useState } from "react";
 import { getSocket } from "@/lib/socket";
 

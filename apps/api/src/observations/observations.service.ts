@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, gt, gte, or } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
-import { FREE_OBS_MINUTES, OCCUPIED_OBS_MINUTES, SAVED_OBS_MINUTES, type LocationInput } from "@uns/contracts";
+import { schema, type Db } from "@sala/database";
+import { FREE_OBS_MINUTES, OCCUPIED_OBS_MINUTES, SAVED_OBS_MINUTES, type LocationInput } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { PresenceService } from "../presence/presence.service.js";

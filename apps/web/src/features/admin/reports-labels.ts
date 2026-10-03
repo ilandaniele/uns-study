@@ -1,4 +1,4 @@
-import type { ReportReason } from "@uns/contracts";
+import type { ReportReason } from "@sala/contracts";
 
 export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
   SPAM: "Spam",

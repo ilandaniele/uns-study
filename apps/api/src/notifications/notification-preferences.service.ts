@@ -1,11 +1,11 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { eq } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
-import type { NotificationPreferencesDto } from "@uns/contracts";
+import { schema, type Db } from "@sala/database";
+import type { NotificationPreferencesDto } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 
 type PreferencesRow = typeof schema.notificationPreferences.$inferSelect;
-export type NotificationPreferencesPatch = Partial<Pick<PreferencesRow, "seatFreed" | "adminPresent" | "checkinExpiry">>;
+export type NotificationPreferencesPatch = Partial<Pick<PreferencesRow, "seatFreed" | "adminPresent" | "checkinExpiry" | "marketingEmails">>;
 
 /** Per-user opt-in switches, the first two `false` until the user turns them on (same "everything private
  *  by default" convention as `user_privacy_settings`). */
@@ -37,5 +37,5 @@ export class NotificationPreferencesService {
 }
 
 function toDto(row: PreferencesRow): NotificationPreferencesDto {
-  return { seatFreed: row.seatFreed, adminPresent: row.adminPresent, checkinExpiry: row.checkinExpiry };
+  return { seatFreed: row.seatFreed, adminPresent: row.adminPresent, checkinExpiry: row.checkinExpiry, marketingEmails: row.marketingEmails };
 }

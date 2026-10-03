@@ -1,6 +1,6 @@
 import { Controller, Get, Inject, Param, Query, Res, UseGuards } from "@nestjs/common";
 import type { Response } from "express";
-import type { RankingCategory, RankingPeriod } from "@uns/contracts";
+import type { RankingCategory, RankingPeriod } from "@sala/contracts";
 import { OptionalAuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";

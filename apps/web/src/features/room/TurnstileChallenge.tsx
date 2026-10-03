@@ -2,14 +2,13 @@
 
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
+import { isProductionHost } from "@/lib/hosts";
 
 /** Public site key of the production widget; Cloudflare only accepts it on this hostname. */
 const PROD_SITE_KEY = "0x4AAAAAAFMTxb6ekwDzFR5E";
-const PROD_HOST = "uns-study.vercel.app";
-
 const SITE_KEY =
   process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ||
-  (typeof window !== "undefined" && window.location.hostname === PROD_HOST ? PROD_SITE_KEY : undefined);
+  (isProductionHost() ? PROD_SITE_KEY : undefined);
 
 declare global {
   interface Window {

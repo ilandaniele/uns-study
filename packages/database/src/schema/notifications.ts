@@ -14,6 +14,8 @@ export const notificationPreferences = pgTable("notification_preferences", {
   adminPresent: boolean("admin_present").notNull().default(false),
   // Unlike the two above this one defaults ON: it only ever concerns the user's own seat.
   checkinExpiry: boolean("checkin_expiry").notNull().default(true),
+  // Opt-out model: admin email campaigns go to everyone who has not turned this off.
+  marketingEmails: boolean("marketing_emails").notNull().default(true),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

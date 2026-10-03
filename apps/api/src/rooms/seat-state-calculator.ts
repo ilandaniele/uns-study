@@ -1,4 +1,4 @@
-import type { SeatStatus } from "@uns/contracts";
+import type { SeatStatus } from "@sala/contracts";
 
 export interface SeatObservationInput {
   userId: string;

@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, desc, eq, gt, inArray, or } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
-import { animalIdFromAlias, type RoomPersonDto, type SeatMarkedByDto, type SeatOccupancyDto } from "@uns/contracts";
+import { schema, type Db } from "@sala/database";
+import { animalIdFromAlias, type RoomPersonDto, type SeatMarkedByDto, type SeatOccupancyDto } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { displayName, needsAlias, visibleAvatarUrl, type DisplayNameProfile } from "../users/display-name.js";
 import { AliasService } from "../users/alias.service.js";

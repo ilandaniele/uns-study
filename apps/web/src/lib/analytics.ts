@@ -3,13 +3,13 @@
  * `anonymize_ip` is enabled and no advertising/personalization signals are sent.
  */
 
+import { isProductionHost } from "./hosts";
+
 /** Public GA4 measurement ID of the production property; only used on the production host. */
 const PROD_GA_ID = "G-63PGVEW5T2";
-const PROD_HOST = "uns-study.vercel.app";
-
 const GA_ID =
   process.env.NEXT_PUBLIC_GA_ID ||
-  (typeof window !== "undefined" && window.location.hostname === PROD_HOST ? PROD_GA_ID : undefined);
+  (isProductionHost() ? PROD_GA_ID : undefined);
 
 declare global {
   interface Window {
@@ -27,7 +27,10 @@ export type AnalyticsEvent =
   | "report_submitted"
   | "ranking_view"
   | "study_mode_started"
-  | "qr_scan";
+  | "qr_scan"
+  | "ad_impression"
+  | "ad_close"
+  | "ad_reward";
 
 let loaded = false;
 
@@ -48,7 +51,22 @@ export function loadAnalytics(): void {
     window.dataLayer?.push(arguments);
   };
   window.gtag("js", new Date());
-  window.gtag("config", GA_ID, { anonymize_ip: true });
+  // Never send the query string: /baja carries a signed unsubscribe token there.
+  window.gtag("config", GA_ID, {
+    anonymize_ip: true,
+    send_page_view: false,
+    page_location: cleanLocation(),
+  });
+}
+
+function cleanLocation(): string {
+  return window.location.origin + window.location.pathname;
+}
+
+/** Sends a page_view with the query string stripped. No-op when analytics isn't loaded. */
+export function trackPageView(): void {
+  if (!GA_ID || typeof window === "undefined" || !window.gtag) return;
+  window.gtag("event", "page_view", { page_location: cleanLocation(), page_title: document.title });
 }
 
 /** Sends a GA4 event. No-op when analytics isn't loaded (GA_ID unset). */

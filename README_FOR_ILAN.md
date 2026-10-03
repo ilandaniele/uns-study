@@ -30,6 +30,6 @@ No hace falta entregar:
 
 Claude debe preparar `.env.example`.
 
-Después vos colocás los secretos reales únicamente en `.env` local / Vercel / Railway.
+Después vos colocás los secretos reales únicamente en `.env` local / Fly.io / Railway.
 
 Nunca pegues secretos reales dentro de `CLAUDE.md` ni los subas a Git.

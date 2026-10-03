@@ -1,6 +1,6 @@
 import { Body, Controller, Inject, Post, UseGuards } from "@nestjs/common";
 import type { z } from "zod";
-import { presenceValidateSchema, type PresenceResult } from "@uns/contracts";
+import { presenceValidateSchema, type PresenceResult } from "@sala/contracts";
 import { AuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";

@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Inject, Put, UseGuards } from "@nestjs/common";
 import type { z } from "zod";
-import { updateNotificationPreferencesSchema } from "@uns/contracts";
+import { updateNotificationPreferencesSchema } from "@sala/contracts";
 import { AuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";

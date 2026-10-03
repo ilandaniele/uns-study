@@ -1,6 +1,6 @@
 "use client";
 
-import type { StudyStatusDto } from "@uns/contracts";
+import type { StudyStatusDto } from "@sala/contracts";
 import { useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { apiFetch, apiPost, ApiRequestError } from "@/lib/api";

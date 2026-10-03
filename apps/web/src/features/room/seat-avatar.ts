@@ -1,4 +1,4 @@
-import { animalAvatarPath, isAnimalId, type SeatAvatarDto } from "@uns/contracts";
+import { animalAvatarPath, isAnimalId, type SeatAvatarDto } from "@sala/contracts";
 
 /** Light blue-grey backdrop shared by the silhouette and the animal illustrations. */
 export const AVATAR_BACKDROP = "#c5d0e6";

@@ -1,6 +1,6 @@
 "use client";
 
-import type { QrResolveDto } from "@uns/contracts";
+import type { QrResolveDto } from "@sala/contracts";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { trackEvent } from "@/lib/analytics";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PrivacySettingsDto } from "@uns/contracts";
+import type { PrivacySettingsDto } from "@sala/contracts";
 import { PRIVACY_FIELDS } from "./privacy-fields";
 
 const ALL_OFF: PrivacySettingsDto = {

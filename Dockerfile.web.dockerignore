@@ -1,0 +1,15 @@
+**/node_modules
+**/.next
+**/.turbo
+.git
+.data
+coverage
+**/test-results
+**/playwright-report
+reference-images
+*.md
+!README.md
+
+# Local env files never go into an image (secrets, localhost URLs).
+**/.env*
+!**/.env.example

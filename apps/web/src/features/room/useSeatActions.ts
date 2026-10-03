@@ -1,6 +1,6 @@
 "use client";
 
-import type { CheckInDto, DisputeKind, DisputeVote, RoomMapDto, SeatDisputeDto, SeatDto, SeatStateChangedEvent } from "@uns/contracts";
+import type { CheckInDto, DisputeKind, DisputeVote, RoomMapDto, SeatDisputeDto, SeatDto, SeatStateChangedEvent } from "@sala/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiDelete, apiFetch, apiPost, ApiRequestError } from "@/lib/api";
 import { describeActionError } from "@/lib/errors";

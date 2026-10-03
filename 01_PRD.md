@@ -1,8 +1,8 @@
-# Product Requirements Document — UNS Study
+# Product Requirements Document — Sala de Estudio
 
 ## 1. Product vision
 
-UNS Study is a collaborative web/PWA that helps people know whether a university study room has available seating before or while they are going there.
+Sala de Estudio is a collaborative web/PWA that helps people know whether a university study room has available seating before or while they are going there.
 
 The system is not an official booking platform and must not behave like one. It provides **recent, community-generated occupancy information**.
 

@@ -1,4 +1,4 @@
-import type { RoomSummary } from "@uns/contracts";
+import type { RoomSummary } from "@sala/contracts";
 
 const TILES: { key: keyof RoomSummary; label: string; color: string }[] = [
   { key: "free", label: "Libres", color: "var(--seat-free)" },

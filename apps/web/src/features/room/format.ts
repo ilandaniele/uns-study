@@ -1,8 +1,8 @@
-import { tableNameFromCode, type DisputeKind, type RoomMapDto, type SeatDto, type SeatStatus, type TableDto } from "@uns/contracts";
+import { tableNameFromCode, type DisputeKind, type RoomMapDto, type SeatDto, type SeatStatus, type TableDto } from "@sala/contracts";
 
 /**
  * Human name for a table ("Mesa 4", "Barra entrada izquierda"); see `tableNameFromCode` in
- * `@uns/contracts`. Takes the table when known, else a code derived from the seat code.
+ * `@sala/contracts`. Takes the table when known, else a code derived from the seat code.
  */
 export function tableDisplayName(table: Pick<TableDto, "code" | "type"> | null, fallbackCode: string): string {
   return tableNameFromCode(table?.code ?? fallbackCode, table?.type);

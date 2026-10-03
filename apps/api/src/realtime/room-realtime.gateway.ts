@@ -24,7 +24,7 @@ import {
   type SeatFreedAlertEvent,
   type SeatStateChangedEvent,
   type TableNicknameChangedEvent,
-} from "@uns/contracts";
+} from "@sala/contracts";
 import { AUTH } from "../auth/auth.tokens.js";
 import type { Auth } from "../auth/auth.instance.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";

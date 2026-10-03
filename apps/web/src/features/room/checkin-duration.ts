@@ -1,4 +1,4 @@
-import { CHECKIN_MINUTES, CHECKIN_MIN_MINUTES } from "@uns/contracts/events";
+import { CHECKIN_MINUTES, CHECKIN_MIN_MINUTES } from "@sala/contracts/events";
 
 /** Quick "Hasta:" choices offered next to "Estoy acá"; the last one is the API default. */
 export const CHECKIN_DURATION_CHIPS = [

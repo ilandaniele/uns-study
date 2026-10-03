@@ -6,12 +6,12 @@
 
 web
 
-Mobile-first PWA (Next.js on Vercel, installable, push notifications). Desktop is a first-class layout too.
+Mobile-first PWA (Next.js on Fly.io, installable, push notifications). Desktop is a first-class layout too.
 
 ## Users
 
-- **Primary:** students at the Universidad Nacional del Sur (UNS, Bahía Blanca), any career, who use the main study room ("Sala Principal"). Their job is to find out whether there is a free seat before they walk there, or quickly on arrival, and to keep that information accurate for others.
-- **Also:** people who are not UNS students but use the same room (other institutions, non-students). The product must not assume a UNS email, student number or career. Student number (LU) stays optional.
+- **Primary:** university students in Bahía Blanca, any career, who use the main study room ("Sala Principal"). Their job is to find out whether there is a free seat before they walk there, or quickly on arrival, and to keep that information accurate for others.
+- **Also:** people who are not university students but use the same room (other institutions, non-students). The product must not assume an institutional email, student number or career. Student number (LU) stays optional.
 - **Anonymous visitors** can view the room, seat states and summaries. They cannot mutate state, chat or appear in rankings.
 - **Admins/moderators** handle reports, announcements, QR codes and audit logs.
 
@@ -55,8 +55,8 @@ It is **not a booking system**: no reservations, no holding seats, no saving a s
 
 ## Brand Commitments
 
-- Name: **Sala de Estudio**, with the subtitle "UNS · Bahía Blanca".
-- **Unofficial.** Built by students, with no endorsement from the UNS. Do not use the UNS logo, crest or institutional identity. Do not speak on behalf of the university.
+- Name: **Sala de Estudio**, with the subtitle "Bahía Blanca".
+- **Unofficial.** Built by students, with no endorsement from any university. Do not use any university's logo, crest or institutional identity. Do not speak on behalf of the university.
 - Voice: Rioplatense Spanish with **vos**. Informal, close, direct and short ("Estoy acá", "Avisame", "Tocá un lugar"). Controls name their action. Errors say what happened and how to fix it.
 
 ## Evidence on Hand

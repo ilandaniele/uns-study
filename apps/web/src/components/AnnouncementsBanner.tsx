@@ -1,6 +1,6 @@
 "use client";
 
-import { SocketEvents, type AnnouncementDto } from "@uns/contracts";
+import { SocketEvents, type AnnouncementDto } from "@sala/contracts";
 import type { Socket } from "socket.io-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";

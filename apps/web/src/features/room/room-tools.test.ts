@@ -1,4 +1,4 @@
-import type { SeatDto } from "@uns/contracts";
+import type { SeatDto } from "@sala/contracts";
 import { describe, expect, it } from "vitest";
 import { pickFreeSeat, roomShareText } from "./room-tools";
 

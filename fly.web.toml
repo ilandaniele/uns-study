@@ -1,0 +1,41 @@
+# Web app (Next.js standalone). Deploy: `fly deploy -c fly.web.toml --remote-only`.
+app = "sala-de-estudio"
+primary_region = "gru"
+
+[build]
+  dockerfile = "Dockerfile.web"
+  ignorefile = "Dockerfile.web.dockerignore"
+
+  [build.args]
+    # Baked into the /api rewrites and the Socket.IO URL at build time.
+    API_PROXY_TARGET = "https://uns-study-api.fly.dev"
+    # Ads: empty = house ads only. Set to the Ad Manager unit paths / AdSense ids when approved.
+    NEXT_PUBLIC_GAM_REWARDED_UNIT = ""
+    NEXT_PUBLIC_GAM_INTERSTITIAL_UNIT = ""
+    NEXT_PUBLIC_ADSENSE_CLIENT = ""
+    NEXT_PUBLIC_ADSENSE_SLOT_RAIL = ""
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8080"
+
+[deploy]
+  strategy = "bluegreen"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "20s"
+    interval = "15s"
+    method = "GET"
+    path = "/manifest.webmanifest"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

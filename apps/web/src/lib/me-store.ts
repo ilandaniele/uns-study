@@ -1,6 +1,6 @@
 "use client";
 
-import type { MeDto } from "@uns/contracts";
+import type { MeDto } from "@sala/contracts";
 import { useEffect } from "react";
 import { apiFetch } from "./api";
 import { clearQueryCache } from "./query-cache";

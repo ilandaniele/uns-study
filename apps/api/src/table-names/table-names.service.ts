@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, gte, sql } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
-import type { TableNameProposalDto, TableNamesDto } from "@uns/contracts";
+import { schema, type Db } from "@sala/database";
+import type { TableNameProposalDto, TableNamesDto } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { RestrictionService } from "../users/restriction.service.js";

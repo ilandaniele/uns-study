@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Headers, Inject, Ip, Param, Post, Res, UseGuards } from "@nestjs/common";
 import type { Response } from "express";
 import type { z } from "zod";
-import { uploadAvatarSchema } from "@uns/contracts";
+import { uploadAvatarSchema } from "@sala/contracts";
 import { AuthGuard, OptionalAuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";

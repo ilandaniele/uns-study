@@ -1,6 +1,6 @@
 "use client";
 
-import type { SeatAvatarDto, SeatDto, TableType } from "@uns/contracts";
+import type { SeatAvatarDto, SeatDto, TableType } from "@sala/contracts";
 import { memo } from "react";
 import { statusLabel } from "./format";
 import { AVATAR_BACKDROP, SILHOUETTE_BODY, SILHOUETTE_HEAD, seatAvatarRender } from "./seat-avatar";

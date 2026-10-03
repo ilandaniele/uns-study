@@ -1,4 +1,4 @@
-import type { TableDto } from "@uns/contracts";
+import type { TableDto } from "@sala/contracts";
 import { memo } from "react";
 
 export interface WallBarProps {

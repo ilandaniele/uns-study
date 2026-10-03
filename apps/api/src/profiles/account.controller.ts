@@ -1,5 +1,5 @@
 import { Body, Controller, HttpCode, Inject, Post, UseGuards } from "@nestjs/common";
-import { deleteAccountSchema } from "@uns/contracts";
+import { deleteAccountSchema } from "@sala/contracts";
 import type { z } from "zod";
 import { AuthGuard } from "../auth/auth.guard.js";
 import { AllowRestricted } from "../auth/allow-restricted.decorator.js";

@@ -2,7 +2,7 @@
 // field before the identity prompt is shown. The actual current check-in's visibility is now
 // canonical server-side (`PATCH /checkins/current/identity`, see `useSeatActions.updateIdentity`) —
 // this local value is just a convenience default, not a source of truth.
-const STORAGE_KEY = "uns-study:show-identity";
+const STORAGE_KEY = "sala:show-identity";
 
 export function hasChosenIdentityVisibility(): boolean {
   if (typeof window === "undefined") return true;

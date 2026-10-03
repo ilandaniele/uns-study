@@ -1,7 +1,7 @@
 "use client";
 
-import { SocketEvents } from "@uns/contracts/events";
-import type { DirectMessageDto, Page } from "@uns/contracts";
+import { SocketEvents } from "@sala/contracts/events";
+import type { DirectMessageDto, Page } from "@sala/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch, apiPost, ApiRequestError } from "@/lib/api";
 import { DataPaths } from "@/lib/prefetch";

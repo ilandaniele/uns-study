@@ -1,5 +1,5 @@
-import { animalIdFromAlias } from "@uns/contracts";
-import type { IdentityMode } from "@uns/contracts";
+import { animalIdFromAlias } from "@sala/contracts";
+import type { IdentityMode } from "@sala/contracts";
 
 /** Minimal shape needed from a `user_profiles` row. */
 export interface DisplayNameProfile {

@@ -7,7 +7,7 @@ import {
   type SeatDisputeLiteDto,
   type SeatStateChangedEvent,
   type TableNicknameChangedEvent,
-} from "@uns/contracts";
+} from "@sala/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { refreshMe, useMe } from "@/lib/me-store";

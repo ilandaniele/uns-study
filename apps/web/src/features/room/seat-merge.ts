@@ -1,5 +1,5 @@
-import type { CheckInDto, RoomMapDto, RoomSummary, SeatDisputeLiteDto, SeatDto, SeatStateChangedEvent, TableNicknameChangedEvent } from "@uns/contracts";
-import { CHECKIN_MINUTES } from "@uns/contracts/events";
+import type { CheckInDto, RoomMapDto, RoomSummary, SeatDisputeLiteDto, SeatDto, SeatStateChangedEvent, TableNicknameChangedEvent } from "@sala/contracts";
+import { CHECKIN_MINUTES } from "@sala/contracts/events";
 
 /**
  * Client-side merge rules for room seat state. REST snapshots and `seat:state-changed` socket

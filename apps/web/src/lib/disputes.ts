@@ -1,4 +1,4 @@
-import type { DisputeKind, DisputeVote, LocationInput, SeatDisputeDto } from "@uns/contracts";
+import type { DisputeKind, DisputeVote, LocationInput, SeatDisputeDto } from "@sala/contracts";
 import { apiFetch, apiPost } from "./api";
 
 /** POST /disputes — opens a seat dispute ("Me senté acá" / "Esa persona no está" / "Está guardado"). */

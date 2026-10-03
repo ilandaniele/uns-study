@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Inject, Param, Post, Put, UseGuards } from "@nestjs/common";
 import type { z } from "zod";
-import { markAllOccupiedSchema, testGeofenceSchema, updateGeofenceSchema } from "@uns/contracts";
+import { markAllOccupiedSchema, testGeofenceSchema, updateGeofenceSchema } from "@sala/contracts";
 import { AdminGuard, AdminOnlyGuard } from "../users/admin.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";

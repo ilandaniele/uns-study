@@ -1,6 +1,6 @@
 "use client";
 
-import type { RoomMapDto, RoomPersonDto } from "@uns/contracts";
+import type { RoomMapDto, RoomPersonDto } from "@sala/contracts";
 import { QuestionIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import type { ReactNode } from "react";

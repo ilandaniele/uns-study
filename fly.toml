@@ -7,7 +7,11 @@ primary_region = "gru"
 [env]
   NODE_ENV = "production"
   PORT = "8080"
-  WEB_ORIGIN = "https://uns-study.vercel.app"
+  # Old Vercel host stays allowed while stale tabs/PWAs still point at it (it 308-redirects).
+  WEB_ORIGIN = "https://sala-de-estudio.fly.dev,https://uns-study.vercel.app"
+  # Stays on the old host until https://sala-de-estudio.fly.dev/api/auth/callback/google is an
+  # authorized redirect URI in Google Cloud; the old host 308-redirects the callback (path + query)
+  # to the new one, where the state cookie lives.
   BETTER_AUTH_URL = "https://uns-study.vercel.app"
   ADMIN_EMAILS = "ilan.daniele@gmail.com"
   GOOGLE_CLIENT_ID = "1032351199989-q4i4g9vsn7unkemt09in1md9omp4hh0o.apps.googleusercontent.com"
@@ -19,10 +23,12 @@ primary_region = "gru"
   ROOM_RESET_TIMEZONE = "America/Argentina/Buenos_Aires"
   TRUST_PROXY_HOPS = "2"
   PRESENCE_DEV_BYPASS = "false"
-  VAPID_SUBJECT = "https://uns-study.vercel.app"
+  VAPID_SUBJECT = "https://sala-de-estudio.fly.dev"
+  PUBLIC_WEB_URL = "https://sala-de-estudio.fly.dev"
 
 # Secrets (not set here — `fly secrets set`): DATABASE_URL, GOOGLE_CLIENT_SECRET,
-# BETTER_AUTH_SECRET, IP_HASH_SALT.
+# BETTER_AUTH_SECRET, IP_HASH_SALT, MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET, RESEND_API_KEY, EMAIL_FROM,
+# SEAT_VERIFIER_URL, SEAT_VERIFIER_TOKEN.
 
 [deploy]
   # Boot the new version next to the old one and switch only once it passes health checks,

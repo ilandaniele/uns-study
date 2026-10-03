@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import type { LocationInput, PresenceDetails, PresenceRejectReason, PresenceResult } from "@uns/contracts";
+import type { LocationInput, PresenceDetails, PresenceRejectReason, PresenceResult } from "@sala/contracts";
 import { env } from "../env.js";
 
 export interface PresenceRoom {

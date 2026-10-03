@@ -1,6 +1,6 @@
 "use client";
 
-import type { AdminReportDto } from "@uns/contracts";
+import type { AdminReportDto } from "@sala/contracts";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { REPORT_REASON_LABELS, REPORT_STATUS_LABELS, REPORT_STATUSES } from "./reports-labels";

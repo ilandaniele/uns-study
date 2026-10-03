@@ -1,4 +1,4 @@
-import type { PhotoMimeType } from "@uns/contracts";
+import type { PhotoMimeType } from "@sala/contracts";
 
 export interface SeatPhotoVerifierSeat {
   code: string;

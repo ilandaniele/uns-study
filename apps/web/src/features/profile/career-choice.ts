@@ -1,4 +1,4 @@
-import { UNS_CAREERS, findUnsCareerByName } from "@uns/contracts";
+import { UNS_CAREERS, findUnsCareerByName } from "@sala/contracts";
 
 /** Select value for the "Otra" option (never collides with a career slug). */
 export const OTHER_CAREER = "__other__";

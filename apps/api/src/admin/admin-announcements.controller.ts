@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Inject, Param, Patch, Post, UseGuards } from "@nestjs/common";
 import type { z } from "zod";
-import { announcementSchema, SocketEvents, type AnnouncementDto } from "@uns/contracts";
+import { announcementSchema, SocketEvents, type AnnouncementDto } from "@sala/contracts";
 import { AdminGuard, AdminOnlyGuard } from "../users/admin.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";

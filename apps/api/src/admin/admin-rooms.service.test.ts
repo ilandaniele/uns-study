@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
+import { schema, type Db } from "@sala/database";
 import { buildDisputeService, freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { PresenceService } from "../presence/presence.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
@@ -15,7 +15,7 @@ import { RolesService } from "../users/roles.service.js";
 import { AliasService } from "../users/alias.service.js";
 import { AdminGuard } from "../users/admin.guard.js";
 import { RoomPeopleService } from "../study/room-people.service.js";
-import type { SeatMarkedByDto } from "@uns/contracts";
+import type { SeatMarkedByDto } from "@sala/contracts";
 import { AdminRoomsController } from "./admin-rooms.controller.js";
 import { AdminRoomsService } from "./admin-rooms.service.js";
 

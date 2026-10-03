@@ -24,7 +24,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "pnpm --filter @uns/api dev",
+      command: "pnpm --filter @sala/api dev",
       url: "http://localhost:4000/api/v1/rooms",
       // E2E_TEST_HOOKS mounts the force-expiry endpoint; the API refuses it when NODE_ENV=production.
       env: { E2E_TEST_HOOKS: "true", PRESENCE_DEV_BYPASS: "true" },
@@ -32,7 +32,7 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
-      command: "pnpm --filter @uns/web dev",
+      command: "pnpm --filter @sala/web dev",
       url: "http://localhost:3000",
       reuseExistingServer: true,
       timeout: 120_000,

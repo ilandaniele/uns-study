@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { animalIdFromAlias, isAnimalId, type SeatMarkedByDto, type SeatOccupantDto } from "@uns/contracts";
-import type { Db } from "@uns/database";
-import { schema } from "@uns/database";
+import { animalIdFromAlias, isAnimalId, type SeatMarkedByDto, type SeatOccupantDto } from "@sala/contracts";
+import type { Db } from "@sala/database";
+import { schema } from "@sala/database";
 import { buildDisputeService, freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { PresenceService } from "../presence/presence.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";

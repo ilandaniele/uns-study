@@ -1,6 +1,6 @@
 "use client";
 
-import type { AnnouncementDto } from "@uns/contracts";
+import type { AnnouncementDto } from "@sala/contracts";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { apiFetch, apiDelete, apiPost } from "@/lib/api";
 

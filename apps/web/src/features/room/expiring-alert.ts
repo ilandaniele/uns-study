@@ -1,4 +1,4 @@
-import type { CheckInDto, CheckInExpiringEvent } from "@uns/contracts";
+import type { CheckInDto, CheckInExpiringEvent } from "@sala/contracts";
 
 /**
  * True when a `checkin:expiring` event is about the caller's *current* check-in in its current

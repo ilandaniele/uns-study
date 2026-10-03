@@ -1,4 +1,4 @@
-import type { ApiError, ApiErrorCode, PresenceDetails } from "@uns/contracts";
+import type { ApiError, ApiErrorCode, PresenceDetails } from "@sala/contracts";
 
 /**
  * Base URL for REST calls to the API. Empty/unset `NEXT_PUBLIC_API_URL` means "same origin" — the
@@ -28,7 +28,7 @@ export class ApiRequestError extends Error {
 }
 
 /**
- * Thin wrapper around `fetch` for the Sala de Estudio UNS API.
+ * Thin wrapper around `fetch` for the Sala de Estudio API.
  * Always sends cookies (Better Auth session) and parses the shared ApiError shape on failure.
  */
 /** Requests give up after this long so buttons never hang forever on a slow/booting server. */

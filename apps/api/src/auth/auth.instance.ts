@@ -2,8 +2,8 @@ import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { and, eq, gt, isNull, or } from "drizzle-orm";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import type { Db } from "@uns/database";
-import { schema } from "@uns/database";
+import type { Db } from "@sala/database";
+import { schema } from "@sala/database";
 import { env } from "../env.js";
 
 export type Auth = ReturnType<typeof buildAuth>;
@@ -75,7 +75,7 @@ export function buildAuth(db: Db) {
           // main.ts copies Express's proxy-resolved client IP into this header right before the
           // Better Auth handler (any client-sent value is overwritten), so rate limits are per
           // visitor instead of one bucket shared by everyone.
-          ipAddress: { ipAddressHeaders: ["x-uns-client-ip"] },
+          ipAddress: { ipAddressHeaders: ["x-sala-client-ip"] },
         }
       : undefined,
   });

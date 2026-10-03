@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
-import { closeDb, createDb, migrate, seedInitialRoom } from "@uns/database";
+import { closeDb, createDb, migrate, seedInitialRoom } from "@sala/database";
 import { resolveAppSecrets, resolveVapidKeys } from "./secrets.js";
 
 // Load the repo-root `.env` (if present) before anything else reads `process.env` — duplicated
@@ -82,7 +82,7 @@ async function bootstrap() {
   // Vercel's egress IP (Fly appends it). Hand it the IP Express already resolved with
   // `trust proxy` (the same one @Ip() and our own rate limits use) in a header only we set.
   httpAdapter.use("/api/auth", (req: express.Request, _res: express.Response, next: express.NextFunction) => {
-    req.headers["x-uns-client-ip"] = req.ip ?? "";
+    req.headers["x-sala-client-ip"] = req.ip ?? "";
     next();
   });
   // Per-email + Fly-Client-IP limits on email sign-in/sign-up (defense in depth: `req.ip` is spoofable on direct hits).

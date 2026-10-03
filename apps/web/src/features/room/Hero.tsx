@@ -1,6 +1,6 @@
 "use client";
 
-import type { RoomSummary, SeatDto } from "@uns/contracts";
+import type { RoomSummary, SeatDto } from "@sala/contracts";
 import { useEffect, useState } from "react";
 import { recencyLabel } from "./format";
 

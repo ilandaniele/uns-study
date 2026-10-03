@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Inject, Param, Post, Query, UseGuards } from "@nestjs/common";
 import type { z } from "zod";
-import { moderationActionSchema } from "@uns/contracts";
+import { moderationActionSchema } from "@sala/contracts";
 import { AdminGuard } from "../users/admin.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";

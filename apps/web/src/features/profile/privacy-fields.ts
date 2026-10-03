@@ -1,4 +1,4 @@
-import type { PrivacySettingsDto } from "@uns/contracts";
+import type { PrivacySettingsDto } from "@sala/contracts";
 
 export type PrivacyFieldKey = keyof PrivacySettingsDto;
 

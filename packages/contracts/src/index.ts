@@ -12,6 +12,8 @@ export * from "./qr";
 export * from "./table-names";
 export * from "./seat-labels";
 export * from "./notifications";
+export * from "./subscriptions";
+export * from "./email";
 export * from "./events";
 
 // ---- Domain enums ----
@@ -202,6 +204,12 @@ export interface MeDto {
   roles: ("ADMIN" | "MODERATOR")[];
   restrictions: { type: string; until: string | null }[];
   profileCompleted: boolean;
+  /** true only when the caller's user_subscriptions.status === "authorized"; false when anonymous. */
+  adFree: boolean;
+  /** Boolean(MP_ACCESS_TOKEN) on the API; same value for anonymous callers. */
+  subscriptionsEnabled: boolean;
+  /** env.subscriptionPriceArs (default 1500); same value for anonymous callers. */
+  subscriptionPriceArs: number;
 }
 
 // ---- Socket events ----
@@ -354,7 +362,8 @@ export type ApiErrorCode =
   | "PHOTO_REUSED"
   | "PHOTO_INVALID"
   | "ALREADY_VERIFIED"
-  | "TABLE_NAME_NOT_ALLOWED";
+  | "TABLE_NAME_NOT_ALLOWED"
+  | "FEATURE_DISABLED";
 
 export interface ApiError {
   error: {

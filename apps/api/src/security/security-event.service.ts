@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
-import { schema, type Db } from "@uns/database";
+import { schema, type Db } from "@sala/database";
 import { DB } from "../database/database.module.js";
 import { env } from "../env.js";
 import { ReputationService } from "../reputation/reputation.service.js";

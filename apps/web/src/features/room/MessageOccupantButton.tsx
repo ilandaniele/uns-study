@@ -1,6 +1,6 @@
 "use client";
 
-import type { ConversationDto } from "@uns/contracts";
+import type { ConversationDto } from "@sala/contracts";
 import { ChatCircleIcon } from "@phosphor-icons/react/dist/ssr";
 import { useRouter } from "next/navigation";
 import { useState } from "react";

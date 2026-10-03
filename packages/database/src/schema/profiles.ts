@@ -24,7 +24,7 @@ export const userProfiles = pgTable(
     // Fun random Spanish alias shown instead of "Usuario anónimo" while hidden. NULL when the user
     // doesn't currently need one (visible identity with a non-empty name) — freed for reuse.
     alias: text("alias"),
-    // Catalog id (`ANIMALS` in @uns/contracts) of the animal in `alias`. NULL on legacy aliases whose
+    // Catalog id (`ANIMALS` in @sala/contracts) of the animal in `alias`. NULL on legacy aliases whose
     // noun isn't a catalog animal — `AliasService` reassigns those lazily.
     aliasAnimal: text("alias_animal"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

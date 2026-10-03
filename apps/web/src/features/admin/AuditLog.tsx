@@ -1,6 +1,6 @@
 "use client";
 
-import type { Page } from "@uns/contracts";
+import type { Page } from "@sala/contracts";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import type { AuditEntryDto } from "./types";

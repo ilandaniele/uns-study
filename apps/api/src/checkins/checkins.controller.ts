@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, HttpCode, Inject, Ip, Param, Post, UseGuards } from "@nestjs/common";
 import type { z } from "zod";
-import { checkInPhotoRequestSchema, checkInRequestSchema, extendRequestSchema, type LocationInput } from "@uns/contracts";
+import { checkInPhotoRequestSchema, checkInRequestSchema, extendRequestSchema, type LocationInput } from "@sala/contracts";
 import { AuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";

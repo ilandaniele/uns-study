@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { and, eq, gt, gte, inArray, lte, sql } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
+import { schema, type Db } from "@sala/database";
 import {
   DISPUTE_MINUTES,
   FREE_OBS_MINUTES,
@@ -10,7 +10,7 @@ import {
   type LocationInput,
   type SeatDisputeDto,
   type SeatDisputeLiteDto,
-} from "@uns/contracts";
+} from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { PresenceService } from "../presence/presence.service.js";

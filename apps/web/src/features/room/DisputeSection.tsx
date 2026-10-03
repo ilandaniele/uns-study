@@ -1,6 +1,6 @@
 "use client";
 
-import type { DisputeKind, DisputeVote, MeDto, SeatDisputeDto, SeatDto } from "@uns/contracts";
+import type { DisputeKind, DisputeVote, MeDto, SeatDisputeDto, SeatDto } from "@sala/contracts";
 import { useEffect, useState, type ReactNode } from "react";
 import { disputeCountdownLabel, disputeKindTitle, disputeOptionsFor } from "./format";
 

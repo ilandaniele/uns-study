@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { schema, type Db } from "@uns/database";
+import { schema, type Db } from "@sala/database";
 import { freshDb, insertUsers } from "../test-utils.js";
 import type { StorageService } from "../storage/storage.service.js";
 import { AdminReportsService } from "./admin-reports.service.js";

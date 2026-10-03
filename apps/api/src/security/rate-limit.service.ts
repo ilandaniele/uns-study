@@ -3,7 +3,7 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { and, eq, lt, sql } from "drizzle-orm";
 import IORedis from "ioredis";
-import { schema, type Db } from "@uns/database";
+import { schema, type Db } from "@sala/database";
 import { DB } from "../database/database.module.js";
 import { env } from "../env.js";
 
@@ -183,7 +183,7 @@ export class RateLimitService {
       const cacheKey = `${limit}:${windowSeconds}`;
       let limiter = this.limiters.get(cacheKey);
       if (!limiter) {
-        limiter = new Ratelimit({ redis: this.upstash, limiter: Ratelimit.slidingWindow(limit, `${windowSeconds} s`), prefix: "uns" });
+        limiter = new Ratelimit({ redis: this.upstash, limiter: Ratelimit.slidingWindow(limit, `${windowSeconds} s`), prefix: "sala" });
         this.limiters.set(cacheKey, limiter);
       }
       const result = await limiter.limit(key);

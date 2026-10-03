@@ -1,6 +1,6 @@
 "use client";
 
-import type { AdminReportDto, Page } from "@uns/contracts";
+import type { AdminReportDto, Page } from "@sala/contracts";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";

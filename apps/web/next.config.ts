@@ -1,13 +1,19 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
-// Server-only env (never `NEXT_PUBLIC_*`, set in Vercel: https://uns-study-api.fly.dev): the Fly.io URL of the API, when web and API are
+// Server-only build-time env (never `NEXT_PUBLIC_*`; baked in by Dockerfile.web): the Fly.io URL of the API, when web and API are
 // proxied through the same origin so Better Auth's session cookie stays first-party (Safari/iOS
 // block third-party `SameSite=None` cookies). Left unset in local dev, where the web app talks to
 // the API directly via `NEXT_PUBLIC_API_URL`.
 const API_PROXY_TARGET = process.env.API_PROXY_TARGET ?? "";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@uns/contracts"],
+  // Dockerfile.web builds the self-contained server; trace files from the monorepo root so the
+  // workspace packages land in the standalone bundle.
+  ...(process.env.NEXT_OUTPUT_STANDALONE
+    ? { output: "standalone" as const, outputFileTracingRoot: path.join(import.meta.dirname, "../..") }
+    : {}),
+  transpilePackages: ["@sala/contracts"],
   // Socket.IO can't go through the rewrites below, so the browser connects to the API host
   // directly. Default it to the proxy target so one env var configures both.
   env: {

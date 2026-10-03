@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Headers, Inject, Post, UseGuards } from "@nestjs/common";
 import type { z } from "zod";
-import { pushSubscriptionSchema, unsubscribePushSchema, type VapidPublicKeyDto } from "@uns/contracts";
+import { pushSubscriptionSchema, unsubscribePushSchema, type VapidPublicKeyDto } from "@sala/contracts";
 import { AuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";

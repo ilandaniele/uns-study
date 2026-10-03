@@ -1,6 +1,6 @@
 "use client";
 
-import type { ConversationDto, PublicProfileDto } from "@uns/contracts";
+import type { ConversationDto, PublicProfileDto } from "@sala/contracts";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";

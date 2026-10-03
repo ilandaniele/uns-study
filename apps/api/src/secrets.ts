@@ -1,8 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 import webpush from "web-push";
-import type { Db } from "@uns/database";
-import { schema } from "@uns/database";
+import type { Db } from "@sala/database";
+import { schema } from "@sala/database";
 
 /**
  * Env var name -> `app_secrets.name` for values the API can generate itself, so deploying never

@@ -1,0 +1,21 @@
+**/node_modules
+**/.next
+**/.turbo
+.git
+.data
+coverage
+
+# Floor plan ships from apps/verifier/assets; the original reference image is kept out of the context.
+reference-images/*
+!reference-images/Plano.png
+*.md
+!README.md
+
+# Only the manifests of the other workspaces are needed (frozen-lockfile install).
+apps/web/*
+!apps/web/package.json
+apps/api/src
+
+# Local env files never go into an image (secrets, localhost URLs).
+**/.env*
+!**/.env.example

@@ -1,7 +1,7 @@
 "use client";
 
-import { SocketEvents } from "@uns/contracts/events";
-import type { ChatHistoryDto, ChatMessageDto, Page } from "@uns/contracts";
+import { SocketEvents } from "@sala/contracts/events";
+import type { ChatHistoryDto, ChatMessageDto, Page } from "@sala/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { apiDelete, apiFetch, apiPost, ApiRequestError } from "@/lib/api";
 import { DataPaths } from "@/lib/prefetch";

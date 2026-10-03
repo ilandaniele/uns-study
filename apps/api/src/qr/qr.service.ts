@@ -1,8 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, sql } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
-import type { QrResolveDto } from "@uns/contracts";
+import { schema, type Db } from "@sala/database";
+import type { QrResolveDto } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 

@@ -83,5 +83,14 @@ export const env = {
   // Web Push (see `secrets.ts`'s `resolveVapidKeys` — generated + persisted on first boot if unset).
   vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? "",
   vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? "",
-  vapidSubject: process.env.VAPID_SUBJECT || "mailto:contacto@uns-study.example",
+  // Subscriptions (Mercado Pago) - empty MP_ACCESS_TOKEN = feature disabled.
+  mpAccessToken: process.env.MP_ACCESS_TOKEN ?? "",
+  mpWebhookSecret: process.env.MP_WEBHOOK_SECRET ?? "",
+  subscriptionPriceArs: num("SUBSCRIPTION_PRICE_ARS", 1500),
+  // Email campaigns (Resend) - empty key/from = feature disabled.
+  resendApiKey: process.env.RESEND_API_KEY ?? "",
+  emailFrom: process.env.EMAIL_FROM ?? "",
+  // Absolute public web URL for email links and the MP back_url; falls back to the first WEB_ORIGIN.
+  publicWebUrl: (process.env.PUBLIC_WEB_URL || (process.env.WEB_ORIGIN ?? "http://localhost:3000").split(",")[0]!.trim()).replace(/\/$/, ""),
+  vapidSubject: process.env.VAPID_SUBJECT || "mailto:contacto@sala-de-estudio.example",
 };

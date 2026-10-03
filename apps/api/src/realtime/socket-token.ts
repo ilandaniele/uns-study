@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { env } from "../env.js";
 
 const TTL_S = 5 * 60;
-const HKDF_LABEL = "uns-study:socket-token";
+const HKDF_LABEL = "sala-de-estudio:socket-token";
 const DEV_FALLBACK_SECRET = "dev-only-insecure-secret-change-me";
 
 export interface SocketToken {

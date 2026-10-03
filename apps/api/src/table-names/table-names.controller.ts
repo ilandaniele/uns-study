@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Inject, Param, Post, UseGuards } from "@nestjs/common";
 import type { z } from "zod";
-import { proposeTableNameSchema } from "@uns/contracts";
+import { proposeTableNameSchema } from "@sala/contracts";
 import { AuthGuard, OptionalAuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";

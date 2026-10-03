@@ -1,6 +1,6 @@
 "use client";
 
-import type { SeatDto, TableDto } from "@uns/contracts";
+import type { SeatDto, TableDto } from "@sala/contracts";
 
 export interface TableLocatorProps {
   table: TableDto | null;

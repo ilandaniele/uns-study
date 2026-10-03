@@ -28,6 +28,8 @@ import { DisputesModule } from "./disputes/disputes.module.js";
 import { VerificationModule } from "./verification/verification.module.js";
 import { AvatarsModule } from "./avatars/avatars.module.js";
 import { TableNamesModule } from "./table-names/table-names.module.js";
+import { SubscriptionsModule } from "./subscriptions/subscriptions.module.js";
+import { EmailModule } from "./email/email.module.js";
 import { NotificationsModule } from "./notifications/notifications.module.js";
 
 @Module({
@@ -59,6 +61,8 @@ import { NotificationsModule } from "./notifications/notifications.module.js";
     AvatarsModule,
     TableNamesModule,
     NotificationsModule,
+    SubscriptionsModule,
+    EmailModule,
     JobsModule,
   ],
   controllers: [HealthController, AuthProvidersController],

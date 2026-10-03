@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiDelete, apiFetch, apiPost } from "@/lib/api";
 
-/** Matches `BlocksService.listBlocks` in the API (not part of `@uns/contracts`). */
+/** Matches `BlocksService.listBlocks` in the API (not part of `@sala/contracts`). */
 export interface BlockedUserDto {
   userId: string;
   displayName: string;

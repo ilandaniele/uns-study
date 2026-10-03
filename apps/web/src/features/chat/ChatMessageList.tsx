@@ -1,6 +1,6 @@
 "use client";
 
-import type { ChatMessageDto } from "@uns/contracts";
+import type { ChatMessageDto } from "@sala/contracts";
 import { useRouter } from "next/navigation";
 import { useStickToBottom } from "./useStickToBottom";
 import { Avatar } from "@/components/Avatar";

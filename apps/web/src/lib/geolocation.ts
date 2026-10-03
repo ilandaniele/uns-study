@@ -1,4 +1,4 @@
-import type { LocationInput } from "@uns/contracts";
+import type { LocationInput } from "@sala/contracts";
 
 export type GeolocationErrorCode = "PERMISSION_DENIED" | "TIMEOUT" | "UNAVAILABLE" | "COARSE";
 

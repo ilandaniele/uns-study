@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Db } from "@uns/database";
+import type { Db } from "@sala/database";
 import { freshDb, insertUsers } from "../test-utils.js";
 
 // `env.ts` reads ADMIN_EMAILS once at import time, so each test re-imports it (with `vi.resetModules`)

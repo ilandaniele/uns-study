@@ -6,6 +6,7 @@ export interface NotificationPreferencesDto {
   seatFreed: boolean;
   adminPresent: boolean;
   checkinExpiry: boolean;
+  marketingEmails: boolean;
 }
 
 export const updateNotificationPreferencesSchema = z
@@ -13,6 +14,7 @@ export const updateNotificationPreferencesSchema = z
     seatFreed: z.boolean(),
     adminPresent: z.boolean(),
     checkinExpiry: z.boolean(),
+    marketingEmails: z.boolean(),
   })
   .partial();
 

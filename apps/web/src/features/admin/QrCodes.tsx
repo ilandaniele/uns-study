@@ -2,7 +2,7 @@
 
 import QRCode from "qrcode";
 import { useCallback, useEffect, useState } from "react";
-import type { TableType } from "@uns/contracts";
+import type { TableType } from "@sala/contracts";
 import { apiDelete, apiFetch, apiPost } from "@/lib/api";
 import { tableDisplayName } from "@/features/room/format";
 import type { RoomQrCodeDto } from "./types";

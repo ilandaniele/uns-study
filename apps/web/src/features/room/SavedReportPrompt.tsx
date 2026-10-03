@@ -1,6 +1,6 @@
 "use client";
 
-import type { SeatDto, SeatOccupantDto } from "@uns/contracts";
+import type { SeatDto, SeatOccupantDto } from "@sala/contracts";
 import { FlagIcon, HandPalmIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { disputeOptionsFor } from "./format";

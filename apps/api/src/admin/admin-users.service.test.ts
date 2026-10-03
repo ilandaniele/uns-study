@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Db } from "@uns/database";
-import { schema } from "@uns/database";
+import type { Db } from "@sala/database";
+import { schema } from "@sala/database";
 import { freshDb, insertUsers } from "../test-utils.js";
 import { RolesService } from "../users/roles.service.js";
 import type { ModerationActionService } from "./moderation-action.service.js";

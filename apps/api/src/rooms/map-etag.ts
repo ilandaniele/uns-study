@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { RoomMapDto } from "@uns/contracts";
+import type { RoomMapDto } from "@sala/contracts";
 
 /**
  * Strong ETag for a room map: a hash of everything that can change between two reads — each seat's

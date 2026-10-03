@@ -1,6 +1,6 @@
 "use client";
 
-import type { SeatDto } from "@uns/contracts";
+import type { SeatDto } from "@sala/contracts";
 import { useEffect, useState } from "react";
 import { apiFetch, ApiRequestError } from "@/lib/api";
 import { SeatFreedToast } from "@/features/room/SeatFreedToast";

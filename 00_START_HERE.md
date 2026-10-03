@@ -1,10 +1,10 @@
-# UNS Study — Start Here
+# Sala de Estudio — Start Here
 
 ## Purpose
 
-This folder contains the product, architecture, data, UX, security, and implementation context required to begin development of **UNS Study**, a collaborative real-time study-room occupancy PWA.
+This folder contains the product, architecture, data, UX, security, and implementation context required to begin development of **Sala de Estudio**, a collaborative real-time study-room occupancy PWA.
 
-The first release targets a single study room at UNS. The architecture must support additional rooms later without redesigning the domain model.
+The first release targets a single study room in Bahía Blanca. The architecture must support additional rooms later without redesigning the domain model.
 
 ## Read in this order
 
@@ -49,7 +49,7 @@ An anonymous visitor is read-only.
 - Redis/rate limiting/jobs: Upstash Redis + BullMQ-compatible queue strategy
 - Private image storage: Cloudflare R2
 - Bot protection: Cloudflare Turnstile
-- Frontend hosting: Vercel
+- Frontend hosting: Fly.io (Dockerfile.web, fly.web.toml)
 - API/WebSocket hosting: Railway
 - Analytics: GA4
 - Monetization later: Google AdSense

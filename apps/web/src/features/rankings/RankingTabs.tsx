@@ -1,4 +1,4 @@
-import type { RankingCategory, RankingPeriod } from "@uns/contracts";
+import type { RankingCategory, RankingPeriod } from "@sala/contracts";
 import { ClockIcon, FireIcon, HandHeartIcon } from "@phosphor-icons/react/dist/ssr";
 import type { ReactNode } from "react";
 import { CATEGORY_LABELS, PERIOD_LABELS } from "./labels";

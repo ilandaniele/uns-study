@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { Db } from "@uns/database";
-import { schema } from "@uns/database";
+import type { Db } from "@sala/database";
+import { schema } from "@sala/database";
 import { freshDb, insertUsers } from "../test-utils.js";
 import { AliasService } from "../users/alias.service.js";
 import { BlocksService } from "./blocks.service.js";

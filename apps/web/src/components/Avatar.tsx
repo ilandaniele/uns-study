@@ -1,4 +1,4 @@
-import { isAnimalId } from "@uns/contracts";
+import { isAnimalId } from "@sala/contracts";
 import { OccupantAvatar } from "@/features/room/OccupantAvatar";
 
 /**

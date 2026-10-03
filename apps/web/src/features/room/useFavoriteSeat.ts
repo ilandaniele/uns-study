@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-const keyFor = (roomSlug: string) => `uns-favorite-seat:${roomSlug}`;
+const keyFor = (roomSlug: string) => `sala-favorite-seat:${roomSlug}`;
 
 /** The viewer's favorite seat for a room, kept on this device only (no account needed to read it). */
 export function useFavoriteSeat(roomSlug: string) {

@@ -1,0 +1,62 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+
+export interface ConfirmSendDialogProps {
+  recipientCount: number;
+  pending: boolean;
+  error: string | null;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+/** Last stop before a campaign is queued: states the exact audience size and that it can't be undone. */
+export function ConfirmSendDialog({ recipientCount, pending, error, onConfirm, onCancel }: ConfirmSendDialogProps) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    cancelRef.current?.focus();
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && !pending) onCancel();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel, pending]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onClick={pending ? undefined : onCancel}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-send-title"
+        className="w-full max-w-sm rounded-t-2xl border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl sm:rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id="confirm-send-title" className="font-display text-lg font-semibold text-main">
+          Enviar mail
+        </h2>
+        <p className="mt-1 text-sm text-muted">Vas a enviar este mail a {recipientCount} personas. No se puede deshacer.</p>
+        {error ? <p className="mt-2 text-sm text-[var(--seat-occupied)]">{error}</p> : null}
+        <div className="mt-5 flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={pending || recipientCount === 0}
+            className="min-h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-white active:scale-[0.98] disabled:opacity-60"
+          >
+            {pending ? "Enviando…" : `Enviar a ${recipientCount} personas`}
+          </button>
+          <button
+            ref={cancelRef}
+            type="button"
+            onClick={onCancel}
+            disabled={pending}
+            className="min-h-11 rounded-xl border border-app px-4 text-sm font-medium text-main hover:bg-[var(--surface-2)] disabled:opacity-60"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

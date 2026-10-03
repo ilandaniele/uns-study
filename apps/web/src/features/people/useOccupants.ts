@@ -1,6 +1,6 @@
 "use client";
 
-import { SocketEvents, type SeatMarkedByDto, type SeatOccupancyDto, type SeatOccupantDto, type SeatStateChangedEvent } from "@uns/contracts";
+import { SocketEvents, type SeatMarkedByDto, type SeatOccupancyDto, type SeatOccupantDto, type SeatStateChangedEvent } from "@sala/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { getSocket } from "@/lib/socket";

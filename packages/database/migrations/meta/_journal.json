@@ -141,6 +141,13 @@
       "when": 1790958799520,
       "tag": "0019_beta_metrics",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791060395497,
+      "tag": "0020_subscriptions_email",
+      "breakpoints": true
     }
   ]
 }

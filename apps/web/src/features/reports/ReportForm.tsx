@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReportContext, ReportReason } from "@uns/contracts";
+import type { ReportContext, ReportReason } from "@sala/contracts";
 import { PlusIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";

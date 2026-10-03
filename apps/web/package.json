@@ -1,5 +1,5 @@
 {
-  "name": "@uns/web",
+  "name": "@sala/web",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
-    "@uns/contracts": "workspace:*",
+    "@sala/contracts": "workspace:*",
     "better-auth": "^1.7.6",
     "next": "^16.3.6",
     "qrcode": "^1.5.4",

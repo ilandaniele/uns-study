@@ -1,7 +1,7 @@
 "use client";
 
-import { SocketEvents } from "@uns/contracts/events";
-import type { TableNamesDto, TableNicknameChangedEvent } from "@uns/contracts";
+import { SocketEvents } from "@sala/contracts/events";
+import type { TableNamesDto, TableNicknameChangedEvent } from "@sala/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { apiDelete, apiFetch, apiPost } from "@/lib/api";
 import { getSocket } from "@/lib/socket";

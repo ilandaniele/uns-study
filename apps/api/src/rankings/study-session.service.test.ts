@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { Db } from "@uns/database";
-import { schema } from "@uns/database";
+import type { Db } from "@sala/database";
+import { schema } from "@sala/database";
 import { eq } from "drizzle-orm";
 import { freshDb, getRoom, insertUsers } from "../test-utils.js";
 import { StudySessionService, type CheckInForSession } from "./study-session.service.js";

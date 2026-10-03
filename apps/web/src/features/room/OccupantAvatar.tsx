@@ -1,4 +1,4 @@
-import type { SeatAvatarDto } from "@uns/contracts";
+import type { SeatAvatarDto } from "@sala/contracts";
 import type { CSSProperties } from "react";
 import { AVATAR_BACKDROP, SILHOUETTE_BODY, SILHOUETTE_HEAD, occupantAvatarProps } from "./seat-avatar";
 

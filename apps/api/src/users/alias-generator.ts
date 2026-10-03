@@ -1,4 +1,4 @@
-import { ANIMALS } from "@uns/contracts";
+import { ANIMALS } from "@sala/contracts";
 
 /**
  * Generates fun, random, family-friendly Spanish aliases ("Carpincho Estudioso", "Puma Filosófico")

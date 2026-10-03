@@ -1,7 +1,7 @@
 "use client";
 
-import { SocketEvents } from "@uns/contracts/events";
-import type { RoomAdminPresentEvent, SeatFreedAlertEvent } from "@uns/contracts";
+import { SocketEvents } from "@sala/contracts/events";
+import type { RoomAdminPresentEvent, SeatFreedAlertEvent } from "@sala/contracts";
 import { useEffect, useState } from "react";
 import { getSocket } from "@/lib/socket";
 

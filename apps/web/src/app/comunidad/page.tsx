@@ -1,6 +1,6 @@
 "use client";
 
-import type { AnnouncementDto } from "@uns/contracts";
+import type { AnnouncementDto } from "@sala/contracts";
 import { useEffect, useState } from "react";
 import { AdSlot } from "@/components/AdSlot";
 import { apiFetch } from "@/lib/api";

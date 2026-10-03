@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Inject, Param, Post, Query, UseGuards } from "@nestjs/common";
 import type { z } from "zod";
-import { createConversationSchema, dmSendSchema } from "@uns/contracts";
+import { createConversationSchema, dmSendSchema } from "@sala/contracts";
 import { AuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";

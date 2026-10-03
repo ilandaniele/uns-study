@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { schema } from "@uns/database";
+import { schema } from "@sala/database";
 import type { Auth } from "../auth/auth.instance.js";
 import { buildNotificationService, freshDb, getRoom, insertUsers } from "../test-utils.js";
 import { RoomStateService } from "../rooms/room-state.service.js";

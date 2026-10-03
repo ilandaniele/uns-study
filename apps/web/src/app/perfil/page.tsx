@@ -1,8 +1,12 @@
 "use client";
 
-import type { PublicProfileDto } from "@uns/contracts";
+import type { PublicProfileDto } from "@sala/contracts";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { RewardedAdButton } from "@/features/ads/RewardedAdButton";
+import { useAdFree } from "@/features/ads/useAdFree";
+import { useMe } from "@/lib/me-store";
+import Link from "next/link";
 import { NotificationSettings } from "@/features/notifications/NotificationSettings";
 import { AvatarUploader } from "@/features/profile/AvatarUploader";
 import { DeleteAccountDialog } from "@/features/profile/DeleteAccountDialog";
@@ -25,6 +29,8 @@ export default function PerfilPage() {
   const [roomId, setRoomId] = useState<string | null>(null);
   const [showDelete, setShowDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const { me } = useMe();
+  const { adFree, snoozedUntil } = useAdFree();
 
   useEffect(() => {
     void apiFetch<{ id: string }>(`/api/v1/rooms/${ROOM_SLUG}`).then((room) => setRoomId(room.id));
@@ -102,6 +108,35 @@ export default function PerfilPage() {
         <h2 className="mb-1 font-display text-base font-semibold text-main">Notificaciones</h2>
         <p className="mb-2 text-xs text-muted">Avisos puntuales, nunca spam — los podés apagar cuando quieras.</p>
         <NotificationSettings />
+      </section>
+
+      <section className="rounded-[14px] border border-app bg-surface p-4">
+        <h2 className="mb-2 font-display text-base font-semibold text-main">Anuncios</h2>
+        {adFree ? (
+          <div className="flex flex-col items-start gap-3">
+            <p className="text-sm text-muted">Tenés Sala de Estudio sin anuncios. Gracias por apoyar la sala.</p>
+            <Link
+              href="/suscripcion"
+              className="inline-flex min-h-11 items-center rounded-[10px] border border-app px-4 text-sm font-semibold text-main hover:bg-[var(--surface-2)]"
+            >
+              Gestionar suscripción
+            </Link>
+          </div>
+        ) : (
+          <div className="flex flex-col items-start gap-3">
+            <RewardedAdButton />
+            {snoozedUntil !== null ? (
+              <p className="text-sm text-muted">
+                Sin anuncios hasta las {new Date(snoozedUntil).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })}.
+              </p>
+            ) : null}
+            {me?.subscriptionsEnabled ? (
+              <Link href="/suscripcion" className="text-sm font-semibold text-primary underline underline-offset-2">
+                Sacá los anuncios por ${me.subscriptionPriceArs}/mes
+              </Link>
+            ) : null}
+          </div>
+        )}
       </section>
 
       <section className="rounded-[14px] border border-red-200 bg-red-50 p-4">

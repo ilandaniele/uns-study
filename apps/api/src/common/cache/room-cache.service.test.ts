@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
+import { schema, type Db } from "@sala/database";
 import { countQueries, freshDb, getRoom, getSeats } from "../../test-utils.js";
 import { RoomCache } from "./room-cache.service.js";
 

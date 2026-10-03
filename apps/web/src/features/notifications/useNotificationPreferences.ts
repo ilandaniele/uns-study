@@ -1,6 +1,6 @@
 "use client";
 
-import type { NotificationPreferencesDto } from "@uns/contracts";
+import type { NotificationPreferencesDto } from "@sala/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useMe } from "@/lib/me-store";

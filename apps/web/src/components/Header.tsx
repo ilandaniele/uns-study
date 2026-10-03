@@ -37,13 +37,13 @@ export function Header() {
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-app bg-surface/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-surface/85">
       <div className="flex min-w-0 items-center gap-3">
-        <Link href="/sala/principal" aria-label="Sala de Estudio UNS" className="flex shrink-0 items-center gap-2.5 whitespace-nowrap text-main">
+        <Link href="/sala/principal" aria-label="Sala de Estudio" className="flex shrink-0 items-center gap-2.5 whitespace-nowrap text-main">
           <span aria-hidden="true" className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-white">
             <ArmchairIcon size={20} weight="bold" />
           </span>
           <span aria-hidden="true" className="flex flex-col leading-none">
             <span className="font-display text-[15px] font-extrabold uppercase tracking-[0.01em]">Sala de Estudio</span>
-            <span className="label-caps mt-1 !text-[10px] text-muted">UNS · Bahía Blanca</span>
+            <span className="label-caps mt-1 !text-[10px] text-muted">Bahía Blanca</span>
           </span>
         </Link>
       </div>
@@ -68,6 +68,14 @@ export function Header() {
       </nav>
 
       <div className="flex items-center gap-2 text-sm">
+        {me?.subscriptionsEnabled && !me.adFree ? (
+          <Link
+            href="/suscripcion"
+            className="hidden min-h-9 shrink-0 items-center rounded-lg border border-app px-3 py-1.5 font-semibold text-main hover:bg-[var(--surface-2)] lg:inline-flex"
+          >
+            Sin anuncios
+          </Link>
+        ) : null}
         <ThemeToggle />
         {loading ? null : user ? (
           <div className="flex items-center gap-3">

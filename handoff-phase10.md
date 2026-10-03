@@ -5,7 +5,7 @@ Base: MVP phases 0–9 done (see `handoff.md`, README). This file is THE contrac
 ## Global rules for builders
 - Windows, pnpm 9, Node 24. No dev servers are running. Do NOT start long-running servers except briefly on port 4100/3100 with `PGLITE_DIR=memory://` for a smoke, and kill them after. Never touch `.data/`.
 - Tests: vitest, pglite `memory://` + `migrate` + `seedInitialRoom` (see apps/api/src/test-utils.ts). Services are plain classes with explicit `@Inject(Token)` on every constructor param (tsx has no decorator metadata).
-- Domain logic in services, not controllers. Zod validation from `@uns/contracts` via existing `ZodBodyPipe`. Errors via `ApiErrors` (apps/api/src/common/api-error.ts) — add new codes to contracts `ApiErrorCode` only in Batch A.
+- Domain logic in services, not controllers. Zod validation from `@sala/contracts` via existing `ZodBodyPipe`. Errors via `ApiErrors` (apps/api/src/common/api-error.ts) — add new codes to contracts `ApiErrorCode` only in Batch A.
 - Every user-generated text: trim, length-capped, stored as plain text (web renders as text, never HTML).
 - Rate limits via existing `RateLimitService` keyed by user.
 - Privacy default = private/hidden. Never return fields the owner did not make visible (except to ADMIN endpoints).
@@ -88,7 +88,7 @@ Shared helpers created by B1 FIRST-NEEDED? No — to avoid collisions: `apps/api
   re-exported with explicit `.js` extensions (`export * from "./chat.js"` etc.); this typechecks
   and works under `tsx`/`vitest`/`tsup`, but Next 16's Turbopack production build could not resolve
   `.js` specifiers to the `.ts` source files through the workspace package boundary, so
-  `pnpm --filter @uns/web build` failed outright (pre-existing, not caused by phase-10 work — this
+  `pnpm --filter @sala/web build` failed outright (pre-existing, not caused by phase-10 work — this
   is the first time anyone ran that build). Fixed by dropping the extensions inside
   `packages/contracts/src` re-exports (`moduleResolution: "Bundler"` allows this). No behavior
   change; typecheck/lint/test all stayed green.
@@ -106,7 +106,7 @@ Shared helpers created by B1 FIRST-NEEDED? No — to avoid collisions: `apps/api
 
 ### A notes (exports other builders import)
 
-Schema (`@uns/database`, all re-exported from `packages/database/src/schema/index.ts` → `schema.*`):
+Schema (`@sala/database`, all re-exported from `packages/database/src/schema/index.ts` → `schema.*`):
 - `packages/database/src/schema/profiles.ts`: `userProfiles`, `userPrivacySettings`, `userReputation`, `userRoles`, enums `identityModeEnum`, `userRoleEnum`.
 - `packages/database/src/schema/moderation.ts`: `userBlocks`, `userReports`, `userReportAttachments`, `userRestrictions`, `moderationActions`, `announcements`, enums `reportReasonEnum`, `reportContextEnum`, `reportStatusEnum`, `reportAttachmentStatusEnum`, `restrictionTypeEnum`.
 - `packages/database/src/schema/chat.ts`: `chatRooms`, `chatMessages`, `directConversations`, `directMessages`, `directConversationReads`.
@@ -115,7 +115,7 @@ Schema (`@uns/database`, all re-exported from `packages/database/src/schema/inde
 - Migration `packages/database/migrations/0001_dazzling_mach_iv.sql` (one file, applies clean on pglite `memory://`).
 - Seed: `seedInitialRoom` now also upserts one `chat_rooms` row (`INITIAL_CHAT_ROOM` const in `seed.ts`) with `slug: "sala-principal"`, `name: "#sala-principal"`, idempotent.
 
-Contracts (`@uns/contracts`, re-exported from `index.ts`):
+Contracts (`@sala/contracts`, re-exported from `index.ts`):
 - `packages/contracts/src/profiles.ts`: `IdentityMode`, `MyProfileDto`, `PrivacySettingsDto`, `StudyStatusDto`, `PublicProfileDto`, `RoomPersonDto`, `SeatOccupantDto`, zod `updateProfileSchema`, `updatePrivacySchema`, `studyStartSchema`, `updateCheckInIdentitySchema`.
 - `packages/contracts/src/social.ts`: `Page<T>`, `ConversationDto`, `DirectMessageDto`, zod `dmSendSchema`, `createConversationSchema`.
 - `packages/contracts/src/chat.ts`: `ChatMessageDto`, zod `chatMessageSchema`.
@@ -153,4 +153,4 @@ Orchestrator (wire-modules) changes on top of the four builders' work:
 - `CheckInService` gained a `QrService` dependency (last constructor param) and an optional `qrToken` on `CreateCheckInInput`: a valid token for the seat's table now sets `qrVerified: true` in that seat's `seat_state_events.metadata` (via a new `RoomStateService.recomputeSeats({ seatMetadata })` per-seat metadata hook) — no other behaviour change. Updated every test file that constructed `CheckInService` directly to pass a `QrService`.
 - `checkins.controller.ts` now forwards `body.qrToken` to `CheckInService.checkIn`; `observations.controller.ts` now forwards `body.qrToken` to `ObservationService.observe` (contracts/schema already had the field; B4's `ObservationService` already consumed it, but the controller wasn't passing it through — now fixed).
 - Added `AnnouncementsService.listAll()` and `GET /admin/announcements` (AdminGuard) to `admin-announcements.controller.ts`.
-- Verified: `pnpm --filter @uns/api typecheck/lint/test` (186 tests, all green) and root `pnpm typecheck && pnpm lint && pnpm test` all green. Boot smoke (memory PGlite dir, `PRESENCE_DEV_BYPASS=true`) covered signup ×2, `/me`, profile + privacy PATCH, public profile view, DM create+send, room chat post+read, block → DM blocked, rankings, announcements, `/admin/reports` 403 for non-admin, then restarted with `ADMIN_EMAILS` and confirmed `/admin/rooms/:slug/stats` and `/admin/announcements` 200 for the granted admin. `pnpm --filter @uns/api build` + `node dist/main.js` boots and answers `GET /me` 200. All temp PGlite dirs and background processes cleaned up.
+- Verified: `pnpm --filter @sala/api typecheck/lint/test` (186 tests, all green) and root `pnpm typecheck && pnpm lint && pnpm test` all green. Boot smoke (memory PGlite dir, `PRESENCE_DEV_BYPASS=true`) covered signup ×2, `/me`, profile + privacy PATCH, public profile view, DM create+send, room chat post+read, block → DM blocked, rankings, announcements, `/admin/reports` 403 for non-admin, then restarted with `ADMIN_EMAILS` and confirmed `/admin/rooms/:slug/stats` and `/admin/announcements` 200 for the granted admin. `pnpm --filter @sala/api build` + `node dist/main.js` boots and answers `GET /me` 200. All temp PGlite dirs and background processes cleaned up.

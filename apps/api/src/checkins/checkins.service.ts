@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { and, eq, gt, gte } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
-import { CHECKIN_MINUTES, type CheckInDto, type LocationInput } from "@uns/contracts";
+import { schema, type Db } from "@sala/database";
+import { CHECKIN_MINUTES, type CheckInDto, type LocationInput } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { PresenceService } from "../presence/presence.service.js";

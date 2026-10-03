@@ -1,6 +1,6 @@
 import { Body, Controller, HttpCode, Inject, Post, UseGuards } from "@nestjs/common";
 import type { z } from "zod";
-import { studyStartSchema } from "@uns/contracts";
+import { studyStartSchema } from "@sala/contracts";
 import { AuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";

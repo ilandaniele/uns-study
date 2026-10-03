@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { AdsRoot } from "@/features/ads/AdsRoot";
 import { AnalyticsLoader } from "@/components/AnalyticsLoader";
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
@@ -10,10 +11,10 @@ import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Sala de Estudio UNS", template: "%s · Sala de Estudio UNS" },
+  title: { default: "Sala de Estudio", template: "%s · Sala de Estudio" },
   description: "Disponibilidad de lugares en la sala de estudio en tiempo real.",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "Sala de Estudio UNS" },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Sala de Estudio" },
 };
 
 export const viewport: Viewport = {
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Header />
         {children}
         <BottomNav />
+        <AdsRoot />
         <ServiceWorkerRegistration />
         <AnalyticsLoader />
       </body>

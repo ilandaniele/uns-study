@@ -1,6 +1,6 @@
 "use client";
 
-import type { RoomMapDto, SeatDto, TableDto } from "@uns/contracts";
+import type { RoomMapDto, SeatDto, TableDto } from "@sala/contracts";
 import { FunnelSimpleIcon, MagnifyingGlassIcon, ShareNetworkIcon, StarIcon } from "@phosphor-icons/react/dist/ssr";
 import { useState } from "react";
 import { seatDisplayLabel, statusLabel } from "./format";

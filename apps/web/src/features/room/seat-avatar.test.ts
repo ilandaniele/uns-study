@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { ANIMALS } from "@uns/contracts";
+import { ANIMALS } from "@sala/contracts";
 import { AVATAR_BACKDROP, markedByLabel, occupantAvatarProps, seatAvatarRender } from "./seat-avatar";
 
 describe("seatAvatarRender", () => {

@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { desc, lt } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
-import type { Page } from "@uns/contracts";
+import { schema, type Db } from "@sala/database";
+import type { Page } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 
 const PAGE_SIZE = 50;

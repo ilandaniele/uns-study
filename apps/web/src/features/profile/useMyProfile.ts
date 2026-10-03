@@ -1,12 +1,12 @@
 "use client";
 
-import type { MyProfileDto, PrivacySettingsDto } from "@uns/contracts";
+import type { MyProfileDto, PrivacySettingsDto } from "@sala/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch, ApiRequestError } from "@/lib/api";
 
-/** Mirrors `updateProfileSchema` from `@uns/contracts` (all fields optional/nullable). */
+/** Mirrors `updateProfileSchema` from `@sala/contracts` (all fields optional/nullable). */
 export type ProfilePatch = Partial<Omit<MyProfileDto, "userId" | "email">>;
-/** Mirrors `updatePrivacySchema` from `@uns/contracts` (all fields optional). */
+/** Mirrors `updatePrivacySchema` from `@sala/contracts` (all fields optional). */
 export type PrivacyPatch = Partial<PrivacySettingsDto>;
 
 export interface UseMyProfileResult {

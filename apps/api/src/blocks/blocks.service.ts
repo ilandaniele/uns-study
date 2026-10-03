@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, inArray, or } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
+import { schema, type Db } from "@sala/database";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { displayName, visibleAvatarUrl } from "../users/display-name.js";

@@ -1,13 +1,13 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, count, eq } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
+import { schema, type Db } from "@sala/database";
 import {
   REPORT_EVIDENCE_MAX_BYTES,
   type ReportContext,
   type ReportCreatedDto,
   type ReportReason,
   type UploadInstructionDto,
-} from "@uns/contracts";
+} from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { RateLimitService } from "../security/rate-limit.service.js";

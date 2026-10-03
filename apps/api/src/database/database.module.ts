@@ -1,6 +1,6 @@
 import { Global, Module, type OnApplicationShutdown, type OnModuleInit } from "@nestjs/common";
 import { Inject } from "@nestjs/common";
-import { closeDb, createDb, migrate, type Db } from "@uns/database";
+import { closeDb, createDb, migrate, type Db } from "@sala/database";
 import { env } from "../env.js";
 
 export const DB = Symbol("DB");

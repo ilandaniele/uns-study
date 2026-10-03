@@ -1,7 +1,7 @@
 "use client";
 
-import { SocketEvents } from "@uns/contracts/events";
-import type { ConversationDto, DirectMessageDto } from "@uns/contracts";
+import { SocketEvents } from "@sala/contracts/events";
+import type { ConversationDto, DirectMessageDto } from "@sala/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { DataPaths } from "@/lib/prefetch";
 import { fetchCached, peekCached } from "@/lib/query-cache";

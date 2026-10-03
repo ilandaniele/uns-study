@@ -1,6 +1,6 @@
 "use client";
 
-import type { RoomPersonDto } from "@uns/contracts";
+import type { RoomPersonDto } from "@sala/contracts";
 import { seatCodeLabel } from "@/features/room/format";
 import { OccupantAvatar } from "@/features/room/OccupantAvatar";
 import Link from "next/link";

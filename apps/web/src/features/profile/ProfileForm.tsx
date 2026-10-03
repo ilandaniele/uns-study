@@ -1,6 +1,6 @@
 "use client";
 
-import type { MyProfileDto } from "@uns/contracts";
+import type { MyProfileDto } from "@sala/contracts";
 import { ShuffleIcon } from "@phosphor-icons/react/dist/ssr";
 import type { FormEvent, ReactNode } from "react";
 import { useState } from "react";

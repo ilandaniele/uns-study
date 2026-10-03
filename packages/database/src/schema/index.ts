@@ -14,3 +14,5 @@ export * from "./disputes.js";
 export * from "./avatars.js";
 export * from "./table-names.js";
 export * from "./notifications.js";
+export * from "./subscriptions.js";
+export * from "./email.js";

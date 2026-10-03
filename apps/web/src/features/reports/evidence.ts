@@ -1,4 +1,4 @@
-import { REPORT_EVIDENCE_MAX_BYTES, REPORT_EVIDENCE_MIME } from "@uns/contracts";
+import { REPORT_EVIDENCE_MAX_BYTES, REPORT_EVIDENCE_MIME } from "@sala/contracts";
 
 export type EvidenceValidationError = "TOO_LARGE" | "UNSUPPORTED_TYPE";
 

@@ -1,4 +1,4 @@
-import type { RankingDto, RankingEntryDto, RankingPeriod } from "@uns/contracts";
+import type { RankingDto, RankingEntryDto, RankingPeriod } from "@sala/contracts";
 import { TrophyIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";

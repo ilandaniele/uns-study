@@ -1,11 +1,7 @@
 /**
- * Undergraduate (grado) and pregrado (tecnicaturas) programs of the Universidad Nacional del Sur,
- * grouped by Departamento académico. Data only — used to populate the profile "Carrera" dropdown.
- *
- * Sources (official UNS, retrieved 2026-09-29):
- * - https://www.uns.edu.ar/ingreso/carreras/carreras-oferta
- *   ("Carreras de grado dictadas en la Universidad Nacional del Sur", ingreso 1º cuatrimestre 2027)
- * - https://servicios.uns.edu.ar/grado/menu_all.asp (Carreras de Grado, por carrera/departamento)
+ * Undergraduate (grado) and pregrado (tecnicaturas) programs offered at the university where the
+ * room is, grouped by academic department. Data only — used to populate the profile "Carrera"
+ * dropdown. Taken from the university's public program list (retrieved 2026-09-29).
  *
  * The list follows the current offer page (66 programs) plus Medicina (Ciencias de la Salud), which
  * has its own admission and is listed on the catalogue and in the offer page's PEUZO note. Programs that only appear on the older catalogue

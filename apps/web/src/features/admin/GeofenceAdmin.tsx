@@ -1,6 +1,6 @@
 "use client";
 
-import type { GeofenceTestResultDto, LocationInput, RoomGeofenceDto } from "@uns/contracts";
+import type { GeofenceTestResultDto, LocationInput, RoomGeofenceDto } from "@sala/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch, ApiRequestError } from "@/lib/api";
 import { getFreshLocation, GeolocationRequestError } from "@/lib/geolocation";

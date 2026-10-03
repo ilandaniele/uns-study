@@ -643,7 +643,7 @@
       "**Don't** put shadows on in-flow cards, or the upward sheet shadow on anything but a bottom sheet over the map.",
       "**Don't** add looping animation outside the seats on the map.",
       "**Don't** use soft pill shapes for buttons or cards; full rounding is for avatars, dots and the entrance marker.",
-      "**Don't** use the UNS logo, crest or institutional colors."
+      "**Don't** use the university logo, crest or institutional colors."
     ]
   }
 }

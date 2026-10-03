@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { eq, sql } from "drizzle-orm";
 import webpush from "web-push";
-import { schema, type Db } from "@uns/database";
+import { schema, type Db } from "@sala/database";
 import { DB } from "../database/database.module.js";
 import { env } from "../env.js";
 import { mapWithConcurrency } from "./concurrency.js";

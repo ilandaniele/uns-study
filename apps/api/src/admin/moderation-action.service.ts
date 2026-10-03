@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, isNull } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
-import type { ModerationActionType } from "@uns/contracts";
+import { schema, type Db } from "@sala/database";
+import type { ModerationActionType } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import type { RestrictionType } from "../users/restriction.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";

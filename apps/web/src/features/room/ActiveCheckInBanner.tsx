@@ -1,6 +1,6 @@
 "use client";
 
-import type { CheckInDto } from "@uns/contracts";
+import type { CheckInDto } from "@sala/contracts";
 import { useEffect } from "react";
 import { useNow } from "@/lib/use-now";
 import { ExtendBanner } from "./ExtendBanner";

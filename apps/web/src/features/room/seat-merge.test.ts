@@ -1,4 +1,4 @@
-import type { RoomMapDto, SeatDto, SeatStateChangedEvent, TableDto } from "@uns/contracts";
+import type { RoomMapDto, SeatDto, SeatStateChangedEvent, TableDto } from "@sala/contracts";
 import { describe, expect, it } from "vitest";
 import {
   applyOptimisticSeat,

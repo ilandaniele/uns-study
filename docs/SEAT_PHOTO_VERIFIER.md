@@ -39,11 +39,11 @@ that follows the contract below.
 
 ```json
 {
-  "roomSlug": "sala-principal",
-  "claimedSeatCode": "M04-3",
+  "roomSlug": "principal",
+  "claimedSeatCode": "M04-S03",
   "image": { "mimeType": "image/jpeg", "base64": "<...>" },
   "seats": [
-    { "code": "M04-3", "tableCode": "M04", "x": 312, "y": 640 }
+    { "code": "M04-S03", "tableCode": "M04", "x": 312, "y": 640 }
   ]
 }
 ```
@@ -59,7 +59,7 @@ that follows the contract below.
 ## Response (model to API)
 
 ```json
-{ "seatCode": "M04-3", "confidence": 0.93, "modelVersion": "uns-seat-v1" }
+{ "seatCode": "M04-S03", "confidence": 0.93, "modelVersion": "sala-seat-v1:claude-sonnet-5-5" }
 ```
 
 - `seatCode`: the predicted seat, or `null` if the model cannot tell.
@@ -88,3 +88,39 @@ malformed body counts as "could not verify". The user is not penalised for it.
 - Tables are symmetrical, so the photo alone is ambiguous. Use landmarks
   (windows, entrance, wall bars, columns) to tell sides and rows apart.
 - Return `null` rather than guess when two seats are plausible.
+
+## Reference implementation: apps/verifier
+
+`apps/verifier` (`@sala/verifier`) is a small Node 22 HTTP service that follows
+this contract using Claude vision. It sends the model a labelled floor plan, the
+user's photo and a text description of the seat layout, and forces a
+`report_seat` tool call so the output is strict JSON. A seat code that is not in
+the request's `seats` is turned into `null` with confidence 0, and any model
+error or timeout answers `{ "seatCode": null, "confidence": 0 }` with HTTP 200.
+The static system prompt and the floor plan are prompt-cached.
+
+Endpoints: `POST /` (the contract above, `Authorization: Bearer`), `GET /health`.
+
+| Variable | Meaning |
+|---|---|
+| `VERIFIER_TOKEN` | Required in production. Must equal the API's `SEAT_VERIFIER_TOKEN`. |
+| `ANTHROPIC_API_KEY` | Required in production. |
+| `VERIFIER_MODEL` | Optional, default `claude-sonnet-5-5`. Reported as `modelVersion: "sala-seat-v1:<model>"`. |
+| `PORT` | Optional, default `8080`. |
+
+Deploy:
+
+```
+fly deploy -c fly.verifier.toml --remote-only
+fly secrets set -c fly.verifier.toml VERIFIER_TOKEN=... ANTHROPIC_API_KEY=...
+# on the API app:
+fly secrets set SEAT_VERIFIER_URL=https://sala-de-estudio-verifier.fly.dev/ SEAT_VERIFIER_TOKEN=...
+```
+
+The verifier machine stops when idle (`min_machines_running = 0`). A cold start
+plus inference can exceed the API's 10 s timeout; that degrades to "could not
+verify" and the user can simply try again.
+
+No-storage guarantee: the service keeps no database or disk state, never writes
+the photo anywhere and never logs it. It logs only `{evt, claimed, predicted,
+confidence, ms}`. The photo is sent to the Anthropic API for inference only.

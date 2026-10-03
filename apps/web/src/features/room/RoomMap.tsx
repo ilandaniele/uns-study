@@ -1,6 +1,6 @@
 "use client";
 
-import type { RoomMapDto, SeatAvatarDto, SeatDto } from "@uns/contracts";
+import type { RoomMapDto, SeatAvatarDto, SeatDto } from "@sala/contracts";
 import { memo, useMemo } from "react";
 import { Seat, type SeatFacing } from "./Seat";
 import { StudyTable } from "./StudyTable";

@@ -1,6 +1,6 @@
 import RedisMock from "ioredis-mock";
 import { describe, expect, it } from "vitest";
-import { createDb, migrate } from "@uns/database";
+import { createDb, migrate } from "@sala/database";
 import { PostgresWindow, RateLimitService } from "./rate-limit.service.js";
 
 describe("RateLimitService (in-memory fallback)", () => {

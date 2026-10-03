@@ -2,12 +2,13 @@
 
 import { prefetchLikelyNextWhenIdle } from "@/lib/prefetch";
 import { primeLocation } from "@/lib/geolocation";
-import type { SeatAvatarDto, SeatDto } from "@uns/contracts";
+import type { SeatAvatarDto, SeatDto } from "@sala/contracts";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdSlot } from "@/components/AdSlot";
+import { showPreCheckInAd } from "@/features/ads/ads";
 import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
 import { ActiveCheckInBanner } from "@/features/room/ActiveCheckInBanner";
 import { RoomSkeleton } from "@/features/room/RoomSkeleton";
@@ -247,6 +248,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
   }
 
   async function performCheckIn(seatId: string, fromDisputeWon: boolean, durationMinutes?: number) {
+    showPreCheckInAd();
     setConfirmMove(null);
     const showIdentity = hasChosenIdentityVisibility() ? getShowIdentityPreference() : false;
     const result = await checkIn(seatId, showIdentity, { qrToken, durationMinutes });

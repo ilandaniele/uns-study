@@ -1,6 +1,6 @@
 "use client";
 
-import type { PrivacySettingsDto } from "@uns/contracts";
+import type { PrivacySettingsDto } from "@sala/contracts";
 import { PRIVACY_FIELDS } from "./privacy-fields";
 import type { PrivacyPatch } from "./useMyProfile";
 

@@ -212,7 +212,7 @@ A cool, low-chroma graphite-and-paper base carrying one petrol-teal accent and a
 - **Headline** (800, 22px, line-height 1, uppercase, 118% width): screen and panel headings and the wordmark (15px in the header). Sheets use the same voice at 20px.
 - **Title** (600, 16 to 24px, sentence case, 118% width): dialog titles, card titles, the login heading, list section titles that are not place names.
 - **Body** (400, 14px, line-height about 1.5): descriptions, lists, helper copy. Inputs render at 16px on mobile to avoid zoom, 14px from `sm` up.
-- **Label** (700, 11px, 0.08em tracking, uppercase, 112% width): small signage labels: the "UNS · Bahía Blanca" subtitle, section labels like "Información", the table-and-side location line, field captions like the bank alias. Bottom-nav labels are 11px sentence case (500, 700 when active).
+- **Label** (700, 11px, 0.08em tracking, uppercase, 112% width): small signage labels: the "Bahía Blanca" subtitle, section labels like "Información", the table-and-side location line, field captions like the bank alias. Bottom-nav labels are 11px sentence case (500, 700 when active).
 - **Data** (Geist Mono 600, 22px on phones, 24px from `sm`, tabular figures): status-board counts, the alias, times and hints inside buttons.
 
 ### Named Rules
@@ -308,4 +308,4 @@ State changes move transform and opacity only, eased with `cubic-bezier(0.22, 1,
 - **Don't** put shadows on in-flow cards, or the upward sheet shadow on anything but a bottom sheet over the map.
 - **Don't** add looping animation outside the seats on the map.
 - **Don't** use soft pill shapes for buttons or cards; full rounding is for avatars, dots and the entrance marker.
-- **Don't** use the UNS logo, crest or institutional colors.
+- **Don't** use any university's logo, crest or institutional colors.

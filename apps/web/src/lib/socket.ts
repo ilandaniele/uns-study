@@ -1,4 +1,4 @@
-import { SocketEvents } from "@uns/contracts";
+import { SocketEvents } from "@sala/contracts";
 import { io, type Socket } from "socket.io-client";
 import { apiFetch, ApiRequestError } from "./api";
 import { peekMe } from "./me-store";

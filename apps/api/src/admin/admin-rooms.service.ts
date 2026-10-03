@@ -1,8 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { and, count, desc, eq, gt, gte, sql } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
-import type { GeofenceTestResultDto, LocationInput, RoomDailyStatDto, RoomGeofenceDto, RoomStatsDto } from "@uns/contracts";
+import { schema, type Db } from "@sala/database";
+import type { GeofenceTestResultDto, LocationInput, RoomDailyStatDto, RoomGeofenceDto, RoomStatsDto } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { env } from "../env.js";
 import { RoomsService } from "../rooms/rooms.service.js";

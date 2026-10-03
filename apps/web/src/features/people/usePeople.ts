@@ -1,6 +1,6 @@
 "use client";
 
-import type { RoomPersonDto } from "@uns/contracts";
+import type { RoomPersonDto } from "@sala/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { ApiRequestError } from "@/lib/api";
 import { DataPaths } from "@/lib/prefetch";

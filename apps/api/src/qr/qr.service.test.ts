@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { Db } from "@uns/database";
+import type { Db } from "@sala/database";
 import { freshDb, getRoom } from "../test-utils.js";
-import { schema } from "@uns/database";
+import { schema } from "@sala/database";
 import { eq } from "drizzle-orm";
 import { QrService } from "./qr.service.js";
 

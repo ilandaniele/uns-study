@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
 import { and, eq } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
-import type { LocationInput, PhotoMimeType, PhotoVerificationResultDto } from "@uns/contracts";
+import { schema, type Db } from "@sala/database";
+import type { LocationInput, PhotoMimeType, PhotoVerificationResultDto } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { PresenceService } from "../presence/presence.service.js";

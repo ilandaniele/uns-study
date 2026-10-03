@@ -1,6 +1,6 @@
 "use client";
 
-import type { AvatarMimeType } from "@uns/contracts";
+import type { AvatarMimeType } from "@sala/contracts";
 import { useRef, useState } from "react";
 import { apiDelete, apiPost, ApiRequestError } from "@/lib/api";
 import { AVATAR_OUTPUT_SIZE, base64FromDataUrl, centerSquareCrop } from "./avatar-image";

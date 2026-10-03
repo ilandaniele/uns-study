@@ -95,7 +95,7 @@ Uploads should have:
 - random object names;
 - report/user metadata stored in DB, not exposed in object path when avoidable.
 
-## Vercel
+## Web (Fly.io)
 
 Deploy only `apps/web`.
 

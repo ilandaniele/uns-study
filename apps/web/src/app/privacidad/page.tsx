@@ -7,7 +7,7 @@ export default function PrivacyPage() {
     <main className="mx-auto max-w-prose space-y-4 px-4 py-8 text-sm leading-relaxed text-main">
       <h1 className="font-display text-2xl font-semibold text-main">Política de privacidad</h1>
       <p>
-        Sala de Estudio UNS es un proyecto independiente de estudiantes para compartir en tiempo real la
+        Sala de Estudio es un proyecto independiente de estudiantes para compartir en tiempo real la
         disponibilidad de lugares en la sala de estudio. No es un servicio oficial de la Universidad Nacional del
         Sur.
       </p>

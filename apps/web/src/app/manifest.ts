@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Sala de Estudio UNS",
-    short_name: "Sala UNS",
+    name: "Sala de Estudio",
+    short_name: "Sala Estudio",
     description: "Disponibilidad de lugares en la sala de estudio en tiempo real.",
     start_url: "/sala/principal",
     display: "standalone",

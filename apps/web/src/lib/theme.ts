@@ -1,6 +1,6 @@
 export type ThemePreference = "light" | "dark" | "system";
 
-const STORAGE_KEY = "uns-theme";
+const STORAGE_KEY = "sala-theme";
 
 /** Reads the stored theme preference, defaulting to `"system"` when unset or unavailable. */
 export function getStoredTheme(): ThemePreference {

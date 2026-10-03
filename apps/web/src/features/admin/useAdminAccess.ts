@@ -1,6 +1,6 @@
 "use client";
 
-import type { MeDto } from "@uns/contracts";
+import type { MeDto } from "@sala/contracts";
 import { useMe } from "@/lib/me-store";
 
 export interface AdminAccess {

@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Inject, Param, Patch, Query, UseGuards } from "@nestjs/common";
 import type { z } from "zod";
-import { reportStatusSchema } from "@uns/contracts";
+import { reportStatusSchema } from "@sala/contracts";
 import { AdminGuard } from "../users/admin.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";

@@ -1,4 +1,4 @@
-import type { ReportReason } from "@uns/contracts";
+import type { ReportReason } from "@sala/contracts";
 
 /** Spanish labels for the report reason `<select>`, in display order. */
 export const REPORT_REASON_LABELS: Record<ReportReason, string> = {

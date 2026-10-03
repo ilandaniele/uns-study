@@ -17,3 +17,7 @@ apps/web/*
 # output) and anything under docs/ that isn't purely narrative isn't excluded here either way.
 *.md
 !README.md
+
+# Local env files never go into an image (secrets, localhost URLs).
+**/.env*
+!**/.env.example

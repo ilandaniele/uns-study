@@ -1,6 +1,6 @@
 "use client";
 
-import type { RoomDailyStatDto, RoomStatsDto } from "@uns/contracts";
+import type { RoomDailyStatDto, RoomStatsDto } from "@sala/contracts";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 

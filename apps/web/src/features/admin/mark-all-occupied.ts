@@ -1,4 +1,4 @@
-import type { SeatDto } from "@uns/contracts";
+import type { SeatDto } from "@sala/contracts";
 
 /** Durations offered by the "Todos los lugares ocupados" dialog, in minutes. */
 export const MARK_ALL_OCCUPIED_DURATIONS = [30, 60, 120, 240] as const;

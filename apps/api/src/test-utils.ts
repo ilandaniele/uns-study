@@ -1,4 +1,4 @@
-import { createDb, migrate, schema, seedInitialRoom, type Db } from "@uns/database";
+import { createDb, migrate, schema, seedInitialRoom, type Db } from "@sala/database";
 import { PresenceService } from "./presence/presence.service.js";
 import { RoomStateService } from "./rooms/room-state.service.js";
 import { SecurityEventService } from "./security/security-event.service.js";

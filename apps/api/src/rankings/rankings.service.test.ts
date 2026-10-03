@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { Db } from "@uns/database";
-import { schema } from "@uns/database";
+import type { Db } from "@sala/database";
+import { schema } from "@sala/database";
 import { freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";

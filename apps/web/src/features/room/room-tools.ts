@@ -1,4 +1,4 @@
-import type { RoomMapDto, SeatDto } from "@uns/contracts";
+import type { RoomMapDto, SeatDto } from "@sala/contracts";
 
 /**
  * "Buscar lugar libre": the favorite seat when it is free; otherwise the free seat at the table

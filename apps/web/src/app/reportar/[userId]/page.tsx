@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReportContext, ReportReason } from "@uns/contracts";
+import type { ReportContext, ReportReason } from "@sala/contracts";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { ReportForm } from "@/features/reports/ReportForm";

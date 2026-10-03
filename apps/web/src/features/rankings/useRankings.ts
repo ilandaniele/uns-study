@@ -1,6 +1,6 @@
 "use client";
 
-import type { RankingCategory, RankingDto, RankingPeriod } from "@uns/contracts";
+import type { RankingCategory, RankingDto, RankingPeriod } from "@sala/contracts";
 import { useEffect, useState } from "react";
 import { DataPaths } from "@/lib/prefetch";
 import { fetchCached, peekCached } from "@/lib/query-cache";

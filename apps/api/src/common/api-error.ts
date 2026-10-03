@@ -1,5 +1,5 @@
 import { HttpException } from "@nestjs/common";
-import type { ApiErrorCode, PresenceDetails, PresenceRejectReason } from "@uns/contracts";
+import type { ApiErrorCode, PresenceDetails, PresenceRejectReason } from "@sala/contracts";
 
 /** Thrown by domain services / controllers; rendered as `{ error: { code, message, reason? } }`. */
 export class ApiException extends HttpException {
@@ -23,6 +23,7 @@ export const ApiErrors = {
   roomNotFound: () => new ApiException("SEAT_NOT_FOUND", "Sala no encontrada.", 404),
   noActiveCheckIn: () => new ApiException("NO_ACTIVE_CHECKIN", "No tenés un check-in activo.", 404),
   rateLimited: () => new ApiException("RATE_LIMITED", "Demasiados intentos, esperá un momento.", 429),
+  featureDisabled: (message = "Esta función no está disponible en este momento.") => new ApiException("FEATURE_DISABLED", message, 503),
   validation: (message = "Datos inválidos.") => new ApiException("VALIDATION_ERROR", message, 400),
   ownSeatObservation: () =>
     new ApiException("OWN_SEAT_OBSERVATION", "Ya tenés un check-in activo en este asiento, usá 'Me voy' en vez de observar.", 409),

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Db } from "@uns/database";
-import { schema } from "@uns/database";
+import type { Db } from "@sala/database";
+import { schema } from "@sala/database";
 import { eq } from "drizzle-orm";
 import { freshDb, insertUsers } from "../test-utils.js";
 import { PushService } from "./push.service.js";

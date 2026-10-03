@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import { eq } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
-import type { AvatarMimeType } from "@uns/contracts";
+import { schema, type Db } from "@sala/database";
+import type { AvatarMimeType } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { RestrictionService } from "../users/restriction.service.js";

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Reflector } from "@nestjs/core";
 import type { ExecutionContext } from "@nestjs/common";
-import { schema, type Db } from "@uns/database";
+import { schema, type Db } from "@sala/database";
 import { freshDb, insertUsers } from "../test-utils.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { AccountController } from "../profiles/account.controller.js";

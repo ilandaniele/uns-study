@@ -1,4 +1,4 @@
-import type { RankingCategory, RankingPeriod } from "@uns/contracts";
+import type { RankingCategory, RankingPeriod } from "@sala/contracts";
 
 export const PERIOD_LABELS: Record<RankingPeriod, string> = {
   today: "Hoy",

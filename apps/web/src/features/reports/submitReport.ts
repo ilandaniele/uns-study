@@ -1,4 +1,4 @@
-import type { ReportContext, ReportCreatedDto, ReportReason, UploadInstructionDto } from "@uns/contracts";
+import type { ReportContext, ReportCreatedDto, ReportReason, UploadInstructionDto } from "@sala/contracts";
 import { apiPost, ApiRequestError } from "@/lib/api";
 import type { EvidenceFileLike } from "./evidence";
 

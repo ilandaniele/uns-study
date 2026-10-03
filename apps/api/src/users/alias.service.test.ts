@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
-import type { Db } from "@uns/database";
-import { schema } from "@uns/database";
+import type { Db } from "@sala/database";
+import { schema } from "@sala/database";
 import { freshDb, insertUsers } from "../test-utils.js";
 import { AliasService } from "./alias.service.js";
 import { randomAlias } from "./alias-generator.js";

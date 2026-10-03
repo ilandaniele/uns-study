@@ -1,4 +1,4 @@
-# Handoff / Blueprint — UNS Study MVP
+# Handoff / Blueprint — Sala de Estudio MVP
 
 Shared contract for all agents. Specs live in `00_*.md`..`10_*.md` and `CLAUDE.md`. Do NOT change contracts below without telling the orchestrator.
 
@@ -11,13 +11,13 @@ Shared contract for all agents. Specs live in `00_*.md`..`10_*.md` and `CLAUDE.m
 ```
 apps/web        Next.js (App Router, TS, Tailwind v4), port 3000
 apps/api        NestJS (TS, Express platform), port 4000, prefix /api/v1
-packages/contracts   @uns/contracts   — shared TS types + zod schemas + constants
-packages/database    @uns/database    — Drizzle schema, client factory, migrations, seed, layout generator
+packages/contracts   @sala/contracts   — shared TS types + zod schemas + constants
+packages/database    @sala/database    — Drizzle schema, client factory, migrations, seed, layout generator
 ```
 Root scripts: `dev`, `build`, `lint`, `typecheck`, `test`, `db:generate`, `db:migrate`, `db:seed` (turbo / filter). Packages export TS source directly (`"main": "./src/index.ts"`, `"types"` same) — no build step for internal packages; API compiles them via its bundler/ts path (use `tsx`/`swc` for dev; for Nest build use `tsup` or nest-cli with webpack? → decision: API runs with `tsx watch src/main.ts` in dev and `tsup` for build, NOT nest-cli, so workspace TS sources resolve cleanly).
 
 ## Database
-- Client factory `createDb()` in `@uns/database`:
+- Client factory `createDb()` in `@sala/database`:
   - if `DATABASE_URL` set → `drizzle-orm/node-postgres` with `pg` Pool (ssl when url has sslmode).
   - else → `drizzle-orm/pglite` with `@electric-sql/pglite` persisted at `<repo>/.data/pglite` (env `PGLITE_DIR` overrides; `memory://` for tests).
   - Export type `Db` usable by both (use the common `PgDatabase` base type).
@@ -35,9 +35,9 @@ Root scripts: `dev`, `build`, `lint`, `typecheck`, `test`, `db:generate`, `db:mi
   - `user_room_presence` (user_id, room_id, presence_verified, first_seen_at, last_seen_at, active) PK(user_id, room_id)
   - `study_status` (user_id, room_id, subject, message, looking_for_group, active, started_at, updated_at) PK(user_id, room_id) — scaffold only.
   - Later tables (profiles, privacy, reputation, qr, blocks, reports, chat) NOT now.
-- Seed (`pnpm db:seed`, idempotent upsert by slug/code): room slug `principal`, name `Sala de Estudio UNS`, lat `-38.70138372483678`, lng `-62.270139753196005` (confirmed), radius 120 m, tz `America/Argentina/Buenos_Aires`, reset `04:00`. Geometry from `generateRoomLayout()` (pure, in `src/layout.ts`, unit-tested: 12 MAIN_TABLE, 4 WALL_BAR, 108 seats, codes `M01-S01`..`M12-S08`, `B01-S01`..`B04-S03`). viewBox `0 0 1000 1600`: back/windows at top y≈0, entrance at bottom. M01..M06 left column bottom→top (M01 near entrance), M07..M12 right column bottom→top. Tables horizontal ~300x90; seats 1-4 above table left→right, 5-8 below right→left. Bars vertical against side walls: B01 left-bottom, B02 right-bottom, B03 left-top, B04 right-top, 3 seats each stacked vertically. One `seat_current_state` row per seat, UNKNOWN, confidence 0.
+- Seed (`pnpm db:seed`, idempotent upsert by slug/code): room slug `principal`, name `Sala de Estudio`, lat `-38.70138372483678`, lng `-62.270139753196005` (confirmed), radius 120 m, tz `America/Argentina/Buenos_Aires`, reset `04:00`. Geometry from `generateRoomLayout()` (pure, in `src/layout.ts`, unit-tested: 12 MAIN_TABLE, 4 WALL_BAR, 108 seats, codes `M01-S01`..`M12-S08`, `B01-S01`..`B04-S03`). viewBox `0 0 1000 1600`: back/windows at top y≈0, entrance at bottom. M01..M06 left column bottom→top (M01 near entrance), M07..M12 right column bottom→top. Tables horizontal ~300x90; seats 1-4 above table left→right, 5-8 below right→left. Bars vertical against side walls: B01 left-bottom, B02 right-bottom, B03 left-top, B04 right-top, 3 seats each stacked vertically. One `seat_current_state` row per seat, UNKNOWN, confidence 0.
 
-## Contracts package (`@uns/contracts`)
+## Contracts package (`@sala/contracts`)
 ```ts
 export type SeatStatus = 'UNKNOWN'|'FREE'|'OCCUPIED'|'UNCERTAIN';
 export type TableType = 'MAIN_TABLE'|'WALL_BAR';
@@ -66,7 +66,7 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 - `POST /checkins` (auth, rate limit 5/min, presence), `DELETE /checkins/current`, `POST /checkins/current/extend` (fresh presence, +60 min from now).
 - `POST /observations` (auth, rate limit 6/min + max 15 distinct seats / 10 min, presence). Cannot observe a seat where caller has own active check-in (just use check-in). Duplicate observation by same user same seat replaces (expire previous).
 - Better Auth mounted at `/api/auth/*` (Express handler BEFORE body parser), email/password enabled, Google enabled only when `GOOGLE_CLIENT_ID` set. `trustedOrigins=[WEB_ORIGIN]`. Guard `AuthGuard` resolves session via `auth.api.getSession({headers})` → `req.user`. Never trust body userId.
-- Dev-only presence bypass: env `PRESENCE_DEV_BYPASS=true` (rejected when NODE_ENV=production) makes presence always valid — for local testing away from UNS. Thresholds env: `PRESENCE_MAX_AGE_S=120`, `PRESENCE_MAX_ACCURACY_M=100`.
+- Dev-only presence bypass: env `PRESENCE_DEV_BYPASS=true` (rejected when NODE_ENV=production) makes presence always valid — for local testing away from the room. Thresholds env: `PRESENCE_MAX_AGE_S=120`, `PRESENCE_MAX_ACCURACY_M=100`.
 - Domain services (pure-ish, no controller logic): `PresenceService` (haversine, validate), `SeatStateCalculator` (pure fn), `CheckInService`, `ObservationService`, `RoomStateService` (recompute seat state + summary, write seat_current_state + events), `RateLimitService` (Upstash REST if env set, else in-memory sliding window), `SecurityEventService`, `RoomRealtimeGateway` (Socket.IO, CORS WEB_ORIGIN, anonymous join allowed), `ExpirationJob` (@nestjs/schedule, every 30 s: expire ACTIVE check-ins with expires_at<=now, recompute seats with just-expired observations, emit), `DailyResetJob` (every minute check: if room local time ≥ reset time and last_reset_at < today's reset instant → run reset txn per spec §7 + set last_reset_at; idempotent; emit room:daily-reset).
 - SeatStateCalculator rules (deterministic): active check-in → OCCUPIED 0.98 source `CHECK_IN`; else active obs: only FREE → FREE conf min(0.5+0.15·(n-1),0.9); only OCCUPIED → OCCUPIED same formula; both → compare weighted counts: if one side ≥ 2× other and newest obs is that side → that side conf 0.5, else UNCERTAIN 0.4; none → UNKNOWN 0. Distinct users count once (latest per user).
 - Concurrency: check-in in a transaction; rely on partial unique index; catch unique violation (23505) → SEAT_TAKEN. Moving = mark previous ACTIVE → COMPLETED in same txn before insert.
@@ -79,7 +79,7 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 - Geolocation helper `getFreshLocation()` returning LocationInput or typed error (permission denied / timeout / unavailable). Actions `Estoy acá`, `Está libre`, `Está ocupado`, `Salir` (checkout), `Seguir acá` (extend). Show friendly errors per spec. After first check-in ask identity visibility (store choice only locally for now; default private).
 
 ## Web notes
-- `apps/web` scaffolded by hand (no `create-next-app`): Next.js 16.3.6, App Router, React 19, Tailwind v4 (`@tailwindcss/postcss`, `@theme` tokens in `globals.css`), TS, port 3000. `next.config.ts` sets `transpilePackages: ["@uns/contracts"]`.
+- `apps/web` scaffolded by hand (no `create-next-app`): Next.js 16.3.6, App Router, React 19, Tailwind v4 (`@tailwindcss/postcss`, `@theme` tokens in `globals.css`), TS, port 3000. `next.config.ts` sets `transpilePackages: ["@sala/contracts"]`.
 - `src/lib/api.ts` — `apiFetch`/`apiPost`/`apiDelete`, `credentials: "include"`, throws `ApiRequestError { code, reason?, status }` parsed from the `{error:{code,message}}` shape (reads an optional `reason` defensively even though it's not in the `ApiError` TS type — API should include it for `PRESENCE_REJECTED` per handoff prose).
 - `src/lib/auth-client.ts` — `better-auth/react` client, `baseURL = NEXT_PUBLIC_API_URL` (default session/social endpoints under `/api/auth/*`).
 - `src/lib/geolocation.ts` — `getFreshLocation()`, `enableHighAccuracy/maximumAge:0/timeout:15s`, throws `GeolocationRequestError` with codes `PERMISSION_DENIED|TIMEOUT|UNAVAILABLE`.
@@ -91,7 +91,7 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 - `eslint-config-next`'s `dist/index.js` is already a flat-config array in this version — importing it directly (no `FlatCompat`) avoids a `Converting circular structure to JSON` crash seen with `@eslint/eslintrc` + ESLint 9.39 + `eslint-plugin-react`.
 - New `eslint-plugin-react-hooks` v6 rule `react-hooks/set-state-in-effect` (ships with `eslint-config-next` 16) flags the standard "fetch on mount" and "sync prompt to a prop" effects; both are deliberate and disabled inline with a comment.
 - Deviation: the UX spec's "Tenés que estar en la sala para actualizar lugares" (logged in but not geofence-validated) message is **not** shown pre-emptively — `MeDto` has no live presence flag, so it can only be surfaced reactively via `PRESENCE_REJECTED`/`OUTSIDE_GEOFENCE` after an action is attempted (same copy, shown via `actionError`). If the API adds a presence flag to `/me` later, this can become proactive.
-- Verified: `pnpm --filter @uns/web typecheck|lint|build|test` all pass (7 vitest cases for `format.ts`). Did not run against a live API — no smoke test was done since it wasn't required and `apps/api` wasn't ready at the time of this work; contract types were used as-is.
+- Verified: `pnpm --filter @sala/web typecheck|lint|build|test` all pass (7 vitest cases for `format.ts`). Did not run against a live API — no smoke test was done since it wasn't required and `apps/api` wasn't ready at the time of this work; contract types were used as-is.
 
 ## Status log
 - [x] P0 scaffold  - [x] P1 DB/seed  - [x] P2 map  - [x] P3 auth  - [x] P4 presence  - [x] P5 check-in  - [x] P6 realtime  - [x] P7 observations  - [x] P8 expiry/reset  - [x] P9 anti-abuse
@@ -99,7 +99,7 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 
 ## Deployment state (2026-09-27, updated for the Render -> Fly.io move)
 - GitHub: private repo `ilandaniele/uns-study`, CI green.
-- Web: Vercel project `uns-study`, https://uns-study.vercel.app (auto-deploy on push to main). `/api/auth/*` and `/api/v1/*` are rewritten to the API (`API_PROXY_TARGET`), so auth cookies are first-party. Socket.IO connects straight to the API host (defaults to `API_PROXY_TARGET` at build, see next.config.ts). `API_PROXY_TARGET` needs to be updated to `https://uns-study-api.fly.dev` in the Vercel project settings.
+- Web: Fly.io app `sala-de-estudio`, https://sala-de-estudio.fly.dev (`fly deploy -c fly.web.toml --remote-only`; the old https://uns-study.vercel.app host 308-redirects there via `apps/web/src/proxy.ts`). `/api/auth/*` and `/api/v1/*` are rewritten to the API (`API_PROXY_TARGET`), so auth cookies are first-party. Socket.IO connects straight to the API host (defaults to `API_PROXY_TARGET` at build, see next.config.ts). `API_PROXY_TARGET` is a build arg in `fly.web.toml`.
 - API: moving from Render to **Fly.io** (`fly.toml` + `Dockerfile.api` at repo root; `render.yaml`/`apps/api/railway.json` removed). App name `uns-study-api`, region `gru`, `https://uns-study-api.fly.dev`, scale-to-zero (`min_machines_running = 0`). Postgres stays on Neon project `sala-estudio-uns` (id purple-paper-17024644, AWS us-east-1) — same `DATABASE_URL`, now set via `fly secrets set` instead of the Render dashboard. `GOOGLE_CLIENT_SECRET` is also a Fly secret (see README "Deploy"). `BETTER_AUTH_SECRET` and `IP_HASH_SALT` are **not** Fly secrets anymore — the API auto-generates and persists them in the new `app_secrets` table on first boot (`apps/api/src/secrets.ts`), so deploying needs no hand-typed generated secrets; rotating one = delete its row + restart (rotating `BETTER_AUTH_SECRET` logs everyone out). No Redis/Upstash needed anymore in production: `RateLimitService` now falls back to a Postgres-backed limiter (`rate_limit_hits` table, migration `0003_colorful_quicksilver.sql`) when neither is configured, since `DATABASE_URL` is already required — the Render Key Value instance `uns-study-kv` is no longer used. **Not yet pushed** — this work item builds the Fly config only; the orchestrator deploys (`fly launch`/`fly deploy`, `fly secrets set`) and pushes once Fly is confirmed working, since pushing also affects the now-decommissioned Render service.
 - Admin: `ADMIN_EMAILS=ilan.daniele@gmail.com`; the ADMIN role is granted on the first `/me` after that account signs up.
 - Room coordinates confirmed: -38.70138372483678, -62.270139753196005, radius 120 m, max accuracy 100 m.
@@ -108,7 +108,7 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 ## Next (blocked on Ilan)
 - Real credentials: Neon `DATABASE_URL` (already have it from Render, just needs to be set as a Fly secret), Google OAuth client secret, Turnstile keys. Upstash Redis is no longer needed (Postgres-backed rate limiting covers production). `BETTER_AUTH_SECRET`/`IP_HASH_SALT` need no credential at all — auto-generated into `app_secrets` on first boot.
 - Room coordinates confirmed (2026-09-27). Geofence radius 120 m — tune after real-device tests.
-- Deploy: Vercel (apps/web) + Fly.io (apps/api); see README "Deploy". Orchestrator to run `fly launch`/`fly deploy` + `fly secrets set` + push, and flip Vercel's `API_PROXY_TARGET`/`NEXT_PUBLIC_SOCKET_URL` to the Fly host.
+- Deploy: Fly.io (apps/web via fly.web.toml, apps/api via fly.toml); see README "Deploy". Orchestrator to run `fly launch`/`fly deploy` + `fly secrets set` + push, and flip Vercel's `API_PROXY_TARGET`/`NEXT_PUBLIC_SOCKET_URL` to the Fly host.
 - Beta launch point reached per 08_IMPLEMENTATION_PLAN.md; later phases (profiles, chat, reports, rankings, QR, ads) not started.
 
 (apps/api backend complete per the API contract above; apps/web is a separate work item.)
@@ -116,10 +116,10 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 ## API notes (apps/api)
 
 **Run**
-- Dev: `pnpm --filter @uns/api dev` (`tsx watch src/main.ts`, loads root `.env` via `dotenv`). Set `PRESENCE_DEV_BYPASS=true` to test away from the UNS geofence.
+- Dev: `pnpm --filter @sala/api dev` (`tsx watch src/main.ts`, loads root `.env` via `dotenv`). Set `PRESENCE_DEV_BYPASS=true` to test away from the room.
 - Seed local data: `pnpm db:seed` (writes to `.data/pglite` when `DATABASE_URL` is unset — **stop the API before seeding and restart after**, PGlite does not support two processes writing the same on-disk store concurrently).
-- Build: `pnpm --filter @uns/api build` (tsup → `dist/main.js`, ESM). Start: `pnpm --filter @uns/api start`.
-- Tests: `pnpm --filter @uns/api test` (vitest, pglite `memory://`, 40 tests, all green). `typecheck` / `lint` also green.
+- Build: `pnpm --filter @sala/api build` (tsup → `dist/main.js`, ESM). Start: `pnpm --filter @sala/api start`.
+- Tests: `pnpm --filter @sala/api test` (vitest, pglite `memory://`, 40 tests, all green). `typecheck` / `lint` also green.
 - `DB_AUTO_MIGRATE` (default `true` outside production) runs `migrate()` on boot; it does **not** seed — run `pnpm db:seed` once against the same store.
 
 **Env** — see root `.env.example`; new API-only var: `DB_AUTO_MIGRATE` (bool, default true in dev). `IP_HASH_SALT` was added (not previously in the example) for `security_events.ip_hash`; defaults to an insecure dev value with no runtime warning — set it for anything beyond local dev.
@@ -135,7 +135,7 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 - Better Auth 1.7.6 drizzle adapter mounted at `/api/auth/*` on the raw Express instance (`bodyParser: false` on the Nest app, `toNodeHandler(auth)` mounted before `express.json()`). Verified live: sign-up, cookie session, and `GET /api/v1/me` all work end-to-end.
 - `POST /observations` rejects observing the seat where the caller has their own active check-in with a generic `VALIDATION_ERROR` (no dedicated `ApiErrorCode` exists for this in the contract) — flagged here since it's the one place the contract's fixed `ApiErrorCode` union felt incomplete; not changed unilaterally.
 - Phase 9 anti-abuse: `security/turnstile.service.ts` (Cloudflare `siteverify`, fail-closed, disabled unless `TURNSTILE_SECRET_KEY` set) + `security/abuse-policy.service.ts` (`requiresChallenge(userId)`: true iff Turnstile enabled AND user has a `SEAT_TOGGLE_RAPID`/`OBSERVATION_SPREAD`/`RATE_LIMITED` `security_events` row in the last 30 min; `observationLimits(userId)`/`isNewAccount(userId)`: accounts younger than 24h get 3 observations/min + an 8-distinct-seat/10-min cap instead of 6/15, numbers live in `OBSERVATION_LIMITS`). Both checks live in `CheckInsController`/`ObservationsController` right after the existing rate-limit check (which now also records a `RATE_LIMITED` security event on the 429 path, since that's one of the three challenge triggers); `ObservationService` itself now asks `AbusePolicyService` for the distinct-seat cap instead of a hardcoded constant. A hit records `TURNSTILE_FAILED` only when a token was actually submitted and rejected (a *missing* token when challenged is not itself logged as a failure).
-- **Contract note (not changed unilaterally):** the handoff's "API" section literally specifies `ApiError body: { error: { code, message, reason? } }`, but `@uns/contracts`' actual `ApiError` TS interface (`packages/contracts/src/index.ts`) only has `{ code, message }` — no `reason`. The API implements the prose (emits `reason` for `PRESENCE_REJECTED`, matching the web agent's defensive parsing noted above), but `ApiError`/`ApiException` in `apps/api` type the field as optional so JSON output matches prose while staying a structural superset of the contract type. If someone owns `@uns/contracts`, consider adding `reason?: PresenceRejectReason` to `ApiError.error` to close this gap.
+- **Contract note (not changed unilaterally):** the handoff's "API" section literally specifies `ApiError body: { error: { code, message, reason? } }`, but `@sala/contracts`' actual `ApiError` TS interface (`packages/contracts/src/index.ts`) only has `{ code, message }` — no `reason`. The API implements the prose (emits `reason` for `PRESENCE_REJECTED`, matching the web agent's defensive parsing noted above), but `ApiError`/`ApiException` in `apps/api` type the field as optional so JSON output matches prose while staying a structural superset of the contract type. If someone owns `@sala/contracts`, consider adding `reason?: PresenceRejectReason` to `ApiError.error` to close this gap.
 
 **Endpoints verified live** (`PRESENCE_DEV_BYPASS=true`, port 4000):
 - `GET /api/v1/health` → 200 `{ok:true,ts}`.
@@ -148,7 +148,7 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 **Open issues / left for other agents**
 - `apps/web` not touched (per scope).
 - No real Neon/Upstash/Google credentials configured — everything above ran against local PGlite + in-memory rate limiting, as expected for this stage.
-- UNS Bahía Blanca coordinates in the seed are still the placeholder noted in `packages/database/src/seed.ts` (`TODO confirm`) — not this work item's scope.
+- Bahía Blanca room coordinates in the seed are still the placeholder noted in `packages/database/src/seed.ts` (`TODO confirm`) — not this work item's scope.
 
 ## API notes — seat disputes (apps/api/src/disputes/)
 

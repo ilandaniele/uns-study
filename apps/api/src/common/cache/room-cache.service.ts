@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { asc, eq, or } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
+import { schema, type Db } from "@sala/database";
 import { ApiErrors } from "../api-error.js";
 import { TtlCache } from "./ttl-cache.js";
 

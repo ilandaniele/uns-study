@@ -29,7 +29,7 @@ Optimize for:
 - Tailwind CSS
 - PWA
 
-Deploy to Vercel.
+Deploy to Fly.io (`fly deploy -c fly.web.toml --remote-only`).
 
 ### API
 
@@ -102,7 +102,7 @@ Browser / PWA
     |
     +-------------------------+
     |                         |
-Vercel                    Railway
+Fly.io (web)              Railway
 Next.js                   NestJS API
                               |
                +--------------+--------------+
@@ -116,7 +116,7 @@ Next.js                   NestJS API
 Suggested:
 
 ```text
-uns-study/
+sala-de-estudio/
 ├── apps/
 │   ├── web/
 │   │   ├── src/

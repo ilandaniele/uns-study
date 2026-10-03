@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { Interval } from "@nestjs/schedule";
 import { and, eq, lt } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
+import { schema, type Db } from "@sala/database";
 import { DB } from "../database/database.module.js";
 import { StorageService } from "../storage/storage.service.js";
 

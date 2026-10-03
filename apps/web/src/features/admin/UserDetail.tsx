@@ -1,6 +1,6 @@
 "use client";
 
-import type { AdminUserDto, ModerationActionType } from "@uns/contracts";
+import type { AdminUserDto, ModerationActionType } from "@sala/contracts";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { apiFetch, apiPost } from "@/lib/api";
 

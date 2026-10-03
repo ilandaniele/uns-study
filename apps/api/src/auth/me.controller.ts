@@ -1,7 +1,8 @@
 import { Controller, Get, Inject, UseGuards } from "@nestjs/common";
 import { eq } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
-import type { MeDto } from "@uns/contracts";
+import { schema, type Db } from "@sala/database";
+import { env } from "../env.js";
+import type { MeDto } from "@sala/contracts";
 import { OptionalAuthGuard } from "./auth.guard.js";
 import { CurrentUser } from "./current-user.decorator.js";
 import type { RequestUser } from "./request-user.js";
@@ -22,15 +23,32 @@ export class MeController {
 
   @Get()
   async get(@CurrentUser() user: RequestUser | undefined): Promise<MeDto> {
-    if (!user) return { user: null, activeCheckIn: null, roles: [], restrictions: [], profileCompleted: false };
+    const subscriptionsEnabled = Boolean(env.mpAccessToken);
+    const subscriptionPriceArs = env.subscriptionPriceArs;
+    if (!user) {
+      return {
+        user: null,
+        activeCheckIn: null,
+        roles: [],
+        restrictions: [],
+        profileCompleted: false,
+        adFree: false,
+        subscriptionsEnabled,
+        subscriptionPriceArs,
+      };
+    }
 
     await this.roles.ensureAdminFromEnv(user.id, user.email, user.emailVerified === true);
 
-    const [activeCheckIn, roles, activeRestrictions, [profile]] = await Promise.all([
+    const [activeCheckIn, roles, activeRestrictions, [profile], [subscription]] = await Promise.all([
       this.checkIns.getActiveCheckIn(user.id),
       this.roles.rolesFor(user.id),
       this.restrictions.activeRestrictions(user.id),
       this.db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, user.id)),
+      this.db
+        .select({ status: schema.userSubscriptions.status })
+        .from(schema.userSubscriptions)
+        .where(eq(schema.userSubscriptions.userId, user.id)),
     ]);
 
     return {
@@ -39,6 +57,9 @@ export class MeController {
       roles,
       restrictions: activeRestrictions.map((r) => ({ type: r.type, until: r.until ? r.until.toISOString() : null })),
       profileCompleted: Boolean(profile && (profile.firstName || profile.nickname)),
+      adFree: subscription?.status === "authorized",
+      subscriptionsEnabled,
+      subscriptionPriceArs,
     };
   }
 }

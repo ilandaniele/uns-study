@@ -1,0 +1,34 @@
+# syntax=docker/dockerfile:1
+#
+# Builds @sala/verifier (seat photo verifier, Claude vision) for Fly.io.
+# Deploy: `fly deploy -c fly.verifier.toml --remote-only`. The bundle is self-contained (tsup
+# noExternal), so the runtime image only needs dist/ and assets/, no node_modules.
+
+FROM node:22-slim AS base
+RUN corepack enable
+WORKDIR /app
+
+# ---- build ----
+FROM base AS build
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY apps/verifier/package.json apps/verifier/package.json
+COPY packages/contracts/package.json packages/contracts/package.json
+COPY packages/database/package.json packages/database/package.json
+RUN pnpm install --frozen-lockfile
+COPY apps/verifier apps/verifier
+RUN pnpm --filter @sala/verifier build
+
+# ---- runtime ----
+FROM node:22-slim AS runtime
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=build /app/apps/verifier/dist ./apps/verifier/dist
+COPY --from=build /app/apps/verifier/assets ./apps/verifier/assets
+
+USER node
+
+EXPOSE 8080
+
+CMD ["node", "apps/verifier/dist/main.js"]

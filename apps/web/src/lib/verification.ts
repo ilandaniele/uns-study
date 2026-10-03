@@ -1,4 +1,4 @@
-import type { LocationInput, PhotoVerificationResultDto } from "@uns/contracts";
+import type { LocationInput, PhotoVerificationResultDto } from "@sala/contracts";
 import { apiFetch, apiPost } from "./api";
 
 export interface VerificationStatus {

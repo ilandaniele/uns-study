@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, desc, eq, gte, isNull, lte, or } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
-import type { AnnouncementDto, announcementSchema } from "@uns/contracts";
+import { schema, type Db } from "@sala/database";
+import type { AnnouncementDto, announcementSchema } from "@sala/contracts";
 import type { z } from "zod";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";

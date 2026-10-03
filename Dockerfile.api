@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 #
-# Builds @uns/api for Fly.io. Multi-stage so the final image only carries what
+# Builds @sala/api for Fly.io. Multi-stage so the final image only carries what
 # `node apps/api/dist/main.js` and the migrate/seed scripts (`pnpm db:migrate`, `pnpm db:seed`,
 # both `tsx`-run TypeScript against `packages/database`) need at runtime.
 #
@@ -20,14 +20,15 @@ FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
+COPY apps/verifier/package.json apps/verifier/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/database/package.json packages/database/package.json
 RUN pnpm install --frozen-lockfile
 
-# ---- build: compile @uns/api (tsup bundles @uns/contracts + @uns/database sources in) ----
+# ---- build: compile @sala/api (tsup bundles @sala/contracts + @sala/database sources in) ----
 FROM deps AS build
 COPY . .
-RUN pnpm --filter @uns/api build
+RUN pnpm --filter @sala/api build
 
 # ---- runtime ----
 FROM base AS runtime

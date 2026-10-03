@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { Db } from "@uns/database";
+import type { Db } from "@sala/database";
 import { freshDb, insertUsers } from "../test-utils.js";
 import { NotificationPreferencesService } from "./notification-preferences.service.js";
 
@@ -14,14 +14,14 @@ describe("NotificationPreferencesService", () => {
   });
 
   it("defaults seatFreed and adminPresent off, checkinExpiry on", async () => {
-    expect(await svc.get("u1")).toEqual({ seatFreed: false, adminPresent: false, checkinExpiry: true });
+    expect(await svc.get("u1")).toEqual({ seatFreed: false, adminPresent: false, checkinExpiry: true, marketingEmails: true });
   });
 
   it("updates only the given fields", async () => {
     await svc.update("u1", { seatFreed: true });
-    expect(await svc.get("u1")).toEqual({ seatFreed: true, adminPresent: false, checkinExpiry: true });
+    expect(await svc.get("u1")).toEqual({ seatFreed: true, adminPresent: false, checkinExpiry: true, marketingEmails: true });
 
     await svc.update("u1", { adminPresent: true });
-    expect(await svc.get("u1")).toEqual({ seatFreed: true, adminPresent: true, checkinExpiry: true });
+    expect(await svc.get("u1")).toEqual({ seatFreed: true, adminPresent: true, checkinExpiry: true, marketingEmails: true });
   });
 });

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { ExecutionContext } from "@nestjs/common";
-import type { Db } from "@uns/database";
-import { schema } from "@uns/database";
+import type { Db } from "@sala/database";
+import { schema } from "@sala/database";
 import { freshDb, insertUsers } from "../test-utils.js";
 import { RolesService } from "../users/roles.service.js";
 import { AdminGuard } from "../users/admin.guard.js";

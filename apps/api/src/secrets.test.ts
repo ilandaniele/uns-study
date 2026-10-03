@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createDb, migrate, schema, type Db } from "@uns/database";
+import { createDb, migrate, schema, type Db } from "@sala/database";
 import { eq } from "drizzle-orm";
 import { resolveAppSecrets, resolveOne, resolveVapidKeys } from "./secrets.js";
 

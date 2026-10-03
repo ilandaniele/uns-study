@@ -1,8 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
+import { schema, type Db } from "@sala/database";
 import type { z } from "zod";
-import type { pushSubscriptionSchema } from "@uns/contracts";
+import type { pushSubscriptionSchema } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { isAllowedPushEndpoint } from "./push-endpoint-allowlist.js";

@@ -90,6 +90,18 @@ export function NotificationSettings() {
             onChange={(v) => void update({ checkinExpiry: v })}
           />
         </div>
+        <div className="flex items-start justify-between gap-4 py-3">
+          <span>
+            <span className="block text-sm font-medium text-main">Novedades por mail</span>
+            <span className="block text-xs text-muted">Avisos ocasionales sobre Sala de Estudio. Nunca compartimos tu mail.</span>
+          </span>
+          <Switch
+            checked={preferences.marketingEmails}
+            disabled={saving}
+            label="Novedades por mail"
+            onChange={(v) => void update({ marketingEmails: v })}
+          />
+        </div>
       </div>
 
       <div className="rounded-xl border border-app bg-[var(--surface-2)] p-3">

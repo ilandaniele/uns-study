@@ -1,6 +1,6 @@
-import type { RoomMapDto } from "@uns/contracts";
+import type { RoomMapDto } from "@sala/contracts";
 
-// Shapes returned by admin-only API endpoints that aren't part of the shared `@uns/contracts`
+// Shapes returned by admin-only API endpoints that aren't part of the shared `@sala/contracts`
 // package (admin responses are duck-typed here to match `apps/api/src/admin/*`).
 
 export interface AdminOccupantDto {

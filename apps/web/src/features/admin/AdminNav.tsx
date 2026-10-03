@@ -10,6 +10,7 @@ const ITEMS = [
   { href: "/admin/announcements", label: "Anuncios" },
   { href: "/admin/qr", label: "Códigos QR" },
   { href: "/admin/geofence", label: "Ubicación de la sala" },
+  { href: "/admin/mails", label: "Mails" },
   { href: "/admin/audit", label: "Auditoría" },
 ];
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { TableType } from "@uns/contracts";
+import type { TableType } from "@sala/contracts";
 import { apiFetch } from "@/lib/api";
 import { seatDisplayLabel } from "@/features/room/format";
 import { MarkAllOccupiedCard } from "./MarkAllOccupiedCard";

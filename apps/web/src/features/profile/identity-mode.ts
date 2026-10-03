@@ -1,4 +1,4 @@
-import type { IdentityMode } from "@uns/contracts";
+import type { IdentityMode } from "@sala/contracts";
 
 export const IDENTITY_MODES: IdentityMode[] = ["HIDDEN", "FIRST_NAME", "NICKNAME", "NICKNAME_AND_NAME", "FULL_NAME"];
 

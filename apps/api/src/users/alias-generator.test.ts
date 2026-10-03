@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANIMALS } from "@uns/contracts";
+import { ANIMALS } from "@sala/contracts";
 import { ADJECTIVES, randomAlias } from "./alias-generator.js";
 
 const ALIAS_PATTERN = /^[A-ZÁÉÍÓÚÑÜ][\p{L}]*\s[A-ZÁÉÍÓÚÑÜ][\p{L}]*$/u;

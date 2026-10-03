@@ -2,7 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { eq } from "drizzle-orm";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
-import { schema, type Db } from "@uns/database";
+import { schema, type Db } from "@sala/database";
 import { DB } from "../database/database.module.js";
 
 const MAX_VERIFIED_MINUTES = 240;

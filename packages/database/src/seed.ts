@@ -16,7 +16,7 @@ export const INITIAL_ROOM = {
   slug: "principal",
   name: "Sala principal",
   description: null as string | null,
-  // Sala de estudio, UNS Bahía Blanca (confirmed by the project owner).
+  // Sala de estudio, Bahía Blanca (confirmed by the project owner).
   latitude: -38.70138372483678,
   longitude: -62.270139753196005,
   geofenceRadiusM: 50,

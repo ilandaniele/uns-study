@@ -1,6 +1,6 @@
 "use client";
 
-import type { DisputeKind, DisputeVote, MeDto, SeatDisputeDto, SeatDto, SeatOccupantDto, TableDto } from "@uns/contracts";
+import type { DisputeKind, DisputeVote, MeDto, SeatDisputeDto, SeatDto, SeatOccupantDto, TableDto } from "@sala/contracts";
 import { ArmchairIcon, CaretDownIcon, ChairIcon, EyeIcon, ShieldCheckIcon, StarIcon, TableIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import dynamic from "next/dynamic";
 import Link from "next/link";

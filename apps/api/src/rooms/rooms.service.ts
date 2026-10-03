@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { asc, eq } from "drizzle-orm";
-import { schema, type Db } from "@uns/database";
-import type { RoomDto, RoomMapDto, SeatDto, TableDto } from "@uns/contracts";
+import { schema, type Db } from "@sala/database";
+import type { RoomDto, RoomMapDto, SeatDto, TableDto } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { RoomStateService } from "./room-state.service.js";
 import { RoomCache } from "../common/cache/room-cache.service.js";

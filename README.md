@@ -1,6 +1,6 @@
-# Sala de Estudio UNS
+# Sala de Estudio
 
-Real-time study-room occupancy map for UNS. Anonymous room map -> auth -> geofenced presence
+Real-time study-room occupancy map for a university study room in Bahía Blanca. Anonymous room map -> auth -> geofenced presence
 -> self check-in -> realtime state -> observations -> expiration -> daily reset, plus profiles,
 social features, moderation and admin tooling built on top of that vertical slice.
 
@@ -30,11 +30,11 @@ Data retention policy: see [`docs/DATA_RETENTION.md`](./docs/DATA_RETENTION.md).
 - Turborepo + pnpm workspaces
 - `apps/web` — Next.js (App Router, TypeScript, Tailwind)
 - `apps/api` — NestJS (TypeScript, Express platform)
-- `packages/contracts` (`@uns/contracts`) — shared TS types, zod schemas, constants
-- `packages/database` (`@uns/database`) — Drizzle ORM schema, migrations, seed, room layout generator
+- `packages/contracts` (`@sala/contracts`) — shared TS types, zod schemas, constants
+- `packages/database` (`@sala/database`) — Drizzle ORM schema, migrations, seed, room layout generator
 - Neon PostgreSQL (prod) / PGlite (local, no credentials needed)
 - Better Auth, Socket.IO, Upstash Redis, Cloudflare R2 (later), Cloudflare Turnstile (later)
-- Vercel (web), Fly.io (api)
+- Fly.io (web and api)
 
 ## Commands
 
@@ -55,7 +55,7 @@ pnpm db:seed      # idempotent seed of the initial room (slug `principal`, 108 s
 ## Local database
 
 Copy `.env.example` to `.env` (and/or `apps/api/.env`, `apps/web/.env.local`) and fill in only
-what you have. With `DATABASE_URL` left empty, `@uns/database` transparently falls back to
+what you have. With `DATABASE_URL` left empty, `@sala/database` transparently falls back to
 [PGlite](https://pglite.dev/) persisted at `.data/pglite` in the repo root (override with
 `PGLITE_DIR`, or use `memory://` for ephemeral/test runs) — so `pnpm db:migrate && pnpm db:seed`
 works with zero external services. Set `DATABASE_URL` to a real Postgres/Neon connection string to
@@ -118,19 +118,19 @@ For local testing away from the room, set `PRESENCE_DEV_BYPASS=true` (refused wh
     `DailyResetJob` is idempotent (`last_reset_at` gates it) — so a machine that wakes up hours after
     the 04:00 reset boundary just runs the reset once on its next tick instead of on time. No data
     correctness issue, just latency on both jobs proportional to how long the machine was asleep.
-- **Web (Vercel)**: root `apps/web`, env `API_PROXY_TARGET=https://uns-study-api.fly.dev`
+- **Web (Fly.io app `sala-de-estudio`)**: `Dockerfile.web` + `fly.web.toml`, deploy with `fly deploy -c fly.web.toml --remote-only`; `API_PROXY_TARGET=https://uns-study-api.fly.dev` is a build arg in `fly.web.toml`
   (server-only, no `NEXT_PUBLIC_` prefix), `NEXT_PUBLIC_API_URL=` (empty),
   `NEXT_PUBLIC_SOCKET_URL=https://uns-study-api.fly.dev`, optional `NEXT_PUBLIC_TURNSTILE_SITE_KEY`.
 - **Same-origin proxy**: web and API live on different domains, but Safari/iOS block third-party
   `SameSite=None` cookies, so `apps/web/next.config.ts` rewrites `/api/auth/*` and `/api/v1/*` to
   `API_PROXY_TARGET` (the Fly.io URL) whenever that env is set — making the Better Auth session
   cookie first-party from the browser's point of view. The API's `BETTER_AUTH_URL` is then the
-  **web** origin (`https://uns-study.vercel.app`), cookies are `SameSite=Lax; Secure`
+  **web** origin (`https://sala-de-estudio.fly.dev`), cookies are `SameSite=Lax; Secure`
   (`CROSS_SITE_COOKIES=true` restores the old cross-site `SameSite=None` behaviour if you deploy
-  without the proxy), and `TRUST_PROXY_HOPS=2` (Vercel's rewrite proxy, then Fly's own edge proxy).
+  without the proxy), and `TRUST_PROXY_HOPS=2` (the web app's rewrite proxy, then Fly's own edge proxy).
   Google OAuth redirect URI becomes `<BETTER_AUTH_URL>/api/auth/callback/google`, i.e.
-  `https://uns-study.vercel.app/api/auth/callback/google`.
-- **Socket.IO** can't be routed through Vercel's rewrites, so the browser always connects to it
+  `https://sala-de-estudio.fly.dev/api/auth/callback/google`.
+- **Socket.IO** can't be routed through the web app's rewrites, so the browser always connects to it
   directly via `NEXT_PUBLIC_SOCKET_URL`. Since that bypasses the same-origin proxy (and its
   cookie), authenticated sockets instead fetch a short-lived signed token from
   `GET /api/v1/realtime/token` (same-origin REST call) and pass it as `handshake.auth.token`; the
@@ -146,8 +146,8 @@ It expects the API (port 4000, with `PRESENCE_DEV_BYPASS=true`) and the web app 
 already be running — `pnpm dev` in one terminal, then in another:
 
 ```bash
-pnpm --filter @uns/web exec playwright install chromium   # once, to fetch the browser
-pnpm --filter @uns/web test:e2e
+pnpm --filter @sala/web exec playwright install chromium   # once, to fetch the browser
+pnpm --filter @sala/web test:e2e
 ```
 
 Each test creates its own throwaway user via the auth API and checks out at the end, so it's safe

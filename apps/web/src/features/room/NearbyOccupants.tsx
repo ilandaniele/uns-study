@@ -1,6 +1,6 @@
 "use client";
 
-import type { SeatOccupantDto } from "@uns/contracts";
+import type { SeatOccupantDto } from "@sala/contracts";
 import Link from "next/link";
 import { OccupantAvatar } from "./OccupantAvatar";
 

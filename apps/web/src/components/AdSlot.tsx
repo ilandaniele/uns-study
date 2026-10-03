@@ -2,14 +2,16 @@
 
 import Script from "next/script";
 import { useEffect, useRef } from "react";
+import { useAdFree } from "@/features/ads/useAdFree";
 
 const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
 
-export type AdPlacement = "room-bottom" | "community-feed";
+export type AdPlacement = "room-bottom" | "community-feed" | "rail";
 
 const SLOT_BY_PLACEMENT: Record<AdPlacement, string | undefined> = {
   "room-bottom": process.env.NEXT_PUBLIC_ADSENSE_SLOT_ROOM_BOTTOM,
   "community-feed": process.env.NEXT_PUBLIC_ADSENSE_SLOT_COMMUNITY_FEED,
+  rail: process.env.NEXT_PUBLIC_ADSENSE_SLOT_RAIL,
 };
 
 declare global {
@@ -25,11 +27,12 @@ declare global {
  */
 export function AdSlot({ placement }: { placement: AdPlacement }) {
   const slot = SLOT_BY_PLACEMENT[placement];
+  const { hideAds } = useAdFree();
   const insRef = useRef<HTMLModElement | null>(null);
   const pushed = useRef(false);
 
   useEffect(() => {
-    if (!ADSENSE_CLIENT || !slot || pushed.current) return;
+    if (hideAds || !ADSENSE_CLIENT || !slot || pushed.current) return;
     try {
       window.adsbygoogle = window.adsbygoogle ?? [];
       window.adsbygoogle.push({});
@@ -37,9 +40,9 @@ export function AdSlot({ placement }: { placement: AdPlacement }) {
     } catch {
       // adsbygoogle.js hasn't loaded yet (e.g. blocked); nothing to recover here.
     }
-  }, [slot]);
+  }, [slot, hideAds]);
 
-  if (!ADSENSE_CLIENT || !slot) return null;
+  if (hideAds || !ADSENSE_CLIENT || !slot) return null;
 
   return (
     <>

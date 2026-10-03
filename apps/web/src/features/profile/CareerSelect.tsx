@@ -1,6 +1,6 @@
 "use client";
 
-import { unsCareersByDepartment } from "@uns/contracts";
+import { unsCareersByDepartment } from "@sala/contracts";
 import { OTHER_CAREER, type CareerChoice } from "./career-choice";
 
 const GROUPS = unsCareersByDepartment();
@@ -12,7 +12,7 @@ export interface CareerSelectProps {
   className: string;
 }
 
-/** Native <select> of UNS careers grouped by department, plus "Otra" revealing a free-text input. */
+/** Native <select> of university careers grouped by department, plus "Otra" revealing a free-text input. */
 export function CareerSelect({ id, value, onChange, className }: CareerSelectProps) {
   const isOther = value.choice === OTHER_CAREER;
   return (
