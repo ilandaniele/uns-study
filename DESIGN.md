@@ -26,6 +26,12 @@ colors:
   oak: "#c8955c"
   oak-border: "#a56a3a"
   seat-backrest: "#5a3b25"
+  night-alert-danger-bg: "rgb(127 29 29 / 0.35)"
+  night-alert-danger-text: "#fca5a5"
+  night-alert-danger-border: "#7f1d1d"
+  night-alert-warning-bg: "rgb(120 53 15 / 0.35)"
+  night-alert-warning-text: "#fde68a"
+  night-alert-warning-border: "#92651a"
 typography:
   display:
     fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
@@ -66,6 +72,23 @@ typography:
     fontWeight: 600
     lineHeight: 1
     fontFeature: "'tnum' 1"
+  wordmark:
+    fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "15px"
+    fontWeight: 800
+    lineHeight: 1
+    letterSpacing: "0.01em"
+    fontVariation: "'wdth' 118"
+  caption:
+    fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "13px"
+    fontWeight: 500
+    lineHeight: 1.4
+  micro:
+    fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "10px"
+    fontWeight: 700
+    lineHeight: 1.2
 rounded:
   md: "5px"
   lg: "6px"
@@ -187,6 +210,9 @@ A cool, low-chroma graphite-and-paper base carrying one petrol-teal accent and a
 - **Sin Datos Mauve** (`seat-unknown`): seats with no fresh evidence; deliberately dull so absence of data never looks like a state.
 - Dark mode lifts each state hue (for example free becomes a brighter mint) in the stylesheet; the roles do not change.
 
+### Alerts (dark mode)
+- **Night Danger / Night Warning** (`night-alert-danger-*`, `night-alert-warning-*`): translucent red and amber washes with light text and dark borders. They re-skin the light-mode red and amber error and warning boxes in dark mode only. They report problems, never decorate.
+
 ### Room Materials
 - **Oak** (`oak`) and **Oak Edge** (`oak-border`): tabletops and wall-bar wood.
 - **Chair Backrest** (`seat-backrest`): dark-wood backrest and frame under each seat cushion.
@@ -214,6 +240,9 @@ A cool, low-chroma graphite-and-paper base carrying one petrol-teal accent and a
 - **Body** (400, 14px, line-height about 1.5): descriptions, lists, helper copy. Inputs render at 16px on mobile to avoid zoom, 14px from `sm` up.
 - **Label** (700, 11px, 0.08em tracking, uppercase, 112% width): small signage labels: the "Bahía Blanca" subtitle, section labels like "Información", the table-and-side location line, field captions like the bank alias. Bottom-nav labels are 11px sentence case (500, 700 when active).
 - **Data** (Geist Mono 600, 22px on phones, 24px from `sm`, tabular figures): status-board counts, the alias, times and hints inside buttons.
+- **Wordmark** (800, 15px, uppercase, 118% width): "Sala de Estudio" in the header and the house-ad and donation headings. Under 420px it stacks on two lines.
+- **Caption** (500, 13px): secondary button text, quick-action labels, the hint under the duration picker and small seat-panel notes.
+- **Micro** (700, 10px): the header subtitle, ad labels, unread badges and timer captions. Never for sentences.
 
 ### Named Rules
 **The Signage Caps Rule.** Uppercase extrabold expanded Archivo is for names of places and screens, the things a sign would say. Body copy, buttons and messages stay sentence case.

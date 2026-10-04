@@ -174,21 +174,11 @@ export function SeatDetail({
 
   return (
     <div className={`flex h-full flex-col ${compact ? "gap-3 px-4 pb-4 pt-0" : "gap-4 p-4"}`}>
-      <div className="flex items-start gap-3">
-        <div className="shrink-0 rounded-xl bg-[var(--surface-2)] p-1.5">
-          <TableLocator table={table} seats={tableSeats} selectedSeatId={seat.id} mySeatId={mySeatId} onSelectSeat={onSelectSeat} />
-        </div>
-        <div className="min-w-0 flex-1 pt-0.5">
-          <p className="label-caps truncate text-muted">{tableLine}</p>
-          <h2 className="mt-1 whitespace-nowrap font-display text-[26px] font-extrabold uppercase leading-none text-main">
-            <span className="sr-only">{label}</span>
-            <span aria-hidden="true">
-              {unit} {seat.seatNumber}
-            </span>
-          </h2>
-          <StatusPill status={seat.status} isMySeat={isMySeat} />
-        </div>
-        <div className="-mr-2 -mt-1 flex shrink-0 items-center">
+      <div className="flex items-center gap-2">
+        <p className="label-caps min-w-0 flex-1 truncate text-muted" title={tableLine}>
+          {tableLine}
+        </p>
+        <div className="-my-2 -mr-2 flex shrink-0 items-center">
           {onToggleFavorite ? (
             <button
               type="button"
@@ -211,9 +201,23 @@ export function SeatDetail({
           </button>
         </div>
       </div>
+      <div className="-mt-1 flex items-center gap-3">
+        <div className="shrink-0 rounded-xl bg-[var(--surface-2)] p-1.5">
+          <TableLocator table={table} seats={tableSeats} selectedSeatId={seat.id} mySeatId={mySeatId} onSelectSeat={onSelectSeat} />
+        </div>
+        <div className="@container min-w-0 flex-1">
+          <h2 className="font-display text-[clamp(18px,15cqi,26px)] font-extrabold uppercase leading-none text-main">
+            <span className="sr-only">{label}</span>
+            <span aria-hidden="true">
+              {unit} {seat.seatNumber}
+            </span>
+          </h2>
+          <StatusPill status={seat.status} isMySeat={isMySeat} />
+        </div>
+      </div>
 
       {showOccupant || showMarkedBy || showOccupiedUntil || (facts && !peek) ? (
-        <div className="-mt-1 flex flex-col gap-1 border-l-2 border-[var(--border-strong)] pl-3 text-sm text-muted">
+        <div className="-mt-1 flex flex-col gap-1 rounded-lg bg-[var(--surface-2)] px-3 py-2 text-sm text-muted">
           {showOccupant && occupant ? (
             <div className="flex flex-wrap items-center gap-2">
               <OccupantAvatar avatar={occupant.avatar} size={32} />
@@ -395,7 +399,7 @@ function StatusPill({ status, isMySeat }: { status: SeatDto["status"]; isMySeat:
         status
       ];
   return (
-    <p className="mt-2 inline-flex items-center gap-2 text-sm font-bold text-main">
+    <p className="mt-2 flex items-center gap-2 whitespace-nowrap text-sm font-bold text-main">
       <span aria-hidden className="inline-block h-3 w-3 rounded-[3px]" style={{ backgroundColor: color }} />
       {isMySeat ? "Tu lugar" : statusLabel(status)}
     </p>

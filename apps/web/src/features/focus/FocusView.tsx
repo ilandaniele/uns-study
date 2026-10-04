@@ -402,7 +402,7 @@ function TasksCard() {
             return (
               <li
                 key={t.id}
-                className={`group flex items-center gap-1 rounded-lg border-l-2 pl-1 ${current ? "border-[var(--primary)] bg-[var(--surface-2)]" : "border-transparent"}`}
+                className={`group flex items-center gap-1 rounded-lg pl-1 ${current ? "bg-[var(--surface-2)] ring-1 ring-inset ring-[var(--primary)]" : ""}`}
               >
                 <button
                   type="button"
