@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Response } from "express";
 import type { Db } from "@sala/database";
@@ -47,23 +48,46 @@ describe("PublicAvatarController", () => {
 
   it("serves the owner their hidden photo with private/Vary: Cookie headers", async () => {
     const res = fakeRes();
-    await ctrl.get("u1", viewer("u1"), "1.1.1.1", undefined, res as unknown as Response);
+    await ctrl.get("u1", viewer("u1"), "1.1.1.1", undefined, undefined, res as unknown as Response);
     expect(res.statusCode).toBe(200);
     expect(res.headers["Cache-Control"]).toBe("private, no-cache");
     expect(res.headers["Vary"]).toBe("Cookie");
   });
 
   it("404s anonymous and other users while show_avatar is off", async () => {
-    await expect(ctrl.get("u1", undefined, "1.1.1.1", undefined, fakeRes() as unknown as Response)).rejects.toMatchObject({ code: "NOT_FOUND" });
-    await expect(ctrl.get("u1", viewer("u2"), "1.1.1.1", undefined, fakeRes() as unknown as Response)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(ctrl.get("u1", undefined, "1.1.1.1", undefined, undefined, fakeRes() as unknown as Response)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(ctrl.get("u1", viewer("u2"), "1.1.1.1", undefined, undefined, fakeRes() as unknown as Response)).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
   it("serves others once show_avatar is on, still with private cache headers", async () => {
     await db.insert(schema.userPrivacySettings).values({ userId: "u1", showAvatar: true });
     const res = fakeRes();
-    await ctrl.get("u1", viewer("u2"), "1.1.1.1", undefined, res as unknown as Response);
+    await ctrl.get("u1", viewer("u2"), "1.1.1.1", undefined, undefined, res as unknown as Response);
     expect(res.statusCode).toBe(200);
     expect(res.headers["Cache-Control"]).toBe("private, no-cache");
     expect(res.headers["Vary"]).toBe("Cookie");
+  });
+
+  it("sends immutable caching when v matches the current content hash", async () => {
+    const sha = createHash("sha256").update(Buffer.from(JPEG_BASE64, "base64")).digest("hex").slice(0, 12);
+    const res = fakeRes();
+    await ctrl.get("u1", viewer("u1"), "1.1.1.1", undefined, sha, res as unknown as Response);
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["Cache-Control"]).toBe("private, max-age=31536000, immutable");
+    expect(res.headers["Vary"]).toBe("Cookie");
+    expect(res.headers["ETag"]).toBeDefined();
+  });
+
+  it("keeps no-cache when v is missing or stale", async () => {
+    const stale = fakeRes();
+    await ctrl.get("u1", viewer("u1"), "1.1.1.1", undefined, "deadbeef0000", stale as unknown as Response);
+    expect(stale.headers["Cache-Control"]).toBe("private, no-cache");
+  });
+
+  it("404s a hidden avatar for non-owners even with a matching v, without immutable", async () => {
+    const sha = createHash("sha256").update(Buffer.from(JPEG_BASE64, "base64")).digest("hex").slice(0, 12);
+    const res = fakeRes();
+    await expect(ctrl.get("u1", viewer("u2"), "1.1.1.1", undefined, sha, res as unknown as Response)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(res.headers["Cache-Control"]).toBeUndefined();
   });
 });

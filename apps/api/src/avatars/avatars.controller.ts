@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Headers, Inject, Ip, Param, Post, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Headers, Inject, Ip, Param, Post, Query, Res, UseGuards } from "@nestjs/common";
 import type { Response } from "express";
 import type { z } from "zod";
 import { uploadAvatarSchema } from "@sala/contracts";
@@ -73,6 +73,7 @@ export class PublicAvatarController {
     @CurrentUser() viewer: RequestUser | undefined,
     @Ip() ip: string,
     @Headers("if-none-match") ifNoneMatch: string | undefined,
+    @Query("v") version: string | undefined,
     @Res({ passthrough: false }) res: Response,
   ) {
     const limit = await this.rateLimit.check(`avatar-read-ip:${hashIp(ip)}`, AVATAR_READ_LIMIT_PER_IP, AVATAR_READ_WINDOW_S);
@@ -84,7 +85,10 @@ export class PublicAvatarController {
     // Never cached by shared caches (private), and always revalidated — `show_avatar` can be
     // toggled off at any moment and the response must reflect that on the very next request.
     // The body depends on who is asking (owner vs. others), hence `Vary: Cookie`.
-    res.setHeader("Cache-Control", "private, no-cache");
+    // Exception: a URL whose `v` equals the current content hash prefix is content-addressed (a new
+    // upload yields a new `v`), so it is immutable. Only reached once getForOwner passed the privacy gate.
+    const contentAddressed = typeof version === "string" && version === avatar.sha256.slice(0, 12);
+    res.setHeader("Cache-Control", contentAddressed ? "private, max-age=31536000, immutable" : "private, no-cache");
     res.setHeader("Vary", "Cookie");
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Content-Security-Policy", "default-src 'none'");
