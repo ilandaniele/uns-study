@@ -126,7 +126,7 @@ The code for these features is shipped. Each one turns on when its variables are
 | Feature | Variables | App | Status | Blocked on |
 |---|---|---|---|---|
 | Mercado Pago subscriptions | `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` | `uns-study-api` | not set | owner logs in to Mercado Pago Developers and copies the production Access Token and the webhook secret |
-| Transactional email (Resend) | `RESEND_API_KEY`, `EMAIL_FROM` | `uns-study-api` | not set | owner logs in to Resend; `EMAIL_FROM` needs a verified sending domain, so it waits for the custom domain |
+| Transactional email (Resend) | `RESEND_API_KEY`, `EMAIL_FROM` | `uns-study-api` | `RESEND_API_KEY` set 2026-10-04; `EMAIL_FROM` not set | `EMAIL_FROM` needs a verified sending domain, so it waits for the custom domain |
 | AdSense | `NEXT_PUBLIC_ADSENSE_CLIENT`, `NEXT_PUBLIC_ADSENSE_SLOT_ROOM_BOTTOM`, `NEXT_PUBLIC_ADSENSE_SLOT_COMMUNITY_FEED`, `NEXT_PUBLIC_ADSENSE_SLOT_RAIL` | `sala-de-estudio` (build-time) | not set | AdSense approval, which needs a custom root domain (a `*.fly.dev` subdomain is not accepted) |
 | Custom domain | Fly certificate plus `BETTER_AUTH_URL` and origin updates | both | none | owner buys the domain (for example `.com.ar` at NIC Argentina, which needs the owner's own clave fiscal) |
 
