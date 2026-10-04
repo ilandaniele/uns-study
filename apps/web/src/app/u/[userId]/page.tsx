@@ -124,7 +124,7 @@ export default function PublicProfilePage() {
         {profile.studyStatus ? (
           <p className="mt-4 rounded-xl bg-[var(--surface-2)] px-3 py-2 text-sm text-main whitespace-pre-wrap break-words">
             En Modo Estudio{profile.studyStatus.subject ? `: ${profile.studyStatus.subject}` : ""}
-            {profile.studyStatus.message ? ` — ${profile.studyStatus.message}` : ""}
+            {profile.studyStatus.message ? <span className="mt-1 block text-muted">{profile.studyStatus.message}</span> : null}
           </p>
         ) : null}
 

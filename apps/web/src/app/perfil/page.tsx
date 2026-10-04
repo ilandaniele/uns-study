@@ -130,7 +130,7 @@ export default function PerfilPage() {
 
       <section className="rounded-[14px] border border-app bg-surface p-4">
         <h2 className="mb-1 font-display text-base font-semibold text-main">Notificaciones</h2>
-        <p className="mb-2 text-xs text-muted">Avisos puntuales, nunca spam — los podés apagar cuando quieras.</p>
+        <p className="mb-2 text-xs text-muted">Avisos puntuales, nunca spam. Los podés apagar cuando quieras.</p>
         <NotificationSettings />
       </section>
 

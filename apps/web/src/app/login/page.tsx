@@ -85,7 +85,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-[calc(100vh-57px)] flex-col items-center justify-center bg-app px-4 py-10">
+    <main className="flex min-h-[calc(100dvh-57px)] flex-col items-center justify-center bg-app px-4 py-10">
       <div className="w-full max-w-sm rounded-2xl border border-app bg-surface p-6 shadow-sm">
         <h1 className="text-center font-display text-2xl font-extrabold leading-snug text-main">
           Marcá tu lugar. Ayudá a que otros encuentren el suyo.

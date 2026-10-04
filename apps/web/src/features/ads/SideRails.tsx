@@ -36,7 +36,7 @@ function Rail({ side, label, children }: { side: "left" | "right"; label: string
     <aside
       aria-label={label}
       className={`fixed top-[calc(50%+28px)] z-20 w-40 -translate-y-1/2 ${side === "left" ? "left-4" : "right-4"}`}
-      style={{ height: "min(600px, calc(100vh - 6rem))" }}
+      style={{ height: "min(600px, calc(100dvh - 6rem))" }}
     >
       <span className="label-caps mb-1 block !text-[10px] text-faint">Publicidad</span>
       <div className="h-[calc(100%-1.25rem)] overflow-hidden">{children}</div>

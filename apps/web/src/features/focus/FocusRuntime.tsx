@@ -84,7 +84,7 @@ export function FocusRuntime() {
       const base = prev && document.title === prev.set ? prev.base : document.title;
       const clock = formatClock(remainingMs(getFocus().timer, Date.now()));
       const mark = timer.status === "paused" ? "Pausa" : PHASE_LABEL[timer.phase];
-      const set = `${clock} · ${mark} — ${base}`;
+      const set = `${clock} ${mark} | ${base}`;
       document.title = set;
       titleRef.current = { base, set };
     };

@@ -176,7 +176,7 @@ export function FocusTimer({ big }: { big?: boolean }) {
 /** Small layout for the Picture-in-Picture window. */
 export function MiniTimer() {
   return (
-    <div className="flex h-full min-h-screen flex-col items-center justify-center gap-3 bg-app p-3 text-center">
+    <div className="flex h-full min-h-dvh flex-col items-center justify-center gap-3 bg-app p-3 text-center">
       <MiniClock />
       <TimerControls compact />
     </div>

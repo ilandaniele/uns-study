@@ -88,7 +88,7 @@ describe("recencyLabel", () => {
   it("shows the SAVED-dispute wording regardless of status/timestamp", () => {
     expect(
       recencyLabel({ status: "FREE", sourceSummary: "SAVED", lastUpdatedAt: new Date("2026-09-25T11:59:30.000Z").toISOString() }, now),
-    ).toBe("Estaba guardado — se liberó por votación");
+    ).toBe("Estaba guardado, se liberó por votación");
   });
 
   it("shows 'Sin información reciente' for seed/daily-reset-only sourceSummary", () => {

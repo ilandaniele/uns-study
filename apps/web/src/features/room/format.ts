@@ -62,7 +62,7 @@ export function recencyLabel(seat: SeatRecencyInput, now: Date = new Date()): st
   const { status, sourceSummary, lastUpdatedAt } = seat;
   // A seat freed by a "Está guardado" dispute that resolved ABSENT — call out why, instead of the generic recency text.
   if (sourceSummary === "SAVED") {
-    return "Estaba guardado — se liberó por votación";
+    return "Estaba guardado, se liberó por votación";
   }
   if (status === "UNKNOWN" || sourceSummary === null || sourceSummary === "SEED" || sourceSummary === "DAILY_RESET") {
     return "Sin información reciente";

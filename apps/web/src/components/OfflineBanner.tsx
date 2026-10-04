@@ -24,7 +24,7 @@ export function OfflineBanner() {
 
   return (
     <div className="bg-amber-500 px-4 py-1.5 text-center text-xs font-semibold text-white">
-      Sin conexión — ves lo que ya cargó en esta pestaña, puede estar desactualizado
+      Sin conexión. Ves lo que ya cargó en esta pestaña, puede estar desactualizado
     </div>
   );
 }

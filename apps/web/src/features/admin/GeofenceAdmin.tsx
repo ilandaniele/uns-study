@@ -1,6 +1,7 @@
 "use client";
 
 import type { GeofenceTestResultDto, LocationInput, RoomGeofenceDto } from "@sala/contracts";
+import { CheckIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch, ApiRequestError } from "@/lib/api";
 import { getFreshLocation, GeolocationRequestError } from "@/lib/geolocation";
@@ -129,7 +130,8 @@ export function GeofenceAdmin({ roomSlug }: { roomSlug: string }) {
           <p className="text-sm text-muted">
             Estás a {testResult.distanceM} m del centro (±{testResult.accuracyM} m). Aceptamos hasta {testResult.allowedM} m:{" "}
             <span className={testResult.valid ? "font-semibold" : "font-semibold text-[var(--seat-occupied)]"} style={testResult.valid ? { color: "var(--seat-free)" } : undefined}>
-              {testResult.valid ? "✓ pasaría" : "✗ no pasaría"}
+              {testResult.valid ? <CheckIcon aria-hidden="true" size={14} weight="bold" className="mr-0.5 inline align-[-2px]" /> : <XIcon aria-hidden="true" size={14} weight="bold" className="mr-0.5 inline align-[-2px]" />}
+              {testResult.valid ? "pasaría" : "no pasaría"}
             </span>
           </p>
         ) : null}
