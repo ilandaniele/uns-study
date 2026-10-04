@@ -37,7 +37,7 @@ export function MyCheckInBar({ seatLabel, expiresAt, pending, onShow, onRelease 
           type="button"
           onClick={onRelease}
           disabled={pending}
-          className="min-h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-white active:scale-[0.98] disabled:opacity-60"
+          className="min-h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-60"
         >
           Liberar lugar
         </button>

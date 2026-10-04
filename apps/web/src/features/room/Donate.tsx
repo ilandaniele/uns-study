@@ -125,7 +125,7 @@ export function DonatePrompt({ blocked }: { blocked: boolean }) {
   if (!due || dismissed || blocked) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={close}>
+    <div className="backdrop-enter fixed inset-0 z-50 flex items-end bg-black/40" onClick={close}>
       <div
         role="dialog"
         aria-modal="true"

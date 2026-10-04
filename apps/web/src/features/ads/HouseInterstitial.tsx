@@ -91,7 +91,7 @@ function Overlay({ placement }: { placement: NonNullable<ReturnType<typeof useHo
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
+      className="backdrop-enter fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
       onClick={canClose ? close : undefined}
     >
       <div
@@ -100,7 +100,7 @@ function Overlay({ placement }: { placement: NonNullable<ReturnType<typeof useHo
         aria-modal="true"
         aria-labelledby="house-ad-label"
         tabIndex={-1}
-        className="w-full max-w-sm rounded-t-[22px] border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl outline-none sm:rounded-[12px]"
+        className="dialog-enter w-full max-w-sm rounded-t-[22px] border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl outline-none sm:rounded-[12px]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex min-h-11 items-center justify-between gap-3">

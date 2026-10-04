@@ -67,7 +67,7 @@ export function MarkAllOccupiedCard({ roomSlug, seats, onDone }: MarkAllOccupied
             setConfirming(true);
           }}
           disabled={pending || count === 0}
-          className="min-h-10 rounded-xl bg-primary px-3 text-sm font-semibold text-white active:scale-[0.98] disabled:opacity-60"
+          className="min-h-10 rounded-xl bg-primary px-3 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-60"
         >
           Todos los lugares ocupados
         </button>
@@ -87,12 +87,12 @@ export function MarkAllOccupiedCard({ roomSlug, seats, onDone }: MarkAllOccupied
       ) : null}
 
       {confirming ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onClick={() => setConfirming(false)}>
+        <div className="backdrop-enter fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onClick={() => setConfirming(false)}>
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="mark-all-title"
-            className="w-full max-w-sm rounded-t-2xl border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl sm:rounded-2xl"
+            className="dialog-enter w-full max-w-sm rounded-t-2xl border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl sm:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="mark-all-title" className="font-display text-lg font-semibold text-main">
@@ -124,7 +124,7 @@ export function MarkAllOccupiedCard({ roomSlug, seats, onDone }: MarkAllOccupied
                 type="button"
                 onClick={() => void run<{ count: number }>("mark-all-occupied", { minutes }, (r) => markedToastMessage(r.count))}
                 disabled={pending}
-                className="min-h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-white active:scale-[0.98] disabled:opacity-60"
+                className="min-h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-60"
               >
                 Marcar como ocupados
               </button>

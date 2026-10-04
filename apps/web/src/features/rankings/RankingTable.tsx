@@ -127,7 +127,7 @@ function EmptyRanking({ period }: { period: RankingPeriod }) {
         <p className="font-display text-base font-semibold text-main">{emptyRankingMessage(period)}</p>
         <p className="mt-1 text-sm text-muted">Marcá “Estoy acá” en tu lugar y empezás a sumar.</p>
       </div>
-      <Link href="/sala/principal" className="mt-1 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white active:scale-[0.98]">
+      <Link href="/sala/principal" className="mt-1 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98]">
         Ir a la sala
       </Link>
     </div>

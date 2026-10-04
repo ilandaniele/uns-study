@@ -322,7 +322,7 @@ export function SeatDetail({
                     onClick={() => setShowPicker((value) => !value)}
                     aria-expanded={showPicker}
                     aria-label={`Duración: ${durationLabel(durationMinutes)}. Cambiar`}
-                    className="flex min-h-[52px] shrink-0 items-center gap-1 rounded-2xl bg-[var(--surface-2)] px-3.5 text-sm font-bold tabular-nums text-main active:scale-[0.97]"
+                    className="flex min-h-[52px] shrink-0 items-center gap-1 rounded-2xl bg-[var(--surface-2)] px-3.5 text-sm font-bold tabular-nums text-main transition-transform duration-150 ease-out active:scale-[0.97]"
                   >
                     {durationLabel(durationMinutes)}
                     <CaretDownIcon aria-hidden="true" size={14} weight="bold" className={`transition-transform ${showPicker ? "rotate-180" : ""}`} />

@@ -23,6 +23,12 @@
   --radius-3xl: 12px;
 
   --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+
+  /* Motion: strong ease-out for anything entering or answering a press (overrides Tailwind's weak
+     default `ease-out`), and an iOS-like curve for sheets. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --default-transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 :root {
@@ -382,7 +388,7 @@ input:focus-visible,
 /* Occupancy bar segment width transitions — reduced-motion aware. */
 .occupancy-segment {
   transform-origin: left;
-  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.5s var(--ease-out);
 }
 @media (prefers-reduced-motion: reduce) {
   .occupancy-segment {
@@ -402,10 +408,42 @@ input:focus-visible,
   }
 }
 .sheet-enter {
-  animation: sheet-slide-in 0.22s ease-out;
+  animation: sheet-slide-in 0.26s var(--ease-drawer);
+}
+
+/* Modal entry: the backdrop fades, the panel rises a little on phones (bottom sheet) and
+   settles from 96% on wider screens (centered card, so it scales from the center). */
+@keyframes backdrop-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes dialog-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@keyframes dialog-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+.backdrop-enter {
+  animation: backdrop-fade-in 0.18s var(--ease-out);
+}
+.dialog-enter {
+  animation: dialog-rise-in 0.24s var(--ease-drawer);
+}
+@media (min-width: 640px) {
+  .dialog-enter {
+    animation: dialog-pop-in 0.2s var(--ease-out);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .sheet-enter {
+  .sheet-enter,
+  .dialog-enter {
     animation: none;
   }
 }
@@ -461,7 +499,7 @@ input:focus-visible,
 
 /* Pomodoro (/foco): one shared easing for the sliding phase thumb and the stat bars. */
 .focus-ease {
-  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  transition-timing-function: var(--ease-out);
 }
 @media (prefers-reduced-motion: reduce) {
   .focus-ease {

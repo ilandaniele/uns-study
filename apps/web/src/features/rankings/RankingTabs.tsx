@@ -23,7 +23,7 @@ export function PeriodPicker({ value, onChange }: { value: RankingPeriod; onChan
             role="radio"
             aria-checked={selected}
             onClick={() => onChange(option)}
-            className={`min-h-9 rounded-md px-3 text-sm font-medium transition ${
+            className={`min-h-9 rounded-md px-3 text-sm font-medium transition-colors duration-150 ${
               selected ? "bg-surface text-main shadow-sm" : "text-muted hover:text-main"
             }`}
           >
@@ -48,7 +48,7 @@ export function CategoryPicker({ value, onChange }: { value: RankingCategory; on
             role="radio"
             aria-checked={selected}
             onClick={() => onChange(option.value)}
-            className={`inline-flex min-h-8 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition active:scale-[0.98] ${
+            className={`inline-flex min-h-8 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-[transform,background-color,border-color,color] duration-150 ease-out active:scale-[0.98] ${
               selected
                 ? "border-transparent bg-primary text-white shadow-sm"
                 : "border-app bg-surface text-main hover:bg-[var(--surface-2)]"

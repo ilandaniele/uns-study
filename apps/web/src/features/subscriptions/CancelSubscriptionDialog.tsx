@@ -9,12 +9,12 @@ export interface CancelSubscriptionDialogProps {
 /** Confirm step before cancelling the ad-free subscription (same shell as `MoveSeatDialog`). */
 export function CancelSubscriptionDialog({ pending, onConfirm, onCancel }: CancelSubscriptionDialogProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onClick={onCancel}>
+    <div className="backdrop-enter fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onClick={onCancel}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="cancel-subscription-title"
-        className="w-full max-w-sm rounded-t-2xl border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl sm:rounded-2xl"
+        className="dialog-enter w-full max-w-sm rounded-t-2xl border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="cancel-subscription-title" className="font-display text-lg font-semibold text-main">
@@ -26,7 +26,7 @@ export function CancelSubscriptionDialog({ pending, onConfirm, onCancel }: Cance
             type="button"
             onClick={onConfirm}
             disabled={pending}
-            className="min-h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-white active:scale-[0.98] disabled:opacity-60"
+            className="min-h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-60"
           >
             Sí, cancelar suscripción
           </button>

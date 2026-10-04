@@ -122,7 +122,7 @@ export function SubscriptionPageClient() {
         ) : !signedIn ? (
           <Link
             href="/login"
-            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white active:scale-[0.98]"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98]"
           >
             Ingresá para suscribirte
           </Link>
@@ -146,7 +146,7 @@ export function SubscriptionPageClient() {
             type="button"
             onClick={() => void handleSubscribe()}
             disabled={busy}
-            className="min-h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-white active:scale-[0.98] disabled:opacity-60"
+            className="min-h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-60"
           >
             {busy ? "Redirigiendo…" : "Suscribirme"}
           </button>

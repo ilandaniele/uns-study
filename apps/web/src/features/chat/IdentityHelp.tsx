@@ -65,7 +65,7 @@ export function IdentityHelp({ variant = "inline" }: { variant?: "inline" | "sid
           <p className="mt-2 text-xs text-muted">Los cambios se ven en tus mensajes nuevos y en los anteriores al recargar.</p>
           <Link
             href="/perfil"
-            className="mt-3 inline-flex min-h-9 items-center rounded-lg bg-primary px-4 text-sm font-semibold text-white active:scale-[0.98]"
+            className="mt-3 inline-flex min-h-9 items-center rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98]"
           >
             Ir a mi perfil
           </Link>

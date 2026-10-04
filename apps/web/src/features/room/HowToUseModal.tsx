@@ -31,12 +31,12 @@ export function HowToUseModal({ open, onClose }: { open: boolean; onClose: () =>
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onClick={onClose}>
+    <div className="backdrop-enter fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="how-to-use-title"
-        className="w-full max-w-sm rounded-t-2xl border border-app bg-surface p-5 shadow-xl sm:rounded-2xl"
+        className="dialog-enter w-full max-w-sm rounded-t-2xl border border-app bg-surface p-5 shadow-xl sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
