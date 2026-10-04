@@ -31,12 +31,12 @@ test("observations change seat state for other viewers, aren't offered on your o
     await seatLocator(pageB, SEAT_MARK_OCCUPIED.table, SEAT_MARK_OCCUPIED.seatNumber).click();
     await pageB.getByRole("button", { name: "Está ocupado" }).click();
     await expect(seatOccupiedOnA).toHaveAttribute("aria-label", /: ocupado/, { timeout: 10_000 });
-    await expect(pageB.getByText("Demasiadas acciones seguidas.")).toHaveCount(0);
+    await expect(pageB.getByText("Hiciste muchas acciones seguidas.")).toHaveCount(0);
 
     await seatLocator(pageB, SEAT_MARK_FREE.table, SEAT_MARK_FREE.seatNumber).click();
     await pageB.getByRole("button", { name: "Está libre" }).click();
     await expect(seatFreeOnA).toHaveAttribute("aria-label", /: libre/, { timeout: 10_000 });
-    await expect(pageB.getByText("Demasiadas acciones seguidas.")).toHaveCount(0);
+    await expect(pageB.getByText("Hiciste muchas acciones seguidas.")).toHaveCount(0);
 
     // B checks in on their own seat: marking it free/occupied isn't offered for your own seat.
     await seatLocator(pageB, SEAT_OWN.table, SEAT_OWN.seatNumber).click();

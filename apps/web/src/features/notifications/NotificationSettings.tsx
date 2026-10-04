@@ -62,7 +62,7 @@ export function NotificationSettings() {
         <div className="flex items-start justify-between gap-4 py-3">
           <span>
             <span className="block text-sm font-medium text-main">Avisame cuando se libere un lugar</span>
-            <span className="block text-xs text-muted">Sólo si en ese momento no tenés un check-in activo en la sala.</span>
+            <span className="block text-xs text-muted">Sólo si en ese momento no tenés un lugar marcado en la sala.</span>
           </span>
           <Switch checked={preferences.seatFreed} disabled={saving} label="Avisame cuando se libere un lugar" onChange={(v) => void update({ seatFreed: v })} />
         </div>

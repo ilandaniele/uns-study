@@ -11,7 +11,7 @@ export interface MyCheckInBarProps {
 }
 
 /**
- * Always-visible reminder of the caller's own check-in with a one-tap "Liberar lugar".
+ * Always-visible reminder of the caller's own check-in with a one-tap "Me voy".
  * Releasing never needs location, so it works after leaving the room (e.g. from home).
  */
 export function MyCheckInBar({ seatLabel, expiresAt, pending, onShow, onRelease }: MyCheckInBarProps) {
@@ -23,7 +23,7 @@ export function MyCheckInBar({ seatLabel, expiresAt, pending, onShow, onRelease 
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-main">Tenés marcado {seatLabel}</p>
-        <p className="text-xs text-muted">Hasta las {until}. Si ya te fuiste, liberalo para que otra persona lo use.</p>
+        <p className="text-xs text-muted">Hasta las {until}. Si ya te fuiste, tocá «Me voy» para que otra persona lo use.</p>
       </div>
       <div className="flex gap-2">
         <button
@@ -39,7 +39,7 @@ export function MyCheckInBar({ seatLabel, expiresAt, pending, onShow, onRelease 
           disabled={pending}
           className="min-h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-60"
         >
-          Liberar lugar
+          Me voy
         </button>
       </div>
     </div>

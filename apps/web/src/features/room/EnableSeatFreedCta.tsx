@@ -11,16 +11,22 @@ import { enablePushNotifications, getPushSupportState } from "@/lib/push";
 export function EnableSeatFreedCta() {
   const { data: session } = useSession();
   const { preferences, update } = useNotificationPreferences();
-  const [done, setDone] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
-  if (!session?.user || !preferences || preferences.seatFreed || done) return null;
+  if (!session?.user || !preferences || (preferences.seatFreed && !message)) return null;
+  if (message) return <p role="status" className="self-start text-sm text-muted">{message}</p>;
 
   async function handleEnable() {
     await update({ seatFreed: true });
+    let pushed = false;
     if (getPushSupportState() === "available") {
-      await enablePushNotifications().catch(() => undefined);
+      pushed = await enablePushNotifications().catch(() => false);
     }
-    setDone(true);
+    setMessage(
+      pushed
+        ? "Listo, te avisamos cuando se libere un lugar."
+        : "Listo. Vas a ver el aviso cuando tengas la app abierta.",
+    );
   }
 
   return (

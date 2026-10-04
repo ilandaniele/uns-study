@@ -1,7 +1,8 @@
 "use client";
 
 import { CheckIcon, CopyIcon, HeartIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useHouseInterstitial } from "@/features/ads/ad-overlay-store";
 
 export const DONATION_ALIAS = "golf.cabina.mulita";
 const DONATION_BANK = "Banco Provincia";
@@ -91,6 +92,17 @@ export function DonateCard() {
   );
 }
 
+/** Holds the prompt back until the visitor has checked in once or has been around for a day. */
+function hasEngaged(): boolean {
+  try {
+    if (window.localStorage.getItem("sala.firstCheckInAt")) return true;
+    const firstSeen = Number(window.localStorage.getItem("sala.ads.firstSeenAt"));
+    return firstSeen > 0 && Date.now() - firstSeen >= 24 * 60 * 60 * 1000;
+  } catch {
+    return false;
+  }
+}
+
 function readDismissedAt(): number {
   try {
     return Number(window.localStorage.getItem(PROMPT_KEY)) || 0;
@@ -107,8 +119,12 @@ export function DonatePrompt({ blocked }: { blocked: boolean }) {
   const [due, setDue] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
+  const adOpen = useHouseInterstitial().open;
+  const closeRef = useRef<HTMLButtonElement>(null);
+
   useEffect(() => {
     if (Date.now() - readDismissedAt() < PROMPT_EVERY_MS) return;
+    if (!hasEngaged()) return;
     const id = window.setTimeout(() => setDue(true), PROMPT_DELAY_MS);
     return () => window.clearTimeout(id);
   }, []);
@@ -122,7 +138,23 @@ export function DonatePrompt({ blocked }: { blocked: boolean }) {
     }
   }
 
-  if (!due || dismissed || blocked) return null;
+  const visible = due && !dismissed && !blocked && !adOpen;
+
+  useEffect(() => {
+    if (!visible) return;
+    const previous = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus();
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") close();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      previous?.focus();
+    };
+  }, [visible]);
+
+  if (!visible) return null;
 
   return (
     <div className="backdrop-enter fixed inset-0 z-50 flex items-end bg-black/40" onClick={close}>
@@ -145,6 +177,7 @@ export function DonatePrompt({ blocked }: { blocked: boolean }) {
             <p className="text-sm text-muted">Ayudá a que la sala siga online.</p>
           </div>
           <button
+            ref={closeRef}
             type="button"
             onClick={close}
             aria-label="Cerrar"

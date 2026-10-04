@@ -2,32 +2,49 @@
 
 import { CheckCircleIcon, HandPointingIcon, MapPinIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import type { ReactNode } from "react";
+import { useEffect, useRef } from "react";
 
 const STEPS: { icon: ReactNode; title: string; body: string }[] = [
   {
     icon: <HandPointingIcon aria-hidden="true" size={20} weight="bold" />,
     title: "Tocá un lugar",
-    body: "Elegí cualquier asiento del mapa para ver su estado y sus detalles.",
+    body: "Elegí cualquier lugar del mapa para ver su estado.",
   },
   {
     icon: <MapPinIcon aria-hidden="true" size={20} weight="bold" />,
     title: "Estoy acá",
-    body: "Marcalo cuando te sientes de verdad. Vale por 3 horas.",
+    body: "Marcalo cuando te sientes. Elegís hasta qué hora (máximo 3 h) y te pedimos la ubicación para confirmar que estás en la sala. Antes de que venza te avisamos para que marques «Sigo acá».",
   },
   {
     icon: <CheckCircleIcon aria-hidden="true" size={20} weight="bold" />,
-    title: "Está libre / Está ocupado",
-    body: "Si pasás por un lugar que no es tuyo, contá lo que ves para ayudar al resto.",
+    title: "Está libre / ocupado / guardado",
+    body: "Si ves un lugar que no es tuyo, contá cómo está para ayudar al resto.",
   },
   {
     icon: <CheckCircleIcon aria-hidden="true" size={20} weight="bold" />,
-    title: "Votaciones",
-    body: "Si algo no cuadra, cualquiera puede abrir una votación rápida para resolverlo.",
+    title: "¿Algo no cuadra?",
+    body: "Si un lugar figura mal, abrí una votación rápida y la gente de la sala decide.",
   },
 ];
 
 /** "Ver cómo usar la app" — a short, static walkthrough opened from the left panel. */
 export function HowToUseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus();
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      previous?.focus();
+    };
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
@@ -36,7 +53,7 @@ export function HowToUseModal({ open, onClose }: { open: boolean; onClose: () =>
         role="dialog"
         aria-modal="true"
         aria-labelledby="how-to-use-title"
-        className="dialog-enter w-full max-w-sm rounded-t-2xl border border-app bg-surface p-5 shadow-xl sm:rounded-2xl"
+        className="dialog-enter w-full max-w-sm rounded-t-2xl border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
@@ -44,6 +61,7 @@ export function HowToUseModal({ open, onClose }: { open: boolean; onClose: () =>
             Cómo usar la app
           </h2>
           <button
+            ref={closeRef}
             type="button"
             onClick={onClose}
             aria-label="Cerrar"

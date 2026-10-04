@@ -54,7 +54,7 @@ test("check-in, moving seats, and seat-taken propagate in realtime to another vi
     const seatYOnBAgain = seatLocator(pageB, SEAT_Y.table, SEAT_Y.seatNumber);
     await seatYOnBAgain.click();
     await pageB.getByRole("button", { name: "Estoy acá" }).click();
-    await expect(pageB.getByText("Ese lugar ya está ocupado por otra persona.")).toBeVisible();
+    await expect(pageB.getByText("Otra persona ya marcó este lugar. Elegí otro del mapa.")).toBeVisible();
   } finally {
     await checkoutCurrent(contextA);
     await checkoutCurrent(contextB);

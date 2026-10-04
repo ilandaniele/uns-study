@@ -3,6 +3,7 @@
 import { SocketEvents, type AnnouncementDto } from "@sala/contracts";
 import type { Socket } from "socket.io-client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 
 /** Minimum gap between tab-visibility refetches. */
@@ -72,6 +73,9 @@ export function AnnouncementsBanner({ roomSlug, socket }: AnnouncementsBannerPro
           <p className="whitespace-pre-wrap">{announcement.body}</p>
         </div>
       ))}
+      <Link href="/comunidad" className="self-end text-xs text-muted underline underline-offset-2 hover:text-main">
+        Ver novedades
+      </Link>
     </div>
   );
 }

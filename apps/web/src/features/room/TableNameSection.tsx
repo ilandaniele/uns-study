@@ -28,6 +28,8 @@ export function TableNameSection({ tableId, loggedIn }: TableNameSectionProps) {
       // Surface the "you need to have checked in here" eligibility message; otherwise best-effort.
       if (err instanceof ApiRequestError && err.code === "TABLE_NAME_NOT_ALLOWED") {
         setFormError(err.message);
+      } else {
+        setFormError("No pudimos registrar tu voto.");
       }
     } finally {
       setPending(false);

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { PeopleList } from "@/features/people/PeopleList";
 import { usePeople } from "@/features/people/usePeople";
 import { useSession } from "@/lib/auth-client";
@@ -16,7 +17,14 @@ export default function PersonasPage() {
   }
 
   if (!session?.user) {
-    return <main className="p-6 text-center text-muted">Iniciá sesión para ver quién está en la sala.</main>;
+    return (
+      <main className="mx-auto flex max-w-md flex-col items-center gap-3 p-10 text-center">
+        <p className="text-muted">Iniciá sesión para ver quién está en la sala.</p>
+        <Link href="/login" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">
+          Ingresar
+        </Link>
+      </main>
+    );
   }
 
   return (

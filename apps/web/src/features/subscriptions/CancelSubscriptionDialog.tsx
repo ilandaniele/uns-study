@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+
 export interface CancelSubscriptionDialogProps {
   pending: boolean;
   onConfirm: () => void;
@@ -8,6 +10,21 @@ export interface CancelSubscriptionDialogProps {
 
 /** Confirm step before cancelling the ad-free subscription (same shell as `MoveSeatDialog`). */
 export function CancelSubscriptionDialog({ pending, onConfirm, onCancel }: CancelSubscriptionDialogProps) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    cancelRef.current?.focus();
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && !pending) onCancel();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      previous?.focus();
+    };
+  }, [onCancel, pending]);
+
   return (
     <div className="backdrop-enter fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onClick={onCancel}>
       <div
@@ -31,6 +48,7 @@ export function CancelSubscriptionDialog({ pending, onConfirm, onCancel }: Cance
             Sí, cancelar suscripción
           </button>
           <button
+            ref={cancelRef}
             type="button"
             onClick={onCancel}
             className="min-h-11 rounded-xl border border-app px-4 text-sm font-medium text-main hover:bg-[var(--surface-2)]"

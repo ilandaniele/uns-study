@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowRightIcon } from "@phosphor-icons/react/dist/ssr";
+import { useEffect, useRef } from "react";
 
 export interface MoveSeatDialogProps {
   fromLabel: string;
@@ -15,6 +16,21 @@ export interface MoveSeatDialogProps {
  * Confirming moves the check-in: the API frees the old seat and occupies the new one in one step.
  */
 export function MoveSeatDialog({ fromLabel, toLabel, pending, onConfirm, onCancel }: MoveSeatDialogProps) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    cancelRef.current?.focus();
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && !pending) onCancel();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      previous?.focus();
+    };
+  }, [onCancel, pending]);
+
   return (
     <div className="backdrop-enter fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onClick={onCancel}>
       <div
@@ -44,6 +60,7 @@ export function MoveSeatDialog({ fromLabel, toLabel, pending, onConfirm, onCance
             Sí, cambiarme de lugar
           </button>
           <button
+            ref={cancelRef}
             type="button"
             onClick={onCancel}
             className="min-h-11 rounded-xl border border-app px-4 text-sm font-medium text-main hover:bg-[var(--surface-2)]"

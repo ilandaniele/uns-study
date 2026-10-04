@@ -82,7 +82,7 @@ function ActiveDispute({
         Está ahí: {dispute.votes.present} · No está: {dispute.votes.absent}
       </p>
       {dispute.iAmOpener ? (
-        <p className="mt-2 text-sm text-muted">Abriste esta votación.</p>
+        <p className="mt-2 text-sm text-muted">Abriste esta votación. Si nadie vota antes de que termine, ganás vos.</p>
       ) : dispute.myVote ? (
         <p className="mt-2 text-sm text-muted">Votaste: {dispute.myVote === "PRESENT" ? "Está ahí" : "No está"}</p>
       ) : dispute.iAmIncumbent ? null : !canVote ? (

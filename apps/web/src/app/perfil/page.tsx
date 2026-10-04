@@ -29,6 +29,7 @@ export default function PerfilPage() {
   const [roomId, setRoomId] = useState<string | null>(null);
   const [showDelete, setShowDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [privacyError, setPrivacyError] = useState<string | null>(null);
   const { me } = useMe();
   const { adFree, snoozedUntil } = useAdFree();
 
@@ -59,14 +60,23 @@ export default function PerfilPage() {
   }
 
   if (!session?.user || error || !profile || !privacy) {
-    return <main className="p-6 text-center text-muted">{error ?? "Iniciá sesión para ver tu perfil."}</main>;
+    return (
+      <main className="mx-auto flex max-w-md flex-col items-center gap-3 p-10 text-center">
+        <p className="text-muted">{error ?? "Iniciá sesión para ver tu perfil."}</p>
+        {!session?.user ? (
+          <Link href="/login" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">
+            Ingresar
+          </Link>
+        ) : null}
+      </main>
+    );
   }
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-8 p-4 pb-16">
       <div>
         <h1 className="font-display text-[22px] font-extrabold uppercase leading-none tracking-[0.01em] text-main">Perfil</h1>
-        <p className="text-sm text-muted">{profile.email}</p>
+        <p className="mt-2 text-sm text-muted">{profile.email}</p>
       </div>
 
       <section className="rounded-[14px] border border-app bg-surface p-4">
@@ -94,7 +104,21 @@ export default function PerfilPage() {
       <section className="rounded-[14px] border border-app bg-surface p-4">
         <h2 className="mb-1 font-display text-base font-semibold text-main">Privacidad</h2>
         <p className="mb-2 text-xs text-muted">Todo está oculto por defecto. Activá sólo lo que quieras compartir.</p>
-        <PrivacyToggles privacy={privacy} saving={saving} onChange={(patch) => void savePrivacy(patch)} />
+        <PrivacyToggles
+          privacy={privacy}
+          saving={saving}
+          onChange={(patch) => {
+            setPrivacyError(null);
+            void savePrivacy(patch).then((ok) => {
+              if (!ok) setPrivacyError("No pudimos guardar los cambios. Probá de nuevo.");
+            });
+          }}
+        />
+        {privacyError ? (
+          <p role="alert" className="mt-2 text-sm text-red-600">
+            {privacyError}
+          </p>
+        ) : null}
       </section>
 
       {roomId ? (

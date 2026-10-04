@@ -17,7 +17,7 @@ export function RightPanelEmptyState({ hasActiveCheckIn }: { hasActiveCheckIn: b
           <MapPinIcon aria-hidden="true" size={18} className="mt-0.5 shrink-0" style={{ color: "var(--primary)" }} />
           <div>
             <p className="text-sm font-semibold text-main">Estás en la sala</p>
-            <p className="text-xs text-muted">Podés actualizar tu lugar desde el mapa.</p>
+            <p className="text-xs text-muted">Tocá tu lugar en el mapa para marcar «Sigo acá» o «Me voy».</p>
           </div>
         </div>
       ) : null}

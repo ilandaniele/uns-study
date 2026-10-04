@@ -47,12 +47,12 @@ export function RoomQuickActions({ map, onlyFree, onToggleOnlyFree, favoriteSeat
       await navigator.clipboard.writeText(`${text} ${url}`);
       flash("Copiado. Pegalo donde quieras.");
     } catch (error) {
-      if ((error as DOMException)?.name !== "AbortError") flash("No se pudo compartir.");
+      if ((error as DOMException)?.name !== "AbortError") flash("No se pudo compartir. Copiá el link desde la barra de direcciones.");
     }
   }
 
   const chip =
-    "flex min-h-10 items-center justify-center gap-1.5 rounded-lg border px-2.5 py-2 text-[13px] font-semibold transition-colors";
+    "flex min-h-11 items-center justify-center gap-1.5 rounded-lg border px-2.5 py-2 text-[13px] font-semibold transition-colors";
 
   return (
     <div className="flex flex-col gap-2">

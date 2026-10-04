@@ -60,7 +60,7 @@ function Podium({ entries, format }: { entries: RankingEntryDto[]; format: (valu
                 ringColor={MEDAL[entry.rank]}
               />
               <span
-                className="absolute -bottom-1 left-1/2 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full text-xs font-bold text-white ring-2 ring-[var(--surface)]"
+                className="absolute -bottom-1 left-1/2 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full text-xs font-bold text-[#131816] ring-2 ring-[var(--surface)]"
                 style={{ backgroundColor: MEDAL[entry.rank] }}
               >
                 {entry.rank}
@@ -91,12 +91,10 @@ function Podium({ entries, format }: { entries: RankingEntryDto[]; format: (valu
 }
 
 function RankingRow({ entry, value, highlighted }: { entry: RankingEntryDto; value: string; highlighted?: boolean }) {
-  const medal = MEDAL[entry.rank];
   return (
     <li className={`flex items-center gap-3 px-4 py-3 ${highlighted ? "bg-primary/10" : ""}`}>
       <span
-        className="w-7 text-right text-sm font-bold tabular-nums"
-        style={{ color: medal ?? "var(--muted)" }}
+        className="w-7 text-right text-sm font-bold tabular-nums text-main"
       >
         {entry.rank}
       </span>

@@ -29,6 +29,7 @@ export function ProfileForm({ profile, saving, onSave, onRerollAlias }: ProfileF
   const [identityMode, setIdentityMode] = useState(profile.identityMode);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [rerolling, setRerolling] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   async function handleReroll() {
     setRerolling(true);
@@ -38,6 +39,7 @@ export function ProfileForm({ profile, saving, onSave, onRerollAlias }: ProfileF
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    setSaveError(null);
     const ok = await onSave({
       firstName: firstName.trim() || null,
       lastName: lastName.trim() || null,
@@ -50,6 +52,7 @@ export function ProfileForm({ profile, saving, onSave, onRerollAlias }: ProfileF
       identityMode,
     });
     if (ok) setSavedAt(Date.now());
+    else setSaveError("No pudimos guardar los cambios. Probá de nuevo.");
   }
 
   return (
@@ -121,7 +124,12 @@ export function ProfileForm({ profile, saving, onSave, onRerollAlias }: ProfileF
         >
           Guardar
         </button>
-        {savedAt ? <span className="text-sm text-[var(--seat-free)]">Guardado.</span> : null}
+        {savedAt && !saveError ? <span className="text-sm text-[var(--seat-free)]">Guardado.</span> : null}
+        {saveError ? (
+          <span role="alert" className="text-sm text-red-600">
+            {saveError}
+          </span>
+        ) : null}
       </div>
     </form>
   );

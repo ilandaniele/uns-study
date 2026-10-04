@@ -50,16 +50,16 @@ export function describeActionError(error: unknown): string {
       return "Parece que no estás en la sala. Podés mirar la disponibilidad, pero las actualizaciones están habilitadas sólo para personas presentes.";
     }
     if (error.code === "SEAT_TAKEN") {
-      return "Ese lugar ya está ocupado por otra persona.";
+      return "Otra persona ya marcó este lugar. Elegí otro del mapa.";
     }
     if (error.code === "RATE_LIMITED") {
-      return "Demasiadas acciones seguidas. Esperá un momento.";
+      return "Hiciste muchas acciones seguidas. Esperá unos segundos y probá de nuevo.";
     }
     if (error.code === "UNAUTHENTICATED") {
       return "Iniciá sesión para colaborar.";
     }
     if (error.code === "NO_ACTIVE_CHECKIN") {
-      return "No encontramos un check-in activo tuyo.";
+      return "No tenés un lugar marcado (puede que ya se haya vencido). Tocá tu lugar y marcá «Estoy acá».";
     }
     if (error.code === "SEAT_NOT_FOUND") {
       return "Ese lugar ya no existe.";

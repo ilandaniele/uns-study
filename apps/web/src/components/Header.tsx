@@ -85,7 +85,7 @@ export function Header() {
         <ThemeToggle />
         {loading ? null : user ? (
           <div className="flex items-center gap-3">
-            <span className="hidden text-main xl:inline">{user.name ?? user.email}</span>
+            <span className="hidden max-w-[16ch] truncate text-main xl:inline">{user.name ?? user.email}</span>
             <button
               type="button"
               onClick={() => void handleSignOut()}

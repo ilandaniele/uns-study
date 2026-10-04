@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const CONFIRM_WORD = "ELIMINAR";
 
@@ -13,18 +13,33 @@ export interface DeleteAccountDialogProps {
 /** Confirmation dialog for "Eliminar cuenta" — requires typing ELIMINAR to avoid accidental deletion. */
 export function DeleteAccountDialog({ pending, onConfirm, onCancel }: DeleteAccountDialogProps) {
   const [value, setValue] = useState("");
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && !pending) onCancel();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel, pending]);
+
   const canConfirm = value.trim().toUpperCase() === CONFIRM_WORD && !pending;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-sm rounded-[14px] border border-red-200 bg-surface p-5 shadow-xl">
-        <h2 className="font-display text-lg font-semibold text-main">Eliminar cuenta</h2>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-title"
+        className="w-full max-w-sm rounded-[14px] border border-red-200 bg-surface p-5 shadow-xl"
+      >
+        <h2 id="delete-title" className="font-display text-lg font-semibold text-main">Eliminar cuenta</h2>
         <p className="mt-2 text-sm text-muted">
           Esta acción es permanente: se borran tu perfil, tus mensajes y tu historial. Escribí{" "}
           <strong>{CONFIRM_WORD}</strong> para confirmar.
         </p>
         <input
           value={value}
+          aria-label="Escribí ELIMINAR para confirmar"
+          autoFocus
           onChange={(e) => setValue(e.target.value)}
           placeholder={CONFIRM_WORD}
           className="mt-3 w-full rounded-lg border border-app bg-surface px-3 py-2 text-base uppercase text-main sm:text-sm"

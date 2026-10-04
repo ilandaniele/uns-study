@@ -104,7 +104,7 @@ export default function PublicProfilePage() {
           </div>
         </div>
 
-        {profile.bio ? <p className="mt-4 text-sm text-main">{profile.bio}</p> : null}
+        {profile.bio ? <p className="mt-4 whitespace-pre-wrap break-words text-sm text-main">{profile.bio}</p> : null}
 
         <dl className="mt-3 flex flex-col gap-1 text-sm text-muted">
           {profile.instagram ? (
@@ -122,7 +122,7 @@ export default function PublicProfilePage() {
         </dl>
 
         {profile.studyStatus ? (
-          <p className="mt-4 rounded-xl bg-[var(--surface-2)] px-3 py-2 text-sm text-main">
+          <p className="mt-4 rounded-xl bg-[var(--surface-2)] px-3 py-2 text-sm text-main whitespace-pre-wrap break-words">
             En Modo Estudio{profile.studyStatus.subject ? `: ${profile.studyStatus.subject}` : ""}
             {profile.studyStatus.message ? ` — ${profile.studyStatus.message}` : ""}
           </p>
