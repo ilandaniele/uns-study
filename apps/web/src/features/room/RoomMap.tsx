@@ -30,7 +30,7 @@ const BACK_WINDOWS = 6;
 const SIDE_WINDOW_LENGTH = 220;
 const SIDE_WINDOW_Y = [130, 400, 670, 940, 1210];
 
-export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlightTableCode = null, avatarBySeatId, onlyFree = false, favoriteSeatId = null }: RoomMapProps) {
+export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlightTableCode = null, avatarBySeatId, onlyFree = false, favoriteSeatId = null }: RoomMapProps) {
   const { width, height } = map.viewBox;
   // Per-seat facing + table label/type only depend on the layout, not on live seat status.
   const seatMeta = useMemo(() => {
@@ -101,7 +101,7 @@ export function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlight
       ) : null}
     </svg>
   );
-}
+});
 
 /** Floor, walls, windows, entrance and shared defs: nothing here depends on live seat state. */
 const StaticRoomBackdrop = memo(function StaticRoomBackdrop({ width, height }: { width: number; height: number }) {
@@ -165,6 +165,11 @@ const StaticRoomBackdrop = memo(function StaticRoomBackdrop({ width, height }: {
         <filter id="table-shadow" x="-20%" y="-20%" width="140%" height="140%">
           <feDropShadow dx="0" dy="3" stdDeviation="4" floodOpacity="0.15" />
         </filter>
+        {/* Halo behind FREE seats; its opacity is animated in CSS (see .seat-glow-free). */}
+        <radialGradient id="seat-glow">
+          <stop offset="40%" stopColor="var(--seat-free)" stopOpacity={0.45} />
+          <stop offset="100%" stopColor="var(--seat-free)" stopOpacity={0} />
+        </radialGradient>
         {SEAT_GRADIENT_KEYS.map((key) => (
           <radialGradient key={key} id={`seat-sphere-${key}`} cx="35%" cy="28%" r="75%">
             <stop offset="0%" stopColor="#ffffff" stopOpacity={0.4} />
@@ -177,7 +182,7 @@ const StaticRoomBackdrop = memo(function StaticRoomBackdrop({ width, height }: {
       {/* Floor */}
       <rect x={4} y={4} width={width - 8} height={height - 8} rx={28} fill="url(#floor-tiles)" />
       <rect x={4} y={4} width={width - 8} height={height - 8} rx={28} fill="url(#floor-sheen)" aria-hidden="true" />
-      <rect x={4} y={4} width={width - 8} height={height - 8} rx={28} fill="url(#room-light-pool)" style={{ mixBlendMode: "soft-light" }} aria-hidden="true" />
+      <rect x={4} y={4} width={width - 8} height={height - 8} rx={28} fill="url(#room-light-pool)" opacity={0.5} aria-hidden="true" />
 
       {/* Walls: cream upper wall with a honey wood wainscot band along the room side, windows on top. */}
       <g aria-hidden="true">

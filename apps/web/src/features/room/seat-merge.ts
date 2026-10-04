@@ -58,19 +58,25 @@ export function mergeSnapshot(prev: RoomMapDto | null, next: RoomMapDto): RoomMa
 /** Sets `seat.dispute` on the matching seat when a new vote opens (`seat:dispute-opened`). */
 export function applyDisputeOpened(map: RoomMapDto | null, event: SeatDisputeLiteDto): RoomMapDto | null {
   if (!map) return map;
-  const seats = map.seats.map((seat) =>
-    seat.id === event.seatId ? { ...seat, dispute: { id: event.id, closesAt: event.closesAt } } : seat,
-  );
-  return { ...map, seats };
+  let applied = false;
+  const seats = map.seats.map((seat) => {
+    if (seat.id !== event.seatId) return seat;
+    applied = true;
+    return { ...seat, dispute: { id: event.id, closesAt: event.closesAt } };
+  });
+  return applied ? { ...map, seats } : map;
 }
 
 /** Clears `seat.dispute` once a vote resolves (`seat:dispute-resolved`) — the resulting seat status arrives separately via `seat:state-changed`. */
 export function applyDisputeResolved(map: RoomMapDto | null, event: SeatDisputeLiteDto): RoomMapDto | null {
   if (!map) return map;
-  const seats = map.seats.map((seat) =>
-    seat.id === event.seatId && seat.dispute?.id === event.id ? { ...seat, dispute: null } : seat,
-  );
-  return { ...map, seats };
+  let applied = false;
+  const seats = map.seats.map((seat) => {
+    if (seat.id !== event.seatId || seat.dispute?.id !== event.id) return seat;
+    applied = true;
+    return { ...seat, dispute: null };
+  });
+  return applied ? { ...map, seats } : map;
 }
 
 /** Updates a table's nickname on `table:nickname-changed` — the map pill re-renders immediately. */

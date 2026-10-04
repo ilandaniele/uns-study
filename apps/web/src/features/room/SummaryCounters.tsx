@@ -1,11 +1,12 @@
 import type { RoomSummary } from "@sala/contracts";
 
-const TILES: { key: keyof RoomSummary; label: string; color: string }[] = [
-  { key: "free", label: "Libres", color: "var(--seat-free)" },
-  { key: "occupied", label: "Ocupados", color: "var(--seat-occupied)" },
-  { key: "saved", label: "Guardados", color: "var(--seat-saved)" },
-  { key: "uncertain", label: "Dudosos", color: "var(--seat-uncertain)" },
-  { key: "unknown", label: "Sin datos", color: "var(--seat-unknown)" },
+// `glyph` mirrors the letter drawn on the map seats (Seat.tsx) so color is never the only signal.
+const TILES: { key: keyof RoomSummary; label: string; color: string; glyph: string; glyphColor: string }[] = [
+  { key: "free", label: "Libres", color: "var(--seat-free)", glyph: "L", glyphColor: "var(--seat-glyph)" },
+  { key: "occupied", label: "Ocupados", color: "var(--seat-occupied)", glyph: "O", glyphColor: "var(--seat-glyph)" },
+  { key: "saved", label: "Guardados", color: "var(--seat-saved)", glyph: "G", glyphColor: "var(--seat-glyph-saved)" },
+  { key: "uncertain", label: "Dudosos", color: "var(--seat-uncertain)", glyph: "?", glyphColor: "var(--seat-glyph)" },
+  { key: "unknown", label: "Sin datos", color: "var(--seat-unknown)", glyph: "-", glyphColor: "var(--seat-glyph)" },
 ];
 
 /**
@@ -19,10 +20,16 @@ export function SummaryCounters({ summary }: { summary: RoomSummary }) {
     <div className="overflow-hidden rounded-xl border border-app bg-surface">
       <dl className="grid grid-cols-5 divide-x divide-[var(--border)]">
         {TILES.map((tile) => (
-          <div key={tile.key} className="flex flex-col items-center px-1 pb-2.5 pt-2.5">
-            <span aria-hidden="true" className="mb-2 h-1 w-5 rounded-full" style={{ backgroundColor: tile.color }} />
-            <dd className="font-mono text-[22px] font-semibold leading-none text-main sm:text-2xl">{summary[tile.key] as number}</dd>
+          <div key={tile.key} className="flex flex-col-reverse items-center px-1 pb-2.5 pt-2.5">
             <dt className="mt-1.5 text-[11px] font-semibold leading-tight text-muted">{tile.label}</dt>
+            <dd className="font-mono text-[22px] font-semibold leading-none text-main sm:text-2xl">{summary[tile.key] as number}</dd>
+            <span
+              aria-hidden="true"
+              className="mb-1.5 grid h-4 w-4 place-items-center rounded-[3px] text-[10px] font-bold leading-none"
+              style={{ backgroundColor: tile.color, color: tile.glyphColor }}
+            >
+              {tile.glyph}
+            </span>
           </div>
         ))}
       </dl>

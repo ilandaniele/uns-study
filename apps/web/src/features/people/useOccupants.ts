@@ -18,11 +18,16 @@ export interface UseOccupantsResult {
 
 /** Keeps the previous object when an entry didn't change, so memoized seats don't repaint on every refetch. */
 function reuseEqual<T>(previous: Map<string, T>, next: Map<string, T>): Map<string, T> {
+  let reused = 0;
   for (const [key, value] of next) {
     const old = previous.get(key);
-    if (old !== undefined && JSON.stringify(old) === JSON.stringify(value)) next.set(key, old);
+    if (old !== undefined && JSON.stringify(old) === JSON.stringify(value)) {
+      next.set(key, old);
+      reused++;
+    }
   }
-  return next;
+  // Same size and every entry reused: nothing changed, keep the old Map so consumers don't re-render.
+  return reused === next.size && previous.size === next.size ? previous : next;
 }
 
 /** GET `/rooms/:idOrSlug/occupants` — seat badges, "<Nombre> está acá" and "Marcado por: …" in `SeatDetail`. */

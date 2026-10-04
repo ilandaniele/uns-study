@@ -7,7 +7,7 @@ import { Header } from "@/components/Header";
 import { FocusRuntime } from "@/features/focus/FocusRuntime";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
-import { fontBody, fontDisplay, fontMono } from "@/lib/fonts";
+import { fontDisplay, fontMono } from "@/lib/fonts";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { SITE_URL } from "./sitemap";
 import "./globals.css";
@@ -41,7 +41,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html
       lang="es"
       suppressHydrationWarning
-      className={`${fontDisplay.variable} ${fontBody.variable} ${fontMono.variable}`}
+      className={`${fontDisplay.variable} ${fontMono.variable}`}
     >
       <head>
         {/* Applies the stored/system theme before hydration to avoid a light-mode flash. */}

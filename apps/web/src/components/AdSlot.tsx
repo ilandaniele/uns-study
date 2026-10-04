@@ -53,16 +53,18 @@ export function AdSlot({ placement }: { placement: AdPlacement }) {
         src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
         crossOrigin="anonymous"
       />
-      <ins
-        ref={insRef}
-        data-ad-placement={placement}
-        className="adsbygoogle block"
-        style={{ display: "block" }}
-        data-ad-client={ADSENSE_CLIENT}
-        data-ad-slot={slot}
-        data-ad-format="auto"
-        data-full-width-responsive="true"
-      />
+      <div className="min-h-[100px]">
+        <ins
+          ref={insRef}
+          data-ad-placement={placement}
+          className="adsbygoogle block"
+          style={{ display: "block" }}
+          data-ad-client={ADSENSE_CLIENT}
+          data-ad-slot={slot}
+          data-ad-format="auto"
+          data-full-width-responsive="true"
+        />
+      </div>
     </>
   );
 }

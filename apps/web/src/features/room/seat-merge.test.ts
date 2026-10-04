@@ -1,6 +1,8 @@
 import type { RoomMapDto, SeatDto, SeatStateChangedEvent, TableDto } from "@sala/contracts";
 import { describe, expect, it } from "vitest";
 import {
+  applyDisputeOpened,
+  applyDisputeResolved,
   applyOptimisticSeat,
   applySeatEvent,
   applyTableNicknameChanged,
@@ -187,5 +189,22 @@ describe("optimistic check-in helpers", () => {
   it("extends to a fresh 3 hours from now", () => {
     const checkIn = buildOptimisticCheckIn(seat("a", "UNKNOWN", null), ROOM, false, Date.parse("2026-01-01T10:00:00.000Z"));
     expect(extendCheckIn(checkIn, Date.parse("2026-01-01T10:50:00.000Z")).expiresAt).toBe("2026-01-01T13:50:00.000Z");
+  });
+});
+
+describe("dispute events", () => {
+  const event = { id: "d1", seatId: "s1", closesAt: "2026-01-01T10:05:00Z" } as Parameters<typeof applyDisputeOpened>[1];
+
+  it("opens and resolves a dispute on the matching seat", () => {
+    const m = map([seat("s1", "FREE", null)]);
+    const opened = applyDisputeOpened(m, event)!;
+    expect(opened.seats[0].dispute).toEqual({ id: "d1", closesAt: event.closesAt });
+    expect(applyDisputeResolved(opened, event)!.seats[0].dispute).toBeNull();
+  });
+
+  it("returns the same map when no seat matches", () => {
+    const m = map([seat("s2", "FREE", null)]);
+    expect(applyDisputeOpened(m, event)).toBe(m);
+    expect(applyDisputeResolved(m, event)).toBe(m);
   });
 });

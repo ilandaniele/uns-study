@@ -4,8 +4,9 @@ import type { DisputeKind, DisputeVote, MeDto, SeatDisputeDto, SeatDto, SeatOccu
 import { ArmchairIcon, CaretDownIcon, ChairIcon, EyeIcon, ShieldCheckIcon, StarIcon, TableIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { MessageOccupantButton } from "./MessageOccupantButton";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { CheckInDurationPicker } from "./CheckInDurationPicker";
 import { clockLabel, clockTimeAfter, DEFAULT_CHECKIN_DURATION } from "./checkin-duration";
 import { IdentityPrompt } from "./IdentityPrompt";
@@ -128,6 +129,15 @@ export function SeatDetail({
   const now = useNow(30_000);
   const [durationMinutes, setDurationMinutes] = useState(DEFAULT_CHECKIN_DURATION);
   const [showPicker, setShowPicker] = useState(false);
+  const pathname = usePathname();
+  // Which button was tapped, so only that one swaps to "Buscando…" while the GPS fix is in flight.
+  const [tapped, setTapped] = useState<"checkin" | "extend" | "free" | "occupied" | "saved" | null>(null);
+  const searching = (action: NonNullable<typeof tapped>) => locating && tapped === action;
+  const run = (action: NonNullable<typeof tapped>, fn: () => void) => () => {
+    setTapped(action);
+    fn();
+  };
+  const locationPrompt = useLocationPrompt(me?.user != null);
   const peek = compact && !expanded;
   const isBar = table?.type === "WALL_BAR";
   const label = seatDisplayLabel(table, seat.code, seat.seatNumber);
@@ -143,6 +153,12 @@ export function SeatDetail({
   const showMarkedBy = !isMySeat && !occupant && markedBy != null && (seat.status === "OCCUPIED" || (seat.status === "SAVED" && markedBy.kind === "SAVED"));
   const showOccupiedUntil = !isMySeat && seat.status === "OCCUPIED" && seat.occupiedUntil != null;
   const showOccupant = !isMySeat && occupant != null;
+
+  const locationHint = locationPrompt ? (
+    <p className="text-center text-xs text-muted">
+      Al tocar, tu navegador te va a pedir la ubicación. La usamos sólo para confirmar que estás en la sala; no guardamos tus coordenadas.
+    </p>
+  ) : null;
 
   const extras = (
     <>
@@ -221,7 +237,7 @@ export function SeatDetail({
           {showOccupant && occupant ? (
             <div className="flex flex-wrap items-center gap-2">
               <OccupantAvatar avatar={occupant.avatar} size={32} />
-              <span className="min-w-0 flex-1">
+              <span className="min-w-0 flex-1 break-words">
                 {occupant.userId ? (
                   <Link href={`/u/${occupant.userId}`} className="font-semibold text-primary hover:underline">
                     {occupant.displayName}
@@ -270,22 +286,22 @@ export function SeatDetail({
           <div className="rounded-xl border border-app bg-[var(--surface-2)] p-3">
             <p className="flex items-center gap-2 text-sm font-semibold text-main">
               <EyeIcon aria-hidden="true" size={18} weight="bold" />
-              Sin cuenta solo podés ver el mapa
+              Ingresá para marcar lugares
             </p>
             <p className="mt-1 text-xs text-muted">
-              Para ocupar este lugar o avisar si está libre, ocupado o guardado, ingresá con tu cuenta.
+              Con tu cuenta podés marcar «Estoy acá» o avisar si un lugar está libre, ocupado o guardado.
             </p>
             <Link
-              href="/login"
+              href={`/login?next=${encodeURIComponent(`${pathname}?seat=${seat.id}`)}`}
               className="mt-3 flex min-h-11 w-full items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark"
             >
-              Ingresar para ocupar
+              Ingresar
             </Link>
           </div>
         ) : isMySeat ? (
           <>
-            <PrimaryButton onClick={onExtend} disabled={pending}>
-              {locating ? "Buscando tu ubicación…" : "Seguir acá"}
+            <PrimaryButton onClick={run("extend", onExtend)} disabled={pending}>
+              {searching("extend") ? "Buscando tu ubicación…" : "Sigo acá"}
             </PrimaryButton>
             <QuietDangerButton onClick={onCheckOut} disabled={pending}>
               Me voy
@@ -302,7 +318,7 @@ export function SeatDetail({
               // Protection already expired and this check-in was already verified once — the API
               // rejects a second photo for the same check-in (ALREADY_VERIFIED), so don't offer the
               // button again; a new photo only counts after "Estoy acá" starts a fresh check-in.
-              <p className="text-xs text-muted">Ya verificaste este lugar en este check-in.</p>
+              <p className="text-xs text-muted">Ya verificaste este lugar. Para verificar de nuevo, volvé a marcar «Estoy acá».</p>
             ) : myCheckIn ? (
               <PhotoVerifyCard checkInId={myCheckIn.id} onChanged={onChanged} />
             ) : null}
@@ -314,11 +330,11 @@ export function SeatDetail({
                 <div className="flex gap-2">
                   <div className="min-w-0 flex-1">
                     <PrimaryButton
-                      onClick={() => onCheckIn(durationMinutes)}
+                      onClick={run("checkin", () => onCheckIn(durationMinutes))}
                       disabled={pending}
-                      hint={locating ? undefined : `hasta las ${clockTimeAfter(durationMinutes, now)}`}
+                      hint={searching("checkin") ? undefined : `hasta las ${clockTimeAfter(durationMinutes, now)}`}
                     >
-                      {locating ? "Buscando tu ubicación…" : "Estoy acá"}
+                      {searching("checkin") ? "Buscando tu ubicación…" : "Estoy acá"}
                     </PrimaryButton>
                   </div>
                   <button
@@ -332,30 +348,32 @@ export function SeatDetail({
                     <CaretDownIcon aria-hidden="true" size={14} weight="bold" className={`transition-transform ${showPicker ? "rotate-180" : ""}`} />
                   </button>
                 </div>
+                {locationHint}
                 {showPicker ? <CheckInDurationPicker minutes={durationMinutes} onChange={setDurationMinutes} disabled={pending} now={now} /> : null}
               </>
             ) : (
               <>
                 <CheckInDurationPicker minutes={durationMinutes} onChange={setDurationMinutes} disabled={pending} now={now} />
                 <PrimaryButton
-                  onClick={() => onCheckIn(durationMinutes)}
+                  onClick={run("checkin", () => onCheckIn(durationMinutes))}
                   disabled={pending}
-                  hint={locating ? undefined : `hasta las ${clockTimeAfter(durationMinutes, now)}`}
+                  hint={searching("checkin") ? undefined : `hasta las ${clockTimeAfter(durationMinutes, now)}`}
                 >
-                  {locating ? "Buscando tu ubicación…" : "Estoy acá"}
+                  {searching("checkin") ? "Buscando tu ubicación…" : "Estoy acá"}
                 </PrimaryButton>
+                {locationHint}
               </>
             )}
             <p className="label-caps mt-1 text-muted">¿Cómo ves este lugar?</p>
             <div className="grid grid-cols-3 gap-2">
-              <ObservationChip tone="free" onClick={onMarkFree} disabled={pending}>
-                {locating ? "Buscando…" : "Está libre"}
+              <ObservationChip tone="free" onClick={run("free", onMarkFree)} disabled={pending}>
+                {searching("free") ? "Buscando…" : "Está libre"}
               </ObservationChip>
-              <ObservationChip tone="occupied" onClick={onMarkOccupied} disabled={pending}>
-                {locating ? "Buscando…" : "Está ocupado"}
+              <ObservationChip tone="occupied" onClick={run("occupied", onMarkOccupied)} disabled={pending}>
+                {searching("occupied") ? "Buscando…" : "Está ocupado"}
               </ObservationChip>
-              <ObservationChip tone="saved" onClick={onMarkSaved} disabled={pending}>
-                {locating ? "Buscando…" : "Está guardado"}
+              <ObservationChip tone="saved" onClick={run("saved", onMarkSaved)} disabled={pending}>
+                {searching("saved") ? "Buscando…" : "Está guardado"}
               </ObservationChip>
             </div>
           </>
@@ -392,6 +410,33 @@ export function SeatDetail({
   );
 }
 
+/** True while the browser would still ask for geolocation (permission state "prompt") and the viewer is logged in. */
+function useLocationPrompt(enabled: boolean): boolean {
+  const [prompt, setPrompt] = useState(false);
+  useEffect(() => {
+    if (!enabled || typeof navigator === "undefined" || !navigator.permissions?.query) return;
+    let cancelled = false;
+    let status: PermissionStatus | null = null;
+    const sync = () => setPrompt(status?.state === "prompt");
+    navigator.permissions
+      .query({ name: "geolocation" })
+      .then((result) => {
+        if (cancelled) return;
+        status = result;
+        sync();
+        result.addEventListener("change", sync);
+      })
+      .catch(() => {
+        // Unsupported (e.g. older Safari): no priming line.
+      });
+    return () => {
+      cancelled = true;
+      status?.removeEventListener("change", sync);
+    };
+  }, [enabled]);
+  return enabled && prompt;
+}
+
 function StatusPill({ status, isMySeat }: { status: SeatDto["status"]; isMySeat: boolean }) {
   const color = isMySeat
     ? "var(--seat-mine)"
@@ -426,7 +471,7 @@ function PrimaryButton({
       className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-base font-bold text-white transition-[background-color,transform] hover:bg-primary-dark active:scale-[0.98] disabled:opacity-50"
     >
       {children}
-      {hint ? <span className="text-[13px] font-medium tabular-nums text-white/85">· {hint}</span> : null}
+      {hint ? <span className="text-[13px] font-medium tabular-nums text-white/85 max-[359px]:hidden">· {hint}</span> : null}
     </button>
   );
 }
@@ -448,7 +493,7 @@ function ObservationChip({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex min-h-14 flex-col items-center justify-center gap-1.5 whitespace-nowrap rounded-2xl bg-[var(--surface-2)] px-1 text-[13px] font-semibold leading-tight text-main transition-transform active:scale-[0.96] disabled:opacity-50"
+      className="flex min-h-14 flex-col items-center justify-center gap-1.5 rounded-2xl bg-[var(--surface-2)] px-1 text-center text-[13px] font-semibold leading-tight [text-wrap:balance] text-main transition-transform active:scale-[0.96] disabled:opacity-50"
     >
       {/* Status color lives in the dot, not the text, so every label keeps full contrast. */}
       <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />

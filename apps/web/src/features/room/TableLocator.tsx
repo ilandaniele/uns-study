@@ -113,7 +113,7 @@ export function TableLocator({ table, seats, selectedSeatId, mySeatId, onSelectS
                 dominantBaseline="central"
                 fontSize={24}
                 fontWeight={800}
-                fill={seat.status === "SAVED" && seat.id !== mySeatId ? "#422006" : "white"}
+                fill={seat.status === "SAVED" && seat.id !== mySeatId ? "var(--seat-glyph-saved)" : "white"}
               >
                 {seat.seatNumber}
               </text>

@@ -31,9 +31,9 @@ describe("confidenceWording", () => {
     expect(confidenceWording(0.98)).toBe("alta confianza");
   });
 
-  it("returns información reciente for >= 0.5 and < 0.8", () => {
-    expect(confidenceWording(0.5)).toBe("información reciente");
-    expect(confidenceWording(0.79)).toBe("información reciente");
+  it("returns confianza media for >= 0.5 and < 0.8", () => {
+    expect(confidenceWording(0.5)).toBe("confianza media");
+    expect(confidenceWording(0.79)).toBe("confianza media");
   });
 
   it("returns baja confianza below 0.5", () => {

@@ -84,6 +84,10 @@ export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, is
       }}
       transform={`translate(${seat.x} ${seat.y}) rotate(${seat.rotation})`}
     >
+      {visualStatus === "FREE" ? (
+        // Soft green halo: opacity-only animation stays on the compositor (no per-frame filter repaint).
+        <circle r={RING_R + 9} fill="url(#seat-glow)" pointerEvents="none" className="seat-glow-free" />
+      ) : null}
       <circle r={HIT_RADIUS} fill="transparent" />
       {isMySeat ? (
         <circle r={RING_R + 7} fill="none" stroke="var(--seat-mine)" strokeWidth={2} className="seat-pulse-mine" />
@@ -94,7 +98,7 @@ export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, is
         <circle r={RING_R + 9} fill="none" stroke="var(--seat-uncertain)" strokeWidth={2} className="seat-pulse-dispute" />
       ) : null}
 
-      <g className={visualStatus === "FREE" ? "seat-glow-free" : undefined}>
+      <g>
         {/* Contact shadow, cast toward the tabletop the chair is tucked under. */}
         <ellipse cx={0} cy={shadowCy} rx={SEAT_R * 0.85} ry={SEAT_R * 0.35} fill="rgb(0 0 0 / 0.22)" />
         {/* Backrest bar on the side away from the table (stools at wall bars have none). */}
@@ -157,7 +161,7 @@ export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, is
         y={1}
         fontSize={14}
         fontWeight={700}
-        fill={visualStatus === "SAVED" ? "#422006" : "white"}
+        fill={visualStatus === "SAVED" ? "var(--seat-glyph-saved)" : "var(--seat-glyph)"}
         transform={`rotate(${-seat.rotation})`}
       >
         {GLYPH[visualStatus]}
@@ -167,7 +171,7 @@ export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, is
           <circle r={6.5} fill="var(--seat-saved)" stroke="white" strokeWidth={1.5} />
           <path
             d="M 0 -3.6 L 1.05 -1.1 L 3.6 -1 L 1.65 0.65 L 2.3 3.2 L 0 1.8 L -2.3 3.2 L -1.65 0.65 L -3.6 -1 L -1.05 -1.1 Z"
-            fill="#422006"
+            fill="var(--seat-glyph-saved)"
           />
         </g>
       ) : null}

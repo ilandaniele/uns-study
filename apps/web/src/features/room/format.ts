@@ -43,7 +43,7 @@ export function statusLabel(status: SeatStatus): string {
 /** Spanish wording for a confidence score, deliberately vague per spec (§1: don't expose the math). */
 export function confidenceWording(confidence: number): string {
   if (confidence >= 0.8) return "alta confianza";
-  if (confidence >= 0.5) return "información reciente";
+  if (confidence >= 0.5) return "confianza media";
   return "baja confianza";
 }
 

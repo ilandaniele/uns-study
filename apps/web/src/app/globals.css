@@ -22,7 +22,7 @@
   --radius-2xl: 10px;
   --radius-3xl: 12px;
 
-  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-display), ui-sans-serif, system-ui, sans-serif;
 
   /* Motion: strong ease-out for anything entering or answering a press (overrides Tailwind's weak
      default `ease-out`), and an iOS-like curve for sheets. */
@@ -85,6 +85,8 @@
   --seat-saved: #eab308;
   --seat-unknown: #7d6570;
   --seat-mine: #0f6e7e;
+  --seat-glyph: #fff;
+  --seat-glyph-saved: #422006;
 }
 
 .dark {
@@ -140,6 +142,7 @@
   --seat-saved: #fde047;
   --seat-unknown: #7a6270;
   --seat-mine: #5fc4d3;
+  --seat-glyph: #0d1110;
 }
 
 html,
@@ -150,7 +153,7 @@ body {
 body {
   background-color: var(--bg);
   color: var(--text);
-  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
 }
 
 .font-display {
@@ -262,9 +265,13 @@ a[class*="bg-primary"]:active {
 .dark .bg-amber-50 {
   background-color: rgb(120 53 15 / 0.35);
 }
+.dark .text-red-600,
 .dark .text-red-700,
 .dark .text-red-800 {
   color: #fca5a5;
+}
+.dark .hover\:bg-red-100:hover {
+  background-color: rgb(127 29 29 / 0.5);
 }
 .dark .text-amber-900 {
   color: #fde68a;
@@ -316,6 +323,9 @@ input,
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+summary:focus-visible,
 [role="button"]:focus-visible,
 [tabindex]:focus-visible {
   outline: 2px solid var(--primary);
@@ -326,21 +336,19 @@ input:focus-visible,
 @keyframes seat-glow {
   0%,
   100% {
-    filter: drop-shadow(0 0 0 rgba(22, 163, 74, 0));
+    opacity: 0.25;
   }
   50% {
-    filter: drop-shadow(0 0 6px rgba(22, 163, 74, 0.55));
+    opacity: 1;
   }
 }
 @keyframes seat-pulse {
   0%,
   100% {
     opacity: 0.35;
-    stroke-width: 2;
   }
   50% {
     opacity: 0.9;
-    stroke-width: 3.5;
   }
 }
 .seat-glow-free {
@@ -367,10 +375,9 @@ input:focus-visible,
 .seat-spot-ring {
   transform-box: fill-box;
   transform-origin: center;
-  animation: seat-spot 1.6s ease-out infinite;
+  animation: seat-spot 1.6s ease-out 3;
 }
 @media (prefers-reduced-motion: reduce) {
-  .seat-glow-free,
   .seat-pulse-mine,
   .seat-pulse-dispute,
   .seat-spot-ring {
@@ -378,6 +385,11 @@ input:focus-visible,
   }
   .seat-spot-ring {
     opacity: 0;
+  }
+  /* Static glow instead of the fade loop. */
+  .seat-glow-free {
+    animation: none;
+    opacity: 0.6;
   }
 }
 
