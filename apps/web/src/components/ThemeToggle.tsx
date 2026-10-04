@@ -35,7 +35,7 @@ export function ThemeToggle() {
       onClick={cycle}
       aria-label="Cambiar tema"
       title={`Tema: ${label}`}
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-app text-main hover:bg-[var(--surface-2)]"
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-app text-main hover:bg-[var(--surface-2)]"
     >
       {theme === "dark" ? (
         <MoonIcon aria-hidden="true" size={20} weight="regular" />

@@ -2,6 +2,7 @@
 
 import {
   ChatCircleIcon,
+  MegaphoneIcon,
   ShieldCheckIcon,
   SquaresFourIcon,
   TrophyIcon,
@@ -18,6 +19,7 @@ const ICON_SIZE = 22;
 
 const ITEMS: { label: string; href: string; icon: ReactNode }[] = [
   { label: "Sala", href: "/sala/principal", icon: <SquaresFourIcon size={ICON_SIZE} /> },
+  { label: "Comunidad", href: "/comunidad", icon: <MegaphoneIcon size={ICON_SIZE} /> },
   { label: "Personas", href: "/personas", icon: <UsersThreeIcon size={ICON_SIZE} /> },
   { label: "Chat", href: "/chat", icon: <ChatCircleIcon size={ICON_SIZE} /> },
   { label: "Ranking", href: "/ranking", icon: <TrophyIcon size={ICON_SIZE} /> },
@@ -40,7 +42,7 @@ export function BottomNav() {
             href={item.href}
             {...prefetchHandlers(item.href)}
             aria-current={active ? "page" : undefined}
-            className={`relative flex min-h-12 flex-1 flex-col items-center justify-center gap-1 pb-1.5 pt-2.5 text-[11px] transition-colors ${
+            className={`relative flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 pb-1.5 pt-2.5 text-[10px] min-[380px]:text-[11px] transition-colors ${
               active ? "font-bold text-main" : "font-medium text-muted hover:text-main"
             }`}
           >

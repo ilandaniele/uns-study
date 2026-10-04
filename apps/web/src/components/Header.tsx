@@ -37,15 +37,15 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-app bg-surface/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-surface/85">
+    <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-app bg-surface/95 px-4 py-2.5 max-[360px]:px-3 backdrop-blur supports-[backdrop-filter]:bg-surface/85">
       <div className="flex min-w-0 items-center gap-3">
-        <Link href="/sala/principal" aria-label="Sala de Estudio" className="flex min-w-0 items-center gap-2.5 whitespace-nowrap text-main">
+        <Link href="/sala/principal" aria-label="Sala de Estudio" className="flex min-w-0 items-center gap-2.5 whitespace-nowrap text-main max-[360px]:gap-2">
           <span aria-hidden="true" className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-white">
             <ArmchairIcon size={20} weight="bold" />
           </span>
           <span aria-hidden="true" className="flex flex-col leading-none">
             {/* Under 420px the wordmark stacks on two lines so it never runs under the header buttons. */}
-            <span className="font-display text-[15px] font-extrabold uppercase tracking-[0.01em] max-[420px]:w-[5.8em] max-[420px]:whitespace-normal max-[420px]:leading-[1.05]">
+            <span className="font-display text-[15px] font-extrabold uppercase tracking-[0.01em] max-[420px]:w-[5.8em] max-[420px]:whitespace-normal max-[420px]:leading-[1.05] max-[360px]:text-[13px]">
               Sala de Estudio
             </span>
             <span className="label-caps mt-1 !text-[10px] text-muted max-[420px]:hidden">Bahía Blanca</span>
@@ -76,7 +76,7 @@ export function Header() {
         {me?.subscriptionsEnabled && !me.adFree ? (
           <Link
             href="/suscripcion"
-            className="hidden min-h-9 shrink-0 items-center rounded-lg border border-app px-3 py-1.5 font-semibold text-main hover:bg-[var(--surface-2)] lg:inline-flex"
+            className="hidden min-h-11 shrink-0 items-center rounded-lg border border-app px-3 py-1.5 font-semibold text-main hover:bg-[var(--surface-2)] lg:inline-flex"
           >
             Sin anuncios
           </Link>
@@ -89,7 +89,7 @@ export function Header() {
             <button
               type="button"
               onClick={() => void handleSignOut()}
-              className="min-h-9 shrink-0 rounded-lg border border-app px-3 py-1.5 font-semibold text-main hover:bg-[var(--surface-2)]"
+              className="min-h-11 shrink-0 rounded-lg border border-app px-3 py-1.5 font-semibold text-main hover:bg-[var(--surface-2)]"
             >
               <span className="lg:hidden">Salir</span>
               <span className="hidden lg:inline">Cerrar sesión</span>
@@ -98,7 +98,7 @@ export function Header() {
         ) : (
           <Link
             href="/login"
-            className="min-h-9 shrink-0 rounded-lg bg-primary px-3.5 py-1.5 font-semibold text-white hover:bg-primary-dark"
+            className="inline-flex min-h-11 shrink-0 items-center rounded-lg bg-primary px-3.5 py-1.5 font-semibold text-white hover:bg-primary-dark"
           >
             Ingresar
           </Link>
