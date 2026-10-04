@@ -20,6 +20,8 @@ export function MessageMenu({ isOwn, onDelete, onReport, onBlock }: MessageMenuP
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="Más opciones"
+        aria-haspopup="menu"
+        aria-expanded={open}
         className="relative rounded-lg p-1.5 text-muted before:absolute before:-inset-1.5 before:content-[''] hover:bg-[var(--surface-2)] hover:text-main"
       >
         <DotsThreeVerticalIcon aria-hidden="true" size={18} weight="bold" />
@@ -27,7 +29,7 @@ export function MessageMenu({ isOwn, onDelete, onReport, onBlock }: MessageMenuP
       {open ? (
         <>
           <button type="button" aria-hidden className="fixed inset-0 z-10 cursor-default" onClick={() => setOpen(false)} tabIndex={-1} />
-          <div className="absolute right-0 z-20 mt-1 w-40 overflow-hidden rounded-xl border border-app bg-surface text-sm shadow-lg">
+          <div className="absolute bottom-full right-0 z-20 mb-1 w-40 overflow-hidden rounded-xl border border-app bg-surface text-sm shadow-lg">
             {isOwn ? (
               <MenuItem
                 label="Eliminar"

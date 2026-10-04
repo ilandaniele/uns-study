@@ -25,6 +25,8 @@ export function ChatComposer({ maxLength, placeholder = "Escribí un mensaje…"
       await onSend(trimmed);
       trackEvent(analyticsEvent);
       setValue("");
+    } catch {
+      // onSend surfaces the error itself; keep the typed text so it can be retried.
     } finally {
       setSending(false);
     }
@@ -45,8 +47,9 @@ export function ChatComposer({ maxLength, placeholder = "Escribí un mensaje…"
           placeholder={placeholder}
           maxLength={maxLength}
           rows={1}
+          aria-label="Mensaje"
           disabled={disabled}
-          className="w-full resize-none rounded-xl border border-app bg-surface px-3 py-2 text-base text-main focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25 disabled:opacity-50 sm:text-sm"
+          className="w-full resize-none rounded-xl border border-app bg-surface px-3 py-2 text-base text-main focus:border-primary focus:ring-2 focus:ring-primary/25 disabled:opacity-50 sm:text-sm"
         />
         <p className="mt-1 text-right text-xs text-muted">
           {value.length}/{maxLength}

@@ -40,7 +40,7 @@ function DmThread({ conversationId, currentUserId }: { conversationId: string; c
   const router = useRouter();
   const { conversations } = useConversations();
   const { block } = useBlockedUsers();
-  const { messages, loading, loadingMore, hasMore, error, sendError, loadMore, send } = useDmThread(conversationId);
+  const { messages, loading, loadingMore, hasMore, error, loadMoreError, sendError, reload, loadMore, send } = useDmThread(conversationId);
 
   const conversation = conversations.find((c) => c.id === conversationId) ?? null;
   const otherUserId = conversation?.otherUser.userId ?? null;
@@ -82,11 +82,20 @@ function DmThread({ conversationId, currentUserId }: { conversationId: string; c
       {loading ? (
         <p className="flex-1 p-6 text-center text-muted">Cargando conversación…</p>
       ) : error ? (
-        <p className="flex-1 p-6 text-center text-red-600">{error}</p>
+        <div className="flex flex-1 flex-col items-center gap-3 p-6 text-center">
+          <p className="text-red-600">{error}</p>
+          <button
+            type="button"
+            onClick={reload}
+            className="rounded-lg border border-app px-3 py-1.5 text-sm font-medium text-main hover:bg-[var(--surface-2)]"
+          >
+            Reintentar
+          </button>
+        </div>
       ) : (
         <div ref={scrollRef} className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
           {hasMore ? (
-            <div className="flex justify-center pb-2">
+            <div className="flex flex-col items-center gap-1 pb-2">
               <button
                 type="button"
                 onClick={loadMore}
@@ -95,6 +104,7 @@ function DmThread({ conversationId, currentUserId }: { conversationId: string; c
               >
                 {loadingMore ? "Cargando…" : "Cargar anteriores"}
               </button>
+              {loadMoreError ? <p className="text-xs text-red-600">{loadMoreError}</p> : null}
             </div>
           ) : null}
           {messages.map((message, index) => {

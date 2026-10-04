@@ -16,8 +16,13 @@ export interface UseRoomChatResult {
   loadingMore: boolean;
   hasMore: boolean;
   error: string | null;
+  /** Failure of the last "Cargar anteriores" request; never replaces the already-loaded list. */
+  loadMoreError: string | null;
   sendError: string | null;
   connected: boolean;
+  /** True once the socket has connected at least once (before that the UI says "Conectando…"). */
+  everConnected: boolean;
+  reload: () => void;
   loadMore: () => void;
   send: (content: string) => Promise<void>;
   remove: (messageId: string) => Promise<void>;
@@ -38,8 +43,11 @@ export function useRoomChat(roomSlug: string, blockedIds: Set<string>): UseRoomC
   const [loading, setLoading] = useState(!initial);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
+  const [everConnected, setEverConnected] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,17 +70,24 @@ export function useRoomChat(roomSlug: string, blockedIds: Set<string>): UseRoomC
     return () => {
       cancelled = true;
     };
-  }, [historyPath]);
+  }, [historyPath, reloadKey]);
+
+  const reload = useCallback(() => {
+    setError(null);
+    setLoading(true);
+    setReloadKey((k) => k + 1);
+  }, []);
 
   const loadMore = useCallback(() => {
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);
+    setLoadMoreError(null);
     apiFetch<Page<ChatMessageDto>>(`/api/v1/rooms/${roomSlug}/messages?cursor=${encodeURIComponent(nextCursor)}`)
       .then((page) => {
         setMessages((prev) => [...[...page.items].reverse(), ...prev]);
         setNextCursor(page.nextCursor);
       })
-      .catch(() => setError("No pudimos cargar mensajes anteriores."))
+      .catch(() => setLoadMoreError("No pudimos cargar mensajes anteriores."))
       .finally(() => setLoadingMore(false));
   }, [roomSlug, nextCursor, loadingMore]);
 
@@ -96,6 +111,7 @@ export function useRoomChat(roomSlug: string, blockedIds: Set<string>): UseRoomC
     };
     const onConnect = () => {
       setConnected(true);
+      setEverConnected(true);
       joinChat(chatRoomId);
       // Messages sent between the history request and this join (or while disconnected) were
       // never broadcast to us; re-read the latest page once joined and merge it in.
@@ -135,14 +151,21 @@ export function useRoomChat(roomSlug: string, blockedIds: Set<string>): UseRoomC
         } else {
           setSendError("No pudimos enviar el mensaje.");
         }
+        // Composer keeps the typed text when the send rejects.
+        throw err;
       }
     },
     [roomSlug, appendMessage],
   );
 
   const remove = useCallback(async (messageId: string) => {
-    await apiDelete(`/api/v1/messages/${messageId}`);
-    setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, content: null, deleted: true } : m)));
+    setSendError(null);
+    try {
+      await apiDelete(`/api/v1/messages/${messageId}`);
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, content: null, deleted: true } : m)));
+    } catch {
+      setSendError("No pudimos borrar el mensaje.");
+    }
   }, []);
 
   const visibleMessages = messages.filter((m) => !blockedIds.has(m.author.userId));
@@ -153,8 +176,11 @@ export function useRoomChat(roomSlug: string, blockedIds: Set<string>): UseRoomC
     loadingMore,
     hasMore: nextCursor !== null,
     error,
+    loadMoreError,
     sendError,
     connected,
+    everConnected,
+    reload,
     loadMore,
     send,
     remove,

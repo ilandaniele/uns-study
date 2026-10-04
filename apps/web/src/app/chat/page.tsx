@@ -46,8 +46,11 @@ function ChatRoom({ currentUserId }: { currentUserId: string }) {
     loadingMore,
     hasMore,
     error,
+    loadMoreError,
     sendError,
     connected,
+    everConnected,
+    reload,
     loadMore,
     send,
     remove,
@@ -61,7 +64,7 @@ function ChatRoom({ currentUserId }: { currentUserId: string }) {
       <main className="flex h-[calc(100dvh_-_57px_-_56px_-_env(safe-area-inset-bottom))] min-w-0 flex-1 flex-col lg:h-[calc(100dvh_-_57px)]">
         <div className="flex items-center justify-between gap-3 border-b border-app bg-surface px-4 py-3">
           <div>
-            <h1 className="font-display text-lg font-semibold tracking-tight text-main">
+            <h1 className="font-display text-[22px] font-extrabold uppercase leading-none tracking-[0.01em] text-main">
               # Sala de Estudio
             </h1>
             <p className="flex items-center gap-1.5 text-xs text-muted">
@@ -69,7 +72,7 @@ function ChatRoom({ currentUserId }: { currentUserId: string }) {
                 className={`h-1.5 w-1.5 shrink-0 rounded-full ${connected ? "bg-[var(--seat-free)]" : "bg-muted"}`}
                 aria-hidden="true"
               />
-              {connected ? "En vivo" : "Reconectando…"}
+              {connected ? "En vivo" : everConnected ? "Reconectando…" : "Conectando…"}
             </p>
           </div>
           <Link
@@ -84,19 +87,26 @@ function ChatRoom({ currentUserId }: { currentUserId: string }) {
           <IdentityHelp />
         </div>
         <p className="sr-only" aria-live="polite">
-          {connected ? "Conectado" : "Reconectando"}
+          {connected ? "Conectado" : everConnected ? "Reconectando" : "Conectando"}
         </p>
 
         {loading ? (
           <p className="flex-1 p-6 text-center text-muted">Cargando chat…</p>
         ) : error ? (
-          <p className="flex-1 p-6 text-center text-red-600 dark:text-red-400">
-            {error}
-          </p>
+          <div className="flex flex-1 flex-col items-center gap-3 p-6 text-center">
+            <p className="text-red-600 dark:text-red-400">{error}</p>
+            <button
+              type="button"
+              onClick={reload}
+              className="rounded-lg border border-app px-3 py-1.5 text-sm font-medium text-main hover:bg-[var(--surface-2)]"
+            >
+              Reintentar
+            </button>
+          </div>
         ) : (
           <>
             {hasMore ? (
-              <div className="flex justify-center py-2">
+              <div className="flex flex-col items-center gap-1 py-2">
                 <button
                   type="button"
                   onClick={loadMore}
@@ -105,6 +115,7 @@ function ChatRoom({ currentUserId }: { currentUserId: string }) {
                 >
                   {loadingMore ? "Cargando…" : "Cargar anteriores"}
                 </button>
+                {loadMoreError ? <p className="text-xs text-red-600 dark:text-red-400">{loadMoreError}</p> : null}
               </div>
             ) : null}
             <ChatMessageList

@@ -27,7 +27,10 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock }: 
   );
 
   return (
-    <div ref={scrollRef} className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+    <div ref={scrollRef} role="log" aria-live="polite" className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+      {messages.length === 0 ? (
+        <p className="m-auto p-6 text-center text-sm text-muted">Todavía no hay mensajes. Escribí el primero.</p>
+      ) : null}
       {messages.map((message, index) => {
         const showDaySeparator = showSeparators[index]!;
         const isOwn = currentUserId !== null && message.author.userId === currentUserId;
@@ -50,9 +53,9 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock }: 
               </div>
               <div className="min-w-0 flex-1">
                 {showHeader ? (
-                  <p className="flex items-baseline gap-1.5 text-sm font-semibold text-main">
-                    {isOwn ? "Vos" : message.author.displayName}
-                    <span className="text-xs font-normal text-muted">{formatMessageTime(message.createdAt)}</span>
+                  <p className="flex min-w-0 items-baseline gap-1.5 text-sm font-semibold text-main">
+                    <span className="min-w-0 truncate">{isOwn ? "Vos" : message.author.displayName}</span>
+                    <span className="shrink-0 text-xs font-normal text-muted">{formatMessageTime(message.createdAt)}</span>
                   </p>
                 ) : null}
                 <p className={`whitespace-pre-wrap break-words text-sm ${message.deleted ? "italic text-muted" : "text-main"}`}>
@@ -60,7 +63,7 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock }: 
                 </p>
               </div>
               {!message.deleted ? (
-                <div className="opacity-0 group-hover:opacity-100">
+                <div className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100">
                   <MessageMenu
                     isOwn={isOwn}
                     onDelete={() => onDelete(message.id)}

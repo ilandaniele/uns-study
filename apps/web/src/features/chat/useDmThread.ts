@@ -16,7 +16,10 @@ export interface UseDmThreadResult {
   loadingMore: boolean;
   hasMore: boolean;
   error: string | null;
+  /** Failure of the last "Cargar anteriores" request; never replaces the already-loaded list. */
+  loadMoreError: string | null;
   sendError: string | null;
+  reload: () => void;
   loadMore: () => void;
   send: (content: string) => Promise<void>;
 }
@@ -31,7 +34,9 @@ export function useDmThread(conversationId: string): UseDmThreadResult {
   const [loading, setLoading] = useState(!initial);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const markRead = useCallback(() => {
     void apiPost(`/api/v1/conversations/${conversationId}/read`).catch(() => {
@@ -60,17 +65,24 @@ export function useDmThread(conversationId: string): UseDmThreadResult {
     return () => {
       cancelled = true;
     };
-  }, [threadPath, markRead]);
+  }, [threadPath, markRead, reloadKey]);
+
+  const reload = useCallback(() => {
+    setError(null);
+    setLoading(true);
+    setReloadKey((k) => k + 1);
+  }, []);
 
   const loadMore = useCallback(() => {
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);
+    setLoadMoreError(null);
     apiFetch<Page<DirectMessageDto>>(`/api/v1/conversations/${conversationId}/messages?cursor=${encodeURIComponent(nextCursor)}`)
       .then((page) => {
         setMessages((prev) => [...[...page.items].reverse(), ...prev]);
         setNextCursor(page.nextCursor);
       })
-      .catch(() => setError("No pudimos cargar mensajes anteriores."))
+      .catch(() => setLoadMoreError("No pudimos cargar mensajes anteriores."))
       .finally(() => setLoadingMore(false));
   }, [conversationId, nextCursor, loadingMore]);
 
@@ -103,10 +115,12 @@ export function useDmThread(conversationId: string): UseDmThreadResult {
         } else {
           setSendError("No pudimos enviar el mensaje.");
         }
+        // Composer keeps the typed text when the send rejects.
+        throw err;
       }
     },
     [conversationId],
   );
 
-  return { messages, loading, loadingMore, hasMore: nextCursor !== null, error, sendError, loadMore, send };
+  return { messages, loading, loadingMore, hasMore: nextCursor !== null, error, loadMoreError, sendError, reload, loadMore, send };
 }
