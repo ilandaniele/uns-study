@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useExitTransition } from "@/lib/useExitTransition";
 
 const CONFIRM_WORD = "ELIMINAR";
 
@@ -13,23 +14,24 @@ export interface DeleteAccountDialogProps {
 /** Confirmation dialog for "Eliminar cuenta" — requires typing ELIMINAR to avoid accidental deletion. */
 export function DeleteAccountDialog({ pending, onConfirm, onCancel }: DeleteAccountDialogProps) {
   const [value, setValue] = useState("");
+  const { closing, requestClose } = useExitTransition(onCancel);
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !pending) onCancel();
+      if (e.key === "Escape" && !pending) requestClose();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onCancel, pending]);
+  }, [requestClose, pending]);
 
   const canConfirm = value.trim().toUpperCase() === CONFIRM_WORD && !pending;
 
   return (
-    <div className="backdrop-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className={`${closing ? "backdrop-exit" : "backdrop-enter"} fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4`}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="delete-title"
-        className="dialog-enter w-full max-w-sm rounded-[14px] border border-red-200 bg-surface p-5 shadow-xl"
+        className={`${closing ? "dialog-exit" : "dialog-enter"} w-full max-w-sm rounded-[14px] border border-red-200 bg-surface p-5 shadow-xl`}
       >
         <h2 id="delete-title" className="font-display text-lg font-semibold text-main">Eliminar cuenta</h2>
         <p className="mt-2 text-sm text-muted">
@@ -45,7 +47,7 @@ export function DeleteAccountDialog({ pending, onConfirm, onCancel }: DeleteAcco
           className="mt-3 w-full rounded-lg border border-app bg-surface px-3 py-2 text-base uppercase text-main sm:text-sm"
         />
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onCancel} className="min-h-11 rounded-lg border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-[var(--surface-2)]">
+          <button type="button" onClick={requestClose} className="min-h-11 rounded-lg border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-[var(--surface-2)]">
             Cancelar
           </button>
           <button

@@ -3,6 +3,7 @@
 import type { SeatDto } from "@sala/contracts";
 import { useEffect, useState } from "react";
 import { apiFetch, ApiRequestError } from "@/lib/api";
+import { useExitTransition } from "@/lib/useExitTransition";
 import { SeatFreedToast } from "@/features/room/SeatFreedToast";
 import {
   confirmMessage,
@@ -25,6 +26,7 @@ export interface MarkAllOccupiedCardProps {
 /** Admin-only bulk action: mark every non-occupied seat as OCCUPIED for a while, or undo it. The API re-checks the role. */
 export function MarkAllOccupiedCard({ roomSlug, seats, onDone }: MarkAllOccupiedCardProps) {
   const [confirming, setConfirming] = useState(false);
+  const { closing, requestClose } = useExitTransition(() => setConfirming(false));
   const [minutes, setMinutes] = useState<number>(MARK_ALL_OCCUPIED_DEFAULT_MINUTES);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +48,7 @@ export function MarkAllOccupiedCard({ roomSlug, seats, onDone }: MarkAllOccupied
         method: "POST",
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
-      setConfirming(false);
+      if (confirming) requestClose();
       setMessage(toMessage(result));
       onDone?.();
     } catch (err) {
@@ -87,12 +89,12 @@ export function MarkAllOccupiedCard({ roomSlug, seats, onDone }: MarkAllOccupied
       ) : null}
 
       {confirming ? (
-        <div className="backdrop-enter fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onClick={() => setConfirming(false)}>
+        <div className={`${closing ? "backdrop-exit" : "backdrop-enter"} fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4`} onClick={requestClose}>
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="mark-all-title"
-            className="dialog-enter w-full max-w-sm rounded-t-2xl border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl sm:rounded-2xl"
+            className={`${closing ? "dialog-exit" : "dialog-enter"} w-full max-w-sm rounded-t-2xl border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl sm:rounded-2xl`}
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="mark-all-title" className="font-display text-lg font-semibold text-main">
@@ -130,7 +132,7 @@ export function MarkAllOccupiedCard({ roomSlug, seats, onDone }: MarkAllOccupied
               </button>
               <button
                 type="button"
-                onClick={() => setConfirming(false)}
+                onClick={requestClose}
                 className="min-h-11 rounded-xl border border-app px-4 text-sm font-medium text-main hover:bg-[var(--surface-2)]"
               >
                 Cancelar

@@ -191,13 +191,13 @@ body {
     transition-timing-function: var(--ease-out);
   }
 }
-button:not(:disabled):active,
-a[class*="bg-primary"]:active {
+button:not(:disabled):not([class*="active:scale"]):active,
+a[class*="bg-primary"]:not([class*="active:scale"]):active {
   transform: translateY(1px);
 }
 @media (prefers-reduced-motion: reduce) {
-  button:not(:disabled):active,
-  a[class*="bg-primary"]:active {
+  button:not(:disabled):not([class*="active:scale"]):active,
+  a[class*="bg-primary"]:not([class*="active:scale"]):active {
     transform: none;
   }
 }
@@ -466,10 +466,59 @@ summary:focus-visible,
     animation: dialog-pop-in 0.2s var(--ease-out);
   }
 }
+
+/* Modal exit: driven by useExitTransition, which unmounts after the duration. Declared after the
+   enter rules (same specificity) so they win; the element ignores input while it leaves. */
+@keyframes backdrop-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes dialog-exit-rise {
+  to {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@keyframes dialog-exit-pop {
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+@keyframes sheet-slide-out {
+  to {
+    transform: translateY(100%);
+  }
+}
+.backdrop-exit {
+  animation: backdrop-fade-out 140ms var(--ease-out) forwards;
+  pointer-events: none;
+}
+.dialog-exit {
+  animation: dialog-exit-rise 140ms var(--ease-out) forwards;
+  pointer-events: none;
+}
+@media (min-width: 640px) {
+  .dialog-exit {
+    animation: dialog-exit-pop 140ms var(--ease-out) forwards;
+  }
+}
+.sheet-exit {
+  animation: sheet-slide-out 180ms var(--ease-drawer) forwards;
+  pointer-events: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .sheet-enter,
   .dialog-enter {
     animation: backdrop-fade-in 0.18s var(--ease-out);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .backdrop-exit,
+  .dialog-exit,
+  .sheet-exit {
+    animation: backdrop-fade-out 140ms var(--ease-out) forwards;
   }
 }
 

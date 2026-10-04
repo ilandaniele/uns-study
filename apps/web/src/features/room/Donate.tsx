@@ -3,6 +3,7 @@
 import { CheckIcon, CopyIcon, HeartIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import { useEffect, useRef, useState } from "react";
 import { useHouseInterstitial } from "@/features/ads/ad-overlay-store";
+import { useExitTransition } from "@/lib/useExitTransition";
 
 export const DONATION_ALIAS = "golf.cabina.mulita";
 const DONATION_BANK = "Banco Provincia";
@@ -129,14 +130,22 @@ export function DonatePrompt({ blocked }: { blocked: boolean }) {
     return () => window.clearTimeout(id);
   }, []);
 
+  const { closing, requestClose } = useExitTransition(() => setDismissed(true), 180);
+
+  // Record the dismissal on tap, not after the exit animation, so closing the tab mid-animation still counts.
   function close() {
-    setDismissed(true);
     try {
       window.localStorage.setItem(PROMPT_KEY, String(Date.now()));
     } catch {
       // Storage blocked: it just shows again next visit.
     }
+    requestClose();
   }
+
+  const closeLatest = useRef(close);
+  useEffect(() => {
+    closeLatest.current = close;
+  });
 
   const visible = due && !dismissed && !blocked && !adOpen;
 
@@ -145,7 +154,7 @@ export function DonatePrompt({ blocked }: { blocked: boolean }) {
     const previous = document.activeElement as HTMLElement | null;
     closeRef.current?.focus();
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape") closeLatest.current();
     }
     window.addEventListener("keydown", onKey);
     return () => {
@@ -157,13 +166,13 @@ export function DonatePrompt({ blocked }: { blocked: boolean }) {
   if (!visible) return null;
 
   return (
-    <div className="backdrop-enter fixed inset-0 z-50 flex items-end bg-black/40" onClick={close}>
+    <div className={`${closing ? "backdrop-exit" : "backdrop-enter"} fixed inset-0 z-50 flex items-end bg-black/40`} onClick={close}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="donate-prompt-title"
         onClick={(e) => e.stopPropagation()}
-        className="sheet-enter flex w-full flex-col gap-3 rounded-t-[22px] border-t border-app bg-surface px-5 pb-safe pt-3 shadow-[0_-10px_40px_rgba(0,0,0,0.22)]"
+        className={`${closing ? "sheet-exit" : "sheet-enter"} flex w-full flex-col gap-3 rounded-t-[22px] border-t border-app bg-surface px-5 pb-safe pt-3 shadow-[0_-10px_40px_rgba(0,0,0,0.22)]`}
       >
         <span aria-hidden="true" className="mx-auto h-1.5 w-11 rounded-full bg-[var(--border-strong)]" />
         <div className="flex items-start gap-3">

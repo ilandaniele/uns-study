@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useExitTransition } from "@/lib/useExitTransition";
 
 export interface CancelSubscriptionDialogProps {
   pending: boolean;
@@ -11,27 +12,28 @@ export interface CancelSubscriptionDialogProps {
 /** Confirm step before cancelling the ad-free subscription (same shell as `MoveSeatDialog`). */
 export function CancelSubscriptionDialog({ pending, onConfirm, onCancel }: CancelSubscriptionDialogProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const { closing, requestClose } = useExitTransition(onCancel);
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     cancelRef.current?.focus();
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !pending) onCancel();
+      if (e.key === "Escape" && !pending) requestClose();
     }
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("keydown", onKey);
       previous?.focus();
     };
-  }, [onCancel, pending]);
+  }, [requestClose, pending]);
 
   return (
-    <div className="backdrop-enter fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onClick={onCancel}>
+    <div className={`${closing ? "backdrop-exit" : "backdrop-enter"} fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4`} onClick={requestClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="cancel-subscription-title"
-        className="dialog-enter w-full max-w-sm rounded-t-2xl border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl sm:rounded-2xl"
+        className={`${closing ? "dialog-exit" : "dialog-enter"} w-full max-w-sm rounded-t-2xl border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl sm:rounded-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="cancel-subscription-title" className="font-display text-lg font-semibold text-main">
@@ -50,7 +52,7 @@ export function CancelSubscriptionDialog({ pending, onConfirm, onCancel }: Cance
           <button
             ref={cancelRef}
             type="button"
-            onClick={onCancel}
+            onClick={requestClose}
             className="min-h-11 rounded-xl border border-app px-4 text-sm font-medium text-main hover:bg-[var(--surface-2)]"
           >
             Volver

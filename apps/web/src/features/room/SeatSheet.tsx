@@ -16,6 +16,7 @@ const VELOCITY = 0.11;
 /** Exit animation length (ms) plus the fallback timer that guarantees onClose fires. */
 const EXIT_MS = 200;
 const EXIT_FALLBACK_MS = 220;
+const REST_TRANSITION = "transform 220ms var(--ease-drawer)";
 
 /**
  * Mobile bottom sheet for the seat detail, in the style of map apps: it opens as a short "peek"
@@ -25,7 +26,7 @@ const EXIT_FALLBACK_MS = 220;
 export function SeatSheet({ expanded, onExpandedChange, onClose, children }: SeatSheetProps) {
   const startY = useRef<number | null>(null);
   const startTime = useRef(0);
-  const [dragY, setDragY] = useState(0);
+  const sheetRef = useRef<HTMLDivElement>(null);
   const [closing, setClosing] = useState(false);
   const closed = useRef(false);
   const fallback = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -51,7 +52,6 @@ export function SeatSheet({ expanded, onExpandedChange, onClose, children }: Sea
       finishClose();
       return;
     }
-    setDragY(0);
     setClosing(true);
     fallback.current = setTimeout(finishClose, EXIT_FALLBACK_MS);
   }
@@ -66,7 +66,19 @@ export function SeatSheet({ expanded, onExpandedChange, onClose, children }: Sea
     if (startY.current === null) return;
     // Follow the finger downwards; resist upwards so the sheet never detaches from the bottom edge.
     const delta = event.clientY - startY.current;
-    setDragY(delta > 0 ? delta : delta / 4);
+    // Written straight to the element: a state update per pointermove would re-render the whole sheet.
+    const sheet = sheetRef.current;
+    if (!sheet) return;
+    sheet.style.transition = "none";
+    sheet.style.transform = `translateY(${delta > 0 ? delta : delta / 4}px)`;
+  }
+
+  /** Hands the sheet back to its resting position with the usual settle animation. */
+  function resetDrag() {
+    const sheet = sheetRef.current;
+    if (!sheet) return;
+    sheet.style.transition = REST_TRANSITION;
+    sheet.style.transform = "";
   }
 
   function onPointerUp(event: PointerEvent<HTMLDivElement>) {
@@ -76,7 +88,7 @@ export function SeatSheet({ expanded, onExpandedChange, onClose, children }: Sea
     const elapsed = Math.max(Date.now() - startTime.current, 1);
     const swipedDown = delta > SWIPE || (delta > 0 && delta / elapsed > VELOCITY);
     // Closing keeps the dragged offset so the exit continues from where the finger let go.
-    if (!(swipedDown && !expanded)) setDragY(0);
+    if (!(swipedDown && !expanded)) resetDrag();
     if (Math.abs(delta) < 6) {
       onExpandedChange(!expanded);
     } else if (swipedDown) {
@@ -89,6 +101,7 @@ export function SeatSheet({ expanded, onExpandedChange, onClose, children }: Sea
 
   return (
     <div
+      ref={sheetRef}
       role="dialog"
       aria-modal="false"
       aria-label="Detalle del lugar"
@@ -96,12 +109,8 @@ export function SeatSheet({ expanded, onExpandedChange, onClose, children }: Sea
         expanded ? "max-h-[88dvh]" : "max-h-[62dvh]"
       }`}
       style={{
-        transform: closing ? "translateY(100%)" : dragY ? `translateY(${dragY}px)` : undefined,
-        transition: closing
-          ? `transform ${EXIT_MS}ms var(--ease-drawer)`
-          : dragY
-            ? "none"
-            : "transform 220ms var(--ease-drawer)",
+        transform: closing ? "translateY(100%)" : undefined,
+        transition: closing ? `transform ${EXIT_MS}ms var(--ease-drawer)` : REST_TRANSITION,
       }}
       onTransitionEnd={(event) => {
         if (closing && event.target === event.currentTarget && event.propertyName === "transform") {
@@ -115,7 +124,7 @@ export function SeatSheet({ expanded, onExpandedChange, onClose, children }: Sea
         onPointerUp={onPointerUp}
         onPointerCancel={() => {
           startY.current = null;
-          setDragY(0);
+          resetDrag();
         }}
         aria-hidden="true"
         className="flex h-7 shrink-0 cursor-grab touch-none items-center justify-center"

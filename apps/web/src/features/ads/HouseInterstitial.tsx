@@ -3,6 +3,7 @@
 import { XIcon } from "@phosphor-icons/react/dist/ssr";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
+import { useExitTransition } from "@/lib/useExitTransition";
 import { CLOSE_COUNTDOWN_S } from "./ad-config";
 import { closeHouseInterstitial, useHouseInterstitial } from "./ad-overlay-store";
 import { HouseAd } from "./HouseAd";
@@ -30,6 +31,7 @@ function Overlay({ placement }: { placement: NonNullable<ReturnType<typeof useHo
     trackEvent("ad_close", { placement, provider: "house" });
     closeHouseInterstitial();
   }, [placement]);
+  const { closing, requestClose } = useExitTransition(close);
 
   // One frame after mount so the bar animates from empty (transform only, hidden under reduced motion).
   useEffect(() => {
@@ -61,7 +63,7 @@ function Overlay({ placement }: { placement: NonNullable<ReturnType<typeof useHo
       if (e.key === "Escape") {
         if (canClose) {
           e.preventDefault();
-          close();
+          requestClose();
         }
         return;
       }
@@ -87,12 +89,12 @@ function Overlay({ placement }: { placement: NonNullable<ReturnType<typeof useHo
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [canClose, close]);
+  }, [canClose, requestClose]);
 
   return (
     <div
-      className="backdrop-enter fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
-      onClick={canClose ? close : undefined}
+      className={`${closing ? "backdrop-exit" : "backdrop-enter"} fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center sm:p-4`}
+      onClick={canClose ? requestClose : undefined}
     >
       <div
         ref={panelRef}
@@ -100,7 +102,7 @@ function Overlay({ placement }: { placement: NonNullable<ReturnType<typeof useHo
         aria-modal="true"
         aria-labelledby="house-ad-label"
         tabIndex={-1}
-        className="dialog-enter w-full max-w-sm rounded-t-[22px] border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl outline-none sm:rounded-[12px]"
+        className={`${closing ? "dialog-exit" : "dialog-enter"} w-full max-w-sm rounded-t-[22px] border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl outline-none sm:rounded-[12px]`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex min-h-11 items-center justify-between gap-3">
@@ -110,7 +112,7 @@ function Overlay({ placement }: { placement: NonNullable<ReturnType<typeof useHo
           {canClose ? (
             <button
               type="button"
-              onClick={close}
+              onClick={requestClose}
               aria-label="Cerrar anuncio"
               className="-mr-2 grid h-11 w-11 place-items-center rounded-[10px] text-main hover:bg-[var(--surface-2)]"
             >
