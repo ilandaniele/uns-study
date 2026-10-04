@@ -22,6 +22,7 @@ colors:
   seat-occupied: "#dc2626"
   seat-uncertain: "#d9773a"
   seat-saved: "#eab308"
+  seat-glyph-saved: "#422006"
   seat-unknown: "#7d6570"
   oak: "#c8955c"
   oak-border: "#a56a3a"

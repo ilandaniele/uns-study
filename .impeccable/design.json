@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-02T15:32:03.227Z",
+  "generatedAt": "2026-10-04T03:39:20.597Z",
   "title": "Design System: Sala de Estudio",
   "extensions": {
     "colorMeta": {
@@ -324,6 +324,22 @@
           "#ffedc2"
         ]
       },
+      "seat-glyph-saved": {
+        "role": "state",
+        "displayName": "Guardado Glyph Brown",
+        "canonical": "#422006",
+        "oklch": "oklch(28.6% 0.064 54)",
+        "tonalRamp": [
+          "#170600",
+          "#3b1a01",
+          "#5a361d",
+          "#7a543a",
+          "#9f765c",
+          "#c59a7f",
+          "#edc0a4",
+          "#feeadd"
+        ]
+      },
       "seat-unknown": {
         "role": "state",
         "displayName": "Sin Datos Mauve",
@@ -387,6 +403,102 @@
           "#e8c2a8",
           "#feeadd"
         ]
+      },
+      "night-alert-danger-bg": {
+        "role": "alert",
+        "displayName": "Night Danger Wash",
+        "canonical": "rgb(127 29 29 / 0.35)",
+        "oklch": "oklch(39.6% 0.133 26 / 0.35)",
+        "tonalRamp": [
+          "#1f0001",
+          "#4b0005",
+          "#771316",
+          "#9b3834",
+          "#c35c55",
+          "#ec8178",
+          "#ffb5ad",
+          "#ffe9e6"
+        ]
+      },
+      "night-alert-danger-text": {
+        "role": "alert",
+        "displayName": "Night Danger Text",
+        "canonical": "#fca5a5",
+        "oklch": "oklch(80.8% 0.103 20)",
+        "tonalRamp": [
+          "#1f0003",
+          "#4a010e",
+          "#6c2329",
+          "#8f4345",
+          "#b66567",
+          "#de8a8a",
+          "#ffb4b3",
+          "#fee9e8"
+        ]
+      },
+      "night-alert-danger-border": {
+        "role": "alert",
+        "displayName": "Night Danger Edge",
+        "canonical": "#7f1d1d",
+        "oklch": "oklch(39.6% 0.133 26)",
+        "tonalRamp": [
+          "#1f0001",
+          "#4b0005",
+          "#771316",
+          "#9b3834",
+          "#c35c55",
+          "#ec8178",
+          "#ffb5ad",
+          "#ffe9e6"
+        ]
+      },
+      "night-alert-warning-bg": {
+        "role": "alert",
+        "displayName": "Night Warning Wash",
+        "canonical": "rgb(120 53 15 / 0.35)",
+        "oklch": "oklch(41.4% 0.105 46 / 0.35)",
+        "tonalRamp": [
+          "#190500",
+          "#3f1500",
+          "#6a2901",
+          "#8d4825",
+          "#b36b48",
+          "#db8f6b",
+          "#feb897",
+          "#ffe9e0"
+        ]
+      },
+      "night-alert-warning-text": {
+        "role": "alert",
+        "displayName": "Night Warning Text",
+        "canonical": "#fde68a",
+        "oklch": "oklch(92.4% 0.115 96)",
+        "tonalRamp": [
+          "#0f0b00",
+          "#2c2300",
+          "#4c3f01",
+          "#6e5d04",
+          "#957f1a",
+          "#baa447",
+          "#e1ca6f",
+          "#faefc4"
+        ]
+      },
+      "night-alert-warning-border": {
+        "role": "alert",
+        "displayName": "Night Warning Edge",
+        "canonical": "#92651a",
+        "oklch": "oklch(54.1% 0.104 75)",
+        "tonalRamp": [
+          "#130900",
+          "#332001",
+          "#573900",
+          "#7e5403",
+          "#a4762f",
+          "#cb9b56",
+          "#f3c17c",
+          "#ffebd2"
+        ]
       }
     },
     "typographyMeta": {
@@ -396,7 +508,7 @@
       },
       "headline": {
         "displayName": "Signage Headline",
-        "purpose": "Screen and panel headings and the wordmark; uppercase, 800, expanded."
+        "purpose": "Screen and panel headings; uppercase, 800, expanded. Sheets use it at 20px."
       },
       "title": {
         "displayName": "Title",
@@ -413,6 +525,18 @@
       "data": {
         "displayName": "Data Figures",
         "purpose": "Geist Mono tabular figures for counts, times and the alias."
+      },
+      "wordmark": {
+        "displayName": "Wordmark",
+        "purpose": "\"Sala de Estudio\" in the header and the house-ad and donation headings; 15px, 800, uppercase, expanded. Stacks on two lines under 420px."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Secondary button text, quick-action labels, the duration-picker hint and small seat-panel notes; 13px, 500."
+      },
+      "micro": {
+        "displayName": "Micro",
+        "purpose": "Header subtitle, ad labels, unread badges and timer captions; 10px, 700. Never for sentences."
       }
     },
     "shadows": [
