@@ -400,7 +400,7 @@ export function SeatDetail({
             className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl text-[13px] font-semibold text-muted active:bg-[var(--surface-2)]"
           >
             {expanded ? "Ver menos" : "Ver más de la mesa"}
-            <CaretDownIcon aria-hidden="true" size={14} weight="bold" className={expanded ? "" : "rotate-180"} />
+            <CaretDownIcon aria-hidden="true" size={14} weight="bold" className={`transition-transform ${expanded ? "" : "rotate-180"}`} />
           </button>
         </>
       ) : (

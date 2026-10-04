@@ -16,7 +16,7 @@ function PhaseTabs({ compact }: { compact?: boolean }) {
     <div role="tablist" aria-label="Fase" className="relative grid w-full max-w-sm grid-cols-3 rounded-lg bg-[var(--surface-2)] p-1">
       <span
         aria-hidden="true"
-        className="focus-ease absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-md bg-surface shadow-sm transition-transform duration-[240ms]"
+        className="focus-ease focus-ease-move absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-md bg-surface shadow-sm transition-transform duration-[240ms]"
         style={{ transform: `translateX(${index * 100}%)` }}
       />
       {PHASES.map((p) => (

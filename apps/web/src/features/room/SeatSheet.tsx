@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 
 export interface SeatSheetProps {
   expanded: boolean;
@@ -11,6 +11,11 @@ export interface SeatSheetProps {
 
 /** Drag distance (px) that commits a swipe on the grab handle. */
 const SWIPE = 56;
+/** Release velocity (px/ms) that commits a swipe even when the drag is short. */
+const VELOCITY = 0.11;
+/** Exit animation length (ms) plus the fallback timer that guarantees onClose fires. */
+const EXIT_MS = 200;
+const EXIT_FALLBACK_MS = 220;
 
 /**
  * Mobile bottom sheet for the seat detail, in the style of map apps: it opens as a short "peek"
@@ -19,10 +24,41 @@ const SWIPE = 56;
  */
 export function SeatSheet({ expanded, onExpandedChange, onClose, children }: SeatSheetProps) {
   const startY = useRef<number | null>(null);
+  const startTime = useRef(0);
   const [dragY, setDragY] = useState(0);
+  const [closing, setClosing] = useState(false);
+  const closed = useRef(false);
+  const fallback = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (fallback.current) clearTimeout(fallback.current);
+    },
+    [],
+  );
+
+  function finishClose() {
+    if (closed.current) return;
+    closed.current = true;
+    if (fallback.current) clearTimeout(fallback.current);
+    onClose();
+  }
+
+  /** Slides the sheet off the bottom, then reports the close (immediately with reduced motion). */
+  function requestClose() {
+    if (closed.current || closing) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      finishClose();
+      return;
+    }
+    setDragY(0);
+    setClosing(true);
+    fallback.current = setTimeout(finishClose, EXIT_FALLBACK_MS);
+  }
 
   function onPointerDown(event: PointerEvent<HTMLDivElement>) {
     startY.current = event.clientY;
+    startTime.current = Date.now();
     event.currentTarget.setPointerCapture(event.pointerId);
   }
 
@@ -37,12 +73,15 @@ export function SeatSheet({ expanded, onExpandedChange, onClose, children }: Sea
     if (startY.current === null) return;
     const delta = event.clientY - startY.current;
     startY.current = null;
-    setDragY(0);
+    const elapsed = Math.max(Date.now() - startTime.current, 1);
+    const swipedDown = delta > SWIPE || (delta > 0 && delta / elapsed > VELOCITY);
+    // Closing keeps the dragged offset so the exit continues from where the finger let go.
+    if (!(swipedDown && !expanded)) setDragY(0);
     if (Math.abs(delta) < 6) {
       onExpandedChange(!expanded);
-    } else if (delta > SWIPE) {
+    } else if (swipedDown) {
       if (expanded) onExpandedChange(false);
-      else onClose();
+      else requestClose();
     } else if (delta < -SWIPE / 2) {
       onExpandedChange(true);
     }
@@ -57,8 +96,17 @@ export function SeatSheet({ expanded, onExpandedChange, onClose, children }: Sea
         expanded ? "max-h-[88dvh]" : "max-h-[62dvh]"
       }`}
       style={{
-        transform: dragY ? `translateY(${dragY}px)` : undefined,
-        transition: dragY ? "none" : "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
+        transform: closing ? "translateY(100%)" : dragY ? `translateY(${dragY}px)` : undefined,
+        transition: closing
+          ? `transform ${EXIT_MS}ms var(--ease-drawer)`
+          : dragY
+            ? "none"
+            : "transform 220ms var(--ease-drawer)",
+      }}
+      onTransitionEnd={(event) => {
+        if (closing && event.target === event.currentTarget && event.propertyName === "transform") {
+          finishClose();
+        }
       }}
     >
       <div

@@ -96,7 +96,7 @@ export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, on
             opacity={0.4}
           />
           <circle cx={selectedSeat.x} cy={selectedSeat.y} r={40} fill="none" stroke="var(--primary)" strokeWidth={6} />
-          <circle cx={selectedSeat.x} cy={selectedSeat.y} r={40} fill="none" stroke="var(--primary)" strokeWidth={4} className="seat-spot-ring" />
+          <circle cx={selectedSeat.x} cy={selectedSeat.y} r={40} fill="none" stroke="var(--primary)" strokeWidth={4} key={selectedSeat.id} className="seat-spot-ring" />
         </g>
       ) : null}
     </svg>

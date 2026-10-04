@@ -24,12 +24,12 @@ export function DeleteAccountDialog({ pending, onConfirm, onCancel }: DeleteAcco
   const canConfirm = value.trim().toUpperCase() === CONFIRM_WORD && !pending;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="backdrop-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="delete-title"
-        className="w-full max-w-sm rounded-[14px] border border-red-200 bg-surface p-5 shadow-xl"
+        className="dialog-enter w-full max-w-sm rounded-[14px] border border-red-200 bg-surface p-5 shadow-xl"
       >
         <h2 id="delete-title" className="font-display text-lg font-semibold text-main">Eliminar cuenta</h2>
         <p className="mt-2 text-sm text-muted">

@@ -332,7 +332,7 @@ function StatsCard() {
               <li key={d.key} className="flex h-full flex-col items-center justify-end gap-1" aria-label={`${label}: ${d.minutes} min`}>
                 <div className="relative w-full flex-1 overflow-hidden rounded-[4px] bg-[var(--surface-2)]">
                   <div
-                    className={`focus-ease absolute inset-0 origin-bottom transition-transform duration-500 ${isToday ? "bg-primary" : "bg-[color-mix(in_srgb,var(--primary)_45%,var(--surface-2))]"}`}
+                    className={`focus-ease absolute inset-0 origin-bottom transition-transform duration-300 ${isToday ? "bg-primary" : "bg-[color-mix(in_srgb,var(--primary)_45%,var(--surface-2))]"}`}
                     style={{ transform: `scaleY(${d.minutes / max})` }}
                   />
                 </div>

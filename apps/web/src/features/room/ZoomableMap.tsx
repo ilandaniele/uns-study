@@ -28,7 +28,7 @@ export default function ZoomableMap({ children }: { children: ReactNode }) {
       <div className="absolute right-3 top-3 flex flex-col overflow-hidden rounded-xl border border-app bg-surface shadow-md">
         <button
           type="button"
-          onClick={() => zoomRef.current?.zoomIn()}
+          onClick={() => zoomRef.current?.zoomIn(0.5, 200)}
           aria-label="Acercar"
           className="flex h-10 w-10 items-center justify-center text-main hover:bg-[var(--surface-2)]"
         >
@@ -37,7 +37,7 @@ export default function ZoomableMap({ children }: { children: ReactNode }) {
         <div className="h-px bg-[var(--border)]" />
         <button
           type="button"
-          onClick={() => zoomRef.current?.zoomOut()}
+          onClick={() => zoomRef.current?.zoomOut(0.5, 200)}
           aria-label="Alejar"
           className="flex h-10 w-10 items-center justify-center text-main hover:bg-[var(--surface-2)]"
         >
@@ -46,7 +46,7 @@ export default function ZoomableMap({ children }: { children: ReactNode }) {
         <div className="h-px bg-[var(--border)]" />
         <button
           type="button"
-          onClick={() => zoomRef.current?.resetTransform()}
+          onClick={() => zoomRef.current?.resetTransform(200)}
           aria-label="Restablecer zoom"
           className="flex h-10 w-10 items-center justify-center text-main hover:bg-[var(--surface-2)]"
         >
