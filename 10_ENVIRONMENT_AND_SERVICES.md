@@ -127,7 +127,7 @@ The code for these features is shipped. Each one turns on when its variables are
 |---|---|---|---|---|
 | Mercado Pago subscriptions | `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` | `uns-study-api` | both set 2026-10-04 (app "Sala de Estudio", 4960911583819408). Production webhook points at `https://uns-study-api.fly.dev/api/v1/webhooks/mercadopago` with the "Planes y suscripciones" event. A signed MP simulation passed signature checks | nothing; move the webhook URL if the API domain changes |
 | Transactional email (Resend) | `RESEND_API_KEY`, `EMAIL_FROM` | `uns-study-api` | `RESEND_API_KEY` set 2026-10-04; `EMAIL_FROM` not set | `EMAIL_FROM` needs a verified sending domain, so it waits for the custom domain |
-| AdSense | `NEXT_PUBLIC_ADSENSE_CLIENT`, `NEXT_PUBLIC_ADSENSE_SLOT_ROOM_BOTTOM`, `NEXT_PUBLIC_ADSENSE_SLOT_COMMUNITY_FEED`, `NEXT_PUBLIC_ADSENSE_SLOT_RAIL` | `sala-de-estudio` (build-time) | not set | AdSense approval, which needs a custom root domain (a `*.fly.dev` subdomain is not accepted) |
+| AdSense | `NEXT_PUBLIC_ADSENSE_CLIENT`, `NEXT_PUBLIC_ADSENSE_SLOT_ROOM_BOTTOM`, `NEXT_PUBLIC_ADSENSE_SLOT_COMMUNITY_FEED`, `NEXT_PUBLIC_ADSENSE_SLOT_RAIL` | `sala-de-estudio` (build-time) | not set | The owner's AdSense account exists (`pub-1784864280582108`, Montevideo time zone, UYU currency), but it has no Sites section, so no website can be added yet. Approval needs a custom root domain, because a `*.fly.dev` subdomain is not accepted |
 | Custom domain | Fly certificate plus `BETTER_AUTH_URL` and origin updates | both | none | owner buys the domain (for example `.com.ar` at NIC Argentina, which needs the owner's own clave fiscal) |
 
 To store an API secret without printing it, copy the value to the clipboard and run:
