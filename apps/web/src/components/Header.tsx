@@ -44,7 +44,7 @@ export function Header() {
             <ArmchairIcon size={20} weight="bold" />
           </span>
           <span aria-hidden="true" className="flex flex-col leading-none">
-            {/* Under 420px the wordmark stacks on two lines so it never runs under the header buttons. */}
+            {/* Under 420px the wordmark stacks on two lines so it never runs under the header buttons; under 360px it also shrinks. */}
             <span className="font-display text-[15px] font-extrabold uppercase tracking-[0.01em] max-[420px]:w-[5.8em] max-[420px]:whitespace-normal max-[420px]:leading-[1.05] max-[360px]:text-[13px]">
               Sala de Estudio
             </span>
