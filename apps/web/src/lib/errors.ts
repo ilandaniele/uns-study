@@ -99,7 +99,7 @@ export function describeActionError(error: unknown): string {
     return error.message;
   }
 
-  return "No pudimos actualizar el lugar. Tu cambio no fue guardado.";
+  return "No pudimos actualizar el lugar. Tu cambio no se guardó: probá de nuevo.";
 }
 
 /** Where to turn on precise location, worded for the visitor's platform. */

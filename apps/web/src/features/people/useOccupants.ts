@@ -3,6 +3,7 @@
 import { SocketEvents, type SeatMarkedByDto, type SeatOccupancyDto, type SeatOccupantDto, type SeatStateChangedEvent } from "@sala/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { useMe } from "@/lib/me-store";
 import { getSocket } from "@/lib/socket";
 
 /** How long to wait after the last relevant socket event before refetching (coalesces bursts). */
@@ -15,6 +16,9 @@ export interface UseOccupantsResult {
   markedBySeatId: Map<string, SeatMarkedByDto>;
   refetch: () => void;
 }
+
+const EMPTY_OCCUPANTS = new Map<string, SeatOccupantDto>();
+const EMPTY_MARKED = new Map<string, SeatMarkedByDto>();
 
 /** Keeps the previous object when an entry didn't change, so memoized seats don't repaint on every refetch. */
 function reuseEqual<T>(previous: Map<string, T>, next: Map<string, T>): Map<string, T> {
@@ -32,10 +36,14 @@ function reuseEqual<T>(previous: Map<string, T>, next: Map<string, T>): Map<stri
 
 /** GET `/rooms/:idOrSlug/occupants` — seat badges, "<Nombre> está acá" and "Marcado por: …" in `SeatDetail`. */
 export function useOccupants(roomSlug: string): UseOccupantsResult {
+  // The endpoint needs a session: anonymous visitors (or a still-loading `/me`) never fetch, so no 401s.
+  const { me } = useMe();
+  const signedIn = Boolean(me?.user);
   const [bySeatId, setBySeatId] = useState<Map<string, SeatOccupantDto>>(new Map());
   const [markedBySeatId, setMarkedBySeatId] = useState<Map<string, SeatMarkedByDto>>(new Map());
 
   const load = useCallback(async () => {
+    if (!signedIn) return;
     try {
       const dto = await apiFetch<SeatOccupancyDto[]>(`/api/v1/rooms/${roomSlug}/occupants`);
       const occupants = new Map<string, SeatOccupantDto>();
@@ -49,7 +57,7 @@ export function useOccupants(roomSlug: string): UseOccupantsResult {
     } catch {
       // Occupants are a nice-to-have overlay on top of the seat map; a failed fetch just leaves it empty.
     }
-  }, [roomSlug]);
+  }, [roomSlug, signedIn]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch on mount/slug change
@@ -95,5 +103,7 @@ export function useOccupants(roomSlug: string): UseOccupantsResult {
     };
   }, [load]);
 
+  // Signed out: expose empty maps without touching state (a previous user's data must not linger).
+  if (!signedIn) return { bySeatId: EMPTY_OCCUPANTS, markedBySeatId: EMPTY_MARKED, refetch: load };
   return { bySeatId, markedBySeatId, refetch: load };
 }

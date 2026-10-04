@@ -10,6 +10,7 @@ const KEY_FIRST_SEEN = "sala.ads.firstSeenAt";
 const KEY_APP_OPEN = "sala.ads.lastAppOpenAt";
 const KEY_PRE_CHECKIN = "sala.ads.lastPreCheckInAt";
 const KEY_SNOOZED = "sala.ads.snoozedUntil";
+const KEY_PROBE = "sala.ads.probe";
 
 function readNumber(storage: StorageLike, key: string): number | null {
   try {
@@ -27,6 +28,17 @@ function writeNumber(storage: StorageLike, key: string, value: number): void {
     storage.setItem(key, String(value));
   } catch {
     // Storage blocked or full: the caps simply do not persist.
+  }
+}
+
+/** Fail closed: with storage unavailable the caps and snooze cannot be honoured, so no ad is shown. */
+function storageUsable(storage: StorageLike): boolean {
+  try {
+    storage.getItem(KEY_FIRST_SEEN);
+    storage.setItem(KEY_PROBE, "1");
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -62,6 +74,7 @@ export function shouldShowAppOpen(args: {
   isMobile: boolean;
 }): boolean {
   const { pathname, now, storage, isMobile } = args;
+  if (!storageUsable(storage)) return false;
   if (readNumber(storage, KEY_FIRST_SEEN) === null) {
     writeNumber(storage, KEY_FIRST_SEEN, now);
     return false;
@@ -76,6 +89,7 @@ export function shouldShowAppOpen(args: {
 
 export function shouldShowPreCheckIn(args: { now: number; storage: StorageLike }): boolean {
   const { now, storage } = args;
+  if (!storageUsable(storage)) return false;
   if (isSnoozed(now, storage)) return false;
   const last = readNumber(storage, KEY_PRE_CHECKIN);
   return last === null || now - last >= PRE_CHECKIN_CAP_MS;

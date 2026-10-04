@@ -97,4 +97,9 @@ describe("storage failures", () => {
     expect(() => snooze(T0, broken)).not.toThrow();
     expect(getSnoozedUntil(broken)).toBeNull();
   });
+
+  it("fails closed: no ad when storage is unavailable", () => {
+    expect(shouldShowAppOpen({ ...base, now: T0, storage: broken })).toBe(false);
+    expect(shouldShowPreCheckIn({ now: T0, storage: broken })).toBe(false);
+  });
 });

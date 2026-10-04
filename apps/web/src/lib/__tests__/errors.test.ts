@@ -39,7 +39,7 @@ describe("describeActionError", () => {
   });
 
   it("falls back to a generic message for unknown errors", () => {
-    expect(describeActionError(new Error("network down"))).toBe("No pudimos actualizar el lugar. Tu cambio no fue guardado.");
+    expect(describeActionError(new Error("network down"))).toBe("No pudimos actualizar el lugar. Tu cambio no se guardó: probá de nuevo.");
   });
 });
 

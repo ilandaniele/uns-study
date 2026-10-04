@@ -4,7 +4,7 @@ export function IdentityPrompt({ onChoose }: { onChoose: (showIdentity: boolean)
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
       <p className="text-sm font-medium text-slate-800">
-        ¿Querés que otras personas registradas vean que estás sentado acá?
+        ¿Querés que otras personas registradas vean que estás en este lugar?
       </p>
       <div className="mt-3 flex gap-2">
         <button

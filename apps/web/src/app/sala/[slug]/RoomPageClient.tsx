@@ -60,7 +60,8 @@ function hasCheckedInBefore(): boolean {
   try {
     return localStorage.getItem(FIRST_CHECK_IN_KEY) != null;
   } catch {
-    return true;
+    // Storage unavailable: fail closed, treated as "never checked in" so no pre-check-in ad is shown.
+    return false;
   }
 }
 
@@ -287,7 +288,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
   }
 
   async function performCheckIn(seatId: string, fromDisputeWon: boolean, durationMinutes?: number) {
-    // No interstitial on this device's first-ever check-in.
+    // Interstitial only for a device with a recorded earlier check-in (never the first, never without storage).
     if (hasCheckedInBefore()) showPreCheckInAd();
     setConfirmMove(null);
     const showIdentity = hasChosenIdentityVisibility() ? getShowIdentityPreference() : false;

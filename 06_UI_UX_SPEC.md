@@ -82,7 +82,7 @@ Do not add “Reservar”.
 
 After successful self check-in, if visibility has not been chosen:
 
-> “¿Querés que otras personas registradas vean que estás sentado acá?”
+> “¿Querés que otras personas registradas vean que estás en este lugar?”
 
 Actions:
 
@@ -105,7 +105,7 @@ Friendly Spanish messages:
 > “Tu ubicación no tiene suficiente precisión todavía. Probá de nuevo cerca de una ventana o esperá unos segundos.”
 
 ### Network
-> “No pudimos actualizar el lugar. Tu cambio no fue guardado.”
+> “No pudimos actualizar el lugar. Tu cambio no se guardó: probá de nuevo.”
 
 ## 7. State colors
 
