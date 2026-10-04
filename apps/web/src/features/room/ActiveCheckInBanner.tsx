@@ -17,6 +17,7 @@ export interface ActiveCheckInBannerProps {
   onExtend: () => void;
   onCheckOut: () => void;
   refetch: () => void;
+  locating?: boolean;
 }
 
 /**
@@ -24,7 +25,7 @@ export interface ActiveCheckInBannerProps {
  * otherwise the always-visible "Tenés marcado" bar. Ticking here (not in the page) keeps the map
  * from re-rendering every 30 s.
  */
-export function ActiveCheckInBanner({ activeCheckIn, seatLabel, pending, onShow, onExtend, onCheckOut, refetch }: ActiveCheckInBannerProps) {
+export function ActiveCheckInBanner({ activeCheckIn, seatLabel, pending, onShow, onExtend, onCheckOut, refetch, locating }: ActiveCheckInBannerProps) {
   const now = useNow(30_000);
   const expiryStatus = checkInExpiryStatus(activeCheckIn.expiresAt, now);
   const locallyExpired = !expiryStatus;
@@ -49,8 +50,8 @@ export function ActiveCheckInBanner({ activeCheckIn, seatLabel, pending, onShow,
 
   if (expiryStatus && (expiryStatus.shouldPromptExtend || expiringAlert)) {
     return (
-      <div className="order-0 sticky top-0 z-50 lg:static lg:z-auto lg:col-span-3">
-        <ExtendBanner minutesLeft={expiryStatus.minutesLeft} pending={pending} onExtend={onExtend} onCheckOut={onCheckOut} />
+      <div className="order-0 sticky top-[57px] z-50 lg:static lg:z-auto lg:col-span-3">
+        <ExtendBanner minutesLeft={expiryStatus.minutesLeft} pending={pending} onExtend={onExtend} onCheckOut={onCheckOut} locating={locating} />
       </div>
     );
   }

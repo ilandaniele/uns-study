@@ -24,7 +24,9 @@ import { freedSeatsToastMessage, seatDisplayLabel, todayLabel } from "@/features
 import { useDisputeWon } from "@/features/room/useDisputeWon";
 import { useIncumbentChallenge } from "@/features/room/useIncumbentChallenge";
 import { useRoomAlerts } from "@/features/room/useRoomAlerts";
-import { useRoomState } from "@/features/room/useRoomState";
+import { ROOM_NOT_FOUND, useRoomState } from "@/features/room/useRoomState";
+import { useHouseInterstitial } from "@/features/ads/ad-overlay-store";
+import { QuestionIcon } from "@phosphor-icons/react/dist/ssr";
 import { useSeatActions } from "@/features/room/useSeatActions";
 import { useSeatDispute } from "@/features/room/useSeatDispute";
 import { MarkAllOccupiedCard } from "@/features/admin/MarkAllOccupiedCard";
@@ -52,6 +54,24 @@ const ZoomableMap = dynamic(() => import("@/features/room/ZoomableMap"));
 const loadSeatDetail = () => import("@/features/room/SeatDetail").then((m) => m.SeatDetail);
 const SeatDetail = dynamic(loadSeatDetail);
 
+const FIRST_CHECK_IN_KEY = "sala.firstCheckInAt";
+
+function hasCheckedInBefore(): boolean {
+  try {
+    return localStorage.getItem(FIRST_CHECK_IN_KEY) != null;
+  } catch {
+    return true;
+  }
+}
+
+function markCheckedIn(): void {
+  try {
+    if (localStorage.getItem(FIRST_CHECK_IN_KEY) == null) localStorage.setItem(FIRST_CHECK_IN_KEY, new Date().toISOString());
+  } catch {
+    // storage unavailable: the pre-check-in ad is simply skipped
+  }
+}
+
 export function RoomPageClient({ slug }: { slug: string }) {
   const { isAdmin } = useAdminAccess();
   const isDesktop = useMediaQuery("(min-width: 768px)");
@@ -59,6 +79,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
   // detail stays a bottom sheet and the info panel collapses into a compact header + list.
   const isLargeDesktop = useMediaQuery("(min-width: 1024px)");
   const [showHowTo, setShowHowTo] = useState(false);
+  const { open: adOverlayOpen } = useHouseInterstitial();
 
   const { map, me, connected, loading, error, refetch, updateMap } = useRoomState(slug);
   const { bySeatId: occupantsBySeatId, markedBySeatId, refetch: refetchOccupants } = useOccupants(slug);
@@ -78,11 +99,12 @@ export function RoomPageClient({ slug }: { slug: string }) {
     if (mapReady) prefetchLikelyNextWhenIdle();
   }, [mapReady]);
 
-  // First load failed (no map yet): keep retrying with exponential backoff (2 s, 4 s ... capped at 30 s).
+  // A load failed (before or after the first map): keep retrying with exponential backoff (2 s, 4 s ... capped at 30 s).
+  // A missing room is final, so it isn't retried.
   const [loadAttempts, setLoadAttempts] = useState(0);
-  const firstLoadFailed = !loading && !map && error != null;
+  const loadFailed = !loading && error != null && error !== ROOM_NOT_FOUND;
   useEffect(() => {
-    if (!firstLoadFailed) return;
+    if (!loadFailed) return;
     const id = setTimeout(
       () => {
         setLoadAttempts((n) => n + 1);
@@ -91,7 +113,11 @@ export function RoomPageClient({ slug }: { slug: string }) {
       Math.min(2_000 * 2 ** loadAttempts, 30_000),
     );
     return () => clearTimeout(id);
-  }, [firstLoadFailed, loadAttempts, refetch]);
+  }, [loadFailed, loadAttempts, refetch]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset the backoff once a load succeeds
+    if (error == null) setLoadAttempts(0);
+  }, [error]);
 
   const handleChanged = useCallback(() => {
     refetch();
@@ -197,6 +223,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
     }
   }, [actionError, clearChallenge, clearDisputeWon]);
 
+  const signedIn = !!me?.user;
   const handleSelectSeat = useCallback(
     (seat: SeatDto) => {
       setSelectedSeatId((current) => (current === seat.id ? null : seat.id));
@@ -204,9 +231,9 @@ export function RoomPageClient({ slug }: { slug: string }) {
       setSavedPromptSeatId(null);
       clearError();
       // Warm the GPS while the person reads the seat panel, so "Estoy acá" answers instantly.
-      if (me?.user) primeLocation();
+      if (signedIn) primeLocation();
     },
-    [clearError, me?.user],
+    [clearError, signedIn],
   );
 
   const closeDetail = useCallback(() => {
@@ -223,9 +250,9 @@ export function RoomPageClient({ slug }: { slug: string }) {
       setShowIdentityPrompt(false);
       setSavedPromptSeatId(null);
       clearError();
-      if (me?.user) primeLocation();
+      if (signedIn) primeLocation();
     },
-    [clearError, me?.user],
+    [clearError, signedIn],
   );
 
   const openHowTo = useCallback(() => setShowHowTo(true), []);
@@ -238,6 +265,18 @@ export function RoomPageClient({ slug }: { slug: string }) {
   const moveTargetSeat = confirmMove ? seatById.get(confirmMove.seatId) ?? null : null;
   const moveTargetTable = moveTargetSeat ? tableById.get(moveTargetSeat.tableId) ?? null : null;
 
+  // Escape closes the seat panel, unless a dialog is open on top of it.
+  const seatOpen = selectedSeatId !== null;
+  const dialogOpen = confirmMove != null || showHowTo;
+  useEffect(() => {
+    if (!seatOpen || dialogOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeDetail();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [seatOpen, dialogOpen, closeDetail]);
+
   function attemptCheckIn(seatId: string, fromDisputeWon: boolean, durationMinutes?: number) {
     // Already seated elsewhere: ask before moving (the API frees the old seat on move).
     if (activeCheckIn && activeCheckIn.seatId !== seatId) {
@@ -248,14 +287,16 @@ export function RoomPageClient({ slug }: { slug: string }) {
   }
 
   async function performCheckIn(seatId: string, fromDisputeWon: boolean, durationMinutes?: number) {
-    showPreCheckInAd();
+    // No interstitial on this device's first-ever check-in.
+    if (hasCheckedInBefore()) showPreCheckInAd();
     setConfirmMove(null);
     const showIdentity = hasChosenIdentityVisibility() ? getShowIdentityPreference() : false;
     const result = await checkIn(seatId, showIdentity, { qrToken, durationMinutes });
     if (result) {
       trackEvent("check_in", { roomSlug: slug, seatId });
       if (fromDisputeWon) clearDisputeWon();
-      setShowIdentityPrompt(true);
+      markCheckedIn();
+      if (!hasChosenIdentityVisibility()) setShowIdentityPrompt(true);
     }
   }
 
@@ -414,11 +455,15 @@ export function RoomPageClient({ slug }: { slug: string }) {
 
   return (
     <main
-      className={`mx-auto flex max-w-7xl flex-col gap-4 p-4 lg:grid ${detail && !isLargeDesktop ? "pb-[48dvh]" : ""} lg:grid-cols-[320px_1fr_340px] lg:items-start`}
+      className={`mx-auto flex max-w-7xl flex-col gap-4 p-4 lg:grid ${detail && !isLargeDesktop ? "pb-[62dvh]" : ""} lg:grid-cols-[320px_1fr_340px] lg:items-start`}
     >
       {error ? (
         <div className="order-0 flex items-center justify-between gap-3 rounded-xl border border-app bg-surface px-3 py-2 text-sm text-muted lg:col-span-3">
-          <span>Sin conexión, reintentando…</span>
+          <span>
+            {typeof navigator !== "undefined" && navigator.onLine === false
+              ? "Sin conexión, reintentando…"
+              : "No pudimos actualizar el mapa, reintentando…"}
+          </span>
           <button
             type="button"
             onClick={() => refetch()}
@@ -447,7 +492,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
         </div>
       ) : null}
       {challenge ? (
-        <div className="order-0 sticky top-0 z-50 lg:static lg:z-auto lg:col-span-3">
+        <div className="order-0 sticky top-[57px] z-50 lg:static lg:z-auto lg:col-span-3">
           <DisputeChallengeBanner
             seatLabel={seatDisplayLabel(challengeTable, challengeSeat?.code ?? "", challengeSeat?.seatNumber ?? 0)}
             closesAt={challenge.closesAt}
@@ -476,6 +521,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
           onExtend={() => void extend()}
           onCheckOut={() => void checkOut()}
           refetch={refetch}
+          locating={locating}
         />
       ) : null}
 
@@ -485,15 +531,28 @@ export function RoomPageClient({ slug }: { slug: string }) {
           <RoomInfoPanel map={map} people={people} connected={connected} onOpenHowTo={openHowTo} quickActions={quickActions} />
         ) : (
           <>
-            <div>
-              <h1 className="font-display text-[26px] font-extrabold uppercase leading-none tracking-[0.01em] text-main">{map.room.name}</h1>
-              <p className="mt-2 flex items-center gap-1.5 text-sm text-muted">
-                <span
-                  aria-hidden="true"
-                  className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-[var(--seat-free)]" : "bg-[var(--seat-unknown)]"}`}
-                />
-                Abierto · {todayLabel()}
-              </p>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h1 className="font-display text-[26px] font-extrabold uppercase leading-none tracking-[0.01em] text-main">{map.room.name}</h1>
+                <p className="mt-2 flex items-center gap-1.5 text-sm text-muted">
+                  <span
+                    aria-hidden="true"
+                    className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-[var(--seat-free)]" : "bg-[var(--seat-unknown)]"}`}
+                  />
+                  {connected ? "En vivo" : "Reconectando…"} · {todayLabel()}
+                  <span className="sr-only" aria-live="polite">
+                    {connected ? "" : "Reconectando, el mapa puede estar desactualizado"}
+                  </span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={openHowTo}
+                aria-label="Cómo usar la app"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-[var(--surface-2)]"
+              >
+                <QuestionIcon size={20} />
+              </button>
             </div>
             <Hero summary={map.summary} seats={map.seats} />
             <SummaryCounters summary={map.summary} />
@@ -539,7 +598,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
         </section>
       ) : null}
       {mounted && !isLargeDesktop ? (
-        <DonatePrompt blocked={detail != null || challenge != null || disputeWon != null || showHowTo || confirmMove != null} />
+        <DonatePrompt blocked={detail != null || challenge != null || disputeWon != null || showHowTo || confirmMove != null || adOverlayOpen} />
       ) : null}
 
       {isLargeDesktop ? (

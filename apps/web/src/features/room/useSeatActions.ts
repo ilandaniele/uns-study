@@ -111,6 +111,7 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
       setPending(true);
       setActionError(null);
       try {
+        if (typeof navigator !== "undefined" && navigator.onLine === false) throw new TypeError("offline");
         const result = await factory(turnstileToken);
         setTurnstileRequired(false);
         retryRef.current = null;
@@ -123,6 +124,7 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
           setTurnstileRequired(false);
           retryRef.current = null;
           setActionError(describeActionError(error));
+          if (error instanceof ApiRequestError && error.code === "UNAUTHENTICATED") void refreshMe().catch(() => undefined);
         }
         return null;
       } finally {

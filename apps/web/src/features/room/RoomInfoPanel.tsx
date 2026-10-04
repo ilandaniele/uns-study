@@ -31,7 +31,10 @@ export function RoomInfoPanel({ map, people, connected, onOpenHowTo, quickAction
             aria-hidden="true"
             className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-[var(--seat-free)]" : "bg-[var(--seat-unknown)]"}`}
           />
-          Abierto · {todayLabel()}
+          {connected ? "En vivo" : "Reconectando…"} · {todayLabel()}
+          <span className="sr-only" aria-live="polite">
+            {connected ? "" : "Reconectando, el mapa puede estar desactualizado"}
+          </span>
         </p>
       </div>
 
@@ -53,7 +56,7 @@ export function RoomInfoPanel({ map, people, connected, onOpenHowTo, quickAction
       <button
         type="button"
         onClick={onOpenHowTo}
-        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark"
+        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--surface-2)] px-4 py-2.5 text-sm font-semibold text-main hover:bg-[var(--border)]"
       >
         <QuestionIcon aria-hidden="true" size={18} weight="bold" />
         Ver cómo usar la app

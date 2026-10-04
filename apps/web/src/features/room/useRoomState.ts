@@ -9,7 +9,7 @@ import {
   type TableNicknameChangedEvent,
 } from "@sala/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiRequestError } from "@/lib/api";
 import { refreshMe, useMe } from "@/lib/me-store";
 import { getSocket } from "@/lib/socket";
 import { applyDisputeOpened, applyDisputeResolved, applySeatEvent, applyTableNicknameChanged, mergeSnapshot } from "./seat-merge";
@@ -24,6 +24,9 @@ export interface RoomState {
   /** Functional update of the map, for optimistic changes from `useSeatActions`. */
   updateMap: (updater: (prev: RoomMapDto | null) => RoomMapDto | null) => void;
 }
+
+/** Error shown (and not retried) when the room slug doesn't exist. */
+export const ROOM_NOT_FOUND = "No encontramos esa sala.";
 
 /** Last map per slug, so revisiting the room paints immediately while it revalidates. */
 const lastSnapshots = new Map<string, RoomMapDto>();
@@ -69,8 +72,8 @@ export function useRoomState(slug: string): RoomState {
       const mapDto = await apiFetch<RoomMapDto>(`/api/v1/rooms/${slug}/map`);
       setMap((prev) => mergeSnapshot(prev, mapDto));
       setError(null);
-    } catch {
-      setError("No pudimos cargar el mapa de la sala.");
+    } catch (err) {
+      setError(err instanceof ApiRequestError && err.status === 404 ? ROOM_NOT_FOUND : "No pudimos cargar el mapa de la sala.");
     } finally {
       setMapLoading(false);
     }
