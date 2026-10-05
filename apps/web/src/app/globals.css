@@ -622,7 +622,8 @@ summary:focus-visible,
   }
 }
 
-/* AdSense marks a slot it could not fill; collapse it instead of leaving an empty box. */
-ins.adsbygoogle[data-ad-status="unfilled"] {
+/* AdSense marks a slot it could not fill; collapse it and its reserved box instead of leaving a gap. */
+ins.adsbygoogle[data-ad-status="unfilled"],
+:has(> ins.adsbygoogle[data-ad-status="unfilled"]) {
   display: none !important;
 }
