@@ -16,10 +16,21 @@ $api = "uns-study-api"
 $dbApp = "sala-de-estudio-db"
 $skipCreate = $args -contains "-SkipCreate"
 
-# Also accepts Neon's "psql '...'" snippet.
-$neon = ("$(Get-Clipboard -Raw)".Trim() -replace '^psql\s+', '').Trim("'", '"', ' ')
-if ($neon -notmatch '^postgres(ql)?://(?!sala_app:)[^:/\s]+:[^@\s]+@[^/\s]+\.neon\.tech/\S+$' -or $neon.Contains("'")) {
-  throw "Clipboard does not look like the Neon owner connection string."
+# Takes the first postgres URL in the clipboard, so Neon's snippets (psql '...', DATABASE_URL=...,
+# .env blocks) work too.
+$clip = "$(Get-Clipboard -Raw)"
+$found = [regex]::Match($clip, "postgres(ql)?://[^\s'`"]+")
+$neon = $found.Value
+Remove-Variable clip
+if (-not $found.Success) {
+  throw "No postgres:// connection string in the clipboard. In Neon > Connect, pick role neondb_owner and copy again."
+}
+if ($neon -match '^postgres(ql)?://sala_app:') { throw "That is the sala_app string. Pick role neondb_owner in Neon > Connect." }
+if ($neon -match '\*{3,}') { throw "The password is masked (****). Click 'Show password' in Neon > Connect, then copy again." }
+if ($neon -notmatch '^postgres(ql)?://[^:/\s]+:[^@\s]+@[^/\s]+\.neon\.tech(:\d+)?/\S+$') {
+  # Shape only, never the value: tells what is wrong without leaking the password.
+  $shape = $neon -replace '//([^:/]+):[^@]*@', '//$1:<password>@'
+  throw "Clipboard URL is not a Neon owner string: $shape"
 }
 
 function New-Password {
