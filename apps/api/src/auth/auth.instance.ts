@@ -7,6 +7,7 @@ import { schema } from "@sala/database";
 import { env } from "../env.js";
 import { ResendClient } from "../email/resend.client.js";
 import { createPasswordResetSender } from "./password-reset-email.js";
+import { createVerificationEmailSender } from "./verification-email.js";
 
 export type Auth = ReturnType<typeof buildAuth>;
 
@@ -43,6 +44,11 @@ export function buildAuth(db: Db) {
     env.resendApiKey && env.emailFrom ? new ResendClient(env.resendApiKey) : null,
     { from: env.emailFrom, webUrl: env.publicWebUrl },
   );
+  // Same gating as reset. Not `requireEmailVerification`: existing unverified users keep signing in.
+  const sendVerificationEmail = createVerificationEmailSender(
+    env.resendApiKey && env.emailFrom ? new ResendClient(env.resendApiKey) : null,
+    { from: env.emailFrom },
+  );
 
   return betterAuth({
     database: drizzleAdapter(db, {
@@ -56,6 +62,16 @@ export function buildAuth(db: Db) {
       enabled: true,
       ...(sendResetPassword ? { sendResetPassword, resetPasswordTokenExpiresIn: 60 * 60 } : {}),
     },
+    ...(sendVerificationEmail
+      ? {
+          emailVerification: {
+            sendVerificationEmail,
+            sendOnSignUp: true,
+            autoSignInAfterVerification: true,
+            expiresIn: 60 * 60 * 24,
+          },
+        }
+      : {}),
     // In-memory per-instance limiter: a cheap first layer. The distributed (Upstash-backed) layer is
     // `authRateLimitMiddleware`, mounted before this handler in main.ts.
     rateLimit: {
@@ -67,6 +83,7 @@ export function buildAuth(db: Db) {
         "/sign-up/email": { window: 60, max: 3 },
         "/request-password-reset": { window: 60, max: 3 },
         "/reset-password": { window: 60, max: 5 },
+        "/send-verification-email": { window: 60, max: 3 },
       },
     },
     // Signed cookie cache: most requests skip the session+user DB lookup. Bans/restrictions are

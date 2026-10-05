@@ -15,7 +15,7 @@ import { ProfileForm } from "@/features/profile/ProfileForm";
 import { StudyModeControl } from "@/features/profile/StudyModeControl";
 import { useMyProfile } from "@/features/profile/useMyProfile";
 import { apiFetch, apiPost } from "@/lib/api";
-import { signOut, useSession } from "@/lib/auth-client";
+import { authClient, signOut, useSession } from "@/lib/auth-client";
 import { invalidateMe } from "@/lib/me-store";
 import { resetSocket } from "@/lib/socket";
 
@@ -30,6 +30,8 @@ export default function PerfilPage() {
   const [showDelete, setShowDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [privacyError, setPrivacyError] = useState<string | null>(null);
+  const [verifyAvailable, setVerifyAvailable] = useState(false);
+  const [verifySent, setVerifySent] = useState(false);
   const { me } = useMe();
   const { adFree, snoozedUntil } = useAdFree();
 
@@ -38,9 +40,22 @@ export default function PerfilPage() {
   }, []);
 
   useEffect(() => {
+    apiFetch<{ emailVerification?: boolean }>("/api/v1/auth-providers")
+      .then((p) => setVerifyAvailable(Boolean(p.emailVerification)))
+      .catch(() => setVerifyAvailable(false));
+  }, []);
+
+  useEffect(() => {
     if (!session?.user) return;
     void apiFetch<PublicProfileDto>(`/api/v1/profiles/${session.user.id}`).then((pub) => setStudyStatus(pub.studyStatus));
   }, [session?.user]);
+
+  async function handleVerifyEmail() {
+    if (!session?.user) return;
+    setVerifySent(true);
+    const { error: verifyError } = await authClient.sendVerificationEmail({ email: session.user.email, callbackURL: "/perfil" });
+    if (verifyError) setVerifySent(false);
+  }
 
   async function handleDelete() {
     setDeleting(true);
@@ -77,6 +92,16 @@ export default function PerfilPage() {
       <div>
         <h1 className="font-display text-[22px] font-extrabold uppercase leading-none tracking-[0.01em] text-main">Perfil</h1>
         <p className="mt-2 text-sm text-muted">{profile.email}</p>
+        {verifyAvailable && !session.user.emailVerified ? (
+          <button
+            type="button"
+            onClick={() => void handleVerifyEmail()}
+            disabled={verifySent}
+            className="mt-1 text-sm font-semibold text-main underline disabled:no-underline disabled:opacity-60"
+          >
+            {verifySent ? "Te enviamos un mail para verificar" : "Verificar email"}
+          </button>
+        ) : null}
       </div>
 
       <section className="rounded-[14px] border border-app bg-surface p-4">

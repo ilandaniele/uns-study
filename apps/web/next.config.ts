@@ -20,10 +20,12 @@ function socketOrigins(): string[] {
 }
 
 // Third-party hosts the app really loads: AdSense (pagead2), GPT/GAM (securepubads), gtag, Turnstile.
-// Report-only for now: the inline theme script and ad tags make an enforcing script-src risky.
-const CSP_REPORT_ONLY = [
+// Enforced after a report-only run showed no violations. 'unsafe-inline' stays for the inline theme
+// script and ad tags; dev also needs 'unsafe-eval' for React Refresh.
+const DEV_EVAL = process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'";
+const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://securepubads.g.doubleclick.net https://www.googletagmanager.com https://challenges.cloudflare.com https://*.googlesyndication.com https://*.google.com",
+  `script-src 'self' 'unsafe-inline'${DEV_EVAL} https://pagead2.googlesyndication.com https://securepubads.g.doubleclick.net https://www.googletagmanager.com https://challenges.cloudflare.com https://*.googlesyndication.com https://*.google.com`,
   `connect-src 'self' ${socketOrigins().join(" ")} https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://*.doubleclick.net https://*.googlesyndication.com https://*.google.com https://challenges.cloudflare.com`,
   "img-src 'self' data: blob: https:",
   "style-src 'self' 'unsafe-inline'",
@@ -65,9 +67,7 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           // Camera: report photo capture; geolocation: geofence checks.
           { key: "Permissions-Policy", value: "camera=(self), geolocation=(self), microphone=(), payment=()" },
-          // Minimal enforced policy that cannot break scripts; the full one below is report-only.
-          { key: "Content-Security-Policy", value: "frame-ancestors 'none'; object-src 'none'; base-uri 'self'" },
-          { key: "Content-Security-Policy-Report-Only", value: CSP_REPORT_ONLY },
+          { key: "Content-Security-Policy", value: CSP },
         ],
       },
     ];

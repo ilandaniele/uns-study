@@ -48,6 +48,7 @@ async function bootstrap() {
   const { ApiExceptionFilter } = await import("./common/api-exception.filter.js");
   const { csrfMiddleware } = await import("./common/csrf.middleware.js");
   const { authRateLimitMiddleware } = await import("./common/auth-rate-limit.middleware.js");
+  const { proxyTrustMiddleware } = await import("./common/proxy-trust.middleware.js");
   const { RateLimitService } = await import("./security/rate-limit.service.js");
   const { env } = await import("./env.js");
   type Auth = import("./auth/auth.instance.js").Auth;
@@ -58,6 +59,9 @@ async function bootstrap() {
   // CORS must be registered before the Better Auth handler so its routes/preflight get headers too.
   const httpAdapter = app.getHttpAdapter().getInstance();
   httpAdapter.set("trust proxy", env.trustProxyHops); // behind a reverse proxy — @Ip() must see the real client IP
+  // First of all, before anything reads `req.ip`: a direct hit on the API could forge X-Forwarded-For,
+  // so unless the web app's shared secret is present the header is swapped for Fly-Client-IP.
+  httpAdapter.use(proxyTrustMiddleware(env.proxySharedSecret));
   httpAdapter.use(cors({ origin: env.webOrigins, credentials: true }));
   // Security headers for a JSON/image/Socket.IO API (no HTML). The browser only sees avatars
   // through the web app's same-origin `/api/v1` proxy, so CORP stays same-site. Helmet also drops
@@ -95,7 +99,7 @@ async function bootstrap() {
     req.headers["x-sala-client-ip"] = req.ip ?? "";
     next();
   });
-  // Per-email + Fly-Client-IP limits on email sign-in/sign-up (defense in depth: `req.ip` is spoofable on direct hits).
+  // Per-email + Fly-Client-IP limits on email sign-in/sign-up (defense in depth: `req.ip` is only trustworthy when `PROXY_SHARED_SECRET` is set; see `proxyTrustMiddleware`).
   httpAdapter.use("/api/auth", authRateLimitMiddleware(app.get(RateLimitService)));
   httpAdapter.all("/api/auth/*", toNodeHandler(auth));
 

@@ -84,7 +84,8 @@ export async function resolveSocketUserId(
 /** Socket.IO notifications for room state, chat and DMs. PostgreSQL remains canonical — sockets
  *  never carry coordinates and never mutate state. */
 @Injectable()
-@WebSocketGateway({ cors: { origin: env.webOrigins, credentials: true } })
+// Client->server payloads are just room UUIDs; cap well below the 1 MB default.
+@WebSocketGateway({ maxHttpBufferSize: 64 * 1024, cors: { origin: env.webOrigins, credentials: true } })
 export class RoomRealtimeGateway implements OnGatewayConnection {
   @WebSocketServer()
   server!: Server;

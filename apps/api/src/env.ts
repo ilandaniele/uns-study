@@ -53,8 +53,12 @@ export const env = {
   // Number of reverse-proxy hops in front of the API (Express `trust proxy`), so `req.ip` /
   // `@Ip()` see the real client IP. 1 for a single proxy; 2 on Fly in production, where the
   // chain is browser -> Fly edge -> Next (web app) -> Fly edge -> API, so XFF carries the visitor
-  // plus the web app's egress IP.
+  // plus the web app's egress IP. A direct hit on the API can forge that XFF, so with
+  // `PROXY_SHARED_SECRET` set, `proxyTrustMiddleware` only honours it when the web app proved itself.
   trustProxyHops: num("TRUST_PROXY_HOPS", 1),
+  // Shared with the web app (which adds it as `x-sala-proxy-secret` on its `/api` rewrites). Empty
+  // = no check (current behaviour). See `common/proxy-trust.middleware.ts`.
+  proxySharedSecret: process.env.PROXY_SHARED_SECRET ?? "",
   // Better Auth cookies default to `SameSite=Lax; Secure` in production, which only works when the
   // web app proxies `/api/auth/*` and `/api/v1/*` to this API (same-origin from the browser's
   // point of view). Set to `true` to restore the old cross-site `SameSite=None; Secure` behaviour
