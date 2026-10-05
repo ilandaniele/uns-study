@@ -622,8 +622,8 @@ summary:focus-visible,
   }
 }
 
-/* AdSense marks a slot it could not fill; collapse it and its reserved box instead of leaving a gap. */
-ins.adsbygoogle[data-ad-status="unfilled"],
-:has(> ins.adsbygoogle[data-ad-status="unfilled"]) {
+/* AdSense marks a slot it could not fill; collapse our slot box instead of leaving a gap.
+   Scoped to [data-ad-box]: Google may put its own <ins> straight into <body>. */
+[data-ad-box]:has(> ins.adsbygoogle[data-ad-status="unfilled"]) {
   display: none !important;
 }

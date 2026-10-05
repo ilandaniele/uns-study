@@ -53,7 +53,7 @@ export function AdSlot({ placement }: { placement: AdPlacement }) {
         src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
         crossOrigin="anonymous"
       />
-      <div className="min-h-[100px]">
+      <div data-ad-box className="min-h-[100px]">
         <ins
           ref={insRef}
           data-ad-placement={placement}
