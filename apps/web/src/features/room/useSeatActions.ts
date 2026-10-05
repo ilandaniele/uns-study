@@ -1,5 +1,6 @@
 "use client";
 
+import { checkInRequestSchema, extendRequestSchema, incumbentRespondSchema, observationRequestSchema, openDisputeSchema, voteDisputeSchema } from "@sala/contracts";
 import type { CheckInDto, DisputeKind, DisputeVote, RoomMapDto, SeatDisputeDto, SeatDto, SeatStateChangedEvent } from "@sala/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiDelete, apiFetch, apiPost, ApiRequestError } from "@/lib/api";
@@ -211,7 +212,7 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
             durationMinutes: options?.durationMinutes,
             qrToken: options?.qrToken ?? undefined,
             turnstileToken,
-          }),
+          }, checkInRequestSchema),
         );
         adoptCheckIn(dto);
         // Identity visibility is the one thing the occupants list can't learn from the seat event alone.
@@ -234,7 +235,7 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
             location,
             qrToken: options?.qrToken ?? undefined,
             turnstileToken,
-          }),
+          }, observationRequestSchema),
         );
         const confirmed = result?.seats ?? [];
         if (confirmed.length > 0) {
@@ -262,7 +263,7 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
         const current = peekMe()?.activeCheckIn ?? null;
         const changes = current ? [optimisticMe(extendCheckIn(current, Date.now(), durationMinutes))] : [];
         const dto = await withOptimistic(changes, () =>
-          apiPost<CheckInDto>("/api/v1/checkins/current/extend", { location, durationMinutes }),
+          apiPost<CheckInDto>("/api/v1/checkins/current/extend", { location, durationMinutes }, extendRequestSchema),
         );
         adoptCheckIn(dto);
         return true;
@@ -303,7 +304,7 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
     (seatId: string, kind: DisputeKind) =>
       run(async () => {
         const location = await locate();
-        const dispute = await apiPost<SeatDisputeDto>("/api/v1/disputes", { roomId: map?.room.id, seatId, kind, location });
+        const dispute = await apiPost<SeatDisputeDto>("/api/v1/disputes", { roomId: map?.room.id, seatId, kind, location }, openDisputeSchema);
         updateMap((prev) => applyDisputeOpened(prev, dispute));
         return dispute;
       }),
@@ -314,7 +315,7 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
     (disputeId: string, vote: DisputeVote) =>
       run(async () => {
         const location = await locate();
-        return apiPost<SeatDisputeDto>(`/api/v1/disputes/${disputeId}/votes`, { vote, location });
+        return apiPost<SeatDisputeDto>(`/api/v1/disputes/${disputeId}/votes`, { vote, location }, voteDisputeSchema);
       }),
     [locate, run],
   );
@@ -323,7 +324,7 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
     (disputeId: string, action: "STILL_HERE" | "LEFT") =>
       run(async () => {
         const location = action === "STILL_HERE" ? await locate() : undefined;
-        const dispute = await apiPost<SeatDisputeDto>(`/api/v1/disputes/${disputeId}/respond`, { action, location });
+        const dispute = await apiPost<SeatDisputeDto>(`/api/v1/disputes/${disputeId}/respond`, { action, location }, incumbentRespondSchema);
         // "Me fui" ends my check-in server-side; the seat/dispute socket events cover the map.
         if (action === "LEFT") void refreshMe().catch(() => undefined);
         return dispute;

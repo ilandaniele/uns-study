@@ -6,7 +6,7 @@ import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import { closeDb, createDb, migrate, seedInitialRoom } from "@sala/database";
+import { assertMigrationsApplied, closeDb, createDb, migrate, seedInitialRoom } from "@sala/database";
 import { resolveAppSecrets, resolveVapidKeys } from "./secrets.js";
 
 // Load the repo-root `.env` (if present) before anything else reads `process.env` — duplicated
@@ -22,20 +22,26 @@ async function bootstrap() {
   // reads them, so the API never needs hand-typed generated secrets in deployment. Uses a
   // short-lived db connection of its own since `./database/database.module.js` (and everything
   // that depends on `env.ts`) can't be imported yet.
-  // MIGRATION_DATABASE_URL (owner role) runs DDL here when DATABASE_URL is a least-privilege
-  // runtime role (ops/neon-least-privilege.sql); unset, both use DATABASE_URL.
+  // MIGRATION_DATABASE_URL (owner role) is only meant for local/one-off use: in production the
+  // runtime machine holds just DATABASE_URL (least-privilege role) and migrations are applied from
+  // outside with ops/migrate-fly-db.ps1. Without it the boot never runs DDL; it checks that the
+  // schema is up to date and fails (so Fly keeps the previous version) if it is not. Seed and
+  // secrets only do DML, which the runtime role is allowed to.
+  const ownerUrl = process.env.MIGRATION_DATABASE_URL || "";
   const secretsDb = createDb({
-    databaseUrl: process.env.MIGRATION_DATABASE_URL || process.env.DATABASE_URL || undefined,
+    databaseUrl: ownerUrl || process.env.DATABASE_URL || undefined,
     pgliteDir: process.env.PGLITE_DIR || undefined,
   });
   const dbAutoMigrate = process.env.DB_AUTO_MIGRATE
     ? process.env.DB_AUTO_MIGRATE === "true" || process.env.DB_AUTO_MIGRATE === "1"
     : process.env.NODE_ENV !== "production";
   if (dbAutoMigrate) await migrate(secretsDb);
-  // Production (Fly) sets BOOT_MIGRATE_SEED=true: migrate + idempotent seed run in-process here,
-  // replacing the two `tsx` child processes the container used to spawn before every boot.
+  else if (process.env.NODE_ENV === "production" && !ownerUrl) await assertMigrationsApplied(secretsDb);
+  // Production (Fly) sets BOOT_MIGRATE_SEED=true: the idempotent seed runs in-process here (and the
+  // migration too when an owner URL is present), replacing the `tsx` child processes the container
+  // used to spawn before every boot.
   if (process.env.BOOT_MIGRATE_SEED === "true") {
-    if (!dbAutoMigrate) await migrate(secretsDb);
+    if (!dbAutoMigrate && (ownerUrl || process.env.NODE_ENV !== "production")) await migrate(secretsDb);
     await seedInitialRoom(secretsDb);
   }
   await resolveAppSecrets(secretsDb);

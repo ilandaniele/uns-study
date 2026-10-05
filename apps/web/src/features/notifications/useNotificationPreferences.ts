@@ -1,8 +1,9 @@
 "use client";
 
+import { updateNotificationPreferencesSchema } from "@sala/contracts";
 import type { NotificationPreferencesDto } from "@sala/contracts";
 import { useCallback, useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, apiPut } from "@/lib/api";
 import { useMe } from "@/lib/me-store";
 
 export type NotificationPreferencesPatch = Partial<NotificationPreferencesDto>;
@@ -37,7 +38,7 @@ export function useNotificationPreferences() {
     setPreferences((prev) => (prev ? { ...prev, ...patch } : prev)); // optimistic
     setSaving(true);
     try {
-      setPreferences(await apiFetch<NotificationPreferencesDto>("/api/v1/notifications/preferences", { method: "PUT", body: JSON.stringify(patch) }));
+      setPreferences(await apiPut<NotificationPreferencesDto>("/api/v1/notifications/preferences", patch, updateNotificationPreferencesSchema));
     } finally {
       setSaving(false);
     }

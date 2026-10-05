@@ -1,8 +1,9 @@
 "use client";
 
+import { updatePrivacySchema, updateProfileSchema } from "@sala/contracts";
 import type { MyProfileDto, PrivacySettingsDto } from "@sala/contracts";
 import { useCallback, useEffect, useState } from "react";
-import { apiFetch, ApiRequestError } from "@/lib/api";
+import { apiFetch, apiPatch, ApiRequestError } from "@/lib/api";
 
 /** Mirrors `updateProfileSchema` from `@sala/contracts` (all fields optional/nullable). */
 export type ProfilePatch = Partial<Omit<MyProfileDto, "userId" | "email">>;
@@ -56,7 +57,7 @@ export function useMyProfile(): UseMyProfileResult {
   const saveProfile = useCallback(async (patch: ProfilePatch) => {
     setSaving(true);
     try {
-      const updated = await apiFetch<MyProfileDto>("/api/v1/profiles/me", { method: "PATCH", body: JSON.stringify(patch) });
+      const updated = await apiPatch<MyProfileDto>("/api/v1/profiles/me", patch, updateProfileSchema);
       setProfile(updated);
       return true;
     } catch {
@@ -69,7 +70,7 @@ export function useMyProfile(): UseMyProfileResult {
   const savePrivacy = useCallback(async (patch: PrivacyPatch) => {
     setSaving(true);
     try {
-      const updated = await apiFetch<PrivacySettingsDto>("/api/v1/profiles/me/privacy", { method: "PATCH", body: JSON.stringify(patch) });
+      const updated = await apiPatch<PrivacySettingsDto>("/api/v1/profiles/me/privacy", patch, updatePrivacySchema);
       setPrivacy(updated);
       return true;
     } catch {

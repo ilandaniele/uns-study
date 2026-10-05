@@ -1,3 +1,4 @@
+import { createReportSchema } from "@sala/contracts";
 import type { ReportContext, ReportCreatedDto, ReportReason, UploadInstructionDto } from "@sala/contracts";
 import { apiPost, ApiRequestError } from "@/lib/api";
 import type { EvidenceFileLike } from "./evidence";
@@ -30,7 +31,7 @@ export async function submitReport(input: SubmitReportInput): Promise<SubmitRepo
     context: input.context,
     contextMessageId: input.contextMessageId || undefined,
     roomId: input.roomId || undefined,
-  });
+  }, createReportSchema);
 
   if (!input.file) {
     return { report, attachmentWarning: null };

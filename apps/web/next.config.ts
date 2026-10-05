@@ -7,37 +7,8 @@ import type { NextConfig } from "next";
 // the API directly via `NEXT_PUBLIC_API_URL`.
 const API_PROXY_TARGET = process.env.API_PROXY_TARGET ?? "";
 
+// The Content-Security-Policy is built per request in `src/proxy.ts` (nonce), from `src/lib/csp.ts`.
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || API_PROXY_TARGET.replace(/\/+$/, "") || "http://localhost:4000";
-
-/** connect-src origins for the Socket.IO host (https + wss, or http + ws for local dev). */
-function socketOrigins(): string[] {
-  try {
-    const { protocol, host } = new URL(SOCKET_URL);
-    return protocol === "https:" ? [`https://${host}`, `wss://${host}`] : [`http://${host}`, `ws://${host}`];
-  } catch {
-    return [];
-  }
-}
-
-// Third-party hosts the app really loads: AdSense (pagead2), GPT/GAM (securepubads), gtag, Turnstile.
-// Enforced after a report-only run showed no violations. 'unsafe-inline' stays for the inline theme
-// script and ad tags; dev also needs 'unsafe-eval' for React Refresh.
-const DEV_EVAL = process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'";
-const CSP = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${DEV_EVAL} https://pagead2.googlesyndication.com https://securepubads.g.doubleclick.net https://www.googletagmanager.com https://challenges.cloudflare.com https://*.googlesyndication.com https://*.google.com`,
-  `connect-src 'self' ${socketOrigins().join(" ")} https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://*.doubleclick.net https://*.googlesyndication.com https://*.google.com https://challenges.cloudflare.com`,
-  "img-src 'self' data: blob: https:",
-  "style-src 'self' 'unsafe-inline'",
-  "font-src 'self' data:",
-  "frame-src https://challenges.cloudflare.com https://*.doubleclick.net https://*.googlesyndication.com https://*.google.com https://*.mercadopago.com https://*.mercadopago.com.ar https://*.mercadolibre.com",
-  "worker-src 'self' blob:",
-  "manifest-src 'self'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-].join("; ");
 
 const nextConfig: NextConfig = {
   // Dockerfile.web builds the self-contained server; trace files from the monorepo root so the
@@ -61,13 +32,12 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: [
-          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "DENY" },
           // Camera: report photo capture; geolocation: geofence checks.
           { key: "Permissions-Policy", value: "camera=(self), geolocation=(self), microphone=(), payment=()" },
-          { key: "Content-Security-Policy", value: CSP },
         ],
       },
     ];

@@ -1,14 +1,15 @@
+import { openDisputeSchema, voteDisputeSchema } from "@sala/contracts";
 import type { DisputeKind, DisputeVote, LocationInput, SeatDisputeDto } from "@sala/contracts";
 import { apiFetch, apiPost } from "./api";
 
 /** POST /disputes — opens a seat dispute ("Me senté acá" / "Esa persona no está" / "Está guardado"). */
 export function openDispute(roomId: string, seatId: string, kind: DisputeKind, location: LocationInput): Promise<SeatDisputeDto> {
-  return apiPost<SeatDisputeDto>("/api/v1/disputes", { roomId, seatId, kind, location });
+  return apiPost<SeatDisputeDto>("/api/v1/disputes", { roomId, seatId, kind, location }, openDisputeSchema);
 }
 
 /** POST /disputes/:id/votes — casts (or overwrites) the caller's PRESENT/ABSENT vote. */
 export function voteDispute(disputeId: string, vote: DisputeVote, location: LocationInput): Promise<SeatDisputeDto> {
-  return apiPost<SeatDisputeDto>(`/api/v1/disputes/${disputeId}/votes`, { vote, location });
+  return apiPost<SeatDisputeDto>(`/api/v1/disputes/${disputeId}/votes`, { vote, location }, voteDisputeSchema);
 }
 
 /** GET /disputes/:id — viewer-specific detail (includes `myVote`/`iAmIncumbent`/`iAmOpener`). */

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import type { ReactNode } from "react";
 import { AdsRoot } from "@/features/ads/AdsRoot";
 import { AnalyticsLoader } from "@/components/AnalyticsLoader";
@@ -35,7 +36,9 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // Per-request CSP nonce from `proxy.ts`; this makes every page dynamically rendered.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     // The theme init script sets `dark` on <html> before hydration; that mismatch is intentional.
     <html
@@ -45,7 +48,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     >
       <head>
         {/* Applies the stored/system theme before hydration to avoid a light-mode flash. */}
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="min-h-dvh bg-app pb-safe-14 text-main antialiased lg:pb-0">
         <OfflineBanner />

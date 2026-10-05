@@ -44,3 +44,45 @@ describe("proxy shared secret", () => {
     expect(forwarded(res, "x-sala-proxy-secret")).toBeNull();
   });
 });
+
+describe("proxy CSP nonce", () => {
+  const page = () => proxy(new NextRequest("https://example.test/sala/principal", { headers: { host: "example.test" } }));
+
+  it("sets a nonce-based script-src without unsafe-inline, and forwards the nonce to Next", () => {
+    const res = page();
+    const csp = res.headers.get("content-security-policy") ?? "";
+    const nonce = forwarded(res, "x-nonce");
+    expect(nonce).toBeTruthy();
+    expect(csp).toContain(`'nonce-${nonce}'`);
+    expect(csp).toContain("'strict-dynamic'");
+    expect(csp.split("; ").find((d) => d.startsWith("script-src"))).not.toContain("'unsafe-inline'");
+    expect(forwarded(res, "content-security-policy")).toBe(csp);
+    expect(csp).toContain("frame-ancestors 'none'");
+  });
+
+  it("uses a different nonce on every request", () => {
+    expect(forwarded(page(), "x-nonce")).not.toBe(forwarded(page(), "x-nonce"));
+  });
+
+  it("skips the CSP for static assets", () => {
+    const res = proxy(new NextRequest("https://example.test/_next/static/chunk.js", { headers: { host: "example.test" } }));
+    expect(res.headers.get("content-security-policy")).toBeNull();
+  });
+
+  it("still redirects the legacy host, without a CSP", async () => {
+    const { LEGACY_HOST } = await import("@/lib/hosts");
+    const res = proxy(new NextRequest("https://" + LEGACY_HOST + "/mapa?x=1", { headers: { host: LEGACY_HOST } }));
+    expect(res.status).toBe(308);
+    expect(res.headers.get("location")).toContain("/mapa?x=1");
+  });
+
+  it("still adds the proxy secret on API paths (which skip the CSP)", () => {
+    process.env.PROXY_SHARED_SECRET = "s3cret";
+    try {
+      const res = proxy(new NextRequest("https://example.test/api/v1/rooms", { headers: { host: "example.test" } }));
+      expect(forwarded(res, "x-sala-proxy-secret")).toBe("s3cret");
+    } finally {
+      delete process.env.PROXY_SHARED_SECRET;
+    }
+  });
+});

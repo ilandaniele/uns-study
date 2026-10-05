@@ -1,6 +1,7 @@
 "use client";
 
 import { SocketEvents } from "@sala/contracts/events";
+import { chatMessageSchema } from "@sala/contracts";
 import type { ChatHistoryDto, ChatMessageDto, Page } from "@sala/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { apiDelete, apiFetch, apiPost, ApiRequestError } from "@/lib/api";
@@ -140,7 +141,7 @@ export function useRoomChat(roomSlug: string, blockedIds: Set<string>): UseRoomC
     async (content: string) => {
       setSendError(null);
       try {
-        const dto = await apiPost<ChatMessageDto>(`/api/v1/rooms/${roomSlug}/messages`, { content });
+        const dto = await apiPost<ChatMessageDto>(`/api/v1/rooms/${roomSlug}/messages`, { content }, chatMessageSchema);
         setChatRoomId((prev) => prev ?? dto.chatRoomId);
         appendMessage(dto);
       } catch (err) {

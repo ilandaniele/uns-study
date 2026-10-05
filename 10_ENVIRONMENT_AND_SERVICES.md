@@ -79,9 +79,13 @@ Since 2026-10-05 the database runs on the self-managed Fly Postgres app `sala-de
 - If the data is lost or bad, `ops/restore-fly-db.ps1` restores the latest dump. Without arguments it restores into the test database `sala_restore_test`. `-Database sala -Force` replaces the live data in one transaction.
 - If the whole volume is lost, create a new volume from a snapshot. The steps are in the header of `ops/restore-fly-db.ps1`.
 
-### Accepted risk: owner URL on the runtime machine
+### Migrations
 
-Fly secrets apply to the whole app, so `MIGRATION_DATABASE_URL` (owner role) is also visible to the running API. The API uses it only for boot-time migrations. Someone with code execution inside the API machine could use it to change the schema. Moving migrations to a separate app or a CI job would remove this; it is not done yet.
+The API machine only holds `DATABASE_URL` (role `sala_app`, data changes only). It does not hold the owner credential and never changes the schema. On boot it checks that every migration in the repo is already applied; if any is missing it stops with an error listing them, and the Fly bluegreen deploy keeps the previous version running. The seed and the secret/VAPID setup only read and write rows, so they run as `sala_app`.
+
+Migrations are applied from your PC with `powershell -ExecutionPolicy Bypass -File ops\migrate-fly-db.ps1`. The script gives `sala_owner` a random one-time password, opens `fly proxy` to the database, runs `pnpm db:migrate` against it, then closes the proxy and removes the owner's login again (even if the migration failed). The owner has no login between runs. It also lets `sala_app` read the `drizzle` schema, which the boot check needs.
+
+A commit that changes the schema must run this script before it is pushed. Migrations must stay backward compatible with the code still running (add, do not drop or rename), because the old version keeps serving until the new one boots. `MIGRATION_DATABASE_URL` must not be set as an API secret; if it is, the API migrates with it as before.
 
 ## Infrastructure security on Fly.io
 

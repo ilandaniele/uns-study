@@ -123,8 +123,41 @@ async function parseResponse<T>(res: Response): Promise<T> {
   return (await res.json()) as T;
 }
 
-export function apiPost<T>(path: string, data?: unknown): Promise<T> {
-  return apiFetch<T>(path, { method: "POST", body: data ? JSON.stringify(data) : undefined });
+/**
+ * Structural subset of a zod schema (`safeParse`), so web needs no direct `zod` dependency: the
+ * `@sala/contracts` request schemas satisfy it as-is.
+ */
+export interface BodySchema {
+  safeParse(data: unknown): { success: boolean };
+}
+
+/** Spanish message for a body that fails its contract schema on the client. */
+export const CLIENT_VALIDATION_MESSAGE = "Los datos ingresados no son válidos. Revisalos e intentá de nuevo.";
+
+/**
+ * Checks `data` against `schema` before anything is sent. Throws the same `ApiRequestError` the API
+ * would (code VALIDATION_ERROR, status 400) so callers handle one shape; the server still validates.
+ */
+export function assertValidBody(data: unknown, schema?: BodySchema): void {
+  if (!schema || schema.safeParse(data).success) return;
+  throw new ApiRequestError({ error: { code: "VALIDATION_ERROR", message: CLIENT_VALIDATION_MESSAGE } }, 400);
+}
+
+async function sendJson<T>(method: string, path: string, data: unknown, schema?: BodySchema): Promise<T> {
+  assertValidBody(data, schema);
+  return apiFetch<T>(path, { method, body: data ? JSON.stringify(data) : undefined });
+}
+
+export function apiPost<T>(path: string, data?: unknown, schema?: BodySchema): Promise<T> {
+  return sendJson<T>("POST", path, data, schema);
+}
+
+export function apiPut<T>(path: string, data?: unknown, schema?: BodySchema): Promise<T> {
+  return sendJson<T>("PUT", path, data, schema);
+}
+
+export function apiPatch<T>(path: string, data?: unknown, schema?: BodySchema): Promise<T> {
+  return sendJson<T>("PATCH", path, data, schema);
 }
 
 export function apiDelete<T>(path: string): Promise<T> {

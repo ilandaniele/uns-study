@@ -1,6 +1,7 @@
 "use client";
 
 import { SocketEvents } from "@sala/contracts/events";
+import { dmSendSchema } from "@sala/contracts";
 import type { DirectMessageDto, Page } from "@sala/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch, apiPost, ApiRequestError } from "@/lib/api";
@@ -103,7 +104,7 @@ export function useDmThread(conversationId: string): UseDmThreadResult {
     async (content: string) => {
       setSendError(null);
       try {
-        const dto = await apiPost<DirectMessageDto>(`/api/v1/conversations/${conversationId}/messages`, { content });
+        const dto = await apiPost<DirectMessageDto>(`/api/v1/conversations/${conversationId}/messages`, { content }, dmSendSchema);
         setMessages((prev) => (prev.some((m) => m.id === dto.id) ? prev : [...prev, dto]));
       } catch (err) {
         if (err instanceof ApiRequestError && err.code === "BLOCKED") {
