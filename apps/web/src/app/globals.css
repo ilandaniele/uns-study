@@ -621,3 +621,8 @@ summary:focus-visible,
     transition-duration: 0ms !important;
   }
 }
+
+/* AdSense marks a slot it could not fill; collapse it instead of leaving an empty box. */
+ins.adsbygoogle[data-ad-status="unfilled"] {
+  display: none !important;
+}

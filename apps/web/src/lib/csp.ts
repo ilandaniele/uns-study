@@ -1,5 +1,6 @@
 // Content-Security-Policy, built per request in `proxy.ts` so `script-src` can carry a nonce.
-// Third-party hosts the app really loads: AdSense (pagead2), GPT/GAM (securepubads), gtag, Turnstile.
+// Third-party hosts the app really loads: AdSense (pagead2, plus its adtrafficquality.google
+// ad-quality checks), GPT/GAM (securepubads), gtag, Turnstile.
 // With 'strict-dynamic' a modern browser ignores the host list and 'self' and trusts only the nonce
 // (plus scripts those scripts load); the hosts stay as the fallback for browsers without it.
 
@@ -25,12 +26,12 @@ export function buildCsp(nonce: string, isDev: boolean = process.env.NODE_ENV !=
   const devEval = isDev ? " 'unsafe-eval'" : "";
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${devEval} https://pagead2.googlesyndication.com https://securepubads.g.doubleclick.net https://www.googletagmanager.com https://challenges.cloudflare.com https://*.googlesyndication.com https://*.google.com`,
-    `connect-src 'self' ${socketOrigins(socketUrl).join(" ")} https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://*.doubleclick.net https://*.googlesyndication.com https://*.google.com https://challenges.cloudflare.com`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${devEval} https://pagead2.googlesyndication.com https://securepubads.g.doubleclick.net https://www.googletagmanager.com https://challenges.cloudflare.com https://*.googlesyndication.com https://*.google.com https://*.adtrafficquality.google`,
+    `connect-src 'self' ${socketOrigins(socketUrl).join(" ")} https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://*.doubleclick.net https://*.googlesyndication.com https://*.google.com https://*.adtrafficquality.google https://challenges.cloudflare.com`,
     "img-src 'self' data: blob: https:",
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self' data:",
-    "frame-src https://challenges.cloudflare.com https://*.doubleclick.net https://*.googlesyndication.com https://*.google.com https://*.mercadopago.com https://*.mercadopago.com.ar https://*.mercadolibre.com",
+    "frame-src https://challenges.cloudflare.com https://*.doubleclick.net https://*.googlesyndication.com https://*.google.com https://*.adtrafficquality.google https://*.mercadopago.com https://*.mercadopago.com.ar https://*.mercadolibre.com",
     "worker-src 'self' blob:",
     "manifest-src 'self'",
     "object-src 'none'",
