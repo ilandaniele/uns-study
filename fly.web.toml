@@ -12,7 +12,7 @@ primary_region = "gru"
     # Ads: empty = house ads only. Set to the Ad Manager unit paths / AdSense ids when approved.
     NEXT_PUBLIC_GAM_REWARDED_UNIT = ""
     NEXT_PUBLIC_GAM_INTERSTITIAL_UNIT = ""
-    NEXT_PUBLIC_ADSENSE_CLIENT = ""
+    NEXT_PUBLIC_ADSENSE_CLIENT = "ca-pub-1784864280582108"
     NEXT_PUBLIC_ADSENSE_SLOT_RAIL = ""
 
 [env]

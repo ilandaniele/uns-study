@@ -22,9 +22,11 @@ primary_region = "gru"
   PRESENCE_DEV_BYPASS = "false"
   VAPID_SUBJECT = "https://saladeestudio.com.ar"
   PUBLIC_WEB_URL = "https://saladeestudio.com.ar"
+  # Sender for auth and campaign emails; the domain is verified in Resend (DNS records on Cloudflare).
+  EMAIL_FROM = "Sala de Estudio <noreply@saladeestudio.com.ar>"
 
 # Secrets (not set here — `fly secrets set`): DATABASE_URL, GOOGLE_CLIENT_SECRET,
-# BETTER_AUTH_SECRET, IP_HASH_SALT, MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET, RESEND_API_KEY, EMAIL_FROM,
+# BETTER_AUTH_SECRET, IP_HASH_SALT, MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET, RESEND_API_KEY,
 # SEAT_VERIFIER_URL, SEAT_VERIFIER_TOKEN.
 
 [deploy]
