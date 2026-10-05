@@ -16,7 +16,8 @@ $api = "uns-study-api"
 $dbApp = "sala-de-estudio-db"
 $skipCreate = $args -contains "-SkipCreate"
 
-$neon = "$(Get-Clipboard -Raw)".Trim()
+# Also accepts Neon's "psql '...'" snippet.
+$neon = ("$(Get-Clipboard -Raw)".Trim() -replace '^psql\s+', '').Trim("'", '"', ' ')
 if ($neon -notmatch '^postgres(ql)?://(?!sala_app:)[^:/\s]+:[^@\s]+@[^/\s]+\.neon\.tech/\S+$' -or $neon.Contains("'")) {
   throw "Clipboard does not look like the Neon owner connection string."
 }
@@ -31,12 +32,17 @@ $appPw = New-Password
 
 if (-not $skipCreate) {
   Write-Host "Creating Fly Postgres app $dbApp (takes a few minutes)..."
-  # Output is swallowed: it prints the superuser connection string.
+  # Output is captured, not shown: it prints the superuser connection string.
   $ErrorActionPreference = "Continue"
-  $null = fly postgres create --name $dbApp --org personal --region gru --initial-cluster-size 1 `
+  $createOut = fly postgres create --name $dbApp --org personal --region gru --initial-cluster-size 1 `
     --vm-size shared-cpu-1x --vm-memory 512 --volume-size 1 --image-ref flyio/postgres-flex:17 2>&1
   $code = $LASTEXITCODE; $ErrorActionPreference = "Stop"
-  if ($code -ne 0) { throw "fly postgres create failed. Check 'fly apps list' and rerun with -SkipCreate if the app exists." }
+  if ($code -ne 0) {
+    # Show why it failed with any credential masked.
+    ($createOut | Out-String) -replace 'postgres(ql)?://\S+', 'postgres://<hidden>' -replace '(?im)^(\s*password:\s*)\S+', '$1<hidden>' | Write-Host
+    throw "fly postgres create failed. Check 'fly apps list' and rerun with -SkipCreate if the app exists."
+  }
+  Remove-Variable createOut
   Write-Host "Created $dbApp."
 }
 
