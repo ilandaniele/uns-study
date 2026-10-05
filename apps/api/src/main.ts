@@ -22,8 +22,10 @@ async function bootstrap() {
   // reads them, so the API never needs hand-typed generated secrets in deployment. Uses a
   // short-lived db connection of its own since `./database/database.module.js` (and everything
   // that depends on `env.ts`) can't be imported yet.
+  // MIGRATION_DATABASE_URL (owner role) runs DDL here when DATABASE_URL is a least-privilege
+  // runtime role (ops/neon-least-privilege.sql); unset, both use DATABASE_URL.
   const secretsDb = createDb({
-    databaseUrl: process.env.DATABASE_URL || undefined,
+    databaseUrl: process.env.MIGRATION_DATABASE_URL || process.env.DATABASE_URL || undefined,
     pgliteDir: process.env.PGLITE_DIR || undefined,
   });
   const dbAutoMigrate = process.env.DB_AUTO_MIGRATE

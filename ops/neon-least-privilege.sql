@@ -2,8 +2,10 @@
 -- The API then connects as `sala_app`; migrations keep using the owner connection string.
 -- Not applied automatically: review, pick a password in the Neon console, then:
 --   1. run this file;
---   2. set the API's DATABASE_URL Fly secret to the `sala_app` connection string;
---   3. make sure whatever runs Drizzle migrations still uses the owner URL.
+--   2. set the API's MIGRATION_DATABASE_URL Fly secret to the current (owner) DATABASE_URL value;
+--   3. set the API's DATABASE_URL Fly secret to the `sala_app` connection string.
+-- Boot-time migrations, seed and app_secrets use MIGRATION_DATABASE_URL (apps/api/src/main.ts);
+-- every request after that runs as `sala_app`.
 
 CREATE ROLE sala_app LOGIN;  -- set the password from the Neon console (Roles > sala_app > Reset password)
 
