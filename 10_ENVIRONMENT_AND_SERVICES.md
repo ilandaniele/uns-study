@@ -62,16 +62,14 @@ Configure:
 - trusted origins;
 - backend session validation.
 
-## Neon
+## PostgreSQL (Fly Postgres, previously Neon)
 
-Create one PostgreSQL project/database.
+Since 2026-10-05 the database runs on the self-managed Fly Postgres app `sala-de-estudio-db` (gru, `flyio/postgres-flex:17`, one machine, 1 GB volume with daily snapshots kept 14 days). It was moved from Neon with `ops/migrate-neon-to-fly-postgres.ps1`.
 
-Requirements:
-
-- SSL connection;
-- migration user/credentials;
-- runtime connection string;
-- optional separate migration/runtime roles later.
+- Database `sala`, reached by the API over Fly's private network at `sala-de-estudio-db.internal:5432` with `sslmode=disable`.
+- `MIGRATION_DATABASE_URL` uses the owner role `sala_owner` for boot-time migrations, seed and secrets.
+- `DATABASE_URL` uses the least-privilege role `sala_app` (data access only, same grants as `ops/neon-least-privilege.sql`).
+- The Neon project `uns-study` (Postgres 18) is kept untouched as a backup. To roll back, set both secrets to the Neon URLs with `ops/set-secret-from-clipboard.ps1 migdb` / `db`, then run `fly secrets deploy -a uns-study-api`.
 
 ## Upstash
 
