@@ -37,3 +37,17 @@ Per-user Postgres RLS would require putting the user ID into every database tran
 ## Neon
 
 Neon is no longer used. Deleting the Neon project permanently deletes data, so the owner does it from the Neon console. Claude does not delete it.
+
+## Phases run (2026-10-05)
+
+Each phase was implemented by a builder subagent and then checked by a verifier subagent (typecheck, lint, tests, web build), and deployed and checked against production.
+
+| Phase | What was added | Commit |
+|---|---|---|
+| 1. Auth | Sessions revoked on password reset; 16 KB body cap on `/api/auth` writes. | d4970ba |
+| 2. Rate limiting | 300/min per IP on `/api/v1`; Socket.IO event budget and 20 connections per IP; per-user limits on the remaining routes; Fly concurrency limit. | d4970ba |
+| 3. Validation and exposure | uuid, length and datetime limits in contracts; QR body validated; hidden users' avatars not served; rankings capped at 100; campaign list capped; unsubscribe stores hashed IPs. | d4970ba |
+| 4. Backups and infra docs | Daily volume snapshots kept 14 days; daily `pg_dump` to the owner's PC; restore script tested; Fly infrastructure notes. | d4970ba |
+| 5. Web | Per-request CSP nonce with `'strict-dynamic'`; HSTS preload; bodies validated in the browser before sending. | 0804da2 |
+| 6. Migrations | The API no longer holds the owner credential and refuses to boot with pending migrations; `ops/migrate-fly-db.ps1` migrates with a one-time owner login. | 0804da2 |
+| 7. Audit | This checklist, re-checked against production. | this file |
