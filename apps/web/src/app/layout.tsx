@@ -26,6 +26,10 @@ export const metadata: Metadata = {
     images: [{ url: "/icons/icon-512.png", width: 512, height: 512 }],
   },
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Sala de Estudio" },
+  // Lets AdSense verify site ownership without loading the ad script on every page.
+  ...(process.env.NEXT_PUBLIC_ADSENSE_CLIENT
+    ? { other: { "google-adsense-account": process.env.NEXT_PUBLIC_ADSENSE_CLIENT } }
+    : {}),
 };
 
 export const viewport: Viewport = {
