@@ -10,7 +10,7 @@ $verify = $args -contains "-Verify"
 
 # Runs inside the API machine, where DATABASE_URL and the `pg` driver already exist.
 $readJs = @'
-const { Pool } = require("pg");
+const { Pool } = require(require.resolve("pg", { paths: [process.cwd(), "/app/apps/api", "/app"] }));
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
 pool.query("select name, value from app_secrets").then(({ rows }) => {
   const by = Object.fromEntries(rows.map((r) => [r.name, r.value]));
@@ -25,7 +25,7 @@ pool.query("select name, value from app_secrets").then(({ rows }) => {
 
 # Compares the running env against the table by hash only.
 $verifyJs = @'
-const { Pool } = require("pg");
+const { Pool } = require(require.resolve("pg", { paths: [process.cwd(), "/app/apps/api", "/app"] }));
 const h = (v) => require("crypto").createHash("sha256").update(String(v ?? "")).digest("hex");
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
 pool.query("select name, value from app_secrets").then(({ rows }) => {
@@ -39,7 +39,7 @@ pool.query("select name, value from app_secrets").then(({ rows }) => {
 
 $js = if ($verify) { $verifyJs } else { $readJs }
 $b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($js))
-$cmd = "sh -c 'cd /app/packages/database && echo $b64 | base64 -d > /tmp/s.cjs && node /tmp/s.cjs; rm -f /tmp/s.cjs'"
+$cmd = "sh -c 'cd /app/packages/database && echo $b64 | base64 -d > /tmp/s.cjs && node /tmp/s.cjs; rc=`$?; rm -f /tmp/s.cjs; exit `$rc'"
 $raw = (fly ssh console -a $app -q -C $cmd | Out-String).Trim()
 if ($LASTEXITCODE -ne 0) { throw "Reading app_secrets on $app failed." }
 if ($verify) { Write-Host $raw; return }
