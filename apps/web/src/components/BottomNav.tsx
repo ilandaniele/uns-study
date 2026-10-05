@@ -18,7 +18,7 @@ import { useAdminAccess } from "@/features/admin/useAdminAccess";
 const ICON_SIZE = 22;
 
 const ITEMS: { label: string; href: string; icon: ReactNode }[] = [
-  { label: "Sala", href: "/sala/principal", icon: <SquaresFourIcon size={ICON_SIZE} /> },
+  { label: "Sala", href: "/", icon: <SquaresFourIcon size={ICON_SIZE} /> },
   { label: "Comunidad", href: "/comunidad", icon: <MegaphoneIcon size={ICON_SIZE} /> },
   { label: "Personas", href: "/personas", icon: <UsersThreeIcon size={ICON_SIZE} /> },
   { label: "Chat", href: "/chat", icon: <ChatCircleIcon size={ICON_SIZE} /> },
@@ -35,7 +35,7 @@ export function BottomNav() {
   return (
     <nav aria-label="Secciones" className="fixed inset-x-0 bottom-0 z-30 flex border-t border-app bg-surface/95 pb-safe backdrop-blur supports-[backdrop-filter]:bg-surface/85 lg:hidden">
       {items.map((item) => {
-        const active = pathname?.startsWith(item.href);
+        const active = item.href === "/" ? pathname === "/" : pathname?.startsWith(item.href);
         return (
           <Link
             key={item.label}

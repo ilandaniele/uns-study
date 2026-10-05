@@ -69,7 +69,7 @@ export default function LoginPage() {
       // Picks up the new session's token instead of carrying an anonymous socket into the room page.
       invalidateMe();
       resetSocket();
-      router.push(safeNext() ?? "/sala/principal");
+      router.push(safeNext() ?? "/");
       router.refresh();
     } catch {
       setError("No pudimos ingresar. Revisá tu conexión y probá de nuevo.");
@@ -83,7 +83,7 @@ export default function LoginPage() {
     setError(null);
     setPending(true);
     try {
-      const result = await signIn.social({ provider: "google", callbackURL: `${origin}${safeNext() ?? "/sala/principal"}` });
+      const result = await signIn.social({ provider: "google", callbackURL: `${origin}${safeNext() ?? "/"}` });
       if (result?.error) setError("No pudimos iniciar sesión con Google. Probá con email y contraseña.");
     } catch {
       setError("No pudimos iniciar sesión con Google. Probá con email y contraseña.");

@@ -12,7 +12,7 @@ import { invalidateMe } from "@/lib/me-store";
 import { resetSocket } from "@/lib/socket";
 
 const NAV_ITEMS: { label: string; href: string }[] = [
-  { label: "Sala", href: "/sala/principal" },
+  { label: "Sala", href: "/" },
   { label: "Personas", href: "/personas" },
   { label: "Comunidad", href: "/comunidad" },
   { label: "Chat", href: "/chat" },
@@ -39,7 +39,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-app bg-surface/95 px-4 py-2.5 max-[360px]:px-3 backdrop-blur supports-[backdrop-filter]:bg-surface/85">
       <div className="flex min-w-0 items-center gap-3">
-        <Link href="/sala/principal" aria-label="Sala de Estudio" className="flex min-w-0 items-center gap-2.5 whitespace-nowrap text-main max-[360px]:gap-2">
+        <Link href="/" aria-label="Sala de Estudio" className="flex min-w-0 items-center gap-2.5 whitespace-nowrap text-main max-[360px]:gap-2">
           <span aria-hidden="true" className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-white">
             <ArmchairIcon size={20} weight="bold" />
           </span>
@@ -55,7 +55,7 @@ export function Header() {
 
       <nav className="hidden items-center gap-1 text-sm font-semibold lg:flex">
         {items.map((item) => {
-          const active = pathname?.startsWith(item.href);
+          const active = item.href === "/" ? pathname === "/" : pathname?.startsWith(item.href);
           return (
             <Link
               key={item.label}

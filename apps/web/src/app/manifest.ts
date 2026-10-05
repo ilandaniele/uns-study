@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Sala de Estudio",
     short_name: "Sala Estudio",
     description: "Disponibilidad de lugares en la sala de estudio en tiempo real.",
-    start_url: "/sala/principal",
+    start_url: "/",
     display: "standalone",
     background_color: "#eceee9",
     theme_color: "#0f6e7e",

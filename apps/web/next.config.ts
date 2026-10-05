@@ -24,7 +24,8 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_SOCKET_URL: SOCKET_URL,
   },
   async redirects() {
-    return [{ source: "/", destination: "/sala/principal", permanent: false }];
+    // The principal room lives at "/"; old links and push notifications keep their query (?seat=).
+    return [{ source: "/sala/principal", destination: "/", permanent: true }];
   },
   async headers() {
     // The service worker must never be served from a cache, or a broken one could stick around.
