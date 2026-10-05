@@ -50,13 +50,15 @@ export interface SeatProps {
   onSelect: (seat: SeatDto) => void;
   /** What to draw for whoever is checked in here: their photo, their alias animal or a silhouette. */
   avatar?: SeatAvatarDto | null;
+  /** Draw the gold "Admin" pill under the occupant badge. */
+  adminBadge?: boolean;
   /** Faded out by the "Solo libres" filter. */
   dimmed?: boolean;
   /** The viewer's favorite seat — gets a small star badge. */
   isFavorite?: boolean;
 }
 
-export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, isMySeat, isSelected, onSelect, avatar = null, dimmed = false, isFavorite = false }: SeatProps) {
+export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, isMySeat, isSelected, onSelect, avatar = null, adminBadge = false, dimmed = false, isFavorite = false }: SeatProps) {
   const badge = seatAvatarRender(avatar, seat.status === "OCCUPIED" || isMySeat);
   const showPhoto = badge !== null;
   const clipId = `seat-photo-${seat.id}`;
@@ -152,6 +154,14 @@ export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, is
               )}
             </>
           )}
+          {adminBadge ? (
+            <g transform={`translate(0 ${PHOTO_R + 3})`} aria-hidden="true">
+              <rect x={-14} y={-6} width={28} height={12} rx={6} fill="#fbbf24" stroke="#b45309" strokeWidth={1} />
+              <text textAnchor="middle" dominantBaseline="central" y={0.5} fontSize={8} fontWeight={800} fill="#451a03">
+                ADMIN
+              </text>
+            </g>
+          ) : null}
         </g>
       ) : null}
       <text

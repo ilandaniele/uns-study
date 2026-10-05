@@ -7,14 +7,16 @@ import type { PrivacyPatch } from "./useMyProfile";
 export interface PrivacyTogglesProps {
   privacy: PrivacySettingsDto;
   saving: boolean;
+  /** Admins also see the "insignia de admin" toggle. */
+  isAdmin?: boolean;
   onChange: (patch: PrivacyPatch) => void;
 }
 
 /** Per-field privacy toggles ("Qué ve la gente de mí") — every field defaults to private (07_SECURITY §privacy). */
-export function PrivacyToggles({ privacy, saving, onChange }: PrivacyTogglesProps) {
+export function PrivacyToggles({ privacy, saving, isAdmin = false, onChange }: PrivacyTogglesProps) {
   return (
     <div className="flex flex-col divide-y divide-[var(--border)]">
-      {PRIVACY_FIELDS.map((field) => {
+      {PRIVACY_FIELDS.filter((field) => isAdmin || !field.adminOnly).map((field) => {
         const checked = privacy[field.key];
         const disabled = saving;
         return (

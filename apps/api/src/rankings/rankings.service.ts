@@ -6,7 +6,8 @@ import { schema, type Db } from "@sala/database";
 import type { RankingCategory, RankingDto, RankingEntryDto, RankingPeriod } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { RoomsService } from "../rooms/rooms.service.js";
-import { displayName, needsAlias, shownAliasAnimal, visibleAvatarUrl } from "../users/display-name.js";
+import { displayName, needsAlias, showsAdminBadge, shownAliasAnimal, visibleAvatarUrl } from "../users/display-name.js";
+import { RolesService } from "../users/roles.service.js";
 import { AliasService } from "../users/alias.service.js";
 
 const STUDY_TIME_DAILY_CAP_MIN = 720;
@@ -94,6 +95,7 @@ interface VisibilityInfo {
   displayName: string;
   avatarUrl: string | null;
   aliasAnimal: string | undefined;
+  adminBadge: boolean;
   /** `false` whenever the entry must not be linkable: not opted into room visibility, or the shown
    *  name is the random alias rather than a chosen identity. */
   linkable: boolean;
@@ -112,6 +114,7 @@ export class RankingsService {
     @Inject(DB) private readonly db: Db,
     @Inject(RoomsService) private readonly rooms: RoomsService,
     @Inject(AliasService) private readonly aliases: AliasService,
+    @Inject(RolesService) private readonly roles: RolesService,
   ) {}
 
   /** Raw (viewer-independent) ranking values per `roomId|period|category`, invalidated by TTL only. */
@@ -163,6 +166,7 @@ export class RankingsService {
           displayName: info.displayName,
           avatarUrl: info.avatarUrl,
           aliasAnimal: info.aliasAnimal,
+          adminBadge: info.adminBadge,
           isMe: userId === viewerUserId,
           value,
           realUserId: userId,
@@ -189,6 +193,7 @@ export class RankingsService {
           displayName: info.displayName,
           avatarUrl: info.avatarUrl,
           aliasAnimal: info.aliasAnimal,
+          adminBadge: info.adminBadge,
           isMe: true,
           value: myValue,
         };
@@ -205,6 +210,7 @@ export class RankingsService {
     const profiles = await this.db.select().from(schema.userProfiles).where(inArray(schema.userProfiles.userId, userIds));
     const privacyRows = await this.db.select().from(schema.userPrivacySettings).where(inArray(schema.userPrivacySettings.userId, userIds));
     const aliasByUser = await this.aliases.ensureAliasesForProfiles(profiles);
+    const admins = await this.roles.adminIds(userIds);
     const profileByUser = new Map(profiles.map((p) => [p.userId, { ...p, alias: aliasByUser.get(p.userId) ?? p.alias }]));
     const privacyByUser = new Map(privacyRows.map((p) => [p.userId, p]));
 
@@ -224,6 +230,7 @@ export class RankingsService {
         // Photo only for visible-name users who enabled `showAvatar` (07_SECURITY §privacy).
         avatarUrl: profile && !needsAlias(profile) ? visibleAvatarUrl(profile, privacy) : null,
         aliasAnimal: shownAliasAnimal(profile) ?? undefined,
+        adminBadge: showsAdminBadge(admins.has(userId), profile, privacy),
         linkable,
       });
     }

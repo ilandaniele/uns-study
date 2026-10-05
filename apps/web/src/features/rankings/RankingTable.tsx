@@ -1,6 +1,7 @@
 import type { RankingDto, RankingEntryDto, RankingPeriod } from "@sala/contracts";
 import { TrophyIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
+import { AdminBadge } from "@/components/AdminBadge";
 import { Avatar } from "@/components/Avatar";
 import { emptyRankingMessage, formatRankingValue } from "./labels";
 
@@ -59,6 +60,7 @@ function Podium({ entries, format }: { entries: RankingEntryDto[]; format: (valu
                 size={entry.rank === 1 ? 64 : 52}
                 ringColor={MEDAL[entry.rank]}
               />
+              {entry.adminBadge ? <AdminBadge size={entry.rank === 1 ? 64 : 52} edge="top" /> : null}
               <span
                 className="absolute -bottom-1 left-1/2 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full text-xs font-bold text-[#131816] ring-2 ring-[var(--surface)]"
                 style={{ backgroundColor: MEDAL[entry.rank] }}
@@ -98,7 +100,7 @@ function RankingRow({ entry, value, highlighted }: { entry: RankingEntryDto; val
       >
         {entry.rank}
       </span>
-      <Avatar userId={entry.userId ?? entry.displayName} name={entry.displayName} url={entry.avatarUrl} aliasAnimal={entry.aliasAnimal} size={40} />
+      <Avatar userId={entry.userId ?? entry.displayName} name={entry.displayName} url={entry.avatarUrl} aliasAnimal={entry.aliasAnimal} size={40} adminBadge={entry.adminBadge} />
       {entry.userId ? (
         <Link href={`/u/${entry.userId}`} className="min-w-0 flex-1 truncate text-sm font-medium text-main hover:underline">
           {entry.displayName}

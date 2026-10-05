@@ -26,7 +26,7 @@ interface AliasableProfile {
 }
 
 /**
- * Assigns, releases, and rerolls the fun random alias shown instead of "Usuario anónimo" for
+ * Assigns (once, permanently) the fun random alias shown instead of "Usuario anónimo" for
  * hidden users. Aliases live on `user_profiles.alias`, uniquely (case-insensitively) across all
  * users — assignment retries on collision, falling back to a numeric suffix after `MAX_ATTEMPTS`.
  * Every alias ever released is recorded in `retired_aliases` and never handed out again, so a
@@ -114,12 +114,6 @@ export class AliasService {
     if (row?.alias) {
       await this.db.insert(schema.retiredAliases).values({ alias: row.alias }).onConflictDoNothing();
     }
-  }
-
-  /** Releases the current alias and assigns a new one. Callers should only invoke this while HIDDEN. */
-  async reroll(userId: string): Promise<string> {
-    await this.releaseAlias(userId);
-    return this.ensureAlias(userId);
   }
 
   /**

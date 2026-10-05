@@ -3,7 +3,7 @@
 import { checkInRequestSchema, extendRequestSchema, incumbentRespondSchema, observationRequestSchema, openDisputeSchema, voteDisputeSchema } from "@sala/contracts";
 import type { CheckInDto, DisputeKind, DisputeVote, RoomMapDto, SeatDisputeDto, SeatDto, SeatStateChangedEvent } from "@sala/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { apiDelete, apiFetch, apiPost, ApiRequestError } from "@/lib/api";
+import { apiDelete, apiPost, ApiRequestError } from "@/lib/api";
 import { describeActionError } from "@/lib/errors";
 import { getFreshLocation } from "@/lib/geolocation";
 import { mutateMe, peekMe, refreshMe } from "@/lib/me-store";
@@ -56,7 +56,6 @@ export interface UseSeatActionsResult {
   extend: (durationMinutes?: number) => Promise<boolean>;
   checkOut: () => Promise<boolean>;
   /** PATCH `/checkins/current/identity` — toggles "Mostrar mi identidad" on the caller's current check-in. */
-  updateIdentity: (showIdentity: boolean) => Promise<CheckInDto | null>;
   /** Retries the last action (check-in/observation) with a solved Turnstile token. */
   submitTurnstileToken: (token: string) => void;
   /** POST `/disputes` — opens "Me senté acá" / "Esa persona no está" / "Está guardado" on a seat. */
@@ -282,20 +281,6 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
     [optimisticMe, optimisticSeats, run, withOptimistic],
   );
 
-  const updateIdentity = useCallback(
-    (showIdentity: boolean) =>
-      run(async () => {
-        const current = peekMe()?.activeCheckIn ?? null;
-        const changes = current ? [optimisticMe({ ...current, showIdentity })] : [];
-        const dto = await withOptimistic(changes, () =>
-          apiFetch<CheckInDto>("/api/v1/checkins/current/identity", { method: "PATCH", body: JSON.stringify({ showIdentity }) }),
-        );
-        adoptCheckIn(dto);
-        return dto;
-      }),
-    [adoptCheckIn, optimisticMe, run, withOptimistic],
-  );
-
   const submitTurnstileToken = useCallback((token: string) => {
     retryRef.current?.(token);
   }, []);
@@ -344,7 +329,6 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
     markSaved,
     extend,
     checkOut,
-    updateIdentity,
     submitTurnstileToken,
     openDispute,
     voteDispute,

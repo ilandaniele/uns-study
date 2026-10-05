@@ -48,7 +48,7 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock }: 
             >
               <div className="w-10 shrink-0">
                 {showHeader ? (
-                  <Avatar userId={message.author.userId} name={message.author.displayName} url={message.author.avatarUrl} aliasAnimal={message.author.aliasAnimal} size={40} />
+                  <Avatar userId={message.author.userId} name={message.author.displayName} url={message.author.avatarUrl} aliasAnimal={message.author.aliasAnimal} size={40} adminBadge={message.author.adminBadge} />
                 ) : null}
               </div>
               <div className="min-w-0 flex-1">

@@ -1,6 +1,7 @@
 "use client";
 
 import type { RoomPersonDto } from "@sala/contracts";
+import { WithAdminBadge } from "@/components/AdminBadge";
 import { seatCodeLabel } from "@/features/room/format";
 import { OccupantAvatar } from "@/features/room/OccupantAvatar";
 import Link from "next/link";
@@ -25,9 +26,9 @@ export function PeopleList({ people, limit, emptyLabel = "Nadie está mostrándo
       {visible.map((person) => (
         <li key={person.userId ?? `alias-${person.displayName}-${person.seatCode ?? ""}`} className="flex items-center gap-3 py-2.5">
           {person.aliasAnimal ? (
-            <OccupantAvatar avatar={{ kind: "animal", animalId: person.aliasAnimal }} size={40} />
+            <OccupantAvatar avatar={{ kind: "animal", animalId: person.aliasAnimal }} size={40} adminBadge={person.adminBadge} />
           ) : (
-            <PersonAvatar name={person.displayName} avatarUrl={person.avatarUrl} />
+            <PersonAvatar name={person.displayName} avatarUrl={person.avatarUrl} adminBadge={person.adminBadge} />
           )}
           <div className="min-w-0 flex-1">
             {person.userId ? (
@@ -50,7 +51,15 @@ export function PeopleList({ people, limit, emptyLabel = "Nadie está mostrándo
   );
 }
 
-function PersonAvatar({ name, avatarUrl }: { name: string; avatarUrl: string | null }) {
+function PersonAvatar({ name, avatarUrl, adminBadge = false }: { name: string; avatarUrl: string | null; adminBadge?: boolean }) {
+  return (
+    <WithAdminBadge show={adminBadge} size={36}>
+      <PersonAvatarImage name={name} avatarUrl={avatarUrl} />
+    </WithAdminBadge>
+  );
+}
+
+function PersonAvatarImage({ name, avatarUrl }: { name: string; avatarUrl: string | null }) {
   if (avatarUrl) {
     // eslint-disable-next-line @next/next/no-img-element -- avatars are arbitrary external HTTPS URLs, not a build-time asset
     return <img src={avatarUrl} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />;

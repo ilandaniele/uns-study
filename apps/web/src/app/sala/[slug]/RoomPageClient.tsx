@@ -35,7 +35,6 @@ import { PeopleList } from "@/features/people/PeopleList";
 import { useOccupants } from "@/features/people/useOccupants";
 import { usePeople } from "@/features/people/usePeople";
 import { trackEvent } from "@/lib/analytics";
-import { getShowIdentityPreference, hasChosenIdentityVisibility, setShowIdentityPreference } from "@/lib/identity-prefs";
 import { useQrContext } from "@/lib/qr-context";
 import { getSocket } from "@/lib/socket";
 import { useMediaQuery } from "@/lib/use-media-query";
@@ -138,7 +137,6 @@ export function RoomPageClient({ slug }: { slug: string }) {
     extend,
     checkOut,
     locating,
-    updateIdentity,
     openDispute,
     voteDispute,
     respondDispute,
@@ -155,7 +153,6 @@ export function RoomPageClient({ slug }: { slug: string }) {
     void loadSeatDetail();
   }, []);
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
-  const [showIdentityPrompt, setShowIdentityPrompt] = useState(false);
   // Seat the viewer just marked "Está guardado" — SeatDetail offers to report / ask to free it.
   const [savedPromptSeatId, setSavedPromptSeatId] = useState<string | null>(null);
   const [onlyFree, setOnlyFree] = useState(false);
@@ -180,6 +177,11 @@ export function RoomPageClient({ slug }: { slug: string }) {
     const avatars = new Map<string, SeatAvatarDto>();
     for (const [seatId, occupant] of occupantsBySeatId) avatars.set(seatId, occupant.avatar);
     return avatars;
+  }, [occupantsBySeatId]);
+  const adminBadgeSeatIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const [seatId, occupant] of occupantsBySeatId) if (occupant.adminBadge) ids.add(seatId);
+    return ids;
   }, [occupantsBySeatId]);
   const seatById = useMemo(() => new Map((map?.seats ?? []).map((seat) => [seat.id, seat])), [map]);
   const tableById = useMemo(() => new Map((map?.tables ?? []).map((table) => [table.id, table])), [map]);
@@ -228,7 +230,6 @@ export function RoomPageClient({ slug }: { slug: string }) {
   const handleSelectSeat = useCallback(
     (seat: SeatDto) => {
       setSelectedSeatId((current) => (current === seat.id ? null : seat.id));
-      setShowIdentityPrompt(false);
       setSavedPromptSeatId(null);
       clearError();
       // Warm the GPS while the person reads the seat panel, so "Estoy acá" answers instantly.
@@ -239,7 +240,6 @@ export function RoomPageClient({ slug }: { slug: string }) {
 
   const closeDetail = useCallback(() => {
     setSelectedSeatId(null);
-    setShowIdentityPrompt(false);
     setSavedPromptSeatId(null);
     clearError();
   }, [clearError]);
@@ -248,7 +248,6 @@ export function RoomPageClient({ slug }: { slug: string }) {
   const openSeat = useCallback(
     (seatId: string) => {
       setSelectedSeatId(seatId);
-      setShowIdentityPrompt(false);
       setSavedPromptSeatId(null);
       clearError();
       if (signedIn) primeLocation();
@@ -291,13 +290,11 @@ export function RoomPageClient({ slug }: { slug: string }) {
     // Interstitial only for a device with a recorded earlier check-in (never the first, never without storage).
     if (hasCheckedInBefore()) showPreCheckInAd();
     setConfirmMove(null);
-    const showIdentity = hasChosenIdentityVisibility() ? getShowIdentityPreference() : false;
-    const result = await checkIn(seatId, showIdentity, { qrToken, durationMinutes });
+    const result = await checkIn(seatId, true, { qrToken, durationMinutes });
     if (result) {
       trackEvent("check_in", { roomSlug: slug, seatId });
       if (fromDisputeWon) clearDisputeWon();
       markCheckedIn();
-      if (!hasChosenIdentityVisibility()) setShowIdentityPrompt(true);
     }
   }
 
@@ -353,13 +350,6 @@ export function RoomPageClient({ slug }: { slug: string }) {
     attemptCheckIn(disputeWon.seatId, true);
   }
 
-  async function handleIdentityChoice(showIdentity: boolean) {
-    setShowIdentityPreference(showIdentity);
-    setShowIdentityPrompt(false);
-    await updateIdentity(showIdentity);
-    refetchOccupants();
-  }
-
   if (loading) {
     return <RoomSkeleton />;
   }
@@ -392,6 +382,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
       onSelectSeat={handleSelectSeat}
       highlightTableCode={highlightTableCode}
       avatarBySeatId={avatarBySeatId}
+      adminBadgeSeatIds={adminBadgeSeatIds}
       onlyFree={onlyFree}
       favoriteSeatId={favoriteSeatId}
     />
@@ -425,8 +416,6 @@ export function RoomPageClient({ slug }: { slug: string }) {
       actionError={actionError}
       turnstileRequired={turnstileRequired}
       onTurnstileToken={submitTurnstileToken}
-      showIdentityPrompt={showIdentityPrompt}
-      onIdentityChoice={handleIdentityChoice}
       onClose={closeDetail}
       onCheckIn={requestCheckIn}
       onMarkFree={() => void handleMarkFree(selectedSeat.id)}

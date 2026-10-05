@@ -5,6 +5,7 @@ import { freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
 import { AliasService } from "../users/alias.service.js";
+import { RolesService } from "../users/roles.service.js";
 import { RankingsService } from "./rankings.service.js";
 
 // Buenos Aires is UTC-3 with no DST: 15:00Z is always mid-afternoon local, well clear of midnight.
@@ -20,7 +21,7 @@ describe("RankingsService", () => {
   beforeEach(async () => {
     db = await freshDb();
     const roomsService = new RoomsService(db, new RoomStateService(db));
-    svc = new RankingsService(db, roomsService, new AliasService(db));
+    svc = new RankingsService(db, roomsService, new AliasService(db), new RolesService(db));
     const room = await getRoom(db);
     roomId = room.id;
     roomSlug = room.slug;
@@ -125,7 +126,7 @@ describe("RankingsService", () => {
 
     const asSelf = await svc.getRankings(roomSlug, "today", "study_time", "u5", TODAY);
     expect(asSelf.entries).toHaveLength(0);
-    expect(asSelf.me).toEqual({ rank: 0, userId: null, displayName: "Usuario anónimo", avatarUrl: null, isMe: true, value: 60 });
+    expect(asSelf.me).toMatchObject({ rank: 0, userId: null, displayName: "Usuario anónimo", avatarUrl: null, isMe: true, value: 60 });
   });
 
   it("includes a HIDDEN user (with a profile row) under their random alias, but never linkable", async () => {
@@ -147,7 +148,7 @@ describe("RankingsService", () => {
     await insertStudySession("u7", "2026-01-15", 45, "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
 
     const ranking = await svc.getRankings(roomSlug, "today", "study_time", null, TODAY);
-    expect(ranking.entries).toEqual([{ rank: 1, userId: "u7", displayName: "Ana", avatarUrl: null, isMe: false, value: 45 }]);
+    expect(ranking.entries).toMatchObject([{ rank: 1, userId: "u7", displayName: "Ana", avatarUrl: null, adminBadge: false, isMe: false, value: 45 }]);
   });
 
   it("excludes a user entirely once they opt out of showInRanking, even from their own `me`", async () => {

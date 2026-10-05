@@ -5,7 +5,7 @@ import { API_URL, IN_GEOFENCE_LOCATION, ROOM_SLUG, checkoutCurrent, getMyUserId,
 // Seat reserved for this spec (distinct from other spec files to avoid cross-test collisions).
 const SEAT = { table: "10", seatNumber: 1 };
 
-test("hidden alias: shown as 'Te ven como', rerolls to a different name, and appears on the public profile", async ({ browser }) => {
+test("hidden alias: shown as a fixed animal name and appears on the public profile", async ({ browser }) => {
   const contextA = await browser.newContext();
   const contextB = await browser.newContext();
 
@@ -15,18 +15,11 @@ test("hidden alias: shown as 'Te ven como', rerolls to a different name, and app
     const pageA = await contextA.newPage();
     await pageA.goto("/perfil");
 
-    // Default identity mode is HIDDEN: an alias is shown instead of "Usuario anónimo".
-    const aliasText = pageA.getByText(/^Te ven como: /);
+    // Default identity mode is HIDDEN: the permanent alias animal is shown instead of "Usuario anónimo".
+    const aliasText = pageA.getByText(/^Tu nombre de animal es fijo: /);
     await expect(aliasText).toBeVisible();
-    const firstAlias = (await aliasText.textContent())?.replace("Te ven como: ", "").trim();
-    expect(firstAlias).toBeTruthy();
-
-    // "Otro nombre" rerolls to a (very likely) different alias.
-    await pageA.getByRole("button", { name: "Otro nombre" }).click();
-    await expect(async () => {
-      const current = (await aliasText.textContent())?.replace("Te ven como: ", "").trim();
-      expect(current).toBeTruthy();
-    }).toPass();
+    const alias = (await aliasText.textContent())?.replace("Tu nombre de animal es fijo: ", "").trim();
+    expect(alias).toBeTruthy();
 
     // B, logged in, sees the alias (not "Usuario anónimo") on A's public profile.
     await signUpNewUser(contextB);

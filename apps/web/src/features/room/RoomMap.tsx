@@ -15,6 +15,8 @@ export interface RoomMapProps {
   highlightTableCode?: string | null;
   /** Badge descriptor per seat id for every checked-in occupant (photo, alias animal or silhouette). */
   avatarBySeatId?: ReadonlyMap<string, SeatAvatarDto>;
+  /** Seats whose occupant carries the gold "Admin" badge. */
+  adminBadgeSeatIds?: ReadonlySet<string>;
   /** "Solo libres": fade every seat that isn't FREE (the viewer's own and selected seat stay visible). */
   onlyFree?: boolean;
   /** The viewer's favorite seat, drawn with a small star. */
@@ -30,7 +32,7 @@ const BACK_WINDOWS = 6;
 const SIDE_WINDOW_LENGTH = 220;
 const SIDE_WINDOW_Y = [130, 400, 670, 940, 1210];
 
-export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlightTableCode = null, avatarBySeatId, onlyFree = false, favoriteSeatId = null }: RoomMapProps) {
+export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlightTableCode = null, avatarBySeatId, adminBadgeSeatIds, onlyFree = false, favoriteSeatId = null }: RoomMapProps) {
   const { width, height } = map.viewBox;
   // Per-seat facing + table label/type only depend on the layout, not on live seat status.
   const seatMeta = useMemo(() => {
@@ -75,6 +77,7 @@ export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, on
             isSelected={seat.id === selectedSeatId}
             onSelect={onSelectSeat}
             avatar={avatarBySeatId?.get(seat.id) ?? null}
+            adminBadge={adminBadgeSeatIds?.has(seat.id) ?? false}
             dimmed={onlyFree && seat.status !== "FREE" && seat.id !== mySeatId && seat.id !== selectedSeatId}
             isFavorite={seat.id === favoriteSeatId}
           />

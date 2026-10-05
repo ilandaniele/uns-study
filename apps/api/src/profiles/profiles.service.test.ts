@@ -23,7 +23,7 @@ async function build(db: Db) {
   const checkIns = new CheckInService(db, roomState, presence, security, new StudySessionService(db), new QrService(db), buildDisputeService(db), new RolesService(db));
   const study = new StudyService(db, new RestrictionService(db));
   const aliases = new AliasService(db);
-  const profiles = new ProfilesService(db, study, aliases, new RestrictionService(db));
+  const profiles = new ProfilesService(db, study, aliases, new RestrictionService(db), new RolesService(db));
   return { profiles, checkIns, study };
 }
 
@@ -68,36 +68,28 @@ describe("ProfilesService", () => {
       expect(privacy.showAvatar).toBe(true);
     });
 
-    it("releases the alias once the caller switches to a visible identity with a non-empty name", async () => {
+    it("keeps the same alias across every identity mode switch", async () => {
       const hidden = await profiles.getMyProfile("u1", "u1@example.test");
       expect(hidden.alias).not.toBeNull();
 
-      const visible = await profiles.updateMyProfile("u1", "u1@example.test", { firstName: "Ana", identityMode: "FIRST_NAME" });
-      expect(visible.alias).toBeNull();
-
+      const patches = [
+        { firstName: "Ana", lastName: "Pérez", identityMode: "FULL_NAME" as const },
+        { identityMode: "FIRST_NAME" as const },
+        { nickname: "Anita", identityMode: "NICKNAME" as const },
+        { identityMode: "HIDDEN" as const },
+      ];
+      for (const patch of patches) {
+        const after = await profiles.updateMyProfile("u1", "u1@example.test", patch);
+        expect(after.alias).toBe(hidden.alias);
+      }
       const [row] = await db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, "u1"));
-      expect(row?.alias).toBeNull();
+      expect(row?.alias).toBe(hidden.alias);
     });
 
-    it("re-assigns an alias when switching back to HIDDEN", async () => {
-      await profiles.updateMyProfile("u1", "u1@example.test", { firstName: "Ana", identityMode: "FIRST_NAME" });
-      const backToHidden = await profiles.updateMyProfile("u1", "u1@example.test", { identityMode: "HIDDEN" });
-      expect(backToHidden.alias).not.toBeNull();
-    });
-  });
-
-  describe("rerollAlias", () => {
-    it("assigns a different alias while HIDDEN", async () => {
-      await profiles.getMyProfile("u1", "u1@example.test");
-      const rerolled = await profiles.rerollAlias("u1");
-      expect(rerolled).toBeTruthy();
-      const after = await profiles.getMyProfile("u1", "u1@example.test");
-      expect(after.alias).toBe(rerolled);
-    });
-
-    it("rejects when the caller isn't HIDDEN", async () => {
-      await profiles.updateMyProfile("u1", "u1@example.test", { firstName: "Ana", identityMode: "FIRST_NAME" });
-      await expect(profiles.rerollAlias("u1")).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    it("reports isAdmin from the user's roles", async () => {
+      expect((await profiles.getMyProfile("u1", "u1@example.test")).isAdmin).toBe(false);
+      await db.insert(schema.userRoles).values({ userId: "u1", role: "ADMIN" });
+      expect((await profiles.getMyProfile("u1", "u1@example.test")).isAdmin).toBe(true);
     });
   });
 

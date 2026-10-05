@@ -15,6 +15,7 @@ const ALL_OFF: PrivacySettingsDto = {
   allowDirectMessages: true,
   showInRanking: true,
   showAliasAnimalOnMap: true,
+  showAdminBadge: true,
 };
 
 describe("PRIVACY_FIELDS", () => {

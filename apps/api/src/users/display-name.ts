@@ -87,3 +87,15 @@ export function shownAliasAnimal(profile: DisplayNameProfile | null): string | n
   if (!profile || !needsAlias(profile)) return null;
   return animalIdFromAlias(profile.alias);
 }
+
+/**
+ * Whether the gold "Admin" badge goes on this user's avatar: only for an ADMIN who kept
+ * `show_admin_badge` on, and only while their real identity is shown (never on the alias).
+ */
+export function showsAdminBadge(
+  isAdmin: boolean,
+  profile: Pick<DisplayNameProfile, "identityMode" | "firstName" | "lastName" | "nickname"> | null,
+  privacy: { showAdminBadge: boolean } | null,
+): boolean {
+  return isAdmin && Boolean(profile) && !needsAlias(profile!) && (privacy?.showAdminBadge ?? true);
+}

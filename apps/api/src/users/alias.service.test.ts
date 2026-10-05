@@ -94,13 +94,6 @@ describe("AliasService", () => {
     expect(retired?.alias).toBe("Carpincho Estudioso");
   });
 
-  it("rerolls: releases the old alias and assigns a fresh one", async () => {
-    await svc.ensureAlias("u1");
-    mockedRandomAlias.mockReturnValue("Hornero Madrugador");
-    const rerolled = await svc.reroll("u1");
-    expect(rerolled).toBe("Hornero Madrugador");
-  });
-
   it("reassigns a legacy alias whose noun isn't a catalog animal, retiring the old one", async () => {
     await db.update(schema.userProfiles).set({ alias: "Mate Filosófico", aliasAnimal: null }).where(eq(schema.userProfiles.userId, "u1"));
 

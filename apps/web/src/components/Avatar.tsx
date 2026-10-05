@@ -1,4 +1,5 @@
 import { isAnimalId } from "@sala/contracts";
+import { WithAdminBadge } from "@/components/AdminBadge";
 import { OccupantAvatar } from "@/features/room/OccupantAvatar";
 
 /**
@@ -36,10 +37,20 @@ interface AvatarProps {
   className?: string;
   /** Optional colored ring (e.g. a podium medal color); omitted for plain list rows. */
   ringColor?: string;
+  /** Draws the gold "Admin" pill over the bottom of the avatar. */
+  adminBadge?: boolean;
 }
 
 /** Round avatar: the user's photo when set, otherwise their initial on a deterministic color. */
-export function Avatar({ userId, name, url, aliasAnimal = null, size = 40, className = "", ringColor }: AvatarProps) {
+export function Avatar({ adminBadge = false, ...props }: AvatarProps) {
+  return (
+    <WithAdminBadge show={adminBadge} size={props.size}>
+      <AvatarImage {...props} />
+    </WithAdminBadge>
+  );
+}
+
+function AvatarImage({ userId, name, url, aliasAnimal = null, size = 40, className = "", ringColor }: Omit<AvatarProps, "adminBadge">) {
   const ringStyle = ringColor ? { boxShadow: `0 0 0 3px ${ringColor}` } : undefined;
   if (url) {
     return (

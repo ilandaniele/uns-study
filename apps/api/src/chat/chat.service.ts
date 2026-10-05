@@ -8,7 +8,7 @@ import { RestrictionService } from "../users/restriction.service.js";
 import { RolesService } from "../users/roles.service.js";
 import { BlocksService } from "../blocks/blocks.service.js";
 import { RoomsService } from "../rooms/rooms.service.js";
-import { displayName, shownAliasAnimal, visibleAvatarUrl } from "../users/display-name.js";
+import { displayName, needsAlias, showsAdminBadge, shownAliasAnimal, visibleAvatarUrl } from "../users/display-name.js";
 import { AliasService } from "../users/alias.service.js";
 
 const PAGE_SIZE = 50;
@@ -104,6 +104,7 @@ export class ChatService {
     const profiles = await this.db.select().from(schema.userProfiles).where(inArray(schema.userProfiles.userId, userIds));
     const privacy = await this.db.select().from(schema.userPrivacySettings).where(inArray(schema.userPrivacySettings.userId, userIds));
     const aliasByUser = await this.aliases.ensureAliasesForProfiles(profiles);
+    const admins = await this.roles.adminIds(userIds);
 
     const userById = new Map(users.map((u) => [u.id, u]));
     const profileById = new Map(profiles.map((p) => [p.userId, { ...p, alias: aliasByUser.get(p.userId) ?? p.alias }]));
@@ -112,14 +113,18 @@ export class ChatService {
     return rows.map((row) => {
       const deleted = row.deletedAt !== null;
       const fallbackName = userById.get(row.userId)?.name ?? "Usuario";
+      const profile = profileById.get(row.userId) ?? null;
+      const privacy = privacyById.get(row.userId) ?? null;
       return {
         id: row.id,
         chatRoomId: row.chatRoomId,
         author: {
           userId: row.userId,
-          displayName: displayName(profileById.get(row.userId) ?? null, privacyById.get(row.userId) ?? null, fallbackName),
-          avatarUrl: visibleAvatarUrl(profileById.get(row.userId) ?? null, privacyById.get(row.userId) ?? null),
-          aliasAnimal: shownAliasAnimal(profileById.get(row.userId) ?? null) ?? undefined,
+          displayName: displayName(profile, privacy, fallbackName),
+          // The photo belongs to the real identity: never shown next to the alias.
+          avatarUrl: profile && !needsAlias(profile) ? visibleAvatarUrl(profile, privacy) : null,
+          aliasAnimal: shownAliasAnimal(profile) ?? undefined,
+          adminBadge: showsAdminBadge(admins.has(row.userId), profile, privacy),
         },
         content: deleted ? null : row.content,
         deleted,

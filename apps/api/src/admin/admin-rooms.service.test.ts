@@ -218,7 +218,7 @@ describe("AdminRoomsService — mark all occupied", () => {
       new RolesService(db),
     );
     svc = new AdminRoomsService(db, new RoomsService(db, roomState), roomState, new PresenceService(), new RolesService(db));
-    people = new RoomPeopleService(db, new AliasService(db));
+    people = new RoomPeopleService(db, new AliasService(db), new RolesService(db));
 
     const room = await getRoom(db);
     roomId = room.id;

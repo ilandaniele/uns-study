@@ -52,6 +52,8 @@ export const userPrivacySettings = pgTable("user_privacy_settings", {
   showInRanking: boolean("show_in_ranking").notNull().default(true),
   // Whether hidden users appear on the map as their alias animal (off = generic silhouette).
   showAliasAnimalOnMap: boolean("show_alias_animal_on_map").notNull().default(true),
+  // Admins only: whether their photo carries the gold "Admin" badge.
+  showAdminBadge: boolean("show_admin_badge").notNull().default(true),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

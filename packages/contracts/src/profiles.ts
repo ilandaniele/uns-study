@@ -15,8 +15,10 @@ export interface MyProfileDto {
   instagram: string | null;
   studentNumber: string | null;
   identityMode: IdentityMode;
-  /** Fun random alias shown instead of "Usuario anónimo" while `identityMode` is HIDDEN; `null` otherwise. */
+  /** Fun random alias, assigned once and never changed. Shown instead of a name while `identityMode` is HIDDEN. */
   alias: string | null;
+  /** True when the user has the ADMIN role, so the profile page offers the admin badge toggle. */
+  isAdmin: boolean;
 }
 
 export interface PrivacySettingsDto {
@@ -34,6 +36,8 @@ export interface PrivacySettingsDto {
   showInRanking: boolean;
   /** Hidden users appear on the map as their alias animal (default true); off = generic silhouette. */
   showAliasAnimalOnMap: boolean;
+  /** Admins only: show the gold "Admin" badge on their photo (default true). Ignored for non-admins. */
+  showAdminBadge: boolean;
 }
 
 export interface StudyStatusDto {
@@ -55,6 +59,8 @@ export interface PublicProfileDto {
   studyStatus: StudyStatusDto | null;
   allowsDirectMessages: boolean;
   blockedByMe: boolean;
+  /** Draw the gold "Admin" badge: an admin with a visible identity who kept the badge on. */
+  adminBadge: boolean;
 }
 
 export interface RoomPersonDto {
@@ -67,6 +73,8 @@ export interface RoomPersonDto {
   studyStatus: StudyStatusDto | null;
   /** Alias animal id (hidden users only, when they allow it on the map). */
   aliasAnimal?: string;
+  /** Draw the gold "Admin" badge (visible identities only). */
+  adminBadge?: boolean;
 }
 
 /** What to draw on an occupied seat: the person's photo, their alias animal, or a generic silhouette. */
@@ -80,6 +88,8 @@ export interface SeatOccupantDto {
   /** Photo URL when `avatar.kind === "photo"`, else `null` (kept for older consumers). */
   avatarUrl: string | null;
   avatar: SeatAvatarDto;
+  /** Draw the gold "Admin" badge (visible identities only). */
+  adminBadge?: boolean;
 }
 
 /** A seat that reads OCCUPIED ("Está ocupado") or SAVED ("Está guardado") only because someone marked it; nobody is checked in. */
@@ -128,6 +138,7 @@ export const updatePrivacySchema = z
     allowDirectMessages: z.boolean(),
     showInRanking: z.boolean(),
     showAliasAnimalOnMap: z.boolean(),
+    showAdminBadge: z.boolean(),
   })
   .partial();
 

@@ -5,8 +5,9 @@ import type { CheckInDto, MyProfileDto, PrivacySettingsDto, PublicProfileDto, up
 import type { z } from "zod";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
-import { displayName, needsAlias, visibleAvatarUrl } from "../users/display-name.js";
+import { displayName, needsAlias, showsAdminBadge, visibleAvatarUrl } from "../users/display-name.js";
 import { AliasService } from "../users/alias.service.js";
+import { RolesService } from "../users/roles.service.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { StudyService } from "../study/study.service.js";
 import { toDto as toCheckInDto } from "../checkins/checkins.service.js";
@@ -23,16 +24,17 @@ export class ProfilesService {
     @Inject(StudyService) private readonly study: StudyService,
     @Inject(AliasService) private readonly aliases: AliasService,
     @Inject(RestrictionService) private readonly restrictions: RestrictionService,
+    @Inject(RolesService) private readonly roles: RolesService,
   ) {}
 
   /** Rows are created lazily on first read/write — there's no signup-time profile step. Also
-   *  backfills a missing alias whenever `displayName` would currently need one (HIDDEN by default
-   *  for brand-new rows, or old rows never touched since the alias feature shipped). */
+   *  assigns the alias the first time it's missing. The alias is permanent: it's kept even while a
+   *  visible identity is shown, so switching back to HIDDEN shows the same animal as before. */
   private async ensureProfile(userId: string): Promise<ProfileRow> {
     await this.db.insert(schema.userProfiles).values({ userId }).onConflictDoNothing();
     const [row] = await this.db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, userId)).limit(1);
     if (!row) throw new Error("user_profiles row missing after upsert");
-    if (!row.alias && needsAlias(row)) {
+    if (!row.alias) {
       row.alias = await this.aliases.ensureAlias(userId);
     }
     return row;
@@ -46,36 +48,22 @@ export class ProfilesService {
   }
 
   async getMyProfile(userId: string, email: string): Promise<MyProfileDto> {
-    return toMyProfileDto(await this.ensureProfile(userId), email);
+    const [row, isAdmin] = await Promise.all([this.ensureProfile(userId), this.roles.hasRole(userId, ["ADMIN"])]);
+    return toMyProfileDto(row, email, isAdmin);
   }
 
   async updateMyProfile(userId: string, email: string, patch: ProfilePatch): Promise<MyProfileDto> {
     await this.restrictions.assertNot(userId, ["SUSPENDED", "BANNED"]);
-    await this.ensureProfile(userId);
+    const current = await this.ensureProfile(userId);
     const [row] = await this.db
       .update(schema.userProfiles)
       .set({ ...patch, updatedAt: new Date() })
       .where(eq(schema.userProfiles.userId, userId))
       .returning();
     if (!row) throw new Error("user_profiles row vanished during update");
-
-    // The saved fields may have just made a HIDDEN->visible (or vice versa) switch take effect:
-    // release the alias once it's no longer needed, or assign one now that it is.
-    if (needsAlias(row) && !row.alias) {
-      row.alias = await this.aliases.ensureAlias(userId);
-    } else if (!needsAlias(row) && row.alias) {
-      await this.aliases.releaseAlias(userId);
-      row.alias = null;
-    }
-    return toMyProfileDto(row, email);
-  }
-
-  /** Generates a fresh random alias, releasing the previous one. Only allowed while HIDDEN — a
-   *  visible identity doesn't have (or need) one. Rate-limited by the controller. */
-  async rerollAlias(userId: string): Promise<string> {
-    const profile = await this.ensureProfile(userId);
-    if (profile.identityMode !== "HIDDEN") throw ApiErrors.validation("Sólo podés cambiar tu apodo mientras tu identidad está oculta.");
-    return this.aliases.reroll(userId);
+    // The alias was assigned by `ensureProfile` and never changes, whatever identity mode is saved.
+    row.alias ??= current.alias;
+    return toMyProfileDto(row, email, await this.roles.hasRole(userId, ["ADMIN"]));
   }
 
   async getMyPrivacy(userId: string): Promise<PrivacySettingsDto> {
@@ -107,6 +95,7 @@ export class ProfilesService {
 
     const [profile] = await this.db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, targetUserId)).limit(1);
     const [privacy] = await this.db.select().from(schema.userPrivacySettings).where(eq(schema.userPrivacySettings.userId, targetUserId)).limit(1);
+    const isAdmin = await this.roles.hasRole(targetUserId, ["ADMIN"]);
     const [blockedByMe] = await this.db
       .select({ blockerId: schema.userBlocks.blockerId })
       .from(schema.userBlocks)
@@ -139,6 +128,7 @@ export class ProfilesService {
       studyStatus: profile && !needsAlias(profile) ? await this.study.getActiveStatusForUser(targetUserId) : null,
       allowsDirectMessages: privacy?.allowDirectMessages ?? true,
       blockedByMe: Boolean(blockedByMe),
+      adminBadge: showsAdminBadge(isAdmin, profile ?? null, privacy ?? null),
     };
   }
 
@@ -164,7 +154,7 @@ export class ProfilesService {
   }
 }
 
-function toMyProfileDto(row: ProfileRow, email: string): MyProfileDto {
+function toMyProfileDto(row: ProfileRow, email: string, isAdmin: boolean): MyProfileDto {
   return {
     userId: row.userId,
     email,
@@ -179,6 +169,7 @@ function toMyProfileDto(row: ProfileRow, email: string): MyProfileDto {
     studentNumber: row.studentNumber,
     identityMode: row.identityMode,
     alias: row.alias,
+    isAdmin,
   };
 }
 
@@ -196,5 +187,6 @@ function toPrivacyDto(row: PrivacyRow): PrivacySettingsDto {
     allowDirectMessages: row.allowDirectMessages,
     showInRanking: row.showInRanking,
     showAliasAnimalOnMap: row.showAliasAnimalOnMap,
+    showAdminBadge: row.showAdminBadge,
   };
 }

@@ -21,8 +21,6 @@ export interface UseMyProfileResult {
   /** Updates only the local `avatarUrl` — the avatar endpoints (`/profiles/me/avatar*`) already
    *  persisted it server-side; `updateProfileSchema` can't carry it (https-only, manual URLs only). */
   setLocalAvatarUrl: (avatarUrl: string | null) => void;
-  /** Requests a new random alias (only while HIDDEN); returns it on success, `null` on failure. */
-  rerollAlias: () => Promise<string | null>;
 }
 
 /** Loads and edits the caller's own profile + privacy settings (`/profiles/me`, `/profiles/me/privacy`). */
@@ -84,18 +82,5 @@ export function useMyProfile(): UseMyProfileResult {
     setProfile((prev) => (prev ? { ...prev, avatarUrl } : prev));
   }, []);
 
-  const rerollAlias = useCallback(async () => {
-    setSaving(true);
-    try {
-      const { alias } = await apiFetch<{ alias: string }>("/api/v1/profiles/me/alias/reroll", { method: "POST" });
-      setProfile((prev) => (prev ? { ...prev, alias } : prev));
-      return alias;
-    } catch {
-      return null;
-    } finally {
-      setSaving(false);
-    }
-  }, []);
-
-  return { profile, privacy, loading, error, saving, saveProfile, savePrivacy, setLocalAvatarUrl, rerollAlias };
+  return { profile, privacy, loading, error, saving, saveProfile, savePrivacy, setLocalAvatarUrl };
 }

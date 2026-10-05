@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Inject, Param, Patch, UseGuards } from "@nestjs/common";
 import type { z } from "zod";
 import { updatePrivacySchema, updateProfileSchema } from "@sala/contracts";
 import { AuthGuard } from "../auth/auth.guard.js";
@@ -49,15 +49,6 @@ export class ProfilesController {
   ) {
     await this.checkWriteLimit(user.id);
     return this.profiles.updateMyPrivacy(user.id, body);
-  }
-
-  @Post("profiles/me/alias/reroll")
-  async rerollAlias(@CurrentUser() user: RequestUser) {
-    const limit = await this.rateLimit.check(`alias-reroll:${user.id}`, 10, 3600);
-    if (!limit.allowed) throw ApiErrors.rateLimited();
-
-    const alias = await this.profiles.rerollAlias(user.id);
-    return { alias };
   }
 
   @Get("profiles/:userId")

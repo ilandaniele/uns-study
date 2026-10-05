@@ -1,9 +1,18 @@
 import type { SeatAvatarDto } from "@sala/contracts";
 import type { CSSProperties } from "react";
+import { WithAdminBadge } from "@/components/AdminBadge";
 import { AVATAR_BACKDROP, SILHOUETTE_BODY, SILHOUETTE_HEAD, occupantAvatarProps } from "./seat-avatar";
 
 /** Round HTML avatar for an occupant descriptor (photo, alias animal or silhouette) — SeatDetail / nearby list. */
-export function OccupantAvatar({ avatar, size = 32, className = "", style: extraStyle }: { avatar: SeatAvatarDto; size?: number; className?: string; style?: CSSProperties }) {
+export function OccupantAvatar({ adminBadge = false, ...props }: { avatar: SeatAvatarDto; size?: number; className?: string; style?: CSSProperties; adminBadge?: boolean }) {
+  return (
+    <WithAdminBadge show={adminBadge} size={props.size ?? 32}>
+      <OccupantAvatarImage {...props} />
+    </WithAdminBadge>
+  );
+}
+
+function OccupantAvatarImage({ avatar, size = 32, className = "", style: extraStyle }: { avatar: SeatAvatarDto; size?: number; className?: string; style?: CSSProperties }) {
   const props = occupantAvatarProps(avatar, size);
   if (props.type === "photo") {
     // eslint-disable-next-line @next/next/no-img-element -- avatars are arbitrary external HTTPS URLs, not a build-time asset

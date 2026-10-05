@@ -9,7 +9,6 @@ import { MessageOccupantButton } from "./MessageOccupantButton";
 import { useEffect, useState, type ReactNode } from "react";
 import { CheckInDurationPicker } from "./CheckInDurationPicker";
 import { clockLabel, clockTimeAfter, DEFAULT_CHECKIN_DURATION } from "./checkin-duration";
-import { IdentityPrompt } from "./IdentityPrompt";
 import { NearbyOccupants } from "./NearbyOccupants";
 import { OccupantAvatar } from "./OccupantAvatar";
 import { SavedReportPrompt } from "./SavedReportPrompt";
@@ -49,8 +48,6 @@ export interface SeatDetailProps {
   turnstileRequired: boolean;
   onTurnstileToken: (token: string) => void;
   /** Shown only right after a successful "Estoy acá" on this seat; never for observations. */
-  showIdentityPrompt: boolean;
-  onIdentityChoice: (showIdentity: boolean) => void;
   onClose: () => void;
   /** `durationMinutes` is how long the user chose to occupy the seat. */
   onCheckIn: (durationMinutes: number) => void;
@@ -99,8 +96,6 @@ export function SeatDetail({
   actionError,
   turnstileRequired,
   onTurnstileToken,
-  showIdentityPrompt,
-  onIdentityChoice,
   onClose,
   onCheckIn,
   onMarkFree,
@@ -236,7 +231,7 @@ export function SeatDetail({
         <div className="-mt-1 flex flex-col gap-1 rounded-lg bg-[var(--surface-2)] px-3 py-2 text-sm text-muted">
           {showOccupant && occupant ? (
             <div className="flex flex-wrap items-center gap-2">
-              <OccupantAvatar avatar={occupant.avatar} size={32} />
+              <OccupantAvatar avatar={occupant.avatar} size={32} adminBadge={occupant.adminBadge} />
               <span className="min-w-0 flex-1 break-words">
                 {occupant.userId ? (
                   <Link href={`/u/${occupant.userId}`} className="font-semibold text-primary hover:underline">
@@ -264,7 +259,6 @@ export function SeatDetail({
 
       {turnstileRequired ? <TurnstileChallenge onToken={onTurnstileToken} /> : null}
 
-      {isMySeat && showIdentityPrompt ? <IdentityPrompt onChoose={onIdentityChoice} /> : null}
 
       {showSavedPrompt && !isMySeat && me?.user && onDismissSavedPrompt ? (
         <SavedReportPrompt

@@ -8,6 +8,7 @@ import { useAdFree } from "@/features/ads/useAdFree";
 import { useMe } from "@/lib/me-store";
 import Link from "next/link";
 import { NotificationSettings } from "@/features/notifications/NotificationSettings";
+import { AppearancePreview } from "@/features/profile/AppearancePreview";
 import { AvatarUploader } from "@/features/profile/AvatarUploader";
 import { DeleteAccountDialog } from "@/features/profile/DeleteAccountDialog";
 import { PrivacyToggles } from "@/features/profile/PrivacyToggles";
@@ -24,7 +25,7 @@ const ROOM_SLUG = "principal";
 export default function PerfilPage() {
   const router = useRouter();
   const { data: session, isPending: sessionPending } = useSession();
-  const { profile, privacy, loading, error, saving, saveProfile, savePrivacy, setLocalAvatarUrl, rerollAlias } = useMyProfile();
+  const { profile, privacy, loading, error, saving, saveProfile, savePrivacy, setLocalAvatarUrl } = useMyProfile();
   const [studyStatus, setStudyStatus] = useState<PublicProfileDto["studyStatus"]>(null);
   const [roomId, setRoomId] = useState<string | null>(null);
   const [showDelete, setShowDelete] = useState(false);
@@ -122,7 +123,6 @@ export default function PerfilPage() {
           profile={profile}
           saving={saving}
           onSave={saveProfile}
-          onRerollAlias={rerollAlias}
         />
       </section>
 
@@ -131,6 +131,7 @@ export default function PerfilPage() {
         <p className="mb-2 text-xs text-muted">Todo está oculto por defecto. Activá sólo lo que quieras compartir.</p>
         <PrivacyToggles
           privacy={privacy}
+          isAdmin={profile.isAdmin}
           saving={saving}
           onChange={(patch) => {
             setPrivacyError(null);
@@ -186,6 +187,12 @@ export default function PerfilPage() {
             ) : null}
           </div>
         )}
+      </section>
+
+      <section className="rounded-[14px] border border-app bg-surface p-4">
+        <h2 className="mb-1 font-display text-base font-semibold text-main">Cómo te ven los demás</h2>
+        <p className="mb-3 text-xs text-muted">Vista previa con lo que tenés guardado.</p>
+        <AppearancePreview profile={profile} privacy={privacy} />
       </section>
 
       <section className="rounded-[14px] border border-red-200 bg-red-50 p-4">

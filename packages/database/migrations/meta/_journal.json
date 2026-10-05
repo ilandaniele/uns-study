@@ -148,6 +148,13 @@
       "when": 1791060395497,
       "tag": "0020_subscriptions_email",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791242313585,
+      "tag": "0021_hot_komodo",
+      "breakpoints": true
     }
   ]
 }

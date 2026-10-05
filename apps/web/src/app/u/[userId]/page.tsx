@@ -4,6 +4,7 @@ import { createConversationSchema, type ConversationDto, type PublicProfileDto }
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { WithAdminBadge } from "@/components/AdminBadge";
 import { apiFetch, apiPost, ApiRequestError } from "@/lib/api";
 import { useSession } from "@/lib/auth-client";
 
@@ -92,7 +93,9 @@ export default function PublicProfilePage() {
     <main className="mx-auto max-w-lg p-4">
       <div className="rounded-[14px] border border-app bg-surface p-5">
         <div className="flex items-center gap-4">
-          <PersonAvatar name={profile.displayName} avatarUrl={profile.avatarUrl} />
+          <WithAdminBadge show={profile.adminBadge} size={64}>
+            <PersonAvatar name={profile.displayName} avatarUrl={profile.avatarUrl} />
+          </WithAdminBadge>
           <div className="min-w-0">
             <h1 className="truncate font-display text-xl font-semibold text-main">{profile.displayName}</h1>
             {profile.career || profile.currentSubject ? (
