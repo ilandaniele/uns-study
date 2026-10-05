@@ -21,10 +21,22 @@ $skipCreate = $args -contains "-SkipCreate"
 $clip = "$(Get-Clipboard -Raw)"
 $found = [regex]::Match($clip, "postgres(ql)?://[^\s'`"]+")
 $neon = $found.Value
-Remove-Variable clip
 if (-not $found.Success) {
-  throw "No postgres:// connection string in the clipboard. In Neon > Connect, pick role neondb_owner and copy again."
+  # Neon's "Parameters only" snippet: PGHOST='...' PGDATABASE='...' PGUSER='...' PGPASSWORD='...'
+  $p = @{}
+  foreach ($k in "PGHOST", "PGDATABASE", "PGUSER", "PGPASSWORD") {
+    $m = [regex]::Match($clip, "$k\s*[=:]\s*['`"]?([^\s'`"]+)")
+    if ($m.Success) { $p[$k] = $m.Groups[1].Value }
+  }
+  if ($p.Count -eq 4) {
+    $neon = "postgresql://$($p.PGUSER):$([uri]::EscapeDataString($p.PGPASSWORD))@$($p.PGHOST)/$($p.PGDATABASE)?sslmode=require"
+  } else {
+    # Shape only, never the value: length plus the key names that were found.
+    $keys = ([regex]::Matches($clip, "[A-Za-z_]{3,}(?=\s*[=:])") | ForEach-Object { $_.Value }) -join ", "
+    throw "No postgres:// connection string in the clipboard (clipboard has $($clip.Length) characters; keys seen: $keys). In Neon > Connect, pick role neondb_owner, turn on 'Show password', copy, then rerun right away."
+  }
 }
+Remove-Variable clip
 if ($neon -match '^postgres(ql)?://sala_app:') { throw "That is the sala_app string. Pick role neondb_owner in Neon > Connect." }
 if ($neon -match '\*{3,}') { throw "The password is masked (****). Click 'Show password' in Neon > Connect, then copy again." }
 if ($neon -notmatch '^postgres(ql)?://[^:/\s]+:[^@\s]+@[^/\s]+\.neon\.tech(:\d+)?/\S+$') {
