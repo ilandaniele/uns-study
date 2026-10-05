@@ -1,6 +1,7 @@
 "use client";
 
 import { ArmchairIcon } from "@phosphor-icons/react/dist/ssr";
+import { clockLabel } from "./checkin-duration";
 
 export interface MyCheckInBarProps {
   seatLabel: string;
@@ -15,7 +16,7 @@ export interface MyCheckInBarProps {
  * Releasing never needs location, so it works after leaving the room (e.g. from home).
  */
 export function MyCheckInBar({ seatLabel, expiresAt, pending, onShow, onRelease }: MyCheckInBarProps) {
-  const until = new Date(expiresAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  const until = clockLabel(expiresAt);
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-app bg-surface px-4 py-3 shadow-sm">
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10" style={{ color: "var(--primary)" }}>

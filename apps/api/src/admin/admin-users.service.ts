@@ -79,6 +79,26 @@ export class AdminUsersService {
     };
   }
 
+  /** Owner-only: grants or revokes ADMIN. Audited in `moderation_actions` (free-text `action`). */
+  async setAdmin(actorId: string, targetUserId: string, grant: boolean): Promise<void> {
+    if (!(await this.roles.isOwner(actorId))) throw ApiErrors.forbidden("Solo el dueño de la app puede cambiar el rol de administrador.");
+
+    const [target] = await this.db.select().from(schema.user).where(eq(schema.user.id, targetUserId)).limit(1);
+    if (!target) throw ApiErrors.notFound("Usuario no encontrado.");
+    if (targetUserId === actorId) throw ApiErrors.forbidden("No podés cambiar tu propio rol.");
+    if (!grant && (await this.roles.isOwner(targetUserId))) throw ApiErrors.forbidden("No se puede quitar el rol de administrador al dueño.");
+
+    if (grant) await this.roles.grantRole(targetUserId, "ADMIN");
+    else await this.roles.revokeRole(targetUserId, "ADMIN");
+
+    await this.db.insert(schema.moderationActions).values({
+      actorId,
+      targetUserId,
+      action: grant ? "ADMIN_GRANTED" : "ADMIN_REVOKED",
+      metadata: { role: "ADMIN" },
+    });
+  }
+
   async applyAction(
     actorId: string,
     targetUserId: string,

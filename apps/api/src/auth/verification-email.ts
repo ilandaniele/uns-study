@@ -1,10 +1,5 @@
 import type { ResendClient, ResendMessage } from "../email/resend.client.js";
-
-const ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (c) => ESCAPES[c]!);
-}
+import { escapeHtml } from "../email/email-render.js";
 
 /** `url` is Better Auth's own verification link (it hits the API, then redirects to the callbackURL). */
 export function composeVerificationEmail(input: { from: string; to: string; name: string; url: string }): ResendMessage {

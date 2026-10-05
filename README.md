@@ -90,7 +90,7 @@ For local testing away from the room, set `PRESENCE_DEV_BYPASS=true` (refused wh
   `CMD` runs `pnpm db:migrate && pnpm db:seed && node apps/api/dist/main.js` on every boot — cheap
   and idempotent (see "Scale-to-zero and background jobs" below), and simpler than a separate
   release step. `fly.toml` pre-fills the non-secret env (`WEB_ORIGIN`, `BETTER_AUTH_URL`,
-  `ADMIN_EMAILS`, `GOOGLE_CLIENT_ID`, `DB_AUTO_MIGRATE=false`, `ROOM_RESET_TIMEZONE`,
+  `ADMIN_EMAILS`, `GOOGLE_CLIENT_ID`, `DB_AUTO_MIGRATE=false`,
   `TRUST_PROXY_HOPS=2`, `PRESENCE_DEV_BYPASS=false`) and an `[http_service.checks]` hitting
   `/api/v1/health`. Secrets are set once via `fly secrets set`:
   ```bash

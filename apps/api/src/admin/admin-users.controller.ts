@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Inject, Param, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Inject, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
 import type { z } from "zod";
 import { moderationActionSchema } from "@sala/contracts";
-import { AdminGuard } from "../users/admin.guard.js";
+import { AdminGuard, AdminOnlyGuard } from "../users/admin.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";
 import { ZodBodyPipe } from "../common/zod-body.pipe.js";
@@ -29,6 +29,20 @@ export class AdminUsersController {
     @Body(new ZodBodyPipe(moderationActionSchema)) body: z.infer<typeof moderationActionSchema>,
   ) {
     await this.users.applyAction(user.id, id, body);
+    return { ok: true };
+  }
+
+  @Put(":id/admin")
+  @UseGuards(AdminOnlyGuard)
+  async grantAdmin(@CurrentUser() user: RequestUser, @Param("id") id: string) {
+    await this.users.setAdmin(user.id, id, true);
+    return { ok: true };
+  }
+
+  @Delete(":id/admin")
+  @UseGuards(AdminOnlyGuard)
+  async revokeAdmin(@CurrentUser() user: RequestUser, @Param("id") id: string) {
+    await this.users.setAdmin(user.id, id, false);
     return { ok: true };
   }
 }

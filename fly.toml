@@ -7,6 +7,8 @@ primary_region = "gru"
 [env]
   NODE_ENV = "production"
   PORT = "8080"
+  # Only this verified account can grant/revoke the ADMIN role.
+  OWNER_EMAIL = "ilan.daniele@gmail.com"
   # The fly.dev origin stays allowed while the web redirects it to the custom domain.
   WEB_ORIGIN = "https://saladeestudio.com.ar,https://sala-de-estudio.fly.dev"
   # https://saladeestudio.com.ar/api/auth/callback/google is an authorized redirect URI in Google Cloud.
@@ -17,7 +19,6 @@ primary_region = "gru"
   BOOT_MIGRATE_SEED = "true"
   # Keep V8 heap under the 256 MB VM limit so GC kicks in before the OOM killer.
   NODE_OPTIONS = "--max-old-space-size=200"
-  ROOM_RESET_TIMEZONE = "America/Argentina/Buenos_Aires"
   TRUST_PROXY_HOPS = "2"
   PRESENCE_DEV_BYPASS = "false"
   VAPID_SUBJECT = "https://saladeestudio.com.ar"

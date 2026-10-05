@@ -1,10 +1,5 @@
 import type { ResendClient, ResendMessage } from "../email/resend.client.js";
-
-const ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (c) => ESCAPES[c]!);
-}
+import { escapeHtml } from "../email/email-render.js";
 
 /** The link lands on the WEB page, which then calls Better Auth's `/reset-password` with the token. */
 export function passwordResetLink(webUrl: string, token: string): string {

@@ -210,6 +210,8 @@ export interface MeDto {
   subscriptionsEnabled: boolean;
   /** env.subscriptionPriceArs (default 1500); same value for anonymous callers. */
   subscriptionPriceArs: number;
+  /** true only for the app owner (verified OWNER_EMAIL): may grant/revoke ADMIN. */
+  canManageAdmins: boolean;
 }
 
 // ---- Socket events ----

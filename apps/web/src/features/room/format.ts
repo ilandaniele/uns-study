@@ -1,4 +1,5 @@
 import { tableNameFromCode, type DisputeKind, type RoomMapDto, type SeatDto, type SeatStatus, type TableDto } from "@sala/contracts";
+import { clockLabel } from "./checkin-duration";
 
 /**
  * Human name for a table ("Mesa 4", "Barra entrada izquierda"); see `tableNameFromCode` in
@@ -137,8 +138,7 @@ export function disputeOptionsFor(
 
 /** "hasta 14:32" — local time the photo-verification protection on a check-in ends. */
 export function verifiedUntilLabel(verificationExpiresAt: string): string {
-  const time = new Date(verificationExpiresAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-  return `hasta ${time}`;
+  return `hasta ${clockLabel(verificationExpiresAt)}`;
 }
 
 export interface CheckInExpiryStatus {

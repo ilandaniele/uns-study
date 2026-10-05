@@ -35,7 +35,10 @@ export class ChatController {
     if (!limit.allowed) throw ApiErrors.rateLimited();
 
     const dto = await this.chat.createMessage(user.id, idOrSlug, body.content);
-    this.realtime.emitChatMessage(dto.chatRoomId, dto);
+    // The broadcast reaches everyone: `mine` is only meaningful in the sender's own response.
+    const broadcast = { ...dto };
+    delete broadcast.mine;
+    this.realtime.emitChatMessage(dto.chatRoomId, broadcast);
     return dto;
   }
 

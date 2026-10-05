@@ -42,9 +42,9 @@ R2_BUCKET_REPORT_EVIDENCE=
 R2_ENDPOINT=
 
 TURNSTILE_SECRET_KEY=
-
-ROOM_RESET_TIMEZONE=America/Argentina/Buenos_Aires
 ```
+
+The daily-reset timezone is not an env var: it comes from each room's `rooms.timezone` column (`America/Argentina/Buenos_Aires` for the initial room).
 
 If BullMQ requires a standard Redis connection instead of REST credentials, use the appropriate Upstash Redis connection URL/configuration for the chosen library.
 

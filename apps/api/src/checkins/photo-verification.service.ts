@@ -12,9 +12,9 @@ import { env } from "../env.js";
 import { SEAT_PHOTO_VERIFIER } from "../verification/seat-photo-verifier.tokens.js";
 import type { SeatPhotoVerifier } from "../verification/seat-photo-verifier.js";
 import { presenceMessage, toDto } from "./checkins.service.js";
+import { isUniqueViolation } from "../common/pg-errors.js";
 
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
-const UNIQUE_VIOLATION = "23505";
 
 export interface VerifyCheckInPhotoInput {
   userId: string;
@@ -143,14 +143,6 @@ export class PhotoVerificationService {
 
     return { result: { verified: true, reason: "VERIFIED", checkIn: toDto(updated, row.seatCode) }, changes };
   }
-}
-
-/** Postgres reports this SQLSTATE for a unique-constraint violation (or on its wrapped `cause`). */
-function isUniqueViolation(err: unknown): boolean {
-  if (typeof err !== "object" || err === null) return false;
-  if ("code" in err && (err as { code?: string }).code === UNIQUE_VIOLATION) return true;
-  const cause = (err as { cause?: unknown }).cause;
-  return typeof cause === "object" && cause !== null && (cause as { code?: string }).code === UNIQUE_VIOLATION;
 }
 
 /** JPEG/PNG/WEBP magic-byte signatures — a mismatch with the declared `mimeType` means the bytes

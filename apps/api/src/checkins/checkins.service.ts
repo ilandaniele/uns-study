@@ -14,8 +14,8 @@ import { ApiErrors } from "../common/api-error.js";
 import { runInBackground } from "../common/background.js";
 import { RoomCache } from "../common/cache/room-cache.service.js";
 import { computeVerificationExpiresAt } from "./verification.js";
+import { isUniqueViolation } from "../common/pg-errors.js";
 
-const UNIQUE_VIOLATION = "23505";
 const RAPID_TOGGLE_THRESHOLD = 4;
 const RAPID_TOGGLE_WINDOW_MIN = 10;
 
@@ -296,13 +296,6 @@ export function toDto(row: typeof schema.checkIns.$inferSelect, seatCode: string
     verifiedAt: verifiedAt ? verifiedAt.toISOString() : null,
     verificationExpiresAt: verifiedAt ? computeVerificationExpiresAt(verifiedAt, expiresAt).toISOString() : null,
   };
-}
-
-function isUniqueViolation(err: unknown): boolean {
-  if (typeof err !== "object" || err === null) return false;
-  if ("code" in err && (err as { code?: string }).code === UNIQUE_VIOLATION) return true;
-  const cause = (err as { cause?: unknown }).cause;
-  return typeof cause === "object" && cause !== null && (cause as { code?: string }).code === UNIQUE_VIOLATION;
 }
 
 /** Postgres reports the violated constraint's name on the error (or its wrapped `cause`). */

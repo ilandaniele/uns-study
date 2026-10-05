@@ -30,7 +30,7 @@ export interface SeatActionsSync {
   updateMap: (updater: (prev: RoomMapDto | null) => RoomMapDto | null) => void;
   /** Full map + me re-sync; only used when an optimistic observation never got confirmed. */
   refetch: () => void;
-  /** Occupants re-sync; only used when an action changes identity visibility. */
+  /** Occupants re-sync; used after a check-in, whose identity visibility the seat event alone can't convey. */
   refetchOccupants: () => void;
 }
 
@@ -55,7 +55,6 @@ export interface UseSeatActionsResult {
   markSaved: (seatId: string, options?: SeatActionOptions) => Promise<boolean>;
   extend: (durationMinutes?: number) => Promise<boolean>;
   checkOut: () => Promise<boolean>;
-  /** PATCH `/checkins/current/identity` — toggles "Mostrar mi identidad" on the caller's current check-in. */
   /** Retries the last action (check-in/observation) with a solved Turnstile token. */
   submitTurnstileToken: (token: string) => void;
   /** POST `/disputes` — opens "Me senté acá" / "Esa persona no está" / "Está guardado" on a seat. */
@@ -77,7 +76,7 @@ function sameCheckIn(a: CheckInDto | null, b: CheckInDto | null): boolean {
 /**
  * Encapsulates the presence-sensitive write actions (check-in, observation, extend, checkout).
  *
- * Check-in/move, checkout, extend, identity and observations are optimistic: the map and the shared
+ * Check-in/move, checkout, extend and observations are optimistic: the map and the shared
  * `/me` update as soon as the location is known, then the POST response (or the socket event that
  * follows it) confirms. A failure rolls the optimistic change back, unless a newer event already
  * replaced it. No action refetches the map/me blindly.
@@ -215,7 +214,7 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
         );
         adoptCheckIn(dto);
         // Identity visibility is the one thing the occupants list can't learn from the seat event alone.
-        if (showIdentity) refetchOccupants();
+        refetchOccupants();
         return dto;
       }),
     [adoptCheckIn, locate, map, optimisticMe, optimisticSeats, refetchOccupants, run, withOptimistic],

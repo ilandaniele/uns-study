@@ -61,10 +61,6 @@ export function isAnimalId(id: string | null | undefined): id is string {
   return id != null && BY_ID.has(id);
 }
 
-export function animalById(id: string | null | undefined): AnimalDef | null {
-  return id ? (BY_ID.get(id) ?? null) : null;
-}
-
 /** Recovers the catalog animal from an alias ("Carpincho Estudioso", "Zorro Astuto 42"); `null` for legacy nouns. */
 export function animalIdFromAlias(alias: string | null | undefined): string | null {
   const noun = alias?.trim().split(/\s+/)[0]?.toLowerCase();

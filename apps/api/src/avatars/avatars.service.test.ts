@@ -130,6 +130,14 @@ describe("AvatarsService", () => {
       expect((await svc.getForOwner("u1", true, "u1")).bytes.length).toBeGreaterThan(0);
     });
 
+    it("404s non-owners for a visible mode with empty name fields (shown as alias), but not the owner", async () => {
+      await svc.upload("u1", { mimeType: "image/jpeg", base64: JPEG_BASE64 });
+      await db.insert(schema.userPrivacySettings).values({ userId: "u1", showAvatar: true });
+      await db.update(schema.userProfiles).set({ identityMode: "FIRST_NAME", firstName: null }).where(eq(schema.userProfiles.userId, "u1"));
+      await expect(svc.getForOwner("u1", false, "u2")).rejects.toMatchObject({ code: "NOT_FOUND" });
+      expect((await svc.getForOwner("u1", true, "u1")).bytes.length).toBeGreaterThan(0);
+    });
+
     it("404s when either user has blocked the other", async () => {
       await svc.upload("u1", { mimeType: "image/jpeg", base64: JPEG_BASE64 });
       await db.insert(schema.userPrivacySettings).values({ userId: "u1", showAvatar: true });

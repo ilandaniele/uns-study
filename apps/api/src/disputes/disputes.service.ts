@@ -23,8 +23,9 @@ import { RestrictionService } from "../users/restriction.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { ApiErrors } from "../common/api-error.js";
 import { isCheckInVerified } from "../checkins/verification.js";
+import { presenceMessage } from "../checkins/checkins.service.js";
+import { isUniqueViolation } from "../common/pg-errors.js";
 
-const UNIQUE_VIOLATION = "23505";
 /** Same opener can't re-open a dispute on the same seat within this many minutes of a previous one resolving. */
 const REOPEN_COOLDOWN_MIN = 10;
 /** After *any* dispute on a seat resolves in the incumbent's favor (RESOLVED_PRESENT/TIED), the
@@ -642,26 +643,4 @@ function stripPrivate(dto: SeatDisputeDto): SeatDisputeLiteDto {
     closesAt: dto.closesAt,
     votes: dto.votes,
   };
-}
-
-function isUniqueViolation(err: unknown): boolean {
-  if (typeof err !== "object" || err === null) return false;
-  if ("code" in err && (err as { code?: string }).code === UNIQUE_VIOLATION) return true;
-  const cause = (err as { cause?: unknown }).cause;
-  return typeof cause === "object" && cause !== null && (cause as { code?: string }).code === UNIQUE_VIOLATION;
-}
-
-function presenceMessage(reason: string): string {
-  switch (reason) {
-    case "OUTSIDE_GEOFENCE":
-      return "Tenés que estar dentro de la sala para hacer esto.";
-    case "STALE_LOCATION":
-      return "Tu ubicación está desactualizada, volvé a intentarlo.";
-    case "POOR_ACCURACY":
-      return "La precisión del GPS es muy baja, intentá de nuevo.";
-    case "ROOM_NOT_FOUND":
-      return "Sala no encontrada.";
-    default:
-      return "No pudimos validar tu ubicación.";
-  }
 }

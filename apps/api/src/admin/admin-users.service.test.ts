@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@sala/database";
 import { schema } from "@sala/database";
@@ -100,5 +101,60 @@ describe("AdminUsersService email visibility", () => {
     expect(results).toHaveLength(1);
     expect(results[0]!.email).toBeNull();
     expect((await svc.getById("plain", "moderator")).email).toBeNull();
+  });
+});
+
+describe("AdminUsersService.setAdmin", () => {
+  let db: Db;
+  let roles: RolesService;
+  let svc: AdminUsersService;
+
+  beforeEach(async () => {
+    db = await freshDb();
+    roles = new RolesService(db);
+    svc = new AdminUsersService(db, fakeModeration(), roles);
+    await insertUsers(db, ["owner", "admin", "plain"]);
+    await db.update(schema.user).set({ email: "Ilan.Daniele@Gmail.com", emailVerified: true }).where(eq(schema.user.id, "owner"));
+    await db.insert(schema.userRoles).values([
+      { userId: "owner", role: "ADMIN" },
+      { userId: "admin", role: "ADMIN" },
+    ]);
+  });
+
+  it("isOwner matches the owner email case-insensitively and requires a verified email", async () => {
+    expect(await roles.isOwner("owner")).toBe(true);
+    expect(await roles.isOwner("plain")).toBe(false);
+    await db.update(schema.user).set({ emailVerified: false }).where(eq(schema.user.id, "owner"));
+    expect(await roles.isOwner("owner")).toBe(false);
+  });
+
+  it("lets the owner grant ADMIN and records an audit entry", async () => {
+    await svc.setAdmin("owner", "plain", true);
+    expect(await roles.rolesFor("plain")).toEqual(["ADMIN"]);
+    const audit = await db.select().from(schema.moderationActions);
+    expect(audit).toMatchObject([{ actorId: "owner", targetUserId: "plain", action: "ADMIN_GRANTED" }]);
+  });
+
+  it("lets the owner revoke ADMIN", async () => {
+    await svc.setAdmin("owner", "admin", false);
+    expect(await roles.rolesFor("admin")).toEqual([]);
+  });
+
+  it("rejects a non-owner ADMIN", async () => {
+    await expect(svc.setAdmin("admin", "plain", true)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(svc.setAdmin("admin", "owner", false)).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("rejects an owner whose email is unverified", async () => {
+    await db.update(schema.user).set({ emailVerified: false }).where(eq(schema.user.id, "owner"));
+    await expect(svc.setAdmin("owner", "plain", true)).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("rejects the owner changing their own role", async () => {
+    await expect(svc.setAdmin("owner", "owner", false)).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("returns not found for a missing target", async () => {
+    await expect(svc.setAdmin("owner", "ghost", true)).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });

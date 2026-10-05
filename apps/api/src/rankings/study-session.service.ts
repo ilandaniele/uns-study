@@ -1,13 +1,11 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { eq } from "drizzle-orm";
-import { format } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
 import { schema, type Db } from "@sala/database";
 import { DB } from "../database/database.module.js";
+import { DEFAULT_TIMEZONE, localDateOf } from "../common/dates.js";
 
 const MAX_VERIFIED_MINUTES = 240;
 const MIN_VERIFIED_MINUTES = 5;
-const DEFAULT_TIMEZONE = "America/Argentina/Buenos_Aires";
 
 export interface CheckInForSession {
   id: string;
@@ -24,7 +22,7 @@ export interface CheckInForSession {
  */
 @Injectable()
 export class StudySessionService {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(@Inject(DB) _db: Db) {}
 
   async recordFromCheckIn(tx: Db, checkIn: CheckInForSession, endedAt: Date): Promise<void> {
     const startedAt = new Date(checkIn.startedAt);
@@ -38,7 +36,7 @@ export class StudySessionService {
 
     const [room] = await tx.select({ timezone: schema.rooms.timezone }).from(schema.rooms).where(eq(schema.rooms.id, checkIn.roomId)).limit(1);
     const timezone = room?.timezone ?? DEFAULT_TIMEZONE;
-    const localDate = format(toZonedTime(startedAt, timezone), "yyyy-MM-dd");
+    const localDate = localDateOf(startedAt, timezone);
 
     await tx
       .insert(schema.studySessions)

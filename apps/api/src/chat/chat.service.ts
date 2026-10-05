@@ -53,7 +53,7 @@ export class ChatService {
     const page = rows.slice(0, PAGE_SIZE);
     const nextCursor = rows.length > PAGE_SIZE ? page[page.length - 1]!.createdAt.toISOString() : null;
 
-    const items = await this.toDtos(page);
+    const items = await this.toDtos(page, viewerId);
     return { items, nextCursor, chatRoomId: chatRoom.id };
   }
 
@@ -67,7 +67,7 @@ export class ChatService {
       .returning();
     if (!row) throw new Error("Failed to insert chat message");
 
-    const [dto] = await this.toDtos([row]);
+    const [dto] = await this.toDtos([row], userId);
     return dto!;
   }
 
@@ -96,7 +96,7 @@ export class ChatService {
     return { chatRoomId: message.chatRoomId };
   }
 
-  private async toDtos(rows: (typeof schema.chatMessages.$inferSelect)[]): Promise<ChatMessageDto[]> {
+  private async toDtos(rows: (typeof schema.chatMessages.$inferSelect)[], viewerId?: string): Promise<ChatMessageDto[]> {
     if (rows.length === 0) return [];
     const userIds = [...new Set(rows.map((r) => r.userId))];
 
@@ -115,20 +115,23 @@ export class ChatService {
       const fallbackName = userById.get(row.userId)?.name ?? "Usuario";
       const profile = profileById.get(row.userId) ?? null;
       const privacy = privacyById.get(row.userId) ?? null;
+      const asAlias = !profile || needsAlias(profile);
       return {
         id: row.id,
         chatRoomId: row.chatRoomId,
         author: {
-          userId: row.userId,
+          // Alias authors stay unlinkable to their account; actions go by message id instead.
+          userId: asAlias ? null : row.userId,
           displayName: displayName(profile, privacy, fallbackName),
           // The photo belongs to the real identity: never shown next to the alias.
-          avatarUrl: profile && !needsAlias(profile) ? visibleAvatarUrl(profile, privacy) : null,
+          avatarUrl: visibleAvatarUrl(profile, privacy),
           aliasAnimal: shownAliasAnimal(profile) ?? undefined,
           adminBadge: showsAdminBadge(admins.has(row.userId), profile, privacy),
         },
         content: deleted ? null : row.content,
         deleted,
         createdAt: row.createdAt.toISOString(),
+        ...(viewerId !== undefined && row.userId === viewerId ? { mine: true } : {}),
       };
     });
   }

@@ -14,16 +14,26 @@ export interface ChatMessageListProps {
   onBlock: (userId: string) => void;
 }
 
+/** Own message: the per-viewer `mine` flag (alias authors have no userId) or a matching author id. */
+function isOwnMessage(message: ChatMessageDto, currentUserId: string | null): boolean {
+  return message.mine === true || (currentUserId !== null && message.author.userId === currentUserId);
+}
+
+/** Grouping key; alias authors have no userId, so their (unique) alias name stands in. */
+function authorKey(message: ChatMessageDto): string {
+  return message.author.userId ?? (message.mine ? "mine" : `alias:${message.author.displayName}`);
+}
+
 /** Renders the room chat thread: day separators, grouped bubbles, and the per-message menu. */
 export function ChatMessageList({ messages, currentUserId, onDelete, onBlock }: ChatMessageListProps) {
   const router = useRouter();
-  const grouped = groupMessages(messages.map((m) => ({ id: m.id, authorId: m.author.userId, createdAt: m.createdAt })));
+  const grouped = groupMessages(messages.map((m) => ({ id: m.id, authorId: authorKey(m), createdAt: m.createdAt })));
   const showSeparators = daySeparatorFlags(messages);
 
   const lastMessage = messages[messages.length - 1];
   const scrollRef = useStickToBottom<HTMLDivElement>(
     lastMessage?.id ?? null,
-    currentUserId !== null && lastMessage?.author.userId === currentUserId,
+    lastMessage !== undefined && isOwnMessage(lastMessage, currentUserId),
   );
 
   return (
@@ -33,7 +43,7 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock }: 
       ) : null}
       {messages.map((message, index) => {
         const showDaySeparator = showSeparators[index]!;
-        const isOwn = currentUserId !== null && message.author.userId === currentUserId;
+        const isOwn = isOwnMessage(message, currentUserId);
         const showHeader = !grouped[index]!.grouped || showDaySeparator;
 
         return (
@@ -48,7 +58,7 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock }: 
             >
               <div className="w-10 shrink-0">
                 {showHeader ? (
-                  <Avatar userId={message.author.userId} name={message.author.displayName} url={message.author.avatarUrl} aliasAnimal={message.author.aliasAnimal} size={40} adminBadge={message.author.adminBadge} />
+                  <Avatar userId={authorKey(message)} name={message.author.displayName} url={message.author.avatarUrl} aliasAnimal={message.author.aliasAnimal} size={40} adminBadge={message.author.adminBadge} />
                 ) : null}
               </div>
               <div className="min-w-0 flex-1">
@@ -67,8 +77,8 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock }: 
                   <MessageMenu
                     isOwn={isOwn}
                     onDelete={() => onDelete(message.id)}
-                    onReport={() => router.push(`/reportar/${message.author.userId}?context=CHAT&messageId=${message.id}`)}
-                    onBlock={() => onBlock(message.author.userId)}
+                    onReport={() => router.push(`/reportar/${message.author.userId ?? "message-author"}?context=CHAT&messageId=${message.id}`)}
+                    onBlock={message.author.userId !== null ? () => onBlock(message.author.userId!) : undefined}
                   />
                 </div>
               ) : null}

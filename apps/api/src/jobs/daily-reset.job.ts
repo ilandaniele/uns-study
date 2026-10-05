@@ -1,17 +1,17 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import { format } from "date-fns";
-import { fromZonedTime, toZonedTime } from "date-fns-tz";
+import { fromZonedTime } from "date-fns-tz";
 import { and, eq, gte, isNull, lt, or } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { SeatDisputeLiteDto } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
+import { localDateOf } from "../common/dates.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
 
 /** Computes the UTC instant of `room`'s next-or-most-recent daily reset (`daily_reset_time`, local tz) at/around `now`. */
 export function resetInstantFor(room: { timezone: string; dailyResetTime: string }, now: Date): Date {
-  const localDate = format(toZonedTime(now, room.timezone), "yyyy-MM-dd");
+  const localDate = localDateOf(now, room.timezone);
   const naive = `${localDate}T${room.dailyResetTime}:00`;
   return fromZonedTime(naive, room.timezone);
 }
@@ -49,7 +49,7 @@ export class DailyResetJob {
     resetInstant: Date,
   ): Promise<void> {
     const windowStart = new Date(resetInstant.getTime() - 24 * 60 * 60 * 1000);
-    const day = format(toZonedTime(new Date(resetInstant.getTime() - 1), room.timezone), "yyyy-MM-dd");
+    const day = localDateOf(new Date(resetInstant.getTime() - 1), room.timezone);
     const roomId = room.id;
     const activeSeatIds = seatRows.map((s) => s.id);
 

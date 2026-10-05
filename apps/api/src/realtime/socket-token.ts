@@ -13,7 +13,8 @@ export interface SocketToken {
 /** Derives a single-purpose signing key from `BETTER_AUTH_SECRET`, so a leaked socket token can't
  *  be replayed against Better Auth's own session/cookie signing (and vice versa). */
 function deriveKey(secret: string): Buffer {
-  return createHmac("sha256", secret).update(HKDF_LABEL).digest();
+  if (!secret && env.isProduction) throw new Error("BETTER_AUTH_SECRET is required in production");
+  return createHmac("sha256", secret || DEV_FALLBACK_SECRET).update(HKDF_LABEL).digest();
 }
 
 function sign(payload: string, key: Buffer): string {
@@ -27,7 +28,7 @@ function sign(payload: string, key: Buffer): string {
  * this token is passed via `handshake.auth.token` instead.
  */
 export function signSocketToken(userId: string, secret = env.betterAuthSecret): SocketToken {
-  const key = deriveKey(secret || DEV_FALLBACK_SECRET);
+  const key = deriveKey(secret);
   const expiresAt = Date.now() + TTL_S * 1000;
   const payload = `${userId}.${expiresAt}`;
   return { token: `${payload}.${sign(payload, key)}`, expiresAt };
@@ -46,7 +47,7 @@ export function verifySocketToken(token: string, secret = env.betterAuthSecret):
   if (!userId || !sig || !Number.isFinite(exp)) return null;
   if (Date.now() > exp) return null;
 
-  const key = deriveKey(secret || DEV_FALLBACK_SECRET);
+  const key = deriveKey(secret);
   const expected = Buffer.from(sign(`${userId}.${expRaw}`, key));
   const actual = Buffer.from(sig);
   if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;

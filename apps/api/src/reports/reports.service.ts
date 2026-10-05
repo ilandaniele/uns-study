@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, or } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import {
   REPORT_EVIDENCE_MAX_BYTES,
@@ -15,6 +15,8 @@ import { RestrictionService } from "../users/restriction.service.js";
 import { RolesService } from "../users/roles.service.js";
 import { StorageService } from "../storage/storage.service.js";
 
+/** Path placeholder: report the author of `contextMessageId` without knowing their account id (alias authors). */
+export const MESSAGE_AUTHOR_PLACEHOLDER = "message-author";
 const DAILY_REPORT_LIMIT = 5;
 const DAY_SECONDS = 24 * 60 * 60;
 const MAX_ATTACHMENTS_PER_REPORT = 3;
@@ -39,8 +41,9 @@ export class ReportsService {
     @Inject(StorageService) private readonly storage: StorageService,
   ) {}
 
-  async createReport(input: CreateReportInput): Promise<ReportCreatedDto> {
-    await this.restrictions.assertNot(input.reporterId, ["SUSPENDED", "BANNED"]);
+  async createReport(rawInput: CreateReportInput): Promise<ReportCreatedDto> {
+    await this.restrictions.assertNot(rawInput.reporterId, ["SUSPENDED", "BANNED"]);
+    const input = await this.resolveReportedUser(rawInput);
 
     if (input.reporterId === input.reportedUserId) {
       throw ApiErrors.validation("No podés reportarte a vos mismo.");
@@ -55,7 +58,7 @@ export class ReportsService {
     }
 
     if (input.contextMessageId) {
-      await this.assertContextMessage(input.context, input.contextMessageId, input.reportedUserId);
+      await this.assertContextMessage(input.context, input.contextMessageId, input.reportedUserId, input.reporterId);
     }
 
     const isModerator = await this.roles.hasRole(input.reporterId, ["ADMIN", "MODERATOR"]);
@@ -160,7 +163,20 @@ export class ReportsService {
   }
 
   /** `contextMessageId` must point to a real message authored by the reported user, in the store matching `context`. */
-  private async assertContextMessage(context: ReportContext, messageId: string, reportedUserId: string): Promise<void> {
+  /** Resolves the placeholder reported id to the (chat) message's author, server-side. */
+  private async resolveReportedUser(input: CreateReportInput): Promise<CreateReportInput> {
+    if (input.reportedUserId !== MESSAGE_AUTHOR_PLACEHOLDER) return input;
+    if (input.context !== "CHAT" || !input.contextMessageId) throw ApiErrors.validation("Falta el mensaje a reportar.");
+    const [message] = await this.db
+      .select({ userId: schema.chatMessages.userId })
+      .from(schema.chatMessages)
+      .where(eq(schema.chatMessages.id, input.contextMessageId))
+      .limit(1);
+    if (!message) throw ApiErrors.validation("El mensaje reportado no existe.");
+    return { ...input, reportedUserId: message.userId };
+  }
+
+  private async assertContextMessage(context: ReportContext, messageId: string, reportedUserId: string, reporterId: string): Promise<void> {
     if (context === "CHAT") {
       const [message] = await this.db
         .select({ id: schema.chatMessages.id })
@@ -171,10 +187,18 @@ export class ReportsService {
       return;
     }
     if (context === "DM") {
+      // Only a participant of the conversation may cite one of its messages.
       const [message] = await this.db
         .select({ id: schema.directMessages.id })
         .from(schema.directMessages)
-        .where(and(eq(schema.directMessages.id, messageId), eq(schema.directMessages.senderId, reportedUserId)))
+        .innerJoin(schema.directConversations, eq(schema.directConversations.id, schema.directMessages.conversationId))
+        .where(
+          and(
+            eq(schema.directMessages.id, messageId),
+            eq(schema.directMessages.senderId, reportedUserId),
+            or(eq(schema.directConversations.userA, reporterId), eq(schema.directConversations.userB, reporterId)),
+          ),
+        )
         .limit(1);
       if (!message) throw ApiErrors.validation("El mensaje reportado no existe.");
       return;

@@ -60,6 +60,26 @@ describe("ChatService", () => {
     expect(seen.size).toBe(55);
   });
 
+  it("hides the author's userId when shown as alias, flags the viewer's own messages as mine", async () => {
+    await db.insert(schema.userProfiles).values({ userId: "u1", identityMode: "FIRST_NAME", firstName: "Ana" });
+    await db.insert(schema.userProfiles).values({ userId: "u2", identityMode: "FIRST_NAME" }); // visible mode, empty name
+    const own = await svc.createMessage("u2", "principal", "anon");
+    expect(own.mine).toBe(true);
+    await svc.createMessage("u1", "principal", "named");
+
+    const page = await svc.listMessages("principal", "u2");
+    const named = page.items.find((m) => m.content === "named")!;
+    const anon = page.items.find((m) => m.content === "anon")!;
+    expect(named.author.userId).toBe("u1");
+    expect(named.mine).toBeUndefined();
+    expect(anon.author.userId).toBeNull();
+    expect(anon.mine).toBe(true);
+
+    const other = await svc.listMessages("principal", "u1");
+    expect(other.items.find((m) => m.content === "anon")).toMatchObject({ author: { userId: null } });
+    expect(other.items.find((m) => m.content === "anon")?.mine).toBeUndefined();
+  });
+
   it("excludes authors the viewer blocked", async () => {
     await svc.createMessage("u1", "principal", "visible");
     await svc.createMessage("u2", "principal", "blocked-author");

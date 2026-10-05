@@ -14,8 +14,12 @@ type Tab = "signin" | "signup";
 function safeNext(): string | null {
   if (typeof window === "undefined") return null;
   const next = new URLSearchParams(window.location.search).get("next");
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return null;
-  return next;
+  // Control characters and backslashes are rejected because the URL parser strips or rewrites them
+  // ("/%09/evil.com" would resolve to https://evil.com/); the parsed origin is checked as a second guard.
+  if (!next || !next.startsWith("/") || /[\u0000-\u001F\\]/.test(next)) return null;
+  const url = new URL(next, window.location.origin);
+  if (url.origin !== window.location.origin) return null;
+  return url.pathname + url.search + url.hash;
 }
 
 function authErrorMessage(error: { code?: string; status?: number }): string {

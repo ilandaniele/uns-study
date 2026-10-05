@@ -6,6 +6,7 @@ import type { AvatarMimeType } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { RestrictionService } from "../users/restriction.service.js";
+import { needsAlias } from "../users/display-name.js";
 import { stripImageMetadata } from "../common/image-metadata.js";
 
 const MAX_AVATAR_BYTES = 300 * 1024;
@@ -168,8 +169,8 @@ export class AvatarsService {
       const [privacy] = await this.db.select().from(schema.userPrivacySettings).where(eq(schema.userPrivacySettings.userId, userId)).limit(1);
       if (!privacy?.showAvatar) throw ApiErrors.notFound();
 
-      const [profile] = await this.db.select({ identityMode: schema.userProfiles.identityMode }).from(schema.userProfiles).where(eq(schema.userProfiles.userId, userId)).limit(1);
-      if ((profile?.identityMode ?? "HIDDEN") === "HIDDEN") throw ApiErrors.notFound();
+      const [profile] = await this.db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, userId)).limit(1);
+      if (!profile || needsAlias(profile)) throw ApiErrors.notFound();
 
       if (viewerId) {
         const [block] = await this.db

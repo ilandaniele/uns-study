@@ -1,10 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, gte, inArray, lt, lte } from "drizzle-orm";
-import { format } from "date-fns";
-import { fromZonedTime, toZonedTime } from "date-fns-tz";
+import { fromZonedTime } from "date-fns-tz";
 import { schema, type Db } from "@sala/database";
 import type { RankingCategory, RankingDto, RankingEntryDto, RankingPeriod } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
+import { localDateOf } from "../common/dates.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { displayName, needsAlias, showsAdminBadge, shownAliasAnimal, visibleAvatarUrl } from "../users/display-name.js";
 import { RolesService } from "../users/roles.service.js";
@@ -17,11 +17,6 @@ const STREAK_MIN_MINUTES = 30;
 /** Streaks only look back this many days (longer streaks are capped at what the window can prove). */
 const STREAK_LOOKBACK_DAYS = 400;
 const RAW_CACHE_TTL_MS = 60_000;
-
-/** 'YYYY-MM-DD' in `tz` for `date`. */
-function localDateOf(date: Date, tz: string): string {
-  return format(toZonedTime(date, tz), "yyyy-MM-dd");
-}
 
 function addDaysToLocal(dateStr: string, days: number): string {
   const d = new Date(`${dateStr}T00:00:00Z`);

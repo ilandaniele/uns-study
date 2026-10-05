@@ -4,17 +4,10 @@ import { animalIdFromAlias } from "@sala/contracts";
 import { schema, type Db } from "@sala/database";
 import { DB } from "../database/database.module.js";
 import { randomAlias } from "./alias-generator.js";
+import { isUniqueViolation } from "../common/pg-errors.js";
 
-const UNIQUE_VIOLATION = "23505";
 const MAX_ATTEMPTS = 20;
 const MAX_FALLBACK_ATTEMPTS = 20;
-
-function isUniqueViolation(err: unknown): boolean {
-  if (typeof err !== "object" || err === null) return false;
-  if ("code" in err && (err as { code?: string }).code === UNIQUE_VIOLATION) return true;
-  const cause = (err as { cause?: unknown }).cause;
-  return typeof cause === "object" && cause !== null && (cause as { code?: string }).code === UNIQUE_VIOLATION;
-}
 
 /** Minimal shape of a `user_profiles` row this service needs to decide whether an alias is due. */
 interface AliasableProfile {
@@ -29,8 +22,8 @@ interface AliasableProfile {
  * Assigns (once, permanently) the fun random alias shown instead of "Usuario anónimo" for
  * hidden users. Aliases live on `user_profiles.alias`, uniquely (case-insensitively) across all
  * users — assignment retries on collision, falling back to a numeric suffix after `MAX_ATTEMPTS`.
- * Every alias ever released is recorded in `retired_aliases` and never handed out again, so a
- * released alias can't later be reassigned to someone else and become ambiguous.
+ * Every alias ever retired is recorded in `retired_aliases` and never handed out again, so a
+ * retired alias can't later be reassigned to someone else and become ambiguous.
  * Aliases are always "<catalog animal> <adjective>"; the animal id is stored in `alias_animal`
  * (it drives the map illustration). A legacy alias whose noun isn't in the catalog is retired and
  * replaced by a fresh animal alias the next time it's ensured.
@@ -106,8 +99,9 @@ export class AliasService {
     throw new Error(`alias-service: exhausted ${MAX_FALLBACK_ATTEMPTS} fallback attempts for user ${userId}`);
   }
 
-  /** Frees the user's alias (e.g. they switched to a visible identity with a non-empty name) —
-   *  and retires it forever so nobody else can ever be assigned the exact same alias again. */
+  /** Clears the user's alias and retires it forever so nobody else can ever be assigned the exact
+   *  same alias again. Only used to replace a legacy alias whose noun isn't in the animal catalog —
+   *  a valid alias is permanent, even after switching to a visible identity. */
   async releaseAlias(userId: string): Promise<void> {
     const [row] = await this.db.select({ alias: schema.userProfiles.alias }).from(schema.userProfiles).where(eq(schema.userProfiles.userId, userId)).limit(1);
     await this.db.update(schema.userProfiles).set({ alias: null, aliasAnimal: null, updatedAt: new Date() }).where(eq(schema.userProfiles.userId, userId));

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { IDENTITY_MODES, identityModeHint, identityModeLabel, previewDisplayName } from "./identity-mode";
+import { IDENTITY_MODES, identityModeHint, identityModeLabel } from "./identity-mode";
 
 describe("identityModeLabel", () => {
   it("returns a distinct Spanish label for every mode", () => {
@@ -19,19 +19,5 @@ describe("identityModeHint", () => {
 
   it("gives the generic hint for visible modes", () => {
     expect(identityModeHint("FULL_NAME")).toMatch(/verán otras personas/i);
-  });
-});
-
-describe("previewDisplayName", () => {
-  const f = { firstName: "Ilan", lastName: "Daniele", nickname: "Ilancho" };
-  it("resolves each visible mode", () => {
-    expect(previewDisplayName("NICKNAME", f)).toBe("Ilancho");
-    expect(previewDisplayName("FIRST_NAME", f)).toBe("Ilan");
-    expect(previewDisplayName("FULL_NAME", f)).toBe("Ilan Daniele");
-    expect(previewDisplayName("NICKNAME_AND_NAME", f)).toBe("Ilancho (Ilan)");
-  });
-  it("is null for HIDDEN or empty fields", () => {
-    expect(previewDisplayName("HIDDEN", f)).toBeNull();
-    expect(previewDisplayName("NICKNAME", { ...f, nickname: " " })).toBeNull();
   });
 });

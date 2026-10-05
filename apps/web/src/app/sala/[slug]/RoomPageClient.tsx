@@ -35,42 +35,27 @@ import { PeopleList } from "@/features/people/PeopleList";
 import { useOccupants } from "@/features/people/useOccupants";
 import { usePeople } from "@/features/people/usePeople";
 import { trackEvent } from "@/lib/analytics";
+import { hasCheckedInBefore, markCheckedIn } from "@/lib/engagement";
 import { useQrContext } from "@/lib/qr-context";
 import { getSocket } from "@/lib/socket";
 import { useMediaQuery } from "@/lib/use-media-query";
 
+// A loading option gives each split chunk its own Suspense boundary. Without it, the first render
+// suspends up to the route loading.tsx and the whole room flashes its skeleton.
+const noFallback = () => null;
 // Rarely-needed UI is split out of the initial bundle. Desktop never downloads the zoom library.
-const DisputeChallengeBanner = dynamic(() => import("@/features/room/DisputeChallengeBanner").then((m) => m.DisputeChallengeBanner));
-const DisputeWonBanner = dynamic(() => import("@/features/room/DisputeWonBanner").then((m) => m.DisputeWonBanner));
-const EnableSeatFreedCta = dynamic(() => import("@/features/room/EnableSeatFreedCta").then((m) => m.EnableSeatFreedCta));
-const HowToUseModal = dynamic(() => import("@/features/room/HowToUseModal").then((m) => m.HowToUseModal));
-const MoveSeatDialog = dynamic(() => import("@/features/room/MoveSeatDialog").then((m) => m.MoveSeatDialog));
-const SeatFreedToast = dynamic(() => import("@/features/room/SeatFreedToast").then((m) => m.SeatFreedToast));
-const TurnstileChallenge = dynamic(() => import("@/features/room/TurnstileChallenge").then((m) => m.TurnstileChallenge));
+const DisputeChallengeBanner = dynamic(() => import("@/features/room/DisputeChallengeBanner").then((m) => m.DisputeChallengeBanner), { loading: noFallback });
+const DisputeWonBanner = dynamic(() => import("@/features/room/DisputeWonBanner").then((m) => m.DisputeWonBanner), { loading: noFallback });
+const EnableSeatFreedCta = dynamic(() => import("@/features/room/EnableSeatFreedCta").then((m) => m.EnableSeatFreedCta), { loading: noFallback });
+const HowToUseModal = dynamic(() => import("@/features/room/HowToUseModal").then((m) => m.HowToUseModal), { loading: noFallback });
+const MoveSeatDialog = dynamic(() => import("@/features/room/MoveSeatDialog").then((m) => m.MoveSeatDialog), { loading: noFallback });
+const SeatFreedToast = dynamic(() => import("@/features/room/SeatFreedToast").then((m) => m.SeatFreedToast), { loading: noFallback });
+const TurnstileChallenge = dynamic(() => import("@/features/room/TurnstileChallenge").then((m) => m.TurnstileChallenge), { loading: noFallback });
 import { SeatSheet } from "@/features/room/SeatSheet";
 import { DonateCard, DonatePrompt } from "@/features/room/Donate";
-const ZoomableMap = dynamic(() => import("@/features/room/ZoomableMap"));
+const ZoomableMap = dynamic(() => import("@/features/room/ZoomableMap"), { loading: noFallback });
 const loadSeatDetail = () => import("@/features/room/SeatDetail").then((m) => m.SeatDetail);
-const SeatDetail = dynamic(loadSeatDetail);
-
-const FIRST_CHECK_IN_KEY = "sala.firstCheckInAt";
-
-function hasCheckedInBefore(): boolean {
-  try {
-    return localStorage.getItem(FIRST_CHECK_IN_KEY) != null;
-  } catch {
-    // Storage unavailable: fail closed, treated as "never checked in" so no pre-check-in ad is shown.
-    return false;
-  }
-}
-
-function markCheckedIn(): void {
-  try {
-    if (localStorage.getItem(FIRST_CHECK_IN_KEY) == null) localStorage.setItem(FIRST_CHECK_IN_KEY, new Date().toISOString());
-  } catch {
-    // storage unavailable: the pre-check-in ad is simply skipped
-  }
-}
+const SeatDetail = dynamic(loadSeatDetail, { loading: noFallback });
 
 export function RoomPageClient({ slug }: { slug: string }) {
   const { isAdmin } = useAdminAccess();
@@ -152,6 +137,11 @@ export function RoomPageClient({ slug }: { slug: string }) {
     preloadedDetail.current = true;
     void loadSeatDetail();
   }, []);
+  // Fetch the seat panel chunk while the person looks at the map, so the first tap opens it at once.
+  useEffect(() => {
+    const id = window.setTimeout(preloadSeatDetail, 1500);
+    return () => window.clearTimeout(id);
+  }, [preloadSeatDetail]);
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
   // Seat the viewer just marked "Está guardado" — SeatDetail offers to report / ask to free it.
   const [savedPromptSeatId, setSavedPromptSeatId] = useState<string | null>(null);

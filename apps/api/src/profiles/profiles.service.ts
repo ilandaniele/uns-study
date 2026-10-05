@@ -114,18 +114,20 @@ export class ProfilesService {
       targetUser.name,
     );
 
+    // Anyone shown as alias (HIDDEN, or a visible mode with empty name fields) leaks nothing real.
+    const showsIdentity = Boolean(profile) && !needsAlias(profile!);
     return {
       userId: targetUserId,
       displayName: name,
       // `bio` has no dedicated privacy flag — it rides along with the chosen identity mode: fully
       // hidden profiles (the default) never leak it.
-      avatarUrl: identityMode !== "HIDDEN" ? visibleAvatarUrl(profile ?? null, privacy ?? null) : null,
-      career: identityMode !== "HIDDEN" && privacy?.showCareer ? (profile?.career ?? null) : null,
-      currentSubject: identityMode !== "HIDDEN" && privacy?.showCurrentSubject ? (profile?.currentSubject ?? null) : null,
-      bio: identityMode !== "HIDDEN" ? (profile?.bio ?? null) : null,
-      instagram: identityMode !== "HIDDEN" && privacy?.showInstagram ? (profile?.instagram ?? null) : null,
-      studentNumber: identityMode !== "HIDDEN" && privacy?.showStudentNumber ? (profile?.studentNumber ?? null) : null,
-      studyStatus: profile && !needsAlias(profile) ? await this.study.getActiveStatusForUser(targetUserId) : null,
+      avatarUrl: showsIdentity ? visibleAvatarUrl(profile ?? null, privacy ?? null) : null,
+      career: showsIdentity && privacy?.showCareer ? (profile?.career ?? null) : null,
+      currentSubject: showsIdentity && privacy?.showCurrentSubject ? (profile?.currentSubject ?? null) : null,
+      bio: showsIdentity ? (profile?.bio ?? null) : null,
+      instagram: showsIdentity && privacy?.showInstagram ? (profile?.instagram ?? null) : null,
+      studentNumber: showsIdentity && privacy?.showStudentNumber ? (profile?.studentNumber ?? null) : null,
+      studyStatus: showsIdentity ? await this.study.getActiveStatusForUser(targetUserId) : null,
       allowsDirectMessages: privacy?.allowDirectMessages ?? true,
       blockedByMe: Boolean(blockedByMe),
       adminBadge: showsAdminBadge(isAdmin, profile ?? null, privacy ?? null),

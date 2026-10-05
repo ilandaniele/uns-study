@@ -8,8 +8,8 @@ import { RestrictionService } from "../users/restriction.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { RoomCache } from "../common/cache/room-cache.service.js";
 import { containsProfanity } from "./profanity.js";
+import { isUniqueViolation } from "../common/pg-errors.js";
 
-const UNIQUE_VIOLATION = "23505";
 /** A table's nickname is only "locked in" once its top proposal clears this many votes. */
 const NICKNAME_VOTE_THRESHOLD = 5;
 /** Cap on ACTIVE proposals any one user can have open per room, to keep the list usable. */
@@ -275,11 +275,4 @@ function assertNameAllowed(name: string): void {
   if (containsProfanity(name)) {
     throw ApiErrors.validation("Ese nombre no está permitido.");
   }
-}
-
-function isUniqueViolation(err: unknown): boolean {
-  if (typeof err !== "object" || err === null) return false;
-  if ("code" in err && (err as { code?: string }).code === UNIQUE_VIOLATION) return true;
-  const cause = (err as { cause?: unknown }).cause;
-  return typeof cause === "object" && cause !== null && (cause as { code?: string }).code === UNIQUE_VIOLATION;
 }

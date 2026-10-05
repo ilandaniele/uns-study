@@ -48,14 +48,16 @@ export function MessageMenu({ isOwn, onDelete, onReport, onBlock }: MessageMenuP
                     onReport?.();
                   }}
                 />
-                <MenuItem
-                  label="Bloquear"
-                  onClick={() => {
-                    setOpen(false);
-                    onBlock?.();
-                  }}
-                  danger
-                />
+                {onBlock ? (
+                  <MenuItem
+                    label="Bloquear"
+                    onClick={() => {
+                      setOpen(false);
+                      onBlock();
+                    }}
+                    danger
+                  />
+                ) : null}
               </>
             )}
           </div>

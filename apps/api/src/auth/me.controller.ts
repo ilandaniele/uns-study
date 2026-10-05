@@ -35,12 +35,13 @@ export class MeController {
         adFree: false,
         subscriptionsEnabled,
         subscriptionPriceArs,
+        canManageAdmins: false,
       };
     }
 
     await this.roles.ensureAdminFromEnv(user.id, user.email, user.emailVerified === true);
 
-    const [activeCheckIn, roles, activeRestrictions, [profile], [subscription]] = await Promise.all([
+    const [activeCheckIn, roles, activeRestrictions, [profile], [subscription], canManageAdmins] = await Promise.all([
       this.checkIns.getActiveCheckIn(user.id),
       this.roles.rolesFor(user.id),
       this.restrictions.activeRestrictions(user.id),
@@ -49,6 +50,7 @@ export class MeController {
         .select({ status: schema.userSubscriptions.status })
         .from(schema.userSubscriptions)
         .where(eq(schema.userSubscriptions.userId, user.id)),
+      this.roles.isOwner(user.id),
     ]);
 
     return {
@@ -60,6 +62,7 @@ export class MeController {
       adFree: subscription?.status === "authorized",
       subscriptionsEnabled,
       subscriptionPriceArs,
+      canManageAdmins,
     };
   }
 }

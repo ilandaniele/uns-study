@@ -58,10 +58,11 @@ export const userPrivacySettings = pgTable("user_privacy_settings", {
 });
 
 /**
- * Every alias ever assigned, lowercased, kept forever once retired — so a released alias can never
- * be handed out to someone else (a stable, un-relinkable identifier must not become ambiguous).
+ * Aliases retired forever (lowercased) — so a retired alias can never be handed out to someone
+ * else (a stable, un-relinkable identifier must not become ambiguous). Aliases are otherwise
+ * permanent; one is retired only when a legacy non-catalog alias is replaced by a catalog one.
  * `AliasService` checks this table (in addition to the live uniqueness on `user_profiles.alias`)
- * before assigning a candidate, and inserts into it whenever an alias is released.
+ * before assigning a candidate, and inserts into it whenever an alias is retired.
  */
 export const retiredAliases = pgTable(
   "retired_aliases",

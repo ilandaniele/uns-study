@@ -2,7 +2,8 @@
 
 import { moderationActionSchema, type AdminUserDto, type ModerationActionType } from "@sala/contracts";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { apiFetch, apiPost } from "@/lib/api";
+import { apiDelete, apiFetch, apiPost, apiPut } from "@/lib/api";
+import { useMe } from "@/lib/me-store";
 
 const ACTIONS: { type: ModerationActionType; label: string }[] = [
   { type: "WARN", label: "Advertir" },
@@ -20,6 +21,8 @@ export function UserDetail({ userId }: { userId: string }) {
   const [reason, setReason] = useState("");
   const [until, setUntil] = useState("");
   const [saving, setSaving] = useState(false);
+  const [togglingAdmin, setTogglingAdmin] = useState(false);
+  const { me } = useMe();
 
   const load = useCallback(async () => {
     try {
@@ -55,6 +58,21 @@ export function UserDetail({ userId }: { userId: string }) {
     }
   }
 
+  async function toggleAdmin(grant: boolean) {
+    const question = grant ? "¿Hacer admin a este usuario?" : "¿Quitar el rol de admin a este usuario?";
+    if (!window.confirm(question)) return;
+    setTogglingAdmin(true);
+    try {
+      if (grant) await apiPut(`/api/v1/admin/users/${userId}/admin`);
+      else await apiDelete(`/api/v1/admin/users/${userId}/admin`);
+      await load();
+    } catch {
+      setError("No pudimos cambiar el rol de admin.");
+    } finally {
+      setTogglingAdmin(false);
+    }
+  }
+
   if (error) return <p className="text-sm text-[var(--seat-occupied)]">{error}</p>;
   if (!user) return <p className="text-sm text-muted">Cargando…</p>;
 
@@ -66,6 +84,17 @@ export function UserDetail({ userId }: { userId: string }) {
         <p className="font-mono text-xs text-muted">Miembro desde {new Date(user.createdAt).toLocaleDateString("es-AR")}</p>
         {user.roles.length > 0 ? (
           <p className="mt-2 text-xs font-semibold text-primary">{user.roles.join(", ")}</p>
+        ) : null}
+
+        {me?.canManageAdmins && me.user?.id !== user.userId ? (
+          <button
+            type="button"
+            onClick={() => void toggleAdmin(!user.roles.includes("ADMIN"))}
+            disabled={togglingAdmin}
+            className="mt-3 w-fit rounded-lg border border-app px-3 py-1.5 text-sm font-semibold text-main disabled:opacity-50"
+          >
+            {user.roles.includes("ADMIN") ? "Quitar admin" : "Hacer admin"}
+          </button>
         ) : null}
 
         {user.reputation ? (

@@ -1,3 +1,4 @@
+import { FIRST_SEEN_KEY } from "@/lib/engagement";
 import { APP_OPEN_CAP_MS, PRE_CHECKIN_CAP_MS, REWARD_SNOOZE_MS, isExcludedPath } from "./ad-config";
 
 /** The slice of `Storage` the policy needs, so tests can pass a plain Map-backed fake. */
@@ -6,7 +7,6 @@ export interface StorageLike {
   setItem(key: string, value: string): void;
 }
 
-const KEY_FIRST_SEEN = "sala.ads.firstSeenAt";
 const KEY_APP_OPEN = "sala.ads.lastAppOpenAt";
 const KEY_PRE_CHECKIN = "sala.ads.lastPreCheckInAt";
 const KEY_SNOOZED = "sala.ads.snoozedUntil";
@@ -34,7 +34,7 @@ function writeNumber(storage: StorageLike, key: string, value: number): void {
 /** Fail closed: with storage unavailable the caps and snooze cannot be honoured, so no ad is shown. */
 function storageUsable(storage: StorageLike): boolean {
   try {
-    storage.getItem(KEY_FIRST_SEEN);
+    storage.getItem(FIRST_SEEN_KEY);
     storage.setItem(KEY_PROBE, "1");
     return true;
   } catch {
@@ -75,8 +75,8 @@ export function shouldShowAppOpen(args: {
 }): boolean {
   const { pathname, now, storage, isMobile } = args;
   if (!storageUsable(storage)) return false;
-  if (readNumber(storage, KEY_FIRST_SEEN) === null) {
-    writeNumber(storage, KEY_FIRST_SEEN, now);
+  if (readNumber(storage, FIRST_SEEN_KEY) === null) {
+    writeNumber(storage, FIRST_SEEN_KEY, now);
     return false;
   }
   if (isExcludedPath(pathname)) return false;

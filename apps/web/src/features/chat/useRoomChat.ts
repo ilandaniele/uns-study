@@ -169,7 +169,7 @@ export function useRoomChat(roomSlug: string, blockedIds: Set<string>): UseRoomC
     }
   }, []);
 
-  const visibleMessages = messages.filter((m) => !blockedIds.has(m.author.userId));
+  const visibleMessages = messages.filter((m) => (m.author.userId === null || !blockedIds.has(m.author.userId)));
 
   return {
     messages: visibleMessages,

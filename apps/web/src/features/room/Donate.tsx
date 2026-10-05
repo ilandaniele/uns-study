@@ -3,6 +3,7 @@
 import { CheckIcon, CopyIcon, HeartIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import { useEffect, useRef, useState } from "react";
 import { useHouseInterstitial } from "@/features/ads/ad-overlay-store";
+import { FIRST_CHECK_IN_KEY, FIRST_SEEN_KEY } from "@/lib/engagement";
 import { useExitTransition } from "@/lib/useExitTransition";
 
 export const DONATION_ALIAS = "golf.cabina.mulita";
@@ -96,8 +97,8 @@ export function DonateCard() {
 /** Holds the prompt back until the visitor has checked in once or has been around for a day. */
 function hasEngaged(): boolean {
   try {
-    if (window.localStorage.getItem("sala.firstCheckInAt")) return true;
-    const firstSeen = Number(window.localStorage.getItem("sala.ads.firstSeenAt"));
+    if (window.localStorage.getItem(FIRST_CHECK_IN_KEY)) return true;
+    const firstSeen = Number(window.localStorage.getItem(FIRST_SEEN_KEY));
     return firstSeen > 0 && Date.now() - firstSeen >= 24 * 60 * 60 * 1000;
   } catch {
     return false;

@@ -25,25 +25,3 @@ export function identityModeHint(mode: IdentityMode): string {
   }
   return "Este es el nombre que verán otras personas registradas cuando decidas mostrarte.";
 }
-
-/**
- * The name other people would see for `mode` given the name fields — mirrors the API's
- * `displayName` (visible modes only). `null` when the mode is HIDDEN or the fields it needs are empty.
- */
-export function previewDisplayName(mode: IdentityMode, fields: { firstName: string; lastName: string; nickname: string }): string | null {
-  const first = fields.firstName.trim();
-  const last = fields.lastName.trim();
-  const nickname = fields.nickname.trim();
-  switch (mode) {
-    case "FIRST_NAME":
-      return first || nickname || null;
-    case "FULL_NAME":
-      return [first, last].filter(Boolean).join(" ") || null;
-    case "NICKNAME":
-      return nickname || null;
-    case "NICKNAME_AND_NAME":
-      return nickname && first ? `${nickname} (${first})` : nickname || first || null;
-    case "HIDDEN":
-      return null;
-  }
-}

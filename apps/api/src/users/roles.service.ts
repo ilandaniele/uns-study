@@ -33,6 +33,21 @@ export class RolesService {
     return new Set(rows.map((r) => r.userId));
   }
 
+  /** True only for the verified app owner (`OWNER_EMAIL`), the sole account allowed to grant/revoke ADMIN. */
+  async isOwner(userId: string): Promise<boolean> {
+    if (!env.ownerEmail) return false;
+    const [u] = await this.db.select({ email: schema.user.email, emailVerified: schema.user.emailVerified }).from(schema.user).where(eq(schema.user.id, userId)).limit(1);
+    return Boolean(u && u.emailVerified === true && u.email.trim().toLowerCase() === env.ownerEmail);
+  }
+
+  async grantRole(userId: string, role: Role): Promise<void> {
+    await this.db.insert(schema.userRoles).values({ userId, role }).onConflictDoNothing();
+  }
+
+  async revokeRole(userId: string, role: Role): Promise<void> {
+    await this.db.delete(schema.userRoles).where(and(eq(schema.userRoles.userId, userId), eq(schema.userRoles.role, role)));
+  }
+
   /** If `email` is in the `ADMIN_EMAILS` env list (case-insensitive) and verified, upserts the ADMIN role for `userId`. */
   async ensureAdminFromEnv(userId: string, email: string, emailVerified: boolean): Promise<void> {
     if (this.ensuredAdmins.has(userId)) return;

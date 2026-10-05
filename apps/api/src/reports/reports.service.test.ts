@@ -142,6 +142,29 @@ describe("ReportsService", () => {
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
   });
 
+  it("rejects a DM report citing a message from a conversation the reporter isn't in", async () => {
+    await insertUsers(db, ["other"]);
+    const [conversation] = await db.insert(schema.directConversations).values({ userA: "other", userB: "reported" }).returning();
+    const [message] = await db.insert(schema.directMessages).values({ conversationId: conversation!.id, senderId: "reported", content: "hola" }).returning();
+
+    const svc = new ReportsService(db, rateLimit, restrictions, roles, fakeStorage());
+    const input = { reporterId: "reporter", reportedUserId: "reported", reason: "HARASSMENT" as const, context: "DM" as const, contextMessageId: message!.id };
+    await expect(svc.createReport(input)).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await expect(svc.createReport({ ...input, reporterId: "other" })).resolves.toMatchObject({ status: "OPEN" });
+  });
+
+  it("resolves the reported user from a CHAT message when given the message-author placeholder", async () => {
+    const room = await getRoom(db);
+    const [chatRoom] = await db.insert(schema.chatRooms).values({ roomId: room.id, slug: "principal", name: "Principal" }).returning();
+    const [message] = await db.insert(schema.chatMessages).values({ chatRoomId: chatRoom!.id, userId: "reported", content: "hola" }).returning();
+
+    const svc = new ReportsService(db, rateLimit, restrictions, roles, fakeStorage());
+    const created = await svc.createReport({ reporterId: "reporter", reportedUserId: "message-author", reason: "SPAM", context: "CHAT", contextMessageId: message!.id });
+    const [row] = await db.select().from(schema.userReports).where(eq(schema.userReports.id, created.id));
+    expect(row?.reportedUserId).toBe("reported");
+    await expect(svc.createReport({ reporterId: "reporter", reportedUserId: "message-author", reason: "SPAM", context: "PROFILE" })).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+  });
+
   it("enforces a 5/day cap for non-admins", async () => {
     const svc = new ReportsService(db, rateLimit, restrictions, roles, fakeStorage());
     for (let i = 0; i < 5; i++) {

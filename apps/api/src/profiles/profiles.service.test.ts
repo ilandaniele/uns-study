@@ -117,6 +117,20 @@ describe("ProfilesService", () => {
       expect(pub.career).toBe("Ingeniería");
     });
 
+    it("treats a visible mode with empty name fields as alias: leaks nothing", async () => {
+      await profiles.updateMyProfile("u1", "u1@example.test", { identityMode: "FIRST_NAME", bio: "secreto", career: "Ingeniería", instagram: "ana.estudia", studentNumber: "12345" });
+      await profiles.updateMyPrivacy("u1", { showAvatar: true, showCareer: true, showInstagram: true, showStudentNumber: true });
+      await db.update(schema.userProfiles).set({ avatarUrl: "/api/v1/avatars/u1?v=abc" }).where(eq(schema.userProfiles.userId, "u1"));
+
+      const pub = await profiles.getPublicProfile("viewer", "u1");
+      expect(pub.avatarUrl).toBeNull();
+      expect(pub.bio).toBeNull();
+      expect(pub.career).toBeNull();
+      expect(pub.instagram).toBeNull();
+      expect(pub.studentNumber).toBeNull();
+      expect(pub.studyStatus).toBeNull();
+    });
+
     it("never leaks avatar/career/subject/instagram/student number for a HIDDEN identity, even with every privacy flag on", async () => {
       await profiles.updateMyProfile("u1", "u1@example.test", {
         identityMode: "HIDDEN",
