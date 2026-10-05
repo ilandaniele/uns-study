@@ -1,6 +1,6 @@
 "use client";
 
-import type { PublicProfileDto } from "@sala/contracts";
+import { deleteAccountSchema, type PublicProfileDto } from "@sala/contracts";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { RewardedAdButton } from "@/features/ads/RewardedAdButton";
@@ -60,7 +60,7 @@ export default function PerfilPage() {
   async function handleDelete() {
     setDeleting(true);
     try {
-      await apiPost("/api/v1/me/delete", { confirm: "ELIMINAR" });
+      await apiPost("/api/v1/me/delete", { confirm: "ELIMINAR" }, deleteAccountSchema);
       await signOut();
       invalidateMe();
       resetSocket();

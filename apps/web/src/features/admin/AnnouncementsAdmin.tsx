@@ -1,6 +1,6 @@
 "use client";
 
-import type { AnnouncementDto } from "@sala/contracts";
+import { announcementSchema, type AnnouncementDto } from "@sala/contracts";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { apiFetch, apiDelete, apiPost } from "@/lib/api";
 
@@ -30,7 +30,7 @@ export function AnnouncementsAdmin() {
     if (!title.trim() || !body.trim()) return;
     setSaving(true);
     try {
-      await apiPost("/api/v1/admin/announcements", { title: title.trim(), body: body.trim() });
+      await apiPost("/api/v1/admin/announcements", { title: title.trim(), body: body.trim() }, announcementSchema);
       setTitle("");
       setBody("");
       await load();

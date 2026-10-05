@@ -1,3 +1,4 @@
+import { pushSubscriptionSchema } from "@sala/contracts";
 import { apiFetch, apiPost } from "./api";
 
 /**
@@ -68,7 +69,7 @@ export async function enablePushNotifications(): Promise<boolean> {
   await apiPost("/api/v1/notifications/push-subscriptions", {
     endpoint: json.endpoint,
     keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
-  });
+  }, pushSubscriptionSchema);
   return true;
 }
 

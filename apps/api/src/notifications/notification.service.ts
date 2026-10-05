@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { randomInt } from "node:crypto";
-import { and, eq, gt, inArray, lt, ne } from "drizzle-orm";
+import { and, eq, gt, lt, ne, notExists, sql } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import { seatLabel } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
@@ -149,17 +149,27 @@ export class NotificationService {
   /** Users subscribed to `preferenceKey` who don't currently hold an active check-in in `roomId`. */
   private async eligibleSubscribers(roomId: string, preferenceKey: "seatFreed" | "adminPresent"): Promise<string[]> {
     const column = preferenceKey === "seatFreed" ? schema.notificationPreferences.seatFreed : schema.notificationPreferences.adminPresent;
-    const subscribers = await this.db.select({ userId: schema.notificationPreferences.userId }).from(schema.notificationPreferences).where(eq(column, true));
-    if (subscribers.length === 0) return [];
-
-    const subscriberIds = subscribers.map((s) => s.userId);
-    const activeCheckIns = await this.db
-      .select({ userId: schema.checkIns.userId })
-      .from(schema.checkIns)
-      .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE"), inArray(schema.checkIns.userId, subscriberIds)));
-    const checkedIn = new Set(activeCheckIns.map((c) => c.userId));
-
-    return subscriberIds.filter((id) => !checkedIn.has(id));
+    const rows = await this.db
+      .select({ userId: schema.notificationPreferences.userId })
+      .from(schema.notificationPreferences)
+      .where(
+        and(
+          eq(column, true),
+          notExists(
+            this.db
+              .select({ one: sql`1` })
+              .from(schema.checkIns)
+              .where(
+                and(
+                  eq(schema.checkIns.userId, schema.notificationPreferences.userId),
+                  eq(schema.checkIns.roomId, roomId),
+                  eq(schema.checkIns.status, "ACTIVE"),
+                ),
+              ),
+          ),
+        ),
+      );
+    return rows.map((r) => r.userId);
   }
 
   private async sendSeatFreedPush(roomId: string, freedSeatIds: string[], recipients: string[], knownSummary?: { free: number }): Promise<void> {

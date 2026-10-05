@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, desc, eq, gt, lt, ne, or } from "drizzle-orm";
+import { and, count, desc, eq, gt, lt, ne, or } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { ConversationDto, DirectMessageDto, Page } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
@@ -177,8 +177,8 @@ export class DmService {
 
     const unreadConditions = [eq(schema.directMessages.conversationId, conversation.id), ne(schema.directMessages.senderId, viewerId)];
     if (readRow) unreadConditions.push(gt(schema.directMessages.createdAt, readRow.lastReadAt));
-    const unreadRows = await this.db
-      .select()
+    const [unreadRow] = await this.db
+      .select({ count: count() })
       .from(schema.directMessages)
       .where(and(...unreadConditions));
 
@@ -190,7 +190,7 @@ export class DmService {
         avatarUrl: visibleAvatarUrl(profile ?? null, privacy ?? null),
       },
       lastMessage: lastMessageRow ? toMessageDto(lastMessageRow) : null,
-      unread: unreadRows.length,
+      unread: Number(unreadRow?.count ?? 0),
       lastMessageAt: conversation.lastMessageAt.toISOString(),
     };
   }

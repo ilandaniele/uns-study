@@ -50,4 +50,5 @@ Each phase was implemented by a builder subagent and then checked by a verifier 
 | 4. Backups and infra docs | Daily volume snapshots kept 14 days; daily `pg_dump` to the owner's PC; restore script tested; Fly infrastructure notes. | d4970ba |
 | 5. Web | Per-request CSP nonce with `'strict-dynamic'`; HSTS preload; bodies validated in the browser before sending. | 0804da2 |
 | 6. Migrations | The API no longer holds the owner credential and refuses to boot with pending migrations; `ops/migrate-fly-db.ps1` migrates with a one-time owner login. | 0804da2 |
-| 7. Audit | This checklist, re-checked against production. | this file |
+| 7. Audit | This checklist, re-checked against production by a security subagent: 11 pass, 2 partial. | this file |
+| 8. Audit fixes | DM unread count done in SQL; notification eligibility in one query (`NOT EXISTS`); every web call with a body now validated with its contracts schema. | see git log |

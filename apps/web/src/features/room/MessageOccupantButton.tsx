@@ -1,6 +1,6 @@
 "use client";
 
-import type { ConversationDto } from "@sala/contracts";
+import { createConversationSchema, type ConversationDto } from "@sala/contracts";
 import { ChatCircleIcon } from "@phosphor-icons/react/dist/ssr";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -16,7 +16,7 @@ export function MessageOccupantButton({ userId }: { userId: string }) {
     setBusy(true);
     setError(null);
     try {
-      const conversation = await apiPost<ConversationDto>("/api/v1/conversations", { userId });
+      const conversation = await apiPost<ConversationDto>("/api/v1/conversations", { userId }, createConversationSchema);
       router.push(`/chat/dm/${conversation.id}`);
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "DM_NOT_ALLOWED") setError("Esta persona no acepta mensajes directos.");

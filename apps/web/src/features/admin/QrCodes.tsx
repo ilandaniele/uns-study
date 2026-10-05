@@ -2,7 +2,7 @@
 
 import QRCode from "qrcode";
 import { useCallback, useEffect, useState } from "react";
-import type { TableType } from "@sala/contracts";
+import { createQrCodeSchema, type TableType } from "@sala/contracts";
 import { apiDelete, apiFetch, apiPost } from "@/lib/api";
 import { tableDisplayName } from "@/features/room/format";
 import type { RoomQrCodeDto } from "./types";
@@ -55,7 +55,7 @@ export function QrCodes({ roomSlug }: { roomSlug: string }) {
 
   async function create() {
     try {
-      await apiPost(`/api/v1/admin/rooms/${roomSlug}/qr`, tableCode.trim() ? { tableCode: tableCode.trim() } : {});
+      await apiPost(`/api/v1/admin/rooms/${roomSlug}/qr`, tableCode.trim() ? { tableCode: tableCode.trim() } : {}, createQrCodeSchema);
       setTableCode("");
       await load();
     } catch {

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ConversationDto, PublicProfileDto } from "@sala/contracts";
+import { createConversationSchema, type ConversationDto, type PublicProfileDto } from "@sala/contracts";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -41,7 +41,7 @@ export default function PublicProfilePage() {
     setBusy(true);
     setActionMessage(null);
     try {
-      const conversation = await apiPost<ConversationDto>("/api/v1/conversations", { userId });
+      const conversation = await apiPost<ConversationDto>("/api/v1/conversations", { userId }, createConversationSchema);
       router.push(`/chat/dm/${conversation.id}`);
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "DM_NOT_ALLOWED") {

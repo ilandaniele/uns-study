@@ -1,7 +1,7 @@
 "use client";
 
 import { SocketEvents } from "@sala/contracts/events";
-import type { TableNamesDto, TableNicknameChangedEvent } from "@sala/contracts";
+import { proposeTableNameSchema, type TableNamesDto, type TableNicknameChangedEvent } from "@sala/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { apiDelete, apiFetch, apiPost } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
@@ -58,7 +58,7 @@ export function useTableNames(tableId: string | null): UseTableNamesResult {
   const propose = useCallback(
     async (name: string) => {
       if (!tableId) return;
-      await apiPost(`/api/v1/tables/${tableId}/names`, { name });
+      await apiPost(`/api/v1/tables/${tableId}/names`, { name }, proposeTableNameSchema);
       load();
     },
     [tableId, load],

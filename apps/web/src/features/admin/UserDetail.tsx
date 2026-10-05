@@ -1,6 +1,6 @@
 "use client";
 
-import type { AdminUserDto, ModerationActionType } from "@sala/contracts";
+import { moderationActionSchema, type AdminUserDto, type ModerationActionType } from "@sala/contracts";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { apiFetch, apiPost } from "@/lib/api";
 
@@ -44,7 +44,7 @@ export function UserDetail({ userId }: { userId: string }) {
         type,
         reason: reason.trim(),
         until: until ? new Date(until).toISOString() : null,
-      });
+      }, moderationActionSchema);
       setReason("");
       setUntil("");
       await load();

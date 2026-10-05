@@ -1,6 +1,6 @@
 "use client";
 
-import type { AvatarMimeType } from "@sala/contracts";
+import { uploadAvatarSchema, type AvatarMimeType } from "@sala/contracts";
 import { useRef, useState } from "react";
 import { apiDelete, apiPost, ApiRequestError } from "@/lib/api";
 import { AVATAR_OUTPUT_SIZE, base64FromDataUrl, centerSquareCrop } from "./avatar-image";
@@ -59,7 +59,7 @@ export function AvatarUploader({ avatarUrl, displayName, googleImage, showAvatar
     setError(null);
     try {
       const base64 = await resizeToAvatar(file);
-      const result = await apiPost<{ avatarUrl: string }>("/api/v1/profiles/me/avatar", { mimeType: OUTPUT_MIME, base64 });
+      const result = await apiPost<{ avatarUrl: string }>("/api/v1/profiles/me/avatar", { mimeType: OUTPUT_MIME, base64 }, uploadAvatarSchema);
       onAvatarUrlChange(result.avatarUrl);
       setBust((n) => n + 1);
     } catch (err) {

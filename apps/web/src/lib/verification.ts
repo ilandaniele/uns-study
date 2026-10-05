@@ -1,4 +1,4 @@
-import type { LocationInput, PhotoVerificationResultDto } from "@sala/contracts";
+import { checkInPhotoRequestSchema, type LocationInput, type PhotoVerificationResultDto } from "@sala/contracts";
 import { apiFetch, apiPost } from "./api";
 
 export interface VerificationStatus {
@@ -17,5 +17,5 @@ export interface CapturedPhoto {
 
 /** POST /checkins/:id/photo */
 export function uploadSeatPhoto(checkInId: string, image: CapturedPhoto, location: LocationInput): Promise<PhotoVerificationResultDto> {
-  return apiPost<PhotoVerificationResultDto>(`/api/v1/checkins/${checkInId}/photo`, { image, location });
+  return apiPost<PhotoVerificationResultDto>(`/api/v1/checkins/${checkInId}/photo`, { image, location }, checkInPhotoRequestSchema);
 }

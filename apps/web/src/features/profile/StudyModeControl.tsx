@@ -1,6 +1,6 @@
 "use client";
 
-import type { StudyStatusDto } from "@sala/contracts";
+import { studyStartSchema, type StudyStatusDto } from "@sala/contracts";
 import { useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { apiFetch, apiPost, ApiRequestError } from "@/lib/api";
@@ -28,7 +28,7 @@ export function StudyModeControl({ roomId, initialStatus }: StudyModeControlProp
         subject: subject.trim() || undefined,
         message: message.trim() || undefined,
         lookingForGroup,
-      });
+      }, studyStartSchema);
       trackEvent("study_mode_started", { lookingForGroup });
       setStatus(result);
     } catch (err) {

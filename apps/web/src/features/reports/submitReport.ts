@@ -1,4 +1,4 @@
-import { createReportSchema } from "@sala/contracts";
+import { attachmentRequestSchema, createReportSchema } from "@sala/contracts";
 import type { ReportContext, ReportCreatedDto, ReportReason, UploadInstructionDto } from "@sala/contracts";
 import { apiPost, ApiRequestError } from "@/lib/api";
 import type { EvidenceFileLike } from "./evidence";
@@ -41,7 +41,7 @@ export async function submitReport(input: SubmitReportInput): Promise<SubmitRepo
     const instruction = await apiPost<UploadInstructionDto>(`/api/v1/reports/${report.id}/attachments`, {
       contentType: input.file.type,
       sizeBytes: input.file.size,
-    });
+    }, attachmentRequestSchema);
 
     const uploadRes = await fetch(instruction.uploadUrl, {
       method: instruction.method,
