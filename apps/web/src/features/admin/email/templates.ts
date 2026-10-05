@@ -14,7 +14,7 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     bodyText: [
       "¡Hola!",
       "",
-      "Sala de Estudio tiene nuevo nombre y nueva dirección: https://sala-de-estudio.fly.dev",
+      "Sala de Estudio tiene nuevo nombre y nueva dirección: https://saladeestudio.com.ar",
       "",
       "Seguí entrando desde ahí para ver en tiempo real qué lugares están libres. Tu cuenta y tu perfil siguen igual.",
       "",
@@ -30,7 +30,7 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
       "",
       "Ya podés usar Sala de Estudio sin anuncios por $1500/mes, en todos tus dispositivos. Además, apoyás que la sala siga funcionando.",
       "",
-      "Suscribite acá: https://sala-de-estudio.fly.dev/suscripcion",
+      "Suscribite acá: https://saladeestudio.com.ar/suscripcion",
       "",
       "¡Gracias por usar la sala!",
     ].join("\n"),

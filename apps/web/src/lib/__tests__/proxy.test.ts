@@ -69,11 +69,19 @@ describe("proxy CSP nonce", () => {
     expect(res.headers.get("content-security-policy")).toBeNull();
   });
 
-  it("still redirects the legacy host, without a CSP", async () => {
-    const { LEGACY_HOST } = await import("@/lib/hosts");
-    const res = proxy(new NextRequest("https://" + LEGACY_HOST + "/mapa?x=1", { headers: { host: LEGACY_HOST } }));
-    expect(res.status).toBe(308);
-    expect(res.headers.get("location")).toContain("/mapa?x=1");
+  it.each(["uns-study.vercel.app", "sala-de-estudio.fly.dev", "www.saladeestudio.com.ar"])(
+    "redirects the old host %s to the canonical domain, without a CSP",
+    (host) => {
+      const res = proxy(new NextRequest("https://" + host + "/mapa?x=1", { headers: { host } }));
+      expect(res.status).toBe(308);
+      expect(res.headers.get("location")).toBe("https://saladeestudio.com.ar/mapa?x=1");
+      expect(res.headers.get("content-security-policy")).toBeNull();
+    },
+  );
+
+  it("serves the canonical domain without redirecting", () => {
+    const res = proxy(new NextRequest("https://saladeestudio.com.ar/mapa", { headers: { host: "saladeestudio.com.ar" } }));
+    expect(res.status).toBe(200);
   });
 
   it("still adds the proxy secret on API paths (which skip the CSP)", () => {

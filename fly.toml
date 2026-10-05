@@ -7,9 +7,10 @@ primary_region = "gru"
 [env]
   NODE_ENV = "production"
   PORT = "8080"
-  WEB_ORIGIN = "https://sala-de-estudio.fly.dev"
-  # https://sala-de-estudio.fly.dev/api/auth/callback/google is an authorized redirect URI in Google Cloud.
-  BETTER_AUTH_URL = "https://sala-de-estudio.fly.dev"
+  # The fly.dev origin stays allowed while the web redirects it to the custom domain.
+  WEB_ORIGIN = "https://saladeestudio.com.ar,https://sala-de-estudio.fly.dev"
+  # https://saladeestudio.com.ar/api/auth/callback/google is an authorized redirect URI in Google Cloud.
+  BETTER_AUTH_URL = "https://saladeestudio.com.ar"
   GOOGLE_CLIENT_ID = "1032351199989-q4i4g9vsn7unkemt09in1md9omp4hh0o.apps.googleusercontent.com"
   DB_AUTO_MIGRATE = "false"
   # main.ts runs migrations + idempotent seed in-process before listening (no tsx at boot).
@@ -19,8 +20,8 @@ primary_region = "gru"
   ROOM_RESET_TIMEZONE = "America/Argentina/Buenos_Aires"
   TRUST_PROXY_HOPS = "2"
   PRESENCE_DEV_BYPASS = "false"
-  VAPID_SUBJECT = "https://sala-de-estudio.fly.dev"
-  PUBLIC_WEB_URL = "https://sala-de-estudio.fly.dev"
+  VAPID_SUBJECT = "https://saladeestudio.com.ar"
+  PUBLIC_WEB_URL = "https://saladeestudio.com.ar"
 
 # Secrets (not set here — `fly secrets set`): DATABASE_URL, GOOGLE_CLIENT_SECRET,
 # BETTER_AUTH_SECRET, IP_HASH_SALT, MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET, RESEND_API_KEY, EMAIL_FROM,

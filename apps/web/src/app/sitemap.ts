@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-export const SITE_URL = "https://sala-de-estudio.fly.dev";
+export const SITE_URL = "https://saladeestudio.com.ar";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [

@@ -1,13 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { buildCsp, generateNonce } from "@/lib/csp";
-import { CANONICAL_HOST, LEGACY_HOST } from "@/lib/hosts";
+import { CANONICAL_HOST, LEGACY_HOSTS } from "@/lib/hosts";
 
 const PROXY_SECRET_HEADER = "x-sala-proxy-secret";
 
-// The app moved from Vercel to Fly.io: send every request on the old host to the same path on
-// the new one. 308 keeps the method, so a stale tab's POST isn't turned into a GET.
+// Send every request on an old host (Vercel, fly.dev, www) to the same path on the canonical
+// domain. 308 keeps the method, so a stale tab's POST isn't turned into a GET.
 export function proxy(request: NextRequest) {
-  if (request.headers.get("host") !== LEGACY_HOST) return forwardWithProxySecret(request);
+  if (!LEGACY_HOSTS.includes(request.headers.get("host") ?? "")) return forwardWithProxySecret(request);
   const url = new URL("https://" + CANONICAL_HOST);
   url.pathname = request.nextUrl.pathname;
   url.search = request.nextUrl.search;

@@ -19,7 +19,7 @@ Status of each security measure, with where it lives and how it was checked. Las
 | Password recovery links expire | Done in code | `resetPasswordTokenExpiresIn: 60 * 60` (1 hour). | Turns on when `EMAIL_FROM` is set, which needs the custom domain. |
 | Brute-force throttling | Done | `auth-rate-limit.middleware.ts` limits `/api/auth` sign-in, sign-up and reset per IP and per email, and caps the body at 16 KB. | `auth-rate-limit.middleware.test.ts` |
 | GET/POST responses | Done | No endpoint returns password hashes, tokens or API keys. Lists are capped: rankings top 100 plus your own row, campaigns 100, and paginated feeds. | Phase 3 review |
-| DNS | Not needed yet | Needed only when the custom domain is bought. | |
+| DNS | Done | `saladeestudio.com.ar` on Cloudflare (Free), delegated from NIC Argentina. Records are DNS only, so TLS stays on Fly certificates. | `fly certs check` shows both certificates issued. |
 | nginx and Let's Encrypt | Not applicable | Fly's edge is the reverse proxy and issues the certificates. `force_https` redirects HTTP to HTTPS. Request size and concurrency are limited in the app and in `fly.toml`. | |
 | VPS ports, root SSH on port 22 | Not applicable | There is no VPS. Only ports 80 and 443 are public, and the database has no public IP. | |
 | SSH password login | Not applicable | There is no SSH daemon with passwords. `fly ssh console` uses short-lived certificates tied to the Fly account, so access cannot be locked out by mistake. | |
