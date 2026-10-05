@@ -28,14 +28,33 @@ describe("PushSubscriptionsService", () => {
     expect(rows[0]?.endpoint).toBe("https://fcm.googleapis.com/fcm/send/abc");
   });
 
-  it("re-subscribing the same endpoint under a different user reassigns it instead of duplicating", async () => {
+  it("re-subscribing the same browser (same keys) under a different user reassigns it instead of duplicating", async () => {
     const endpoint = "https://fcm.googleapis.com/fcm/send/shared-device";
     await svc.subscribe("u1", { endpoint, keys: { p256dh: "p1", auth: "a1" } }, null);
-    await svc.subscribe("u2", { endpoint, keys: { p256dh: "p2", auth: "a2" } }, null);
+    await svc.subscribe("u2", { endpoint, keys: { p256dh: "p1", auth: "a1" } }, null);
 
     const rows = await db.select().from(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.endpoint, endpoint));
     expect(rows).toHaveLength(1);
     expect(rows[0]?.userId).toBe("u2");
+  });
+
+  it("does not let another user take over an endpoint with different keys", async () => {
+    const endpoint = "https://fcm.googleapis.com/fcm/send/victim-device";
+    await svc.subscribe("u1", { endpoint, keys: { p256dh: "p1", auth: "a1" } }, null);
+    await svc.subscribe("u2", { endpoint, keys: { p256dh: "evil", auth: "evil" } }, null);
+
+    const rows = await db.select().from(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.endpoint, endpoint));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.userId).toBe("u1");
+    expect(rows[0]?.p256dh).toBe("p1");
+  });
+
+  it("lets the owner refresh the keys of their own subscription", async () => {
+    const endpoint = "https://fcm.googleapis.com/fcm/send/own-device";
+    await svc.subscribe("u1", { endpoint, keys: { p256dh: "p1", auth: "a1" } }, null);
+    await svc.subscribe("u1", { endpoint, keys: { p256dh: "p2", auth: "a2" } }, null);
+
+    const rows = await db.select().from(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.endpoint, endpoint));
     expect(rows[0]?.p256dh).toBe("p2");
   });
 

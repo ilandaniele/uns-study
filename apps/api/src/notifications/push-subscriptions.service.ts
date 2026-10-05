@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { z } from "zod";
 import type { pushSubscriptionSchema } from "@sala/contracts";
@@ -17,8 +17,10 @@ const MAX_SUBSCRIPTIONS_PER_USER = 10;
 export class PushSubscriptionsService {
   constructor(@Inject(DB) private readonly db: Db) {}
 
-  /** Upserts by `endpoint` — re-subscribing the same device/browser (possibly as a different
-   *  user, e.g. after a sign-out/sign-in) reassigns it rather than creating a duplicate row. */
+  /** Upserts by `endpoint`. The same user can refresh the row (e.g. after a key rotation). A different
+   *  user takes it over only when sending the same `p256dh`/`auth` keys, which proves they hold that
+   *  browser's subscription (a sign-out/sign-in on the same device). Knowing someone's endpoint URL
+   *  alone does nothing: the conflicting row is left untouched. */
   async subscribe(userId: string, input: PushSubscriptionInput, userAgent: string | null): Promise<void> {
     if (!isAllowedPushEndpoint(input.endpoint)) throw ApiErrors.validation("Ese servicio de notificaciones no está permitido.");
 
@@ -28,6 +30,10 @@ export class PushSubscriptionsService {
       .onConflictDoUpdate({
         target: schema.pushSubscriptions.endpoint,
         set: { userId, p256dh: input.keys.p256dh, auth: input.keys.auth, userAgent, failureCount: 0 },
+        setWhere: or(
+          eq(schema.pushSubscriptions.userId, userId),
+          and(eq(schema.pushSubscriptions.p256dh, input.keys.p256dh), eq(schema.pushSubscriptions.auth, input.keys.auth)),
+        ),
       });
 
     await this.enforceSubscriptionCap(userId);

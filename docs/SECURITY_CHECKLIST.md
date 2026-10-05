@@ -52,3 +52,4 @@ Each phase was implemented by a builder subagent and then checked by a verifier 
 | 6. Migrations | The API no longer holds the owner credential and refuses to boot with pending migrations; `ops/migrate-fly-db.ps1` migrates with a one-time owner login. | 0804da2 |
 | 7. Audit | This checklist, re-checked against production by a security subagent: 11 pass, 2 partial. | this file |
 | 8. Audit fixes | DM unread count done in SQL; notification eligibility in one query (`NOT EXISTS`); every web call with a body now validated with its contracts schema. | see git log |
+| 9. Push subscriptions | Another user can take over a push endpoint only by sending the same browser keys; knowing the endpoint URL alone changes nothing. No migration needed. | see git log |
