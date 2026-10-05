@@ -11,6 +11,7 @@ const API_PROXY_TARGET = process.env.API_PROXY_TARGET ?? "";
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || API_PROXY_TARGET.replace(/\/+$/, "") || "http://localhost:4000";
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   // Dockerfile.web builds the self-contained server; trace files from the monorepo root so the
   // workspace packages land in the standalone bundle.
   ...(process.env.NEXT_OUTPUT_STANDALONE

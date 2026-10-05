@@ -7,12 +7,14 @@ const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
  * trusted web origins, returns whether the request should be rejected.
  *
  * - Requests with neither an `Origin` header nor a `Sec-Fetch-Site` header (curl, server-to-server
- *   calls) are allowed — browsers always send at least one of these for cross-origin requests.
+ *   calls) are allowed only when they carry no cookie. Browsers always send at least one of these
+ *   headers on a state-changing request, so a cookie-bearing request without both didn't come from
+ *   our web app and can't be trusted with the session.
  * - An `Origin` header that isn't in `webOrigins` is rejected.
  * - `Sec-Fetch-Site: cross-site` is rejected even if `Origin` is absent or trusted.
  */
 export function isCsrfRejected(
-  request: { method: string; origin?: string | null; secFetchSite?: string | null },
+  request: { method: string; origin?: string | null; secFetchSite?: string | null; hasCookie?: boolean },
   webOrigins: string[],
 ): boolean {
   if (!STATE_CHANGING_METHODS.has(request.method.toUpperCase())) return false;
@@ -20,6 +22,8 @@ export function isCsrfRejected(
   if (request.secFetchSite && request.secFetchSite.toLowerCase() === "cross-site") return true;
 
   if (request.origin && !webOrigins.includes(request.origin)) return true;
+
+  if (!request.origin && !request.secFetchSite && request.hasCookie) return true;
 
   return false;
 }
@@ -39,6 +43,7 @@ export function csrfMiddleware(webOrigins: string[]) {
         method: req.method,
         origin: req.headers.origin,
         secFetchSite: req.headers["sec-fetch-site"] as string | undefined,
+        hasCookie: Boolean(req.headers.cookie),
       },
       webOrigins,
     );

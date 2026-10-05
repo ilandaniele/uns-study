@@ -12,6 +12,15 @@ describe("isCsrfRejected", () => {
     expect(isCsrfRejected({ method: "POST" }, webOrigins)).toBe(false);
   });
 
+  it("rejects a cookie-bearing state-changing request with no Origin and no Sec-Fetch-Site", () => {
+    expect(isCsrfRejected({ method: "POST", hasCookie: true }, webOrigins)).toBe(true);
+  });
+
+  it("allows a cookie-bearing request from a trusted Origin or same-origin fetch", () => {
+    expect(isCsrfRejected({ method: "POST", hasCookie: true, origin: "http://localhost:3000" }, webOrigins)).toBe(false);
+    expect(isCsrfRejected({ method: "POST", hasCookie: true, secFetchSite: "same-origin" }, webOrigins)).toBe(false);
+  });
+
   it("allows a state-changing request from a trusted Origin", () => {
     expect(isCsrfRejected({ method: "POST", origin: "http://localhost:3000" }, webOrigins)).toBe(false);
   });
