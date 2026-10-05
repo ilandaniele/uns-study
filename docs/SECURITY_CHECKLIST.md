@@ -36,7 +36,7 @@ Per-user Postgres RLS would require putting the user ID into every database tran
 
 ## Neon
 
-Neon is no longer used. Deleting the Neon project permanently deletes data, so the owner does it from the Neon console. Claude does not delete it.
+The owner deleted the Neon project on 2026-10-05. The database lives only on Fly Postgres.
 
 ## Phases run (2026-10-05)
 
