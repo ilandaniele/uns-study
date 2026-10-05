@@ -15,3 +15,6 @@ playwright-report
 # local screenshot/debug scripts (not part of the repo; keep only package.json-referenced scripts)
 apps/web/scripts/*shot*.mjs
 apps/web/scripts/debug-*.mjs
+
+# Local database backups (ops/backup-fly-db.ps1)
+backups/

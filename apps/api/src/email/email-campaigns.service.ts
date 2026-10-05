@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { EmailCampaignDto, EmailCampaignInput, EmailCampaignStatus, EmailConfigDto, EmailRecipientPreviewDto } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
@@ -8,6 +8,7 @@ import { env } from "../env.js";
 import { countRecipients, recipientsQuery } from "./email-recipients.js";
 
 const INSERT_CHUNK = 1000;
+const LIST_LIMIT = 100;
 
 type CampaignRow = typeof schema.emailCampaigns.$inferSelect;
 
@@ -25,7 +26,8 @@ export class EmailCampaignsService {
   }
 
   async list(): Promise<EmailCampaignDto[]> {
-    const rows = await this.db.select().from(schema.emailCampaigns).orderBy(desc(schema.emailCampaigns.createdAt));
+    const rows = await this.db.select().from(schema.emailCampaigns).orderBy(desc(schema.emailCampaigns.createdAt)).limit(LIST_LIMIT);
+    if (!rows.length) return [];
     const counts = await this.db
       .select({
         campaignId: schema.emailCampaignDeliveries.campaignId,
@@ -33,6 +35,7 @@ export class EmailCampaignsService {
         n: count(),
       })
       .from(schema.emailCampaignDeliveries)
+      .where(inArray(schema.emailCampaignDeliveries.campaignId, rows.map((r) => r.id)))
       .groupBy(schema.emailCampaignDeliveries.campaignId, schema.emailCampaignDeliveries.status);
     return rows.map((row) => toDto(row, counts.filter((c) => c.campaignId === row.id)));
   }

@@ -97,8 +97,10 @@ export function authRateLimitMiddleware(rateLimit: AuthRateLimiter) {
 
   return (req: Request, res: Response, next: NextFunction): void => {
     const path = req.path.replace(/\/+$/, "");
-    if (req.method !== "POST" || !LIMITED_PATHS.has(path)) return next();
-    // A malformed body is Better Auth's to reject; the per-IP cap above still applies.
+    if (req.method !== "POST" && req.method !== "PUT" && req.method !== "PATCH") return next();
+    // Every body-carrying auth route gets the 16kb cap (oversize -> 413); Better Auth reuses the parsed
+    // `req.body`. A malformed body is Better Auth's to reject; the per-IP cap above still applies.
+    if (!LIMITED_PATHS.has(path) || req.method !== "POST") return parseJson(req, res, next);
     parseJson(req, res, () => void run(req, res, next));
   };
 }

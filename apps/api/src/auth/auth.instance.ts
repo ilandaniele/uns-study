@@ -60,6 +60,7 @@ export function buildAuth(db: Db) {
     trustedOrigins: env.webOrigins,
     emailAndPassword: {
       enabled: true,
+      revokeSessionsOnPasswordReset: true,
       ...(sendResetPassword ? { sendResetPassword, resetPasswordTokenExpiresIn: 60 * 60 } : {}),
     },
     ...(sendVerificationEmail

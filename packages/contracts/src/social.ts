@@ -29,5 +29,5 @@ export const dmSendSchema = z.object({
 });
 
 export const createConversationSchema = z.object({
-  userId: z.string(),
+  userId: z.string().min(1).max(64),
 });

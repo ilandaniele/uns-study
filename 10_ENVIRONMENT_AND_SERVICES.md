@@ -69,7 +69,28 @@ Since 2026-10-05 the database runs on the self-managed Fly Postgres app `sala-de
 - Database `sala`, reached by the API over Fly's private network at `sala-de-estudio-db.internal:5432` with `sslmode=disable`.
 - `MIGRATION_DATABASE_URL` uses the owner role `sala_owner` for boot-time migrations, seed and secrets.
 - `DATABASE_URL` uses the least-privilege role `sala_app` (data access only, same grants as `ops/neon-least-privilege.sql`).
-- The Neon project `uns-study` (Postgres 18) is kept untouched as a backup. To roll back, set both secrets to the Neon URLs with `ops/set-secret-from-clipboard.ps1 migdb` / `db`, then run `fly secrets deploy -a uns-study-api`.
+- The Neon project `uns-study` (Postgres 18) is no longer used and is being deleted by the owner.
+
+### Backups and recovery
+
+- Fly takes a daily snapshot of the volume and keeps it 14 days. Snapshots are free under 10 GB.
+- `ops/backup-fly-db.ps1` downloads a `pg_dump` of `sala` into `backups/` (gitignored) and keeps 30 days of dumps. The Windows scheduled task "Sala DB backup" (registered by `ops/schedule-fly-db-backup.ps1`) runs it every day at 13:00, or at the next start if the PC was off.
+- If the DB machine crashes, Fly restarts it (restart policy `always`) and the data stays on the volume.
+- If the data is lost or bad, `ops/restore-fly-db.ps1` restores the latest dump. Without arguments it restores into the test database `sala_restore_test`. `-Database sala -Force` replaces the live data in one transaction.
+- If the whole volume is lost, create a new volume from a snapshot. The steps are in the header of `ops/restore-fly-db.ps1`.
+
+### Accepted risk: owner URL on the runtime machine
+
+Fly secrets apply to the whole app, so `MIGRATION_DATABASE_URL` (owner role) is also visible to the running API. The API uses it only for boot-time migrations. Someone with code execution inside the API machine could use it to change the schema. Moving migrations to a separate app or a CI job would remove this; it is not done yet.
+
+## Infrastructure security on Fly.io
+
+There is no VPS. TLS, ports and SSH are handled by Fly:
+
+- TLS terminates at the Fly edge with managed certificates, and `force_https` is on for both apps. nginx and Let's Encrypt are not needed.
+- Only ports 80 and 443 are public. The database has no public IP and is reachable only over the private network.
+- There is no SSH daemon with passwords or root login. `fly ssh console` uses short-lived certificates issued to the Fly account.
+- DNS is needed only when the custom domain is bought.
 
 ## Upstash
 

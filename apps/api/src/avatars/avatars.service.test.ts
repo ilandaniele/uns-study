@@ -108,6 +108,7 @@ describe("AvatarsService", () => {
     it("streams the bytes once show_avatar is on", async () => {
       await svc.upload("u1", { mimeType: "image/jpeg", base64: JPEG_BASE64 });
       await db.insert(schema.userPrivacySettings).values({ userId: "u1", showAvatar: true });
+      await db.update(schema.userProfiles).set({ identityMode: "FIRST_NAME", firstName: "Ana" }).where(eq(schema.userProfiles.userId, "u1"));
 
       const avatar = await svc.getForOwner("u1");
       expect(avatar.mimeType).toBe("image/jpeg");
@@ -119,6 +120,27 @@ describe("AvatarsService", () => {
       const avatar = await svc.getForOwner("u1", true);
       expect(avatar.bytes.length).toBeGreaterThan(0);
       await expect(svc.getForOwner("u1", false)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+
+    it("404s non-owners when the owner's identity mode is HIDDEN, even with show_avatar on", async () => {
+      await svc.upload("u1", { mimeType: "image/jpeg", base64: JPEG_BASE64 });
+      await db.insert(schema.userPrivacySettings).values({ userId: "u1", showAvatar: true });
+      await expect(svc.getForOwner("u1", false, "u2")).rejects.toMatchObject({ code: "NOT_FOUND" });
+      await expect(svc.getForOwner("u1", false)).rejects.toMatchObject({ code: "NOT_FOUND" });
+      expect((await svc.getForOwner("u1", true, "u1")).bytes.length).toBeGreaterThan(0);
+    });
+
+    it("404s when either user has blocked the other", async () => {
+      await svc.upload("u1", { mimeType: "image/jpeg", base64: JPEG_BASE64 });
+      await db.insert(schema.userPrivacySettings).values({ userId: "u1", showAvatar: true });
+      await db.update(schema.userProfiles).set({ identityMode: "FIRST_NAME", firstName: "Ana" }).where(eq(schema.userProfiles.userId, "u1"));
+      expect((await svc.getForOwner("u1", false, "u2")).bytes.length).toBeGreaterThan(0);
+
+      await db.insert(schema.userBlocks).values({ blockerId: "u1", blockedId: "u2" });
+      await expect(svc.getForOwner("u1", false, "u2")).rejects.toMatchObject({ code: "NOT_FOUND" });
+      await db.delete(schema.userBlocks);
+      await db.insert(schema.userBlocks).values({ blockerId: "u2", blockedId: "u1" });
+      await expect(svc.getForOwner("u1", false, "u2")).rejects.toMatchObject({ code: "NOT_FOUND" });
     });
 
     it("404s when there's no uploaded photo, even with show_avatar on", async () => {

@@ -236,33 +236,33 @@ export const locationInputSchema = z.object({
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   accuracy: z.number().nonnegative(),
-  capturedAt: z.string(),
+  capturedAt: z.string().datetime(),
   /**
    * Device clock when the request was sent. With it the server measures the fix's age on the
    * device's own clock (sentAt - capturedAt), so a phone clock that runs fast/slow doesn't make
    * every reading look stale.
    */
-  sentAt: z.string().optional(),
+  sentAt: z.string().datetime().optional(),
 });
 
 export const checkInRequestSchema = z.object({
-  roomId: z.string(),
-  seatId: z.string(),
+  roomId: z.string().uuid(),
+  seatId: z.string().uuid(),
   location: locationInputSchema,
   showIdentity: z.boolean().default(false),
   /** How long the user will occupy the seat, in minutes (15..180, default 180). */
   durationMinutes: z.number().int().min(CHECKIN_MIN_MINUTES).max(CHECKIN_MINUTES).default(CHECKIN_MINUTES),
-  qrToken: z.string().nullable().optional(),
+  qrToken: z.string().max(128).nullable().optional(),
   /** Cloudflare Turnstile token; required only when the API answers TURNSTILE_REQUIRED. */
   turnstileToken: z.string().max(4096).nullable().optional(),
 });
 
 export const observationRequestSchema = z.object({
-  roomId: z.string(),
-  seatId: z.string(),
+  roomId: z.string().uuid(),
+  seatId: z.string().uuid(),
   status: z.enum(["FREE", "OCCUPIED", "SAVED"]),
   location: locationInputSchema,
-  qrToken: z.string().nullable().optional(),
+  qrToken: z.string().max(128).nullable().optional(),
   turnstileToken: z.string().max(4096).nullable().optional(),
 });
 
@@ -322,17 +322,21 @@ export const markAllOccupiedSchema = z.object({
 });
 
 export const presenceValidateSchema = z.object({
-  roomId: z.string(),
+  roomId: z.string().max(100),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   accuracy: z.number().nonnegative(),
-  capturedAt: z.string(),
+  capturedAt: z.string().datetime(),
   /**
    * Device clock when the request was sent. With it the server measures the fix's age on the
    * device's own clock (sentAt - capturedAt), so a phone clock that runs fast/slow doesn't make
    * every reading look stale.
    */
-  sentAt: z.string().optional(),
+  sentAt: z.string().datetime().optional(),
+});
+
+export const createQrCodeSchema = z.object({
+  tableCode: z.string().max(50).optional(),
 });
 
 // ---- API error shape ----

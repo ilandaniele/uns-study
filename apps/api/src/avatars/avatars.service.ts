@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
-import { eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { AvatarMimeType } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
@@ -159,12 +159,31 @@ export class AvatarsService {
   }
 
   /** Bytes for `GET /avatars/:userId`, gated by the owner's `show_avatar` privacy setting
-   *  (bypassed when `isOwner` — you can always see your own photo). Throws
-   *  `NOT_FOUND` (never a distinguishable "hidden") whenever nothing should be served. */
-  async getForOwner(userId: string, isOwner = false): Promise<AvatarBytes> {
+   *  (bypassed when `isOwner` — you can always see your own photo). Non-owners also get nothing when
+   *  the owner's identity mode is HIDDEN or when either side has blocked the other (`viewerId` is
+   *  undefined for anonymous viewers). Throws `NOT_FOUND` (never a distinguishable "hidden")
+   *  whenever nothing should be served. */
+  async getForOwner(userId: string, isOwner = false, viewerId?: string): Promise<AvatarBytes> {
     if (!isOwner) {
       const [privacy] = await this.db.select().from(schema.userPrivacySettings).where(eq(schema.userPrivacySettings.userId, userId)).limit(1);
       if (!privacy?.showAvatar) throw ApiErrors.notFound();
+
+      const [profile] = await this.db.select({ identityMode: schema.userProfiles.identityMode }).from(schema.userProfiles).where(eq(schema.userProfiles.userId, userId)).limit(1);
+      if ((profile?.identityMode ?? "HIDDEN") === "HIDDEN") throw ApiErrors.notFound();
+
+      if (viewerId) {
+        const [block] = await this.db
+          .select({ blockerId: schema.userBlocks.blockerId })
+          .from(schema.userBlocks)
+          .where(
+            or(
+              and(eq(schema.userBlocks.blockerId, userId), eq(schema.userBlocks.blockedId, viewerId)),
+              and(eq(schema.userBlocks.blockerId, viewerId), eq(schema.userBlocks.blockedId, userId)),
+            ),
+          )
+          .limit(1);
+        if (block) throw ApiErrors.notFound();
+      }
     }
 
     const [row] = await this.db.select().from(schema.userAvatars).where(eq(schema.userAvatars.userId, userId)).limit(1);

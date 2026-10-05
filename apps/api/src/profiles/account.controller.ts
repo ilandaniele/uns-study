@@ -6,6 +6,8 @@ import { AllowRestricted } from "../auth/allow-restricted.decorator.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";
 import { ZodBodyPipe } from "../common/zod-body.pipe.js";
+import { ApiErrors } from "../common/api-error.js";
+import { RateLimitService } from "../security/rate-limit.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { ProfilesService } from "./profiles.service.js";
@@ -18,6 +20,7 @@ export class AccountController {
     @Inject(ProfilesService) private readonly profiles: ProfilesService,
     @Inject(CheckInService) private readonly checkIns: CheckInService,
     @Inject(RoomRealtimeGateway) private readonly realtime: RoomRealtimeGateway,
+    @Inject(RateLimitService) private readonly rateLimit: RateLimitService,
   ) {}
 
   @Post("delete")
@@ -27,6 +30,9 @@ export class AccountController {
     @CurrentUser() user: RequestUser,
     @Body(new ZodBodyPipe(deleteAccountSchema)) _body: z.infer<typeof deleteAccountSchema>,
   ) {
+    const limit = await this.rateLimit.check(`account-delete:${user.id}`, 3, 86400);
+    if (!limit.allowed) throw ApiErrors.rateLimited();
+
     const checkoutResult = await this.checkIns.checkOut(user.id);
     if (checkoutResult) await this.realtime.broadcastSeatChanges(checkoutResult.roomId, checkoutResult.changes);
 

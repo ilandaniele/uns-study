@@ -99,6 +99,13 @@ describe("authRateLimitMiddleware", () => {
     expect((await post("/reset-password", { token: "fresh", newPassword: "x" }, { "fly-client-ip": "203.0.113.51" })).status).toBe(200);
   });
 
+  it("rejects a body over 16kb with 413 on non-limited auth routes too", async () => {
+    const res = await post("/change-password", { newPassword: "x".repeat(17 * 1024) });
+    expect(res.status).toBe(413);
+    expect(reached).toHaveLength(0);
+    expect((await post("/change-password", { newPassword: "x" })).status).toBe(200);
+  });
+
   it("ignores other auth routes", async () => {
     for (let i = 0; i < 15; i++) {
       expect((await post("/sign-out", { email: "a@example.com" })).status).toBe(200);

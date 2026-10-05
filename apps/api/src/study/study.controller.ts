@@ -39,7 +39,8 @@ export class StudyController {
   @Post("stop")
   @HttpCode(200)
   async stop(@CurrentUser() user: RequestUser) {
-    await this.checkWriteLimit(user.id);
+    const limit = await this.rateLimit.check(`study-stop:${user.id}`, 30, 60);
+    if (!limit.allowed) throw ApiErrors.rateLimited();
     await this.study.stop(user.id);
     return { ok: true };
   }

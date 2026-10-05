@@ -3,6 +3,7 @@ import {
   ConnectedSocket,
   MessageBody,
   OnGatewayConnection,
+  OnGatewayDisconnect,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
@@ -32,6 +33,7 @@ import { RoomStateService, type SeatStateChange } from "../rooms/room-state.serv
 import { NotificationService } from "../notifications/notification.service.js";
 import { verifySocketToken } from "./socket-token.js";
 import { env } from "../env.js";
+import { socketClientIp, takeSocketToken, type SocketBucket } from "./socket-bucket.js";
 
 function roomChannel(roomId: string): string {
   return `room:${roomId}`;
@@ -51,6 +53,16 @@ const chatPayloadSchema = z.object({ roomId: z.string().uuid() });
 /** Per-socket cap on how many room channels can be joined at once — a socket has no business
  *  watching more than a handful of rooms in this MVP. */
 const MAX_JOINED_ROOMS_PER_SOCKET = 5;
+
+/** Per-socket budget for client->server events (joins/leaves); beyond it the event is ignored. */
+const SOCKET_EVENT_LIMIT = 10;
+const SOCKET_EVENT_WINDOW_MS = 10_000;
+
+/** Concurrent sockets allowed per client IP; extras are disconnected on connect. */
+const MAX_CONNECTIONS_PER_IP = 20;
+
+/** How long a chat:join restriction lookup is reused (same trade-off as AuthGuard's block cache). */
+const RESTRICTION_CACHE_TTL_MS = 30_000;
 
 /** Summary emits (and seat-freed notifications) for one room are coalesced within this window. */
 const SUMMARY_COALESCE_MS = 250;
@@ -86,7 +98,7 @@ export async function resolveSocketUserId(
 @Injectable()
 // Client->server payloads are just room UUIDs; cap well below the 1 MB default.
 @WebSocketGateway({ maxHttpBufferSize: 64 * 1024, cors: { origin: env.webOrigins, credentials: true } })
-export class RoomRealtimeGateway implements OnGatewayConnection {
+export class RoomRealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
 
@@ -94,6 +106,15 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
 
   /** Per-room deferred summary/notification work, coalesced within `SUMMARY_COALESCE_MS`. */
   private readonly pendingSummaries = new Map<string, { changes: SeatStateChange[]; timer: NodeJS.Timeout | null; lastFlushAt: number }>();
+
+  /** Live socket count per client IP (see `MAX_CONNECTIONS_PER_IP`). */
+  private readonly connectionsPerIp = new Map<string, number>();
+
+  /** Per-socket event budget; weakly keyed so a closed socket takes its bucket with it. */
+  private readonly socketBuckets = new WeakMap<Socket, SocketBucket>();
+
+  /** userId -> whether a SUSPENDED/BANNED restriction was active, and when we looked. */
+  private readonly blockedCache = new Map<string, { blocked: boolean; at: number }>();
 
   constructor(
     @Inject(RoomStateService) private readonly roomState: RoomStateService,
@@ -105,15 +126,54 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
   /** Anonymous connections are allowed; joining a room map is opt-in via `room:join`. Authed
    *  sockets are additionally auto-joined to their private `user:{userId}` channel for DMs. */
   async handleConnection(socket: Socket): Promise<void> {
+    const ip = socketClientIp(socket.handshake.headers, socket.handshake.address);
+    const open = this.connectionsPerIp.get(ip) ?? 0;
+    if (open >= MAX_CONNECTIONS_PER_IP) {
+      socket.disconnect(true);
+      return;
+    }
+    this.connectionsPerIp.set(ip, open + 1);
+    socket.data.ip = ip;
+
     const userId = await resolveSocketUserId(this.auth, socket.handshake);
     socket.data.userId = userId;
     if (userId) socket.join(userChannel(userId));
+  }
+
+  handleDisconnect(socket: Socket): void {
+    const ip = socket.data.ip as string | undefined;
+    if (!ip) return; // rejected before it was counted
+    const open = (this.connectionsPerIp.get(ip) ?? 1) - 1;
+    if (open > 0) this.connectionsPerIp.set(ip, open);
+    else this.connectionsPerIp.delete(ip);
+  }
+
+  /** False once the socket has used up its event budget; the caller then ignores the event. */
+  private allowEvent(socket: Socket): boolean {
+    let bucket = this.socketBuckets.get(socket);
+    if (!bucket) {
+      bucket = { count: 0, windowStart: Date.now() };
+      this.socketBuckets.set(socket, bucket);
+    }
+    return takeSocketToken(bucket, Date.now(), SOCKET_EVENT_LIMIT, SOCKET_EVENT_WINDOW_MS);
+  }
+
+  private async isBlocked(userId: string): Promise<boolean> {
+    const now = Date.now();
+    const cached = this.blockedCache.get(userId);
+    if (cached && now - cached.at < RESTRICTION_CACHE_TTL_MS) return cached.blocked;
+    const active = await this.restrictions.activeRestrictions(userId);
+    const blocked = active.some((r) => r.type === "SUSPENDED" || r.type === "BANNED");
+    if (this.blockedCache.size > 5000) this.blockedCache.clear();
+    this.blockedCache.set(userId, { blocked, at: now });
+    return blocked;
   }
 
   /** Returns an ack (`{ joined }`) once the socket is subscribed, so the client can re-fetch its
    *  snapshot strictly after joining and never miss an event emitted in between. */
   @SubscribeMessage(SocketEvents.RoomJoin)
   onJoin(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): { joined: boolean } {
+    if (!this.allowEvent(socket)) return { joined: false };
     const parsed = roomPayloadSchema.safeParse(body);
     if (!parsed.success) return { joined: false };
     const channel = roomChannel(parsed.data.roomId);
@@ -125,6 +185,7 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
 
   @SubscribeMessage(SocketEvents.RoomLeave)
   onLeave(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): void {
+    if (!this.allowEvent(socket)) return;
     const parsed = roomPayloadSchema.safeParse(body);
     if (!parsed.success) return;
     socket.leave(roomChannel(parsed.data.roomId));
@@ -134,16 +195,17 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
   @SubscribeMessage(SocketEvents.ChatJoin)
   async onChatJoin(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): Promise<void> {
     if (!socket.data.userId) return;
+    if (!this.allowEvent(socket)) return;
     const parsed = chatPayloadSchema.safeParse(body);
     if (!parsed.success) return;
     // A banned/suspended user can't post (AuthGuard) and shouldn't keep reading live chat either.
-    const active = await this.restrictions.activeRestrictions(socket.data.userId);
-    if (active.some((r) => r.type === "SUSPENDED" || r.type === "BANNED")) return;
+    if (await this.isBlocked(socket.data.userId)) return;
     socket.join(chatChannel(parsed.data.roomId));
   }
 
   @SubscribeMessage(SocketEvents.ChatLeave)
   onChatLeave(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): void {
+    if (!this.allowEvent(socket)) return;
     const parsed = chatPayloadSchema.safeParse(body);
     if (!parsed.success) return;
     socket.leave(chatChannel(parsed.data.roomId));

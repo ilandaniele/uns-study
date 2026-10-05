@@ -59,6 +59,9 @@ export class DmController {
   @Post(":id/read")
   @HttpCode(200)
   async markRead(@CurrentUser() user: RequestUser, @Param("id", UuidParamPipe) id: string) {
+    const limit = await this.rateLimit.check(`dm-read:${user.id}`, 60, 60);
+    if (!limit.allowed) throw ApiErrors.rateLimited();
+
     await this.dm.markRead(id, user.id);
     return { ok: true };
   }

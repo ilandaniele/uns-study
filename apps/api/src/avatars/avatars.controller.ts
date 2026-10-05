@@ -79,7 +79,7 @@ export class PublicAvatarController {
     const limit = await this.rateLimit.check(`avatar-read-ip:${hashIp(ip)}`, AVATAR_READ_LIMIT_PER_IP, AVATAR_READ_WINDOW_S);
     if (!limit.allowed) throw ApiErrors.rateLimited();
 
-    const avatar = await this.avatars.getForOwner(userId, viewer?.id === userId);
+    const avatar = await this.avatars.getForOwner(userId, viewer?.id === userId, viewer?.id);
     const etag = `"${avatar.sha256}"`;
     res.setHeader("ETag", etag);
     // Never cached by shared caches (private), and always revalidated — `show_avatar` can be

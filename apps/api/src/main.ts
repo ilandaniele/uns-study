@@ -50,6 +50,7 @@ async function bootstrap() {
   const { ApiExceptionFilter } = await import("./common/api-exception.filter.js");
   const { csrfMiddleware } = await import("./common/csrf.middleware.js");
   const { authRateLimitMiddleware } = await import("./common/auth-rate-limit.middleware.js");
+  const { globalIpRateLimitMiddleware } = await import("./common/global-ip-rate-limit.middleware.js");
   const { proxyTrustMiddleware } = await import("./common/proxy-trust.middleware.js");
   const { RateLimitService } = await import("./security/rate-limit.service.js");
   const { env } = await import("./env.js");
@@ -64,6 +65,8 @@ async function bootstrap() {
   // First of all, before anything reads `req.ip`: a direct hit on the API could forge X-Forwarded-For,
   // so unless the web app's shared secret is present the header is swapped for Fly-Client-IP.
   httpAdapter.use(proxyTrustMiddleware(env.proxySharedSecret));
+  // Coarse per-IP cap (300/min) over every /api/v1 route; health and the MP webhook are skipped.
+  httpAdapter.use("/api/v1", globalIpRateLimitMiddleware());
   httpAdapter.use(cors({ origin: env.webOrigins, credentials: true }));
   // Security headers for a JSON/image/Socket.IO API (no HTML). The browser only sees avatars
   // through the web app's same-origin `/api/v1` proxy, so CORP stays same-site. Helmet also drops

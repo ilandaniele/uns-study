@@ -99,6 +99,9 @@ interface VisibilityInfo {
   linkable: boolean;
 }
 
+/** Public ranking lists show at most this many users; the viewer's own entry is returned separately. */
+const RANKING_PUBLIC_LIMIT = 100;
+
 /**
  * Computes the three MVP+ ranking categories (`study_time`, `streak`, `contribution`) over the
  * PRD's four periods, scoped to one room and respecting each user's room-visibility privacy.
@@ -140,45 +143,54 @@ export class RankingsService {
       if (!nowOverride) this.rawCache.set(cacheKey, { at: Date.now(), values });
     }
 
-    const userIds = [...values.keys()];
-    const visibilityUserIds = viewerUserId && !userIds.includes(viewerUserId) ? [...userIds, viewerUserId] : userIds;
-    const visibility = await this.visibilityInfo(visibilityUserIds);
-
+    // Only the top RANKING_PUBLIC_LIMIT visible users are public. Candidates are walked best-first in
+    // batches so the visibility lookup never has to cover every user in the room.
+    const candidates = [...values.entries()]
+      .filter(([, value]) => value > 0)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    const visibility = new Map<string, VisibilityInfo>();
     const entries: (RankingEntryDto & { realUserId: string })[] = [];
-    for (const [userId, value] of values) {
-      if (value <= 0) continue;
-      const info = visibility.get(userId);
-      if (!info?.visible || info.hiddenFromRanking) continue;
-      entries.push({
-        rank: 0,
-        userId: info.linkable ? userId : null,
-        displayName: info.displayName,
-        avatarUrl: info.avatarUrl,
-        aliasAnimal: info.aliasAnimal,
-        isMe: userId === viewerUserId,
-        value,
-        realUserId: userId,
-      });
+    for (let i = 0; i < candidates.length && entries.length < RANKING_PUBLIC_LIMIT; i += RANKING_PUBLIC_LIMIT) {
+      const batch = candidates.slice(i, i + RANKING_PUBLIC_LIMIT);
+      for (const [userId, info] of await this.visibilityInfo(batch.map(([id]) => id))) visibility.set(userId, info);
+      for (const [userId, value] of batch) {
+        if (entries.length >= RANKING_PUBLIC_LIMIT) break;
+        const info = visibility.get(userId);
+        if (!info?.visible || info.hiddenFromRanking) continue;
+        entries.push({
+          rank: entries.length + 1,
+          userId: info.linkable ? userId : null,
+          displayName: info.displayName,
+          avatarUrl: info.avatarUrl,
+          aliasAnimal: info.aliasAnimal,
+          isMe: userId === viewerUserId,
+          value,
+          realUserId: userId,
+        });
+      }
     }
-    entries.sort((a, b) => b.value - a.value || a.realUserId.localeCompare(b.realUserId));
-    entries.forEach((entry, i) => {
-      entry.rank = i + 1;
-    });
     const publicEntries: RankingEntryDto[] = entries.map(({ realUserId: _realUserId, ...entry }) => entry);
 
     let me: RankingEntryDto | null = null;
     if (viewerUserId) {
+      if (!visibility.has(viewerUserId)) {
+        for (const [userId, info] of await this.visibilityInfo([viewerUserId])) visibility.set(userId, info);
+      }
       const info = visibility.get(viewerUserId);
       if (info && !info.hiddenFromRanking) {
         const inList = entries.find((e) => e.realUserId === viewerUserId);
+        const myValue = values.get(viewerUserId) ?? 0;
+        // Outside the public list the exact visible rank would need every user's visibility, so it is
+        // approximated from the raw values (hidden users included).
+        const approxRank = info.visible && myValue > 0 ? candidates.findIndex(([id]) => id === viewerUserId) + 1 : 0;
         me = {
-          rank: inList?.rank ?? 0,
+          rank: inList?.rank ?? approxRank,
           userId: info.linkable ? viewerUserId : null,
           displayName: info.displayName,
           avatarUrl: info.avatarUrl,
           aliasAnimal: info.aliasAnimal,
           isMe: true,
-          value: values.get(viewerUserId) ?? 0,
+          value: myValue,
         };
       }
     }

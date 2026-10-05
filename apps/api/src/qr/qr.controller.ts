@@ -6,6 +6,9 @@ import { RateLimitService } from "../security/rate-limit.service.js";
 import { hashIp } from "../security/security-event.service.js";
 import { QrService } from "./qr.service.js";
 import { UuidParamPipe } from "../common/uuid-param.pipe.js";
+import { ZodBodyPipe } from "../common/zod-body.pipe.js";
+import { createQrCodeSchema } from "@sala/contracts";
+import type { z } from "zod";
 
 /** Admin CRUD for a room's QR codes — role-sensitive, ADMIN only. */
 @Controller("admin/rooms/:idOrSlug/qr")
@@ -17,9 +20,9 @@ export class AdminQrController {
   ) {}
 
   @Post()
-  async create(@Param("idOrSlug") idOrSlug: string, @Body() body: { tableCode?: unknown }) {
+  async create(@Param("idOrSlug") idOrSlug: string, @Body(new ZodBodyPipe(createQrCodeSchema)) body: z.infer<typeof createQrCodeSchema>) {
     const room = await this.rooms.findRoomRow(idOrSlug);
-    const tableCode = typeof body?.tableCode === "string" && body.tableCode.trim() ? body.tableCode.trim().slice(0, 50) : null;
+    const tableCode = body.tableCode?.trim() || null;
     return this.qr.create(room.id, tableCode);
   }
 

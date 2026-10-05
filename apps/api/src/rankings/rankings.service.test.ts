@@ -163,4 +163,25 @@ describe("RankingsService", () => {
     expect(asSelf.entries).toHaveLength(0);
     expect(asSelf.me).toBeNull();
   });
+
+  it("caps the public list at 100 and still returns `me` when the viewer is outside it", async () => {
+    const ids = Array.from({ length: 105 }, (_, i) => `r${String(i).padStart(3, "0")}`);
+    await insertUsers(db, ids);
+    await db.insert(schema.userProfiles).values(ids.map((userId) => ({ userId })));
+    for (const [i, userId] of ids.entries()) {
+      const suffix = `dddddddd-dddd-dddd-dddd-${String(i).padStart(12, "0")}`;
+      await insertStudySession(userId, "2026-01-15", 200 - i, suffix);
+    }
+
+    const asStranger = await svc.getRankings(roomSlug, "today", "study_time", null, TODAY);
+    expect(asStranger.entries).toHaveLength(100);
+    expect(asStranger.entries[0]?.rank).toBe(1);
+    expect(asStranger.entries[99]?.rank).toBe(100);
+    expect(asStranger.me).toBeNull();
+
+    const asLast = await svc.getRankings(roomSlug, "today", "study_time", "r104", TODAY);
+    expect(asLast.entries).toHaveLength(100);
+    expect(asLast.entries.some((e) => e.isMe)).toBe(false);
+    expect(asLast.me).toMatchObject({ isMe: true, value: 96, rank: 105 });
+  });
 });

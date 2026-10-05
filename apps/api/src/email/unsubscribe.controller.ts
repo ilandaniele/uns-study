@@ -6,6 +6,7 @@ import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { env } from "../env.js";
 import { RateLimitService } from "../security/rate-limit.service.js";
+import { hashIp } from "../security/security-event.service.js";
 import { verifyUnsubscribeToken } from "./unsubscribe-token.js";
 
 /** Public, token-authenticated. POST doubles as the RFC 8058 one-click target, so it takes query params. */
@@ -42,7 +43,7 @@ export class UnsubscribeController {
   }
 
   private async throttle(ip: string): Promise<void> {
-    const result = await this.rateLimit.check(`email-unsub:${ip}`, 30, 60);
+    const result = await this.rateLimit.check(`email-unsub:${hashIp(ip)}`, 30, 60);
     if (!result.allowed) throw ApiErrors.rateLimited();
   }
 }

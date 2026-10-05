@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Response } from "express";
@@ -61,6 +62,7 @@ describe("PublicAvatarController", () => {
 
   it("serves others once show_avatar is on, still with private cache headers", async () => {
     await db.insert(schema.userPrivacySettings).values({ userId: "u1", showAvatar: true });
+    await db.update(schema.userProfiles).set({ identityMode: "FIRST_NAME", firstName: "Ana" }).where(eq(schema.userProfiles.userId, "u1"));
     const res = fakeRes();
     await ctrl.get("u1", viewer("u2"), "1.1.1.1", undefined, undefined, res as unknown as Response);
     expect(res.statusCode).toBe(200);

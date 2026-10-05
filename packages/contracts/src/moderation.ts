@@ -85,7 +85,7 @@ export const moderationActionSchema = z.object({
   type: z.enum(["WARN", "MUTE_CHAT", "RESTRICT_OBSERVATIONS", "SUSPEND", "BAN", "LIFT"]),
   reason: z.string().trim().max(500),
   until: z.string().datetime().nullable().optional(),
-  reportId: z.string().optional(),
+  reportId: z.string().uuid().optional(),
 });
 
 export const reportStatusSchema = z.object({

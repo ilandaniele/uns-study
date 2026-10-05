@@ -41,6 +41,9 @@ export class ChatController {
 
   @Delete("messages/:id")
   async remove(@CurrentUser() user: RequestUser, @Param("id", UuidParamPipe) id: string) {
+    const limit = await this.rateLimit.check(`chat-delete:${user.id}`, 30, 60);
+    if (!limit.allowed) throw ApiErrors.rateLimited();
+
     const { chatRoomId } = await this.chat.deleteMessage(id, user.id);
     this.realtime.emitChatDeleted(chatRoomId, id);
     return { ok: true };
