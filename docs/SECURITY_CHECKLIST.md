@@ -16,7 +16,7 @@ Status of each security measure, with where it lives and how it was checked. Las
 | Encryption and hashing | Done | TLS at the Fly edge with HSTS. Passwords are hashed by Better Auth (scrypt). IP addresses are stored only as salted hashes (`hashIp`). The database is on Fly's private network only. | |
 | Helmet | Done | `main.ts` mounts `helmet()` on the API. | Production response headers |
 | Security headers | Done | API: CSP, HSTS, `nosniff`, frame options, COOP/CORP. Web: per-request nonce CSP with `'strict-dynamic'`, HSTS with `preload`, and the remaining headers in `next.config.ts`. | Production headers. Browser console shows no CSP errors. |
-| Password recovery links expire | Done in code | `resetPasswordTokenExpiresIn: 60 * 60` (1 hour). | Turns on when `EMAIL_FROM` is set, which needs the custom domain. |
+| Password recovery links expire | Done | `resetPasswordTokenExpiresIn: 60 * 60` (1 hour). Email is sent from `noreply@saladeestudio.com.ar` through Resend. | `EMAIL_FROM` is set in `fly.toml` and the domain is verified in Resend. |
 | Brute-force throttling | Done | `auth-rate-limit.middleware.ts` limits `/api/auth` sign-in, sign-up and reset per IP and per email, and caps the body at 16 KB. | `auth-rate-limit.middleware.test.ts` |
 | GET/POST responses | Done | No endpoint returns password hashes, tokens or API keys. Lists are capped: rankings top 100 plus your own row, campaigns 100, and paginated feeds. | Phase 3 review |
 | DNS | Done | `saladeestudio.com.ar` on Cloudflare (Free), delegated from NIC Argentina. Records are DNS only, so TLS stays on Fly certificates. | `fly certs check` shows both certificates issued. |
