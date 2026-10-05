@@ -5,7 +5,11 @@ import { env } from "./env.js";
 @Controller("auth-providers")
 export class AuthProvidersController {
   @Get()
-  get(): { emailPassword: true; google: boolean } {
-    return { emailPassword: true, google: Boolean(env.googleClientId && env.googleClientSecret) };
+  get(): { emailPassword: true; google: boolean; passwordReset: boolean } {
+    return {
+      emailPassword: true,
+      google: Boolean(env.googleClientId && env.googleClientSecret),
+      passwordReset: Boolean(env.resendApiKey && env.emailFrom),
+    };
   }
 }

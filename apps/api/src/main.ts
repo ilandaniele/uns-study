@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import { closeDb, createDb, migrate, seedInitialRoom } from "@sala/database";
 import { resolveAppSecrets, resolveVapidKeys } from "./secrets.js";
 
@@ -58,6 +59,15 @@ async function bootstrap() {
   const httpAdapter = app.getHttpAdapter().getInstance();
   httpAdapter.set("trust proxy", env.trustProxyHops); // behind a reverse proxy — @Ip() must see the real client IP
   httpAdapter.use(cors({ origin: env.webOrigins, credentials: true }));
+  // Security headers for a JSON/image/Socket.IO API (no HTML). The browser only sees avatars
+  // through the web app's same-origin `/api/v1` proxy, so CORP stays same-site. Helmet also drops
+  // `X-Powered-By`; the avatar controller sets its own CSP/nosniff afterwards, which wins.
+  httpAdapter.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: "same-site" },
+      contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } },
+    }),
+  );
 
   // Coordinate-free access log for slow or failed requests only, to diagnose "la app tarda" reports
   // from `fly logs` without logging every hit. Ids in the path are masked; no query strings, no IPs.
@@ -79,7 +89,7 @@ async function bootstrap() {
   // Better Auth owns its own body parsing; it must run before Nest's global JSON body parser.
   const auth = app.get<Auth>(AUTH);
   // Better Auth only trusts a single-entry X-Forwarded-For, but ours carries the visitor plus
-  // Vercel's egress IP (Fly appends it). Hand it the IP Express already resolved with
+  // the web app's egress IP (Fly appends it). Hand it the IP Express already resolved with
   // `trust proxy` (the same one @Ip() and our own rate limits use) in a header only we set.
   httpAdapter.use("/api/auth", (req: express.Request, _res: express.Response, next: express.NextFunction) => {
     req.headers["x-sala-client-ip"] = req.ip ?? "";

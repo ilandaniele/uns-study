@@ -64,12 +64,41 @@ describe("AdminUsersService.search", () => {
   });
 
   it("treats `%` and `_` in the query as literal characters, not wildcards", async () => {
-    const results = await svc.search("%");
+    const results = await svc.search("%", "plain");
     expect(results).toEqual([]);
   });
 
   it("caps the query length at 100 characters", async () => {
-    const results = await svc.search("a".repeat(500));
+    const results = await svc.search("a".repeat(500), "plain");
     expect(results).toEqual([]);
+  });
+});
+
+describe("AdminUsersService email visibility", () => {
+  let db: Db;
+  let svc: AdminUsersService;
+
+  beforeEach(async () => {
+    db = await freshDb();
+    svc = new AdminUsersService(db, fakeModeration(), new RolesService(db));
+    await insertUsers(db, ["admin", "moderator", "plain"]);
+    await db.insert(schema.userRoles).values([
+      { userId: "admin", role: "ADMIN" },
+      { userId: "moderator", role: "MODERATOR" },
+    ]);
+  });
+
+  it("returns emails to an ADMIN in search and getById", async () => {
+    const results = await svc.search("plain", "admin");
+    expect(results).toHaveLength(1);
+    expect(results[0]!.email).toEqual(expect.any(String));
+    expect((await svc.getById("plain", "admin")).email).toEqual(expect.any(String));
+  });
+
+  it("hides emails from a MODERATOR in search and getById", async () => {
+    const results = await svc.search("plain", "moderator");
+    expect(results).toHaveLength(1);
+    expect(results[0]!.email).toBeNull();
+    expect((await svc.getById("plain", "moderator")).email).toBeNull();
   });
 });

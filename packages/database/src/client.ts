@@ -66,11 +66,22 @@ function acquirePgliteLock(dir: string): () => void {
   return release;
 }
 
+/** TLS unless the host is loopback or the URL says `sslmode=disable`. */
+function needsSsl(databaseUrl: string): boolean {
+  if (/[?&]sslmode=disable(?:&|$)/.test(databaseUrl)) return false;
+  try {
+    const host = new URL(databaseUrl).hostname.replace(/^\[|\]$/g, "");
+    return !(host === "localhost" || host === "127.0.0.1" || host === "::1");
+  } catch {
+    return true;
+  }
+}
+
 export function createDb(options: CreateDbOptions = {}): Db {
   const databaseUrl = options.databaseUrl ?? process.env.DATABASE_URL ?? "";
 
   if (databaseUrl) {
-    const ssl = databaseUrl.includes("sslmode=") ? true : undefined;
+    const ssl = needsSsl(databaseUrl) ? true : undefined;
     const pool = new Pool({
       connectionString: databaseUrl,
       ssl,

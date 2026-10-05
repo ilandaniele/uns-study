@@ -7,8 +7,7 @@ primary_region = "gru"
 [env]
   NODE_ENV = "production"
   PORT = "8080"
-  # Old Vercel host stays allowed while stale tabs/PWAs still point at it (it 308-redirects).
-  WEB_ORIGIN = "https://sala-de-estudio.fly.dev,https://uns-study.vercel.app"
+  WEB_ORIGIN = "https://sala-de-estudio.fly.dev"
   # https://sala-de-estudio.fly.dev/api/auth/callback/google is an authorized redirect URI in Google Cloud.
   BETTER_AUTH_URL = "https://sala-de-estudio.fly.dev"
   ADMIN_EMAILS = "ilan.daniele@gmail.com"

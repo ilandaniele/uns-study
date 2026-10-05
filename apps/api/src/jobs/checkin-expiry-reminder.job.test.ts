@@ -12,6 +12,7 @@ import { QrService } from "../qr/qr.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";
 import { RolesService } from "../users/roles.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
+import { RestrictionService } from "../users/restriction.service.js";
 import { PushService } from "../notifications/push.service.js";
 import type { Auth } from "../auth/auth.instance.js";
 import { CheckInExpiryReminderJob } from "./checkin-expiry-reminder.job.js";
@@ -35,7 +36,7 @@ describe("CheckInExpiryReminderJob", () => {
     const roomState = new RoomStateService(db);
     const security = new SecurityEventService(db, new ReputationService(db));
     checkIns = new CheckInService(db, roomState, new PresenceService(), security, new StudySessionService(db), new QrService(db), buildDisputeService(db), new RolesService(db));
-    const gateway = new RoomRealtimeGateway(roomState, mockAuth, buildNotificationService(db));
+    const gateway = new RoomRealtimeGateway(roomState, mockAuth, buildNotificationService(db), new RestrictionService(db));
     const push = new PushService(db);
     emit = vi.spyOn(gateway, "emitCheckInExpiring");
     send = vi.spyOn(push, "sendToUser").mockResolvedValue(undefined);

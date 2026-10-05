@@ -8,6 +8,7 @@ import { env } from "../env.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { PresenceService } from "../presence/presence.service.js";
+import { RolesService } from "../users/roles.service.js";
 import { RoomCache } from "../common/cache/room-cache.service.js";
 
 const HOURS_24_MS = 24 * 60 * 60 * 1000;
@@ -21,7 +22,8 @@ export interface AdminOccupantDto {
   seatCode: string;
   userId: string;
   name: string;
-  email: string;
+  /** Null unless the caller is an ADMIN (moderators never see emails). */
+  email: string | null;
 }
 
 @Injectable()
@@ -31,11 +33,13 @@ export class AdminRoomsService {
     @Inject(RoomsService) private readonly rooms: RoomsService,
     @Inject(RoomStateService) private readonly roomState: RoomStateService,
     @Inject(PresenceService) private readonly presence: PresenceService,
+    @Inject(RolesService) private readonly roles: RolesService,
     @Inject(RoomCache) private readonly roomCache: RoomCache = new RoomCache(),
   ) {}
 
-  /** Room map plus occupants with real identities (no privacy filtering — admin only). */
-  async live(idOrSlug: string) {
+  /** Room map plus occupants with real names (no privacy filtering); emails only for ADMIN callers. */
+  async live(idOrSlug: string, actorId: string) {
+    const canSeeEmail = await this.roles.hasRole(actorId, ["ADMIN"]);
     const map = await this.rooms.getRoomMap(idOrSlug);
     const occupantRows = await this.db
       .select({ seatId: schema.checkIns.seatId, seatCode: schema.seats.code, userId: schema.user.id, name: schema.user.name, email: schema.user.email })
@@ -44,7 +48,7 @@ export class AdminRoomsService {
       .innerJoin(schema.user, eq(schema.user.id, schema.checkIns.userId))
       .where(and(eq(schema.checkIns.roomId, map.room.id), eq(schema.checkIns.status, "ACTIVE")));
 
-    const occupants: AdminOccupantDto[] = occupantRows.map((r) => ({ seatId: r.seatId, seatCode: r.seatCode, userId: r.userId, name: r.name, email: r.email }));
+    const occupants: AdminOccupantDto[] = occupantRows.map((r) => ({ seatId: r.seatId, seatCode: r.seatCode, userId: r.userId, name: r.name, email: canSeeEmail ? r.email : null }));
     return { map, occupants };
   }
 

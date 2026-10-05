@@ -9,6 +9,7 @@ import { ApiErrors } from "../common/api-error.js";
 import { RateLimitService } from "../security/rate-limit.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { ChatService } from "./chat.service.js";
+import { UuidParamPipe } from "../common/uuid-param.pipe.js";
 
 @Controller()
 @UseGuards(AuthGuard)
@@ -39,7 +40,7 @@ export class ChatController {
   }
 
   @Delete("messages/:id")
-  async remove(@CurrentUser() user: RequestUser, @Param("id") id: string) {
+  async remove(@CurrentUser() user: RequestUser, @Param("id", UuidParamPipe) id: string) {
     const { chatRoomId } = await this.chat.deleteMessage(id, user.id);
     this.realtime.emitChatDeleted(chatRoomId, id);
     return { ok: true };

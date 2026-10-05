@@ -57,7 +57,7 @@ export function UsersSearch() {
             className="flex flex-col gap-0.5 px-4 py-3 text-sm hover:bg-[var(--surface-2)] sm:flex-row sm:items-center sm:justify-between"
           >
             <span className="font-medium text-main">{user.name}</span>
-            <span className="truncate text-muted">{user.email}</span>
+            <span className="truncate text-muted">{user.email ?? "sin email"}</span>
           </Link>
         ))}
         {results.length === 0 ? (

@@ -18,6 +18,7 @@ import { PresenceService } from "../presence/presence.service.js";
 import { NotificationService } from "../notifications/notification.service.js";
 import { CheckInService, presenceMessage } from "./checkins.service.js";
 import { PhotoVerificationService } from "./photo-verification.service.js";
+import { UuidParamPipe } from "../common/uuid-param.pipe.js";
 
 @Controller("checkins")
 @UseGuards(AuthGuard)
@@ -119,7 +120,7 @@ export class CheckInsController {
   @Post(":id/photo")
   async verifyPhoto(
     @CurrentUser() user: RequestUser,
-    @Param("id") id: string,
+    @Param("id", UuidParamPipe) id: string,
     @Body(new ZodBodyPipe(checkInPhotoRequestSchema)) body: z.infer<typeof checkInPhotoRequestSchema>,
     @Ip() ip: string,
   ) {

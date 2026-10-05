@@ -6,6 +6,7 @@ import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";
 import { ZodBodyPipe } from "../common/zod-body.pipe.js";
 import { AdminReportsService } from "./admin-reports.service.js";
+import { UuidParamPipe } from "../common/uuid-param.pipe.js";
 
 @Controller("admin/reports")
 @UseGuards(AdminGuard)
@@ -13,26 +14,26 @@ export class AdminReportsController {
   constructor(@Inject(AdminReportsService) private readonly reports: AdminReportsService) {}
 
   @Get()
-  list(@Query("status") status?: string, @Query("cursor") cursor?: string) {
-    return this.reports.list(status, cursor);
+  list(@CurrentUser() user: RequestUser, @Query("status") status?: string, @Query("cursor") cursor?: string) {
+    return this.reports.list(status, cursor, user.id);
   }
 
   @Get(":id")
-  get(@Param("id") id: string) {
-    return this.reports.getById(id);
+  get(@CurrentUser() user: RequestUser, @Param("id", UuidParamPipe) id: string) {
+    return this.reports.getById(id, user.id);
   }
 
   @Patch(":id")
   setStatus(
     @CurrentUser() user: RequestUser,
-    @Param("id") id: string,
+    @Param("id", UuidParamPipe) id: string,
     @Body(new ZodBodyPipe(reportStatusSchema)) body: z.infer<typeof reportStatusSchema>,
   ) {
     return this.reports.setStatus(id, body.status, user.id);
   }
 
   @Get(":id/attachments/:attachmentId/url")
-  async getAttachmentUrl(@CurrentUser() user: RequestUser, @Param("id") id: string, @Param("attachmentId") attachmentId: string) {
+  async getAttachmentUrl(@CurrentUser() user: RequestUser, @Param("id", UuidParamPipe) id: string, @Param("attachmentId", UuidParamPipe) attachmentId: string) {
     const url = await this.reports.getAttachmentUrl(id, attachmentId, user.id);
     return { url };
   }

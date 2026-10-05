@@ -73,6 +73,32 @@ describe("authRateLimitMiddleware", () => {
     expect(noHeader.status).toBe(200);
   });
 
+  it("rate-limits password reset requests per email at 3 per hour, separately from sign-in", async () => {
+    for (let i = 0; i < 3; i++) {
+      expect((await post("/request-password-reset", { email: i % 2 ? "R@Example.com" : "r@example.com" })).status).toBe(200);
+    }
+    expect((await post("/request-password-reset", { email: "R@EXAMPLE.COM" })).status).toBe(429);
+    expect((await post("/request-password-reset", { email: "other@example.com" })).status).toBe(200);
+    expect((await post("/sign-in/email", { email: "r@example.com", password: "x" })).status).toBe(200);
+  });
+
+  it("rate-limits reset-password per token at 5 per window", async () => {
+    for (let i = 0; i < 5; i++) {
+      expect((await post("/reset-password", { token: "tok-a", newPassword: "x" })).status).toBe(200);
+    }
+    expect((await post("/reset-password", { token: "tok-a", newPassword: "x" })).status).toBe(429);
+    expect((await post("/reset-password", { token: "tok-b", newPassword: "x" })).status).toBe(200);
+  });
+
+  it("rate-limits reset-password per Fly-Client-IP at 10 per window", async () => {
+    const headers = { "fly-client-ip": "203.0.113.50" };
+    for (let i = 0; i < 10; i++) {
+      expect((await post("/reset-password", { token: `t${i}`, newPassword: "x" }, headers)).status).toBe(200);
+    }
+    expect((await post("/reset-password", { token: "fresh", newPassword: "x" }, headers)).status).toBe(429);
+    expect((await post("/reset-password", { token: "fresh", newPassword: "x" }, { "fly-client-ip": "203.0.113.51" })).status).toBe(200);
+  });
+
   it("ignores other auth routes", async () => {
     for (let i = 0; i < 15; i++) {
       expect((await post("/sign-out", { email: "a@example.com" })).status).toBe(200);

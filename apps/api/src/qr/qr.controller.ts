@@ -5,6 +5,7 @@ import { ApiErrors } from "../common/api-error.js";
 import { RateLimitService } from "../security/rate-limit.service.js";
 import { hashIp } from "../security/security-event.service.js";
 import { QrService } from "./qr.service.js";
+import { UuidParamPipe } from "../common/uuid-param.pipe.js";
 
 /** Admin CRUD for a room's QR codes — role-sensitive, ADMIN only. */
 @Controller("admin/rooms/:idOrSlug/qr")
@@ -30,7 +31,7 @@ export class AdminQrController {
 
   @Delete(":id")
   @HttpCode(200)
-  async deactivate(@Param("idOrSlug") idOrSlug: string, @Param("id") id: string) {
+  async deactivate(@Param("idOrSlug") idOrSlug: string, @Param("id", UuidParamPipe) id: string) {
     const room = await this.rooms.findRoomRow(idOrSlug);
     await this.qr.deactivate(room.id, id);
     return { ok: true };

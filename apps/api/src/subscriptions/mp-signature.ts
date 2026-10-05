@@ -1,5 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+const MAX_SKEW_MS = 5 * 60 * 1000;
+
 export interface MercadoPagoSignatureInput {
   xSignature: string | undefined;
   xRequestId: string | undefined;
@@ -9,10 +11,10 @@ export interface MercadoPagoSignatureInput {
 
 /**
  * Validates the `x-signature` header of a Mercado Pago webhook. The manifest is
- * `id:<data.id>;request-id:<x-request-id>;ts:<ts>;` with absent parts omitted. No timestamp tolerance:
- * the handler always re-fetches state from MP, so a replayed notification is harmless.
+ * `id:<data.id>;request-id:<x-request-id>;ts:<ts>;` with absent parts omitted. `ts` (seconds or ms) must be
+ * within `MAX_SKEW_MS` of `now`, so a captured header can't be replayed later.
  */
-export function verifyMercadoPagoSignature(a: MercadoPagoSignatureInput): boolean {
+export function verifyMercadoPagoSignature(a: MercadoPagoSignatureInput, now: number = Date.now()): boolean {
   if (!a.xSignature || !a.secret) return false;
 
   let ts: string | undefined;
@@ -26,6 +28,12 @@ export function verifyMercadoPagoSignature(a: MercadoPagoSignatureInput): boolea
     else if (key === "v1") v1 = value;
   }
   if (!ts || !v1) return false;
+
+  const tsNum = Number(ts);
+  if (!Number.isFinite(tsNum) || tsNum <= 0) return false;
+  // Values below 1e12 are epoch seconds (ms wouldn't be that small until 2001).
+  const tsMs = tsNum < 1e12 ? tsNum * 1000 : tsNum;
+  if (Math.abs(now - tsMs) > MAX_SKEW_MS) return false;
 
   let manifest = "";
   if (a.dataId) manifest += `id:${/^[a-zA-Z0-9]+$/.test(a.dataId) ? a.dataId.toLowerCase() : a.dataId};`;

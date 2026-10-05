@@ -40,14 +40,27 @@ describe("AdminRoomsService.stats — Fresh Seat Coverage", () => {
       buildDisputeService(db),
       new RolesService(db),
     );
-    svc = new AdminRoomsService(db, new RoomsService(db, roomState), roomState, new PresenceService());
+    svc = new AdminRoomsService(db, new RoomsService(db, roomState), roomState, new PresenceService(), new RolesService(db));
 
     const room = await getRoom(db);
     roomId = room.id;
     location = { latitude: room.latitude, longitude: room.longitude, accuracy: 10, capturedAt: new Date().toISOString() };
     const seats = await getSeats(db);
     seatIds = seats.map((s) => s.id);
-    await insertUsers(db, ["u1", "u2"]);
+    await insertUsers(db, ["u1", "u2", "admin1", "mod1"]);
+    await db.insert(schema.userRoles).values([
+      { userId: "admin1", role: "ADMIN" },
+      { userId: "mod1", role: "MODERATOR" },
+    ]);
+  });
+
+  it("live: occupant emails only for ADMIN callers, null for moderators", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    const asAdmin = await svc.live(roomId, "admin1");
+    expect(asAdmin.occupants[0]?.email).toBeTruthy();
+    const asMod = await svc.live(roomId, "mod1");
+    expect(asMod.occupants).toHaveLength(1);
+    expect(asMod.occupants[0]?.email).toBeNull();
   });
 
   it("is 0 when no seat has any evidence", async () => {
@@ -118,7 +131,7 @@ describe("AdminRoomsService — geofence calibration", () => {
     db = await freshDb();
     const roomState = new RoomStateService(db);
     const roomCache = new RoomCache();
-    svc = new AdminRoomsService(db, new RoomsService(db, roomState, roomCache), roomState, new PresenceService(), roomCache);
+    svc = new AdminRoomsService(db, new RoomsService(db, roomState, roomCache), roomState, new PresenceService(), new RolesService(db), roomCache);
 
     const room = await getRoom(db);
     roomId = room.id;
@@ -204,7 +217,7 @@ describe("AdminRoomsService — mark all occupied", () => {
       buildDisputeService(db),
       new RolesService(db),
     );
-    svc = new AdminRoomsService(db, new RoomsService(db, roomState), roomState, new PresenceService());
+    svc = new AdminRoomsService(db, new RoomsService(db, roomState), roomState, new PresenceService(), new RolesService(db));
     people = new RoomPeopleService(db, new AliasService(db));
 
     const room = await getRoom(db);

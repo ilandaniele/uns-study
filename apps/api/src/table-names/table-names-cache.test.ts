@@ -16,7 +16,7 @@ describe("TableNamesService room-cache invalidation", () => {
     const db = await freshDb();
     const cache = new RoomCache();
     const roomState = new RoomStateService(db);
-    const gateway = new RoomRealtimeGateway(roomState, mockAuth, buildNotificationService(db));
+    const gateway = new RoomRealtimeGateway(roomState, mockAuth, buildNotificationService(db), new RestrictionService(db));
     const svc = new TableNamesService(db, new RestrictionService(db), gateway, cache);
     const room = await getRoom(db);
     await insertUsers(db, ["admin1"]);

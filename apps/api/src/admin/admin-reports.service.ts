@@ -5,6 +5,7 @@ import type { AdminReportDto, Page } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { StorageService } from "../storage/storage.service.js";
+import { RolesService } from "../users/roles.service.js";
 
 const PAGE_SIZE = 20;
 
@@ -15,9 +16,10 @@ export class AdminReportsService {
   constructor(
     @Inject(DB) private readonly db: Db,
     @Inject(StorageService) private readonly storage: StorageService,
+    @Inject(RolesService) private readonly roles: RolesService,
   ) {}
 
-  async list(status: string | undefined, cursor: string | undefined): Promise<Page<AdminReportDto>> {
+  async list(status: string | undefined, cursor: string | undefined, actorId: string): Promise<Page<AdminReportDto>> {
     const conditions = [
       status ? eq(schema.userReports.status, status as ReportStatus) : undefined,
       cursor ? lt(schema.userReports.createdAt, new Date(cursor)) : undefined,
@@ -31,15 +33,16 @@ export class AdminReportsService {
       .limit(PAGE_SIZE + 1);
 
     const page = rows.slice(0, PAGE_SIZE);
-    const items = await Promise.all(page.map((r) => this.toDto(r)));
+    const canSeeEmail = await this.roles.hasRole(actorId, ["ADMIN"]);
+    const items = await Promise.all(page.map((r) => this.toDto(r, canSeeEmail)));
     const nextCursor = rows.length > PAGE_SIZE ? page[page.length - 1]!.createdAt.toISOString() : null;
     return { items, nextCursor };
   }
 
-  async getById(id: string): Promise<AdminReportDto> {
+  async getById(id: string, actorId: string): Promise<AdminReportDto> {
     const [row] = await this.db.select().from(schema.userReports).where(eq(schema.userReports.id, id)).limit(1);
     if (!row) throw ApiErrors.notFound("Reporte no encontrado.");
-    return this.toDto(row);
+    return this.toDto(row, await this.roles.hasRole(actorId, ["ADMIN"]));
   }
 
   async setStatus(id: string, status: string, actorId: string): Promise<AdminReportDto> {
@@ -66,7 +69,7 @@ export class AdminReportsService {
       metadata: { status },
     });
 
-    return this.toDto(row);
+    return this.toDto(row, await this.roles.hasRole(actorId, ["ADMIN"]));
   }
 
   /** Every access is audited (moderation reviewing evidence is itself a sensitive action). */
@@ -92,7 +95,8 @@ export class AdminReportsService {
   }
 
   /** `reporterId`/`reportedUserId` are null once the account has been deleted; the DTO surfaces `null` so the UI can show "Cuenta eliminada". */
-  private async toDto(row: typeof schema.userReports.$inferSelect): Promise<AdminReportDto> {
+  /** `canSeeEmail` is true only for ADMIN callers; moderators get `email: null`. */
+  private async toDto(row: typeof schema.userReports.$inferSelect, canSeeEmail: boolean): Promise<AdminReportDto> {
     const reporter = row.reporterId
       ? (await this.db.select().from(schema.user).where(eq(schema.user.id, row.reporterId)).limit(1))[0]
       : undefined;
@@ -107,8 +111,8 @@ export class AdminReportsService {
 
     return {
       id: row.id,
-      reporter: row.reporterId ? { userId: row.reporterId, name: reporter?.name ?? "", email: reporter?.email ?? "" } : null,
-      reported: row.reportedUserId ? { userId: row.reportedUserId, name: reported?.name ?? "", email: reported?.email ?? "" } : null,
+      reporter: row.reporterId ? { userId: row.reporterId, name: reporter?.name ?? "", email: canSeeEmail ? (reporter?.email ?? "") : null } : null,
+      reported: row.reportedUserId ? { userId: row.reportedUserId, name: reported?.name ?? "", email: canSeeEmail ? (reported?.email ?? "") : null } : null,
       reason: row.reason,
       description: row.description,
       context: row.context,

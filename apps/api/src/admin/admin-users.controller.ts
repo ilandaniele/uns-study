@@ -13,13 +13,13 @@ export class AdminUsersController {
   constructor(@Inject(AdminUsersService) private readonly users: AdminUsersService) {}
 
   @Get()
-  search(@Query("q") q?: string) {
-    return this.users.search(q);
+  search(@CurrentUser() user: RequestUser, @Query("q") q?: string) {
+    return this.users.search(q, user.id);
   }
 
   @Get(":id")
-  get(@Param("id") id: string) {
-    return this.users.getById(id);
+  get(@CurrentUser() user: RequestUser, @Param("id") id: string) {
+    return this.users.getById(id, user.id);
   }
 
   @Post(":id/actions")

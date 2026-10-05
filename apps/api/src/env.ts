@@ -51,8 +51,9 @@ export const env = {
   redisUrl: process.env.REDIS_URL ?? "",
   ipHashSalt: ipHashSalt(),
   // Number of reverse-proxy hops in front of the API (Express `trust proxy`), so `req.ip` /
-  // `@Ip()` see the real client IP. 1 for a single proxy (Railway); 2 for Vercel's rewrite proxy
-  // fronting Render (Vercel -> Render's own proxy -> app).
+  // `@Ip()` see the real client IP. 1 for a single proxy; 2 on Fly in production, where the
+  // chain is browser -> Fly edge -> Next (web app) -> Fly edge -> API, so XFF carries the visitor
+  // plus the web app's egress IP.
   trustProxyHops: num("TRUST_PROXY_HOPS", 1),
   // Better Auth cookies default to `SameSite=Lax; Secure` in production, which only works when the
   // web app proxies `/api/auth/*` and `/api/v1/*` to this API (same-origin from the browser's

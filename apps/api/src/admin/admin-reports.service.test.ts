@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { schema, type Db } from "@sala/database";
 import { freshDb, insertUsers } from "../test-utils.js";
 import type { StorageService } from "../storage/storage.service.js";
+import { RolesService } from "../users/roles.service.js";
 import { AdminReportsService } from "./admin-reports.service.js";
 
 describe("AdminReportsService.getAttachmentUrl", () => {
@@ -12,9 +13,13 @@ describe("AdminReportsService.getAttachmentUrl", () => {
 
   beforeEach(async () => {
     db = await freshDb();
-    await insertUsers(db, ["reporter", "reported", "admin"]);
+    await insertUsers(db, ["reporter", "reported", "admin", "mod"]);
+    await db.insert(schema.userRoles).values([
+      { userId: "admin", role: "ADMIN" },
+      { userId: "mod", role: "MODERATOR" },
+    ]);
     presignGet = vi.fn(async (key: string) => `https://r2.example/${key}`);
-    svc = new AdminReportsService(db, { presignGet } as unknown as StorageService);
+    svc = new AdminReportsService(db, { presignGet } as unknown as StorageService, new RolesService(db));
     const [report] = await db
       .insert(schema.userReports)
       .values({ reporterId: "reporter", reportedUserId: "reported", reason: "SPAM", context: "PROFILE" })
@@ -41,5 +46,18 @@ describe("AdminReportsService.getAttachmentUrl", () => {
     const id = await addAttachment("PENDING", "k2");
     await expect(svc.getAttachmentUrl(reportId, id, "admin")).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(presignGet).not.toHaveBeenCalled();
+  });
+
+  it("returns party emails to an admin but null to a moderator", async () => {
+    const asAdmin = await svc.getById(reportId, "admin");
+    expect(asAdmin.reporter?.email).toBeTruthy();
+    expect(asAdmin.reported?.email).toBeTruthy();
+
+    const asMod = await svc.getById(reportId, "mod");
+    expect(asMod.reporter).toMatchObject({ userId: "reporter", email: null });
+    expect(asMod.reported).toMatchObject({ userId: "reported", email: null });
+
+    const listed = await svc.list(undefined, undefined, "mod");
+    expect(listed.items[0]?.reporter?.email).toBeNull();
   });
 });

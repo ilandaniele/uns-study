@@ -29,8 +29,9 @@ export const REPORT_EVIDENCE_MIME = ["image/jpeg", "image/png", "image/webp", "i
 
 export interface AdminReportDto {
   id: string;
-  reporter: { userId: string; name: string; email: string } | null;
-  reported: { userId: string; name: string; email: string } | null;
+  /** `email` is null unless the caller is an ADMIN. */
+  reporter: { userId: string; name: string; email: string | null } | null;
+  reported: { userId: string; name: string; email: string | null } | null;
   reason: ReportReason;
   description: string | null;
   context: ReportContext;
@@ -46,7 +47,8 @@ export type ModerationActionType = "WARN" | "MUTE_CHAT" | "RESTRICT_OBSERVATIONS
 export interface AdminUserDto {
   userId: string;
   name: string;
-  email: string;
+  /** Null unless the caller is an ADMIN (moderators never see emails). */
+  email: string | null;
   createdAt: string;
   roles: string[];
   restrictions: { id: string; type: string; reason: string; until: string | null; createdAt: string }[];

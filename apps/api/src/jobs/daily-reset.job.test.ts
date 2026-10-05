@@ -13,6 +13,7 @@ import { CheckInService } from "../checkins/checkins.service.js";
 import { DisputeService } from "../disputes/disputes.service.js";
 import { RolesService } from "../users/roles.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
+import { RestrictionService } from "../users/restriction.service.js";
 import type { Auth } from "../auth/auth.instance.js";
 import { DailyResetJob, resetInstantFor } from "./daily-reset.job.js";
 
@@ -36,7 +37,7 @@ describe("DailyResetJob", () => {
     const studySessions = new StudySessionService(db);
     disputes = buildDisputeService(db);
     checkIns = new CheckInService(db, roomState, presence, security, studySessions, new QrService(db), disputes, new RolesService(db));
-    gateway = new RoomRealtimeGateway(roomState, mockAuth, buildNotificationService(db));
+    gateway = new RoomRealtimeGateway(roomState, mockAuth, buildNotificationService(db), new RestrictionService(db));
     job = new DailyResetJob(db, gateway, studySessions);
 
     const room = await getRoom(db);

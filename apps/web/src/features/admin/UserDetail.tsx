@@ -62,7 +62,7 @@ export function UserDetail({ userId }: { userId: string }) {
     <div className="flex flex-col gap-4">
       <div className="rounded-[14px] border border-app bg-surface p-4">
         <h2 className="font-display text-lg font-semibold text-main">{user.name}</h2>
-        <p className="text-sm text-muted">{user.email}</p>
+        <p className="text-sm text-muted">{user.email ?? "sin email"}</p>
         <p className="font-mono text-xs text-muted">Miembro desde {new Date(user.createdAt).toLocaleDateString("es-AR")}</p>
         {user.roles.length > 0 ? (
           <p className="mt-2 text-xs font-semibold text-primary">{user.roles.join(", ")}</p>

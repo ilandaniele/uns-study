@@ -9,6 +9,7 @@ import { ApiErrors } from "../common/api-error.js";
 import { RateLimitService } from "../security/rate-limit.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { DmService } from "./dm.service.js";
+import { UuidParamPipe } from "../common/uuid-param.pipe.js";
 
 @Controller("conversations")
 @UseGuards(AuthGuard)
@@ -36,14 +37,14 @@ export class DmController {
   }
 
   @Get(":id/messages")
-  listMessages(@CurrentUser() user: RequestUser, @Param("id") id: string, @Query("cursor") cursor?: string) {
+  listMessages(@CurrentUser() user: RequestUser, @Param("id", UuidParamPipe) id: string, @Query("cursor") cursor?: string) {
     return this.dm.listMessages(id, user.id, cursor ?? null);
   }
 
   @Post(":id/messages")
   async sendMessage(
     @CurrentUser() user: RequestUser,
-    @Param("id") id: string,
+    @Param("id", UuidParamPipe) id: string,
     @Body(new ZodBodyPipe(dmSendSchema)) body: z.infer<typeof dmSendSchema>,
   ) {
     const limit = await this.rateLimit.check(`dm:${user.id}`, 15, 60);
@@ -57,7 +58,7 @@ export class DmController {
 
   @Post(":id/read")
   @HttpCode(200)
-  async markRead(@CurrentUser() user: RequestUser, @Param("id") id: string) {
+  async markRead(@CurrentUser() user: RequestUser, @Param("id", UuidParamPipe) id: string) {
     await this.dm.markRead(id, user.id);
     return { ok: true };
   }

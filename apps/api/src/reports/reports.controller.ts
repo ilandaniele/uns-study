@@ -6,6 +6,7 @@ import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";
 import { ZodBodyPipe } from "../common/zod-body.pipe.js";
 import { ReportsService } from "./reports.service.js";
+import { UuidParamPipe } from "../common/uuid-param.pipe.js";
 
 @Controller()
 @UseGuards(AuthGuard)
@@ -24,14 +25,14 @@ export class ReportsController {
   @Post("reports/:id/attachments")
   requestAttachment(
     @CurrentUser() user: RequestUser,
-    @Param("id") reportId: string,
+    @Param("id", UuidParamPipe) reportId: string,
     @Body(new ZodBodyPipe(attachmentRequestSchema)) body: z.infer<typeof attachmentRequestSchema>,
   ) {
     return this.reports.requestAttachment(reportId, user.id, body.contentType, body.sizeBytes);
   }
 
   @Post("reports/:id/attachments/:attachmentId/complete")
-  async completeAttachment(@CurrentUser() user: RequestUser, @Param("id") reportId: string, @Param("attachmentId") attachmentId: string) {
+  async completeAttachment(@CurrentUser() user: RequestUser, @Param("id", UuidParamPipe) reportId: string, @Param("attachmentId", UuidParamPipe) attachmentId: string) {
     await this.reports.completeAttachment(reportId, attachmentId, user.id);
     return { ok: true };
   }

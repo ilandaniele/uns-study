@@ -14,7 +14,7 @@ const mockAuth = { api: { getSession: async () => null } } as unknown as Auth;
 async function build(db: Db) {
   const roomState = new RoomStateService(db);
   const restrictions = new RestrictionService(db);
-  const gateway = new RoomRealtimeGateway(roomState, mockAuth, buildNotificationService(db)); // no @WebSocketServer() attached — emits are no-ops in tests
+  const gateway = new RoomRealtimeGateway(roomState, mockAuth, buildNotificationService(db), new RestrictionService(db)); // no @WebSocketServer() attached — emits are no-ops in tests
   return new TableNamesService(db, restrictions, gateway);
 }
 

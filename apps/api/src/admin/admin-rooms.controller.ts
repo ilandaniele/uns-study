@@ -20,8 +20,8 @@ export class AdminRoomsController {
   ) {}
 
   @Get(":idOrSlug/live")
-  live(@Param("idOrSlug") idOrSlug: string) {
-    return this.rooms.live(idOrSlug);
+  live(@Param("idOrSlug") idOrSlug: string, @CurrentUser() user: RequestUser) {
+    return this.rooms.live(idOrSlug, user.id);
   }
 
   @Get(":idOrSlug/stats")

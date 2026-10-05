@@ -26,7 +26,8 @@ export class AdminUsersService {
     @Inject(RolesService) private readonly roles: RolesService,
   ) {}
 
-  async search(q: string | undefined) {
+  async search(q: string | undefined, actorId: string) {
+    const canSeeEmail = await this.roles.hasRole(actorId, ["ADMIN"]);
     const query = q?.slice(0, SEARCH_QUERY_MAX_LENGTH);
     const rows = query
       ? await this.db
@@ -35,10 +36,11 @@ export class AdminUsersService {
           .where(or(ilike(schema.user.name, `%${escapeLikePattern(query)}%`), ilike(schema.user.email, `%${escapeLikePattern(query)}%`)))
           .limit(SEARCH_LIMIT)
       : await this.db.select().from(schema.user).limit(SEARCH_LIMIT);
-    return rows.map((u) => ({ userId: u.id, name: u.name, email: u.email, createdAt: u.createdAt.toISOString() }));
+    return rows.map((u) => ({ userId: u.id, name: u.name, email: canSeeEmail ? u.email : null, createdAt: u.createdAt.toISOString() }));
   }
 
-  async getById(userId: string): Promise<AdminUserDto> {
+  async getById(userId: string, actorId: string): Promise<AdminUserDto> {
+    const canSeeEmail = await this.roles.hasRole(actorId, ["ADMIN"]);
     const [u] = await this.db.select().from(schema.user).where(eq(schema.user.id, userId)).limit(1);
     if (!u) throw ApiErrors.notFound("Usuario no encontrado.");
 
@@ -59,7 +61,7 @@ export class AdminUsersService {
     return {
       userId: u.id,
       name: u.name,
-      email: u.email,
+      email: canSeeEmail ? u.email : null,
       createdAt: u.createdAt.toISOString(),
       roles: roleRows.map((r) => r.role),
       restrictions: restrictionRows

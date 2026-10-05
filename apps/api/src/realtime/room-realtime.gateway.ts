@@ -26,6 +26,7 @@ import {
   type TableNicknameChangedEvent,
 } from "@sala/contracts";
 import { AUTH } from "../auth/auth.tokens.js";
+import { RestrictionService } from "../users/restriction.service.js";
 import type { Auth } from "../auth/auth.instance.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { NotificationService } from "../notifications/notification.service.js";
@@ -97,6 +98,7 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
     @Inject(RoomStateService) private readonly roomState: RoomStateService,
     @Inject(AUTH) private readonly auth: Auth,
     @Inject(NotificationService) private readonly notifications: NotificationService,
+    @Inject(RestrictionService) private readonly restrictions: RestrictionService,
   ) {}
 
   /** Anonymous connections are allowed; joining a room map is opt-in via `room:join`. Authed
@@ -129,10 +131,13 @@ export class RoomRealtimeGateway implements OnGatewayConnection {
 
   /** `roomId` here is the chat room id (`ChatMessageDto.chatRoomId`), not the map room id. Requires auth. */
   @SubscribeMessage(SocketEvents.ChatJoin)
-  onChatJoin(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): void {
+  async onChatJoin(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): Promise<void> {
     if (!socket.data.userId) return;
     const parsed = chatPayloadSchema.safeParse(body);
     if (!parsed.success) return;
+    // A banned/suspended user can't post (AuthGuard) and shouldn't keep reading live chat either.
+    const active = await this.restrictions.activeRestrictions(socket.data.userId);
+    if (active.some((r) => r.type === "SUSPENDED" || r.type === "BANNED")) return;
     socket.join(chatChannel(parsed.data.roomId));
   }
 

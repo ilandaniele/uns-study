@@ -5,6 +5,8 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import type { Db } from "@sala/database";
 import { schema } from "@sala/database";
 import { env } from "../env.js";
+import { ResendClient } from "../email/resend.client.js";
+import { createPasswordResetSender } from "./password-reset-email.js";
 
 export type Auth = ReturnType<typeof buildAuth>;
 
@@ -31,10 +33,16 @@ export function buildAuth(db: Db) {
     // `resolveAppSecrets()` (see `secrets.ts`) resolves/generates this into `process.env` before
     // `env.ts` is ever imported in `main.ts`'s boot path, so this only fires for entry points that
     // skip that step (e.g. a test building `Auth` directly without a DB).
+    if (env.isProduction) throw new Error("BETTER_AUTH_SECRET is not set; refusing to start with an insecure fallback secret in production.");
     console.warn("[auth] BETTER_AUTH_SECRET not set — using an insecure dev-only fallback secret.");
   }
 
   const useGoogle = Boolean(env.googleClientId && env.googleClientSecret);
+  // Null (reset disabled) unless Resend is configured.
+  const sendResetPassword = createPasswordResetSender(
+    env.resendApiKey && env.emailFrom ? new ResendClient(env.resendApiKey) : null,
+    { from: env.emailFrom, webUrl: env.publicWebUrl },
+  );
 
   return betterAuth({
     database: drizzleAdapter(db, {
@@ -44,7 +52,23 @@ export function buildAuth(db: Db) {
     baseURL: env.betterAuthUrl,
     secret: env.betterAuthSecret || "dev-only-insecure-secret-change-me",
     trustedOrigins: env.webOrigins,
-    emailAndPassword: { enabled: true },
+    emailAndPassword: {
+      enabled: true,
+      ...(sendResetPassword ? { sendResetPassword, resetPasswordTokenExpiresIn: 60 * 60 } : {}),
+    },
+    // In-memory per-instance limiter: a cheap first layer. The distributed (Upstash-backed) layer is
+    // `authRateLimitMiddleware`, mounted before this handler in main.ts.
+    rateLimit: {
+      enabled: env.isProduction,
+      window: 60,
+      max: 100,
+      customRules: {
+        "/sign-in/email": { window: 60, max: 5 },
+        "/sign-up/email": { window: 60, max: 3 },
+        "/request-password-reset": { window: 60, max: 3 },
+        "/reset-password": { window: 60, max: 5 },
+      },
+    },
     // Signed cookie cache: most requests skip the session+user DB lookup. Bans/restrictions are
     // enforced from the restrictions table (not the session), so the 60 s staleness is harmless.
     session: { cookieCache: { enabled: true, maxAge: 60 } },

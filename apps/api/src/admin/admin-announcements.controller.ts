@@ -7,6 +7,7 @@ import type { RequestUser } from "../auth/request-user.js";
 import { ZodBodyPipe } from "../common/zod-body.pipe.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { AnnouncementsService } from "../announcements/announcements.service.js";
+import { UuidParamPipe } from "../common/uuid-param.pipe.js";
 
 /** Listing is available to MODERATOR too; writes (create/update/delete) are role-sensitive and ADMIN only. */
 @Controller("admin/announcements")
@@ -32,7 +33,7 @@ export class AdminAnnouncementsController {
 
   @Patch(":id")
   @UseGuards(AdminOnlyGuard)
-  async update(@Param("id") id: string, @Body(new ZodBodyPipe(announcementSchema.partial())) body: Partial<z.infer<typeof announcementSchema>>) {
+  async update(@Param("id", UuidParamPipe) id: string, @Body(new ZodBodyPipe(announcementSchema.partial())) body: Partial<z.infer<typeof announcementSchema>>) {
     const updated = await this.announcements.update(id, body);
     this.emitChanged(updated);
     return updated;
@@ -40,7 +41,7 @@ export class AdminAnnouncementsController {
 
   @Delete(":id")
   @UseGuards(AdminOnlyGuard)
-  async remove(@Param("id") id: string) {
+  async remove(@Param("id", UuidParamPipe) id: string) {
     const roomId = await this.announcements.remove(id);
     this.emitToRoom(roomId, { id, removed: true });
     return { ok: true };

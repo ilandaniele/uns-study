@@ -1,8 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { signIn, signUp } from "@/lib/auth-client";
 import { invalidateMe } from "@/lib/me-store";
@@ -37,10 +37,14 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [googleEnabled, setGoogleEnabled] = useState(false);
+  const [passwordResetEnabled, setPasswordResetEnabled] = useState(false);
 
   useEffect(() => {
-    apiFetch<{ google: boolean }>("/api/v1/auth-providers")
-      .then((p) => setGoogleEnabled(p.google))
+    apiFetch<{ google: boolean; passwordReset?: boolean }>("/api/v1/auth-providers")
+      .then((p) => {
+        setGoogleEnabled(p.google);
+        setPasswordResetEnabled(Boolean(p.passwordReset));
+      })
       .catch(() => setGoogleEnabled(false));
   }, []);
 
@@ -169,6 +173,17 @@ export default function LoginPage() {
             className="w-full rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
           />
 
+          {tab === "signin" && passwordResetEnabled ? (
+            <a href="/recuperar" className="self-end text-xs text-muted underline">
+              ¿Olvidaste tu contraseña?
+            </a>
+          ) : null}
+
+          {error ? null : (
+            <Suspense fallback={null}>
+              <ResetDoneNotice />
+            </Suspense>
+          )}
           {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
 
           <button
@@ -194,6 +209,12 @@ export default function LoginPage() {
       </div>
     </main>
   );
+}
+
+/** Shown after a successful password reset (`/login?restablecida=1`). */
+function ResetDoneNotice() {
+  const done = useSearchParams().get("restablecida") === "1";
+  return done ? <p role="status" className="text-sm text-main">Listo, cambiaste tu contraseña. Ingresá con la nueva.</p> : null;
 }
 
 function GoogleGlyph() {

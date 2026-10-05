@@ -3,6 +3,7 @@ import type { Auth } from "../auth/auth.instance.js";
 import type { Socket, Server } from "socket.io";
 import type { RoomStateService } from "../rooms/room-state.service.js";
 import type { NotificationService } from "../notifications/notification.service.js";
+import type { RestrictionService } from "../users/restriction.service.js";
 import { RoomRealtimeGateway, resolveSocketUserId } from "./room-realtime.gateway.js";
 import { signSocketToken } from "./socket-token.js";
 
@@ -48,7 +49,7 @@ describe("RoomRealtimeGateway.onJoin", () => {
     const rooms = new Set<string>(["socket-id"]);
     return { id: "socket-id", rooms, join: (r: string) => void rooms.add(r) } as unknown as Socket & { rooms: Set<string> };
   }
-  const gateway = new RoomRealtimeGateway({} as RoomStateService, {} as Auth, { handleSeatFreed: async () => [] } as unknown as NotificationService);
+  const gateway = new RoomRealtimeGateway({} as RoomStateService, {} as Auth, { handleSeatFreed: async () => [] } as unknown as NotificationService, {} as RestrictionService);
 
   // The client re-fetches the map only after this ack, so the ack must mean "already subscribed".
   it("acks only after the socket has joined the room channel", () => {
@@ -62,6 +63,44 @@ describe("RoomRealtimeGateway.onJoin", () => {
   });
 });
 
+describe("RoomRealtimeGateway.onChatJoin", () => {
+  const CHAT_ID = "289306e1-e5f2-4cb6-ac63-9ae49e986e04";
+  function chatSocket(userId: string | undefined) {
+    const rooms = new Set<string>();
+    return { id: "s", rooms, data: { userId }, join: (r: string) => void rooms.add(r) } as unknown as Socket & { rooms: Set<string> };
+  }
+  function gatewayWith(types: string[]) {
+    const restrictions = { activeRestrictions: async () => types.map((type) => ({ id: "r", type, until: null })) } as unknown as RestrictionService;
+    return new RoomRealtimeGateway({} as RoomStateService, {} as Auth, {} as NotificationService, restrictions);
+  }
+
+  it("joins the chat channel for an unrestricted user", async () => {
+    const socket = chatSocket("u1");
+    await gatewayWith([]).onChatJoin(socket, { roomId: CHAT_ID });
+    expect(socket.rooms.has(`chat:${CHAT_ID}`)).toBe(true);
+  });
+
+  it("still joins for a merely chat-muted user", async () => {
+    const socket = chatSocket("u1");
+    await gatewayWith(["MUTE_CHAT"]).onChatJoin(socket, { roomId: CHAT_ID });
+    expect(socket.rooms.size).toBe(1);
+  });
+
+  it("rejects a banned or suspended user", async () => {
+    for (const type of ["BANNED", "SUSPENDED"]) {
+      const socket = chatSocket("u1");
+      await gatewayWith([type]).onChatJoin(socket, { roomId: CHAT_ID });
+      expect(socket.rooms.size).toBe(0);
+    }
+  });
+
+  it("rejects an anonymous socket", async () => {
+    const socket = chatSocket(undefined);
+    await gatewayWith([]).onChatJoin(socket, { roomId: CHAT_ID });
+    expect(socket.rooms.size).toBe(0);
+  });
+});
+
 describe("RoomRealtimeGateway.broadcastSeatChanges", () => {
   const ROOM_ID = "289306e1-e5f2-4cb6-ac63-9ae49e986e04";
   const change = (seatId: string) => ({ seatId, status: "FREE" as const, confidence: 0.5, lastUpdatedAt: new Date(), verified: false, previousStatus: "OCCUPIED" as const });
@@ -70,7 +109,7 @@ describe("RoomRealtimeGateway.broadcastSeatChanges", () => {
     const summary = { roomId: ROOM_ID, total: 2, free: 2, occupied: 0, uncertain: 0, saved: 0, unknown: 0 };
     const getRoomSummary = vi.fn(async () => summary);
     const handleSeatFreed = vi.fn(async () => []);
-    const gateway = new RoomRealtimeGateway({ getRoomSummary } as unknown as RoomStateService, {} as Auth, { handleSeatFreed } as unknown as NotificationService);
+    const gateway = new RoomRealtimeGateway({ getRoomSummary } as unknown as RoomStateService, {} as Auth, { handleSeatFreed } as unknown as NotificationService, {} as RestrictionService);
     const emit = vi.fn();
     gateway.server = { to: () => ({ emit }) } as unknown as Server;
 

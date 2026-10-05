@@ -6,7 +6,15 @@ import type { ApiError, ApiErrorCode, PresenceDetails } from "@sala/contracts";
  * so cookies stay first-party even though the API runs on a different host. Local dev keeps
  * pointing straight at the API by setting `NEXT_PUBLIC_API_URL=http://localhost:4000`.
  */
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
+export const API_URL = assertSecureApiUrl(process.env.NEXT_PUBLIC_API_URL ?? "", process.env.NODE_ENV);
+
+/** In production the API base must be same-origin (empty/relative) or https, never plain http. */
+export function assertSecureApiUrl(url: string, nodeEnv: string | undefined): string {
+  if (nodeEnv === "production" && url && !url.startsWith("/") && !/^https:\/\//i.test(url)) {
+    throw new Error(`NEXT_PUBLIC_API_URL must be https:// (or empty/relative) in production, got "${url}"`);
+  }
+  return url;
+}
 
 /** Thrown by `apiFetch` when the API responds with the `{ error }` shape. */
 export class ApiRequestError extends Error {

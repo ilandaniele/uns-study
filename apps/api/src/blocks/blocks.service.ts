@@ -6,6 +6,9 @@ import { ApiErrors } from "../common/api-error.js";
 import { displayName, visibleAvatarUrl } from "../users/display-name.js";
 import { AliasService } from "../users/alias.service.js";
 
+/** Hard cap on the unpaginated blocked-users list. */
+const MAX_LIST_ROWS = 200;
+
 export interface BlockedUserDto {
   userId: string;
   displayName: string;
@@ -64,7 +67,8 @@ export class BlocksService {
       .from(schema.userBlocks)
       .innerJoin(schema.user, eq(schema.user.id, schema.userBlocks.blockedId))
       .leftJoin(schema.userProfiles, eq(schema.userProfiles.userId, schema.userBlocks.blockedId))
-      .where(eq(schema.userBlocks.blockerId, userId));
+      .where(eq(schema.userBlocks.blockerId, userId))
+      .limit(MAX_LIST_ROWS);
 
     if (rows.length === 0) return [];
     const privacyRows = await this.db

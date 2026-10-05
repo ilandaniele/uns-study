@@ -10,6 +10,8 @@ import { displayName, visibleAvatarUrl } from "../users/display-name.js";
 import { AliasService } from "../users/alias.service.js";
 
 const PAGE_SIZE = 50;
+/** Hard cap on unpaginated list responses. */
+const MAX_LIST_ROWS = 200;
 
 type ConversationRow = typeof schema.directConversations.$inferSelect;
 
@@ -82,7 +84,8 @@ export class DmService {
       .select()
       .from(schema.directConversations)
       .where(or(eq(schema.directConversations.userA, userId), eq(schema.directConversations.userB, userId)))
-      .orderBy(desc(schema.directConversations.lastMessageAt));
+      .orderBy(desc(schema.directConversations.lastMessageAt))
+      .limit(MAX_LIST_ROWS);
 
     return Promise.all(rows.map((row) => this.toConversationDto(row, userId)));
   }

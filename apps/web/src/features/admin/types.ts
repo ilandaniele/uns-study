@@ -8,7 +8,8 @@ export interface AdminOccupantDto {
   seatCode: string;
   userId: string;
   name: string;
-  email: string;
+  /** Null unless the caller is an ADMIN. */
+  email: string | null;
 }
 
 export interface AdminLiveDto {
@@ -29,7 +30,7 @@ export interface AuditEntryDto {
 export interface AdminUserSearchResultDto {
   userId: string;
   name: string;
-  email: string;
+  email: string | null;
   createdAt: string;
 }
 
