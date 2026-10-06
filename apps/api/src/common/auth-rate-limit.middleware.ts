@@ -27,8 +27,9 @@ const RESET_IP_LIMIT = 10;
 const RESET_IP_WINDOW_S = 15 * 60;
 const RESET_TOKEN_LIMIT = 5;
 const RESET_TOKEN_WINDOW_S = 15 * 60;
-// Per `Fly-Client-IP` (set by Fly's edge, unforgeable). Proxied web traffic shares a few egress IPs, so
-// this is a coarse backstop only, not a per-visitor limit.
+// Per client IP: the visitor IP when `req.ip` is trustworthy (`trustReqIp`), else `Fly-Client-IP` (set by
+// Fly's edge, unforgeable). Proxied web traffic reaches the API from the web app's egress IPs, so keying
+// on `Fly-Client-IP` then would make one bucket for every visitor that anyone could exhaust.
 const FLY_IP_LIMIT = 120;
 const FLY_IP_WINDOW_S = 10 * 60;
 
@@ -49,15 +50,17 @@ function sendRateLimited(res: Response): void {
  * unforgeable `Fly-Client-IP` header (skipped when absent). Reads the JSON body itself for those
  * routes; Better Auth reuses the already-parsed `req.body`.
  */
-export function authRateLimitMiddleware(rateLimit: AuthRateLimiter) {
+export function authRateLimitMiddleware(rateLimit: AuthRateLimiter, { trustReqIp = false }: { trustReqIp?: boolean } = {}) {
   const parseJson = express.json({ limit: "16kb" });
 
   const run = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const path = req.path.replace(/\/+$/, "");
 
     try {
+      // With PROXY_SHARED_SECRET set, `proxyTrustMiddleware` makes `req.ip` the visitor for proxied
+      // requests and `Fly-Client-IP` for direct hits, so it is safe and per-visitor.
       const flyIp = req.headers["fly-client-ip"];
-      const flyIpValue = typeof flyIp === "string" && flyIp ? flyIp : null;
+      const flyIpValue = (trustReqIp && req.ip) || (typeof flyIp === "string" && flyIp ? flyIp : null);
       if (flyIpValue) {
         const ip = await rateLimit.check(`auth-ip:${digest(flyIpValue)}`, FLY_IP_LIMIT, FLY_IP_WINDOW_S);
         if (!ip.allowed) return sendRateLimited(res);

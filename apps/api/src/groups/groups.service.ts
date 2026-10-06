@@ -114,7 +114,7 @@ export class GroupsService {
     if (input.memberIds.includes(ownerId)) throw ApiErrors.validation("No podés agregarte a vos mismo.");
 
     const groupId = await this.db.transaction(async (tx) => {
-      await this.validateTargets(ownerId, input.memberIds, tx);
+      await this.validateTargets(ownerId, input.memberIds, [ownerId], tx);
 
       const [group] = await tx
         .insert(schema.groupConversations)
@@ -153,7 +153,7 @@ export class GroupsService {
       if (current.length + fresh.length > GROUP_MAX_MEMBERS) {
         throw ApiErrors.validation(`Un grupo puede tener hasta ${GROUP_MAX_MEMBERS} personas.`);
       }
-      await this.validateTargets(requesterId, fresh, tx);
+      await this.validateTargets(requesterId, fresh, current, tx);
 
       await tx.insert(schema.groupMembers).values(fresh.map((userId) => ({ groupId, userId, role: "MEMBER" as const })));
       return [...current, ...fresh];
@@ -259,7 +259,7 @@ export class GroupsService {
    * All-or-nothing check of every target, in order: exists, is a contact, not blocked, accepts DMs.
    * The first failure aborts the request.
    */
-  private async validateTargets(requesterId: string, targetIds: string[], exec: Executor): Promise<void> {
+  private async validateTargets(requesterId: string, targetIds: string[], memberIds: string[], exec: Executor): Promise<void> {
     if (targetIds.length === 0) return;
 
     const users = await exec.select({ id: schema.user.id }).from(schema.user).where(inArray(schema.user.id, targetIds));
@@ -284,6 +284,17 @@ export class GroupsService {
       if (blocked.has(id)) throw ApiErrors.blocked();
       if (dmDisabled.has(id)) throw ApiErrors.dmNotAllowed();
     }
+
+    // A group must never put two people who blocked each other in the same room: check every target
+    // against the other targets and against everyone already in the group, not only the requester.
+    const everyone = [...new Set([...memberIds, ...targetIds])];
+    const b = schema.userBlocks;
+    const [clash] = await exec
+      .select({ blockerId: b.blockerId })
+      .from(b)
+      .where(and(inArray(b.blockerId, everyone), inArray(b.blockedId, everyone), or(inArray(b.blockerId, targetIds), inArray(b.blockedId, targetIds))))
+      .limit(1);
+    if (clash) throw ApiErrors.blocked();
   }
 
   /** Display identity of each user, with aliases backfilled once for the whole batch. */

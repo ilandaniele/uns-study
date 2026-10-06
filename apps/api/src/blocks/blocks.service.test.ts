@@ -19,6 +19,10 @@ describe("BlocksService", () => {
     await expect(svc.block("u1", "u1")).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
   });
 
+  it("returns NOT_FOUND when blocking an unknown user", async () => {
+    await expect(svc.block("u1", "ghost")).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
   it("blocks and lists blocked users", async () => {
     await svc.block("u1", "u2");
     const blocked = await svc.blockedByMe("u1");

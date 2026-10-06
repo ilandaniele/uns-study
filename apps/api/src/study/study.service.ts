@@ -5,8 +5,11 @@ import type { StudyStatusDto } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { RestrictionService } from "../users/restriction.service.js";
+import { containsProfanity } from "../table-names/profanity.js";
 
 const RECENT_PRESENCE_WINDOW_MIN = 60;
+/** Same link filter as table names: this text is public on the room people list and profiles. */
+const URL_PATTERN = /https?:\/\/|www\.|\.(com|net|org|ar|io|co|info|xyz|gov|edu)\b/i;
 
 export interface StartStudyInput {
   subject?: string;
@@ -47,6 +50,11 @@ export class StudyService {
 
   async start(userId: string, roomId: string, input: StartStudyInput): Promise<StudyStatusDto> {
     await this.restrictions.assertNot(userId, ["SUSPENDED", "BANNED"]);
+    for (const text of [input.subject, input.message]) {
+      if (!text) continue;
+      if (URL_PATTERN.test(text)) throw ApiErrors.validation("El estado no puede contener enlaces.");
+      if (containsProfanity(text)) throw ApiErrors.validation("Ese texto no está permitido.");
+    }
     await this.assertRecentPresence(userId, roomId);
 
     const now = new Date();

@@ -99,6 +99,31 @@ describe("authRateLimitMiddleware", () => {
     expect((await post("/reset-password", { token: "fresh", newPassword: "x" }, { "fly-client-ip": "203.0.113.51" })).status).toBe(200);
   });
 
+  it("with trustReqIp, caps per visitor IP so one visitor behind the shared proxy can't lock out others", async () => {
+    const app = express();
+    app.set("trust proxy", 2);
+    app.use("/api/auth", authRateLimitMiddleware(new RateLimitService(), { trustReqIp: true }));
+    app.all("/api/auth/*", (_req, res) => res.json({ ok: true }));
+    const proxied = await new Promise<Server>((resolve) => {
+      const s: Server = app.listen(0, () => resolve(s));
+    });
+    const url = `http://127.0.0.1:${(proxied.address() as AddressInfo).port}/api/auth/sign-in/email`;
+    const send = (visitor: string, email: string) =>
+      fetch(url, {
+        method: "POST",
+        // Same Fly-Client-IP (the web app's egress) for everyone; XFF carries the visitor.
+        headers: { "content-type": "application/json", "fly-client-ip": "198.51.100.1", "x-forwarded-for": `${visitor}, 198.51.100.1` },
+        body: JSON.stringify({ email, password: "x" }),
+      });
+    try {
+      for (let i = 0; i < 120; i++) expect((await send("203.0.113.70", `a${i}@example.com`)).status).toBe(200);
+      expect((await send("203.0.113.70", "fresh@example.com")).status).toBe(429);
+      expect((await send("203.0.113.71", "victim@example.com")).status).toBe(200);
+    } finally {
+      await new Promise((resolve) => proxied.close(resolve));
+    }
+  });
+
   it("rejects a body over 16kb with 413 on non-limited auth routes too", async () => {
     const res = await post("/change-password", { newPassword: "x".repeat(17 * 1024) });
     expect(res.status).toBe(413);

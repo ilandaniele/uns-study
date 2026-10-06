@@ -55,6 +55,12 @@ describe("StudyService", () => {
     expect(row?.active).toBe(true);
   });
 
+  it("rejects links and blocked words in the public status text", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await expect(study.start("u1", roomId, { subject: "entren a www.spam.com", lookingForGroup: false })).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await expect(study.start("u1", roomId, { message: "boludos", lookingForGroup: false })).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+  });
+
   it("starts Study Mode when the caller checked in (and out) within the last hour", async () => {
     await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
     await checkIns.checkOut("u1");

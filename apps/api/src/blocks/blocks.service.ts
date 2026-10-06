@@ -26,6 +26,9 @@ export class BlocksService {
 
   async block(blockerId: string, blockedId: string): Promise<void> {
     if (blockerId === blockedId) throw ApiErrors.validation("No podés bloquearte a vos mismo.");
+    // Without this, an unknown id hits the FK and surfaces as a 500.
+    const [target] = await this.db.select({ id: schema.user.id }).from(schema.user).where(eq(schema.user.id, blockedId)).limit(1);
+    if (!target) throw ApiErrors.notFound("Usuario no encontrado.");
     await this.db.insert(schema.userBlocks).values({ blockerId, blockedId }).onConflictDoNothing();
   }
 

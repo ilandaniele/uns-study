@@ -74,6 +74,12 @@ describe("GroupsService", () => {
       await expect(svc.createGroup("u1", { name: "g", memberIds: ["u3"] })).rejects.toMatchObject({ code: "BLOCKED" });
     });
 
+    it("rejects targets that blocked each other, even when neither blocked the owner", async () => {
+      await db.insert(schema.userBlocks).values({ blockerId: "u2", blockedId: "u3" });
+      await expect(svc.createGroup("u1", { name: "g", memberIds: ["u2", "u3"] })).rejects.toMatchObject({ code: "BLOCKED" });
+      expect(await db.select().from(schema.groupConversations)).toHaveLength(0);
+    });
+
     it("rejects targets that disabled direct messages", async () => {
       await db.insert(schema.userPrivacySettings).values({ userId: "u2", allowDirectMessages: false });
       await expect(svc.createGroup("u1", { name: "g", memberIds: ["u2"] })).rejects.toMatchObject({ code: "DM_NOT_ALLOWED" });
@@ -119,6 +125,13 @@ describe("GroupsService", () => {
     it("validates added targets all-or-nothing", async () => {
       const group = await newGroup(["u2"]);
       await expect(svc.addMembers(group.id, "u1", ["u3", "u4"])).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+      expect((await svc.getGroup(group.id, "u1")).members).toHaveLength(2);
+    });
+
+    it("rejects adding someone who blocked, or was blocked by, a current member", async () => {
+      const group = await newGroup(["u2"]);
+      await db.insert(schema.userBlocks).values({ blockerId: "u3", blockedId: "u2" });
+      await expect(svc.addMembers(group.id, "u1", ["u3"])).rejects.toMatchObject({ code: "BLOCKED" });
       expect((await svc.getGroup(group.id, "u1")).members).toHaveLength(2);
     });
 
