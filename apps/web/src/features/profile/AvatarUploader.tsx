@@ -2,6 +2,7 @@
 
 import { uploadAvatarSchema, type AvatarMimeType } from "@sala/contracts";
 import { useRef, useState } from "react";
+import { PhotoViewer } from "@/components/PhotoViewer";
 import { apiDelete, apiPost, ApiRequestError } from "@/lib/api";
 import { AVATAR_OUTPUT_SIZE, base64FromDataUrl, centerSquareCrop } from "./avatar-image";
 
@@ -148,9 +149,22 @@ export function AvatarUploader({ avatarUrl, displayName, googleImage, showAvatar
 }
 
 function AvatarPreview({ avatarUrl, name }: { avatarUrl: string | null; name: string }) {
+  const [viewing, setViewing] = useState(false);
   if (avatarUrl) {
-    // eslint-disable-next-line @next/next/no-img-element -- relative/https avatar URL, not a build-time asset
-    return <img src={avatarUrl} alt="" className="h-[72px] w-[72px] shrink-0 rounded-full object-cover" />;
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setViewing(true)}
+          aria-label="Ver tu foto de perfil"
+          className="shrink-0 cursor-zoom-in rounded-full transition-transform duration-150 active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- relative/https avatar URL, not a build-time asset */}
+          <img src={avatarUrl} alt="" className="h-[72px] w-[72px] rounded-full object-cover" />
+        </button>
+        {viewing ? <PhotoViewer src={avatarUrl} alt="Tu foto de perfil" onClose={() => setViewing(false)} /> : null}
+      </>
+    );
   }
   return (
     <span className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] font-display text-2xl font-semibold text-main">
