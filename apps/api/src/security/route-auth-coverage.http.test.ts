@@ -114,7 +114,9 @@ describe("route auth coverage", () => {
         },
         body: ["POST", "PUT", "PATCH"].includes(method) ? "{}" : undefined,
       });
-      if (res.status !== 401) offenders.push(`${route} -> ${res.status}`);
+      // Must be the session guard's 401, not e.g. a bad-signature 401 from a public handler.
+      const code = res.status === 401 ? ((await res.json()) as { error?: { code?: string } }).error?.code : undefined;
+      if (res.status !== 401 || code !== "UNAUTHENTICATED") offenders.push(`${route} -> ${res.status} ${code ?? ""}`.trim());
     }
     expect(offenders).toEqual([]);
   }, 120_000);

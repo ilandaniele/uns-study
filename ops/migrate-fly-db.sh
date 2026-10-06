@@ -2,9 +2,12 @@
 # CI twin of ops/migrate-fly-db.ps1: applies the pending migrations of this checkout to the
 # production database (Fly Postgres `sala`). Used by .github/workflows/deploy.yml before the API
 # deploy. Needs `flyctl` on PATH and FLY_API_TOKEN scoped to the DB app (sala-de-estudio-db).
-# sala_owner has no login. This gives it a random one-time password over `fly ssh`, opens
-# `fly proxy` to the DB, runs `pnpm db:migrate` with that URL in this process only, then stops the
-# proxy and makes sala_owner NOLOGIN again (also if the migration failed). Nothing secret is printed.
+#   ops/migrate-fly-db.sh          migrate (default)
+#   ops/migrate-fly-db.sh lock     only make sala_owner NOLOGIN again (idempotent safety net)
+# sala_owner has no login. `migrate` gives it a random one-time password over `fly ssh`, opens
+# `fly proxy` to the DB, runs `pnpm db:migrate` with that URL (and without the Fly token), then
+# stops the proxy and makes sala_owner NOLOGIN again (also if the migration failed). Nothing secret
+# is printed.
 set -euo pipefail
 
 DB_APP="sala-de-estudio-db"
@@ -15,9 +18,20 @@ db_sql() { # $1 = SQL, $2 = marker echoed on success
   local script b64 out
   script=$(printf 'set -euo pipefail\nexport PGPASSWORD="$OPERATOR_PASSWORD"\npsql -h localhost -p 5433 -U postgres -d sala -v ON_ERROR_STOP=1 -q <<'"'"'SQL'"'"'\n%s\nSQL\necho %s\n' "$1" "$2")
   b64=$(printf '%s' "$script" | base64 -w0)
+  # The payload can carry the one-time password; keep it out of the Actions log too.
+  if [ -n "${GITHUB_ACTIONS:-}" ]; then echo "::add-mask::$b64"; fi
   out=$(fly ssh console -a "$DB_APP" -q -C "sh -c 'echo $b64 | base64 -d | bash'" 2>&1 || true)
   [[ "$out" == *"$2"* ]]
 }
+
+lock() {
+  echo "Disabling sala_owner login..."
+  if db_sql "ALTER ROLE sala_owner NOLOGIN PASSWORD NULL;" DISABLE_OK; then return 0; fi
+  echo "WARNING: could not disable sala_owner. Run: ALTER ROLE sala_owner NOLOGIN PASSWORD NULL; as postgres."
+  return 1
+}
+
+if [ "${1:-migrate}" = lock ]; then lock; exit $?; fi
 
 PW=$(openssl rand -hex 24)
 # Keep the one-time password out of the Actions log even if a tool echoes it.
@@ -27,17 +41,17 @@ OK=0
 
 cleanup() {
   if [ -n "$PROXY_PID" ]; then kill "$PROXY_PID" 2>/dev/null || true; fi
-  echo "Disabling sala_owner login..."
-  if ! db_sql "ALTER ROLE sala_owner NOLOGIN PASSWORD NULL;" DISABLE_OK; then
-    echo "WARNING: could not disable sala_owner. Run: ALTER ROLE sala_owner NOLOGIN PASSWORD NULL; as postgres."
-    OK=0
-  fi
+  lock || OK=0
   if [ "$OK" = 1 ]; then echo "OK: migrations applied."; else echo "failed."; exit 1; fi
 }
 trap cleanup EXIT
+# On cancel/timeout, exit so the EXIT trap re-locks sala_owner before the runner kills the job.
+trap 'exit 130' INT TERM
 
 echo "Enabling sala_owner for this run..."
-db_sql "ALTER ROLE sala_owner LOGIN PASSWORD '$PW';
+# log_statement off for this session so the one-time password never lands in the Postgres log.
+db_sql "SET log_statement = 'none';
+ALTER ROLE sala_owner LOGIN PASSWORD '$PW';
 GRANT USAGE ON SCHEMA drizzle TO sala_app;
 GRANT SELECT ON ALL TABLES IN SCHEMA drizzle TO sala_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE sala_owner IN SCHEMA drizzle GRANT SELECT ON TABLES TO sala_app;" ENABLE_OK \
@@ -55,5 +69,6 @@ done
 
 echo "Running migrations..."
 cd "$REPO_ROOT"
-DATABASE_URL="postgres://sala_owner:${PW}@localhost:${PROXY_PORT}/sala?sslmode=disable" pnpm db:migrate
+# The migration process (and every dependency it loads) never sees the Fly token.
+env -u FLY_API_TOKEN DATABASE_URL="postgres://sala_owner:${PW}@localhost:${PROXY_PORT}/sala?sslmode=disable" pnpm db:migrate
 OK=1
