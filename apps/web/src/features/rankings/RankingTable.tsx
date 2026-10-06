@@ -26,7 +26,7 @@ export function RankingTable({ ranking }: { ranking: RankingDto }) {
         </ol>
       ) : null}
       {!meInList && ranking.me ? (
-        <div className="sticky bottom-20 md:bottom-4">
+        <div className="sticky bottom-[calc(136px+env(safe-area-inset-bottom))] lg:bottom-[88px]">
           <p className="mb-1.5 px-1 text-xs font-medium text-muted">Tu posición</p>
           <ol className="overflow-hidden rounded-2xl border border-app bg-surface">
             <RankingRow entry={ranking.me} value={format(ranking.me.value)} highlighted />

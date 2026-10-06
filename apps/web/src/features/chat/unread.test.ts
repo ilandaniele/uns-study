@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ChatMessageDto } from "@sala/contracts";
-import { countUnread, formatUnread } from "./unread";
+import { countUnread, formatUnread, sumDmUnread } from "./unread";
 
 function message(overrides: Partial<ChatMessageDto> & { createdAt: string }): ChatMessageDto {
   return {
@@ -33,6 +33,25 @@ describe("countUnread", () => {
 
   it("does not count a message posted exactly at the last seen time", () => {
     expect(countUnread(messages, "2026-10-05T10:09:00.000Z", "me")).toBe(0);
+  });
+});
+
+describe("sumDmUnread", () => {
+  const conversations = [
+    { id: "a", unread: 2 },
+    { id: "b", unread: 3 },
+  ];
+
+  it("sums everything without an exclusion", () => {
+    expect(sumDmUnread(conversations, null)).toBe(5);
+  });
+
+  it("leaves out the excluded conversation", () => {
+    expect(sumDmUnread(conversations, "a")).toBe(3);
+  });
+
+  it("ignores an exclusion id that is not in the list", () => {
+    expect(sumDmUnread(conversations, "zzz")).toBe(5);
   });
 });
 

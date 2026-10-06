@@ -1,20 +1,21 @@
 "use client";
 
-import { createConversationSchema, type ConversationDto, type PublicProfileDto } from "@sala/contracts";
+import type { PublicProfileDto } from "@sala/contracts";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { WithAdminBadge } from "@/components/AdminBadge";
 import { PhotoViewer } from "@/components/PhotoViewer";
 import { apiFetch, apiPost, ApiRequestError } from "@/lib/api";
+import { conversationErrorMessage, startConversation } from "@/features/chat/start-conversation";
+import { openChatWidget } from "@/features/chat/widget-store";
 import { useSession } from "@/lib/auth-client";
 
 /** Public profile view: "Enviar mensaje", "Bloquear"/"Desbloquear", "Reportar". */
 export default function PublicProfilePage() {
   const params = useParams<{ userId: string }>();
   const userId = params.userId;
-  const router = useRouter();
   const { data: session, isPending: sessionPending } = useSession();
 
   const [profile, setProfile] = useState<PublicProfileDto | null>(null);
@@ -44,16 +45,10 @@ export default function PublicProfilePage() {
     setBusy(true);
     setActionMessage(null);
     try {
-      const conversation = await apiPost<ConversationDto>("/api/v1/conversations", { userId }, createConversationSchema);
-      router.push(`/chat/dm/${conversation.id}`);
+      const conversation = await startConversation(userId);
+      openChatWidget({ view: "dm", conversationId: conversation.id, conversation });
     } catch (err) {
-      if (err instanceof ApiRequestError && err.code === "DM_NOT_ALLOWED") {
-        setActionMessage("Esta persona no acepta mensajes directos.");
-      } else if (err instanceof ApiRequestError && err.code === "BLOCKED") {
-        setActionMessage("No podés enviarle mensajes a esta persona.");
-      } else {
-        setActionMessage("No pudimos iniciar la conversación.");
-      }
+      setActionMessage(conversationErrorMessage(err));
     } finally {
       setBusy(false);
     }

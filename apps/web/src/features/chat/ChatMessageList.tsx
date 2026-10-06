@@ -13,6 +13,8 @@ export interface ChatMessageListProps {
   currentUserId: string | null;
   onDelete: (messageId: string) => void;
   onBlock: (userId: string) => void;
+  /** Widget: makes other people's avatar and name tappable (opens a private chat). */
+  onAuthorClick?: (userId: string, displayName: string) => void;
 }
 
 /** Grouping key; alias authors have no userId, so their (unique) alias name stands in. */
@@ -21,7 +23,7 @@ function authorKey(message: ChatMessageDto): string {
 }
 
 /** Renders the room chat thread: day separators, grouped bubbles, and the per-message menu. */
-export function ChatMessageList({ messages, currentUserId, onDelete, onBlock }: ChatMessageListProps) {
+export function ChatMessageList({ messages, currentUserId, onDelete, onBlock, onAuthorClick }: ChatMessageListProps) {
   const router = useRouter();
   const grouped = groupMessages(messages.map((m) => ({ id: m.id, authorId: authorKey(m), createdAt: m.createdAt })));
   const showSeparators = daySeparatorFlags(messages);
@@ -41,6 +43,11 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock }: 
         const showDaySeparator = showSeparators[index]!;
         const isOwn = isOwnMessage(message, currentUserId);
         const showHeader = !grouped[index]!.grouped || showDaySeparator;
+        const authorUserId = message.author.userId;
+        const tappable = onAuthorClick !== undefined && authorUserId !== null && !isOwn;
+        const avatar = (
+          <Avatar userId={authorKey(message)} name={message.author.displayName} url={message.author.avatarUrl} aliasAnimal={message.author.aliasAnimal} size={40} adminBadge={message.author.adminBadge} />
+        );
 
         return (
           <div key={message.id}>
@@ -54,13 +61,35 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock }: 
             >
               <div className="w-10 shrink-0">
                 {showHeader ? (
-                  <Avatar userId={authorKey(message)} name={message.author.displayName} url={message.author.avatarUrl} aliasAnimal={message.author.aliasAnimal} size={40} adminBadge={message.author.adminBadge} />
+                  tappable ? (
+                    <button
+                      type="button"
+                      onClick={() => onAuthorClick(authorUserId, message.author.displayName)}
+                      aria-label={`Escribirle a ${message.author.displayName}`}
+                      className="rounded-full transition-transform duration-150 ease-out active:scale-[0.96]"
+                    >
+                      {avatar}
+                    </button>
+                  ) : (
+                    avatar
+                  )
                 ) : null}
               </div>
               <div className="min-w-0 flex-1">
                 {showHeader ? (
                   <p className="flex min-w-0 items-baseline gap-1.5 text-sm font-semibold text-main">
-                    <span className="min-w-0 truncate">{isOwn ? "Vos" : message.author.displayName}</span>
+                    {tappable ? (
+                      <button
+                        type="button"
+                        onClick={() => onAuthorClick(authorUserId, message.author.displayName)}
+                        aria-label={`Escribirle a ${message.author.displayName}`}
+                        className="min-w-0 truncate rounded text-left hover:underline"
+                      >
+                        {message.author.displayName}
+                      </button>
+                    ) : (
+                      <span className="min-w-0 truncate">{isOwn ? "Vos" : message.author.displayName}</span>
+                    )}
                     <span className="shrink-0 text-xs font-normal text-muted">{formatMessageTime(message.createdAt)}</span>
                   </p>
                 ) : null}

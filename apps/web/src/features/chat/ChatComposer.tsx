@@ -10,10 +10,12 @@ export interface ChatComposerProps {
   onSend: (content: string) => Promise<void>;
   /** Analytics event fired after a successful send (room chat by default, `dm_sent` for DM threads). */
   analyticsEvent?: "chat_message_sent" | "dm_sent";
+  /** "widget" sits inside the floating card, which already clears the safe area. */
+  variant?: "page" | "widget";
 }
 
 /** Text composer with a character counter, shared by the room chat and DM threads. */
-export function ChatComposer({ maxLength, placeholder = "Escribí un mensaje…", disabled, onSend, analyticsEvent = "chat_message_sent" }: ChatComposerProps) {
+export function ChatComposer({ maxLength, placeholder = "Escribí un mensaje…", disabled, onSend, analyticsEvent = "chat_message_sent", variant = "page" }: ChatComposerProps) {
   const [value, setValue] = useState("");
   const [sending, setSending] = useState(false);
   const trimmed = value.trim();
@@ -33,7 +35,7 @@ export function ChatComposer({ maxLength, placeholder = "Escribí un mensaje…"
   }
 
   return (
-    <div className="sticky bottom-0 flex items-end gap-2 border-t border-app bg-surface p-3 pb-safe sm:pb-3">
+    <div className={`sticky bottom-0 flex items-end gap-2 border-t border-app bg-surface p-3 ${variant === "widget" ? "pb-3" : "pb-safe sm:pb-3"}`}>
       <div className="flex-1">
         <textarea
           value={value}

@@ -95,4 +95,32 @@ describe("useExitTransition", () => {
     vi.advanceTimersByTime(1000);
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  it("cancelClose mid-close clears closing and never calls onClose", () => {
+    const onClose = vi.fn();
+    mount(onClose).requestClose();
+    vi.advanceTimersByTime(70);
+    mount(onClose).cancelClose();
+    expect(mount(onClose).closing).toBe(false);
+    vi.advanceTimersByTime(500);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("cancelClose when not closing is a no-op", () => {
+    const onClose = vi.fn();
+    mount(onClose).cancelClose();
+    expect(mount(onClose).closing).toBe(false);
+    vi.advanceTimersByTime(500);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("requestClose works again after a cancel", () => {
+    const onClose = vi.fn();
+    mount(onClose).requestClose();
+    mount(onClose).cancelClose();
+    mount(onClose).requestClose();
+    expect(mount(onClose).closing).toBe(true);
+    vi.advanceTimersByTime(140);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

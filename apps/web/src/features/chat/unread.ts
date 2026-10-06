@@ -16,3 +16,8 @@ export function countUnread(messages: ChatMessageDto[], lastSeenAt: string | nul
 export function formatUnread(count: number): string {
   return count > 99 ? "99+" : String(count);
 }
+
+/** Total unread private messages, leaving out the conversation currently on screen. */
+export function sumDmUnread(conversations: readonly { id: string; unread: number }[], excludeConversationId: string | null): number {
+  return conversations.reduce((sum, c) => (c.id === excludeConversationId ? sum : sum + c.unread), 0);
+}

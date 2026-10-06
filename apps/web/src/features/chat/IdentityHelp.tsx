@@ -8,9 +8,9 @@ import { useMyProfile } from "@/features/profile/useMyProfile";
 /**
  * Step-by-step guide for appearing with a name and photo instead of "Usuario anónimo".
  * Renders nothing once the caller already shows a name and a photo. `sidebar` is always
- * expanded (desktop side column); `inline` is a collapsible card, closed by default (mobile).
+ * expanded (desktop side column); `inline` is a collapsible card, closed by default (mobile) unless `defaultOpen`.
  */
-export function IdentityHelp({ variant = "inline" }: { variant?: "inline" | "sidebar" }) {
+export function IdentityHelp({ variant = "inline", defaultOpen = false }: { variant?: "inline" | "sidebar"; defaultOpen?: boolean }) {
   const { profile, privacy, loading } = useMyProfile();
   const [toggled, setToggled] = useState<boolean | null>(null);
 
@@ -21,7 +21,7 @@ export function IdentityHelp({ variant = "inline" }: { variant?: "inline" | "sid
   const needsSetup = anonymous || photoHidden;
   if (!needsSetup) return null;
   const sidebar = variant === "sidebar";
-  const open = sidebar || (toggled ?? false);
+  const open = sidebar || (toggled ?? defaultOpen);
 
   const title = anonymous
     ? `Estás apareciendo como “${profile.alias ?? "Usuario anónimo"}”`

@@ -15,6 +15,15 @@ export function AdminBadge({ size = 40, edge = "bottom" }: { size?: number; edge
   );
 }
 
+/** Gold "Admin" pill that sits inline with text (no absolute positioning). */
+export function AdminTag() {
+  return (
+    <span className="inline-block shrink-0 whitespace-nowrap rounded-full border border-amber-600 bg-gradient-to-b from-yellow-200 to-amber-400 px-2 py-0.5 text-[11px] font-extrabold uppercase leading-none tracking-wide text-amber-950 shadow-sm dark:border-amber-300">
+      Admin
+    </span>
+  );
+}
+
 /** Wraps an avatar so the gold badge can sit over its bottom edge; renders `children` untouched when `show` is false. */
 export function WithAdminBadge({ show, size = 40, children }: { show?: boolean; size?: number; children: ReactNode }) {
   if (!show) return <>{children}</>;

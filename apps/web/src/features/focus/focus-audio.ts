@@ -144,3 +144,29 @@ export function playChime(kind: "break" | "focus", volume = 0.7): void {
 export function primeAudio(): void {
   context();
 }
+
+/**
+ * Short soft rising two-note blip for an incoming private message. Quieter and shorter than
+ * `playChime`. No-op unless a context already exists and is running (primed by an earlier
+ * gesture): it never creates or resumes one itself, so it can't trip autoplay policies.
+ */
+export function playDmBlip(volume = 0.5): void {
+  const ac = ctx;
+  if (!ac || ac.state !== "running") return;
+  const peak = 0.12 * Math.max(0.15, Math.min(1, volume));
+  [880, 1318.5].forEach((freq, i) => {
+    const t = ac.currentTime + i * 0.09;
+    for (const [mult, amp] of [[1, 1], [2, 0.08]] as const) {
+      const osc = ac.createOscillator();
+      const g = ac.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq * mult;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(peak * amp, t + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+      osc.connect(g).connect(ac.destination);
+      osc.start(t);
+      osc.stop(t + 0.36);
+    }
+  });
+}

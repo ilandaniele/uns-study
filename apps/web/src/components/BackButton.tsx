@@ -18,7 +18,7 @@ export function BackButton({ fallbackHref, label = "Volver" }: { fallbackHref: s
         event.preventDefault();
         router.back();
       }}
-      className="-ml-2 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-main transition-transform duration-150 ease-out hover:bg-[var(--surface-2)] active:scale-[0.96] active:bg-[var(--surface-2)]"
+      className="-ml-2 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-[10px] text-main transition-transform duration-150 ease-out hover:bg-[var(--surface-2)] active:scale-[0.96] active:bg-[var(--surface-2)]"
     >
       <ArrowLeftIcon aria-hidden="true" weight="bold" size={20} />
     </Link>

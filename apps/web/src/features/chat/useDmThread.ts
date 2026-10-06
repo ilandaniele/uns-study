@@ -3,7 +3,7 @@
 import { SocketEvents } from "@sala/contracts/events";
 import { dmSendSchema } from "@sala/contracts";
 import type { DirectMessageDto, Page } from "@sala/contracts";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch, apiPost, ApiRequestError } from "@/lib/api";
 import { DataPaths } from "@/lib/prefetch";
 import { fetchCached, peekCached } from "@/lib/query-cache";
@@ -26,7 +26,11 @@ export interface UseDmThreadResult {
 }
 
 /** Loads + paginates a DM thread and keeps it live via `dm:message-created`; marks it read on load and on new messages. */
-export function useDmThread(conversationId: string): UseDmThreadResult {
+export function useDmThread(conversationId: string, options?: { onRead?: () => void }): UseDmThreadResult {
+  const onReadRef = useRef(options?.onRead);
+  useEffect(() => {
+    onReadRef.current = options?.onRead;
+  });
   const threadPath = DataPaths.dmThread(conversationId);
   // A cached/prefetched first page renders instantly; the request below always revalidates it.
   const [initial] = useState(() => peekCached<Page<DirectMessageDto>>(threadPath));
@@ -40,9 +44,11 @@ export function useDmThread(conversationId: string): UseDmThreadResult {
   const [reloadKey, setReloadKey] = useState(0);
 
   const markRead = useCallback(() => {
-    void apiPost(`/api/v1/conversations/${conversationId}/read`).catch(() => {
-      // best-effort; unread counts will just settle on the next successful call
-    });
+    void apiPost(`/api/v1/conversations/${conversationId}/read`)
+      .then(() => onReadRef.current?.())
+      .catch(() => {
+        // best-effort; unread counts will just settle on the next successful call
+      });
   }, [conversationId]);
 
   useEffect(() => {

@@ -1,14 +1,12 @@
 "use client";
 
-import { createConversationSchema, type ConversationDto } from "@sala/contracts";
 import { ChatCircleIcon } from "@phosphor-icons/react/dist/ssr";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { apiPost, ApiRequestError } from "@/lib/api";
+import { conversationErrorMessage, startConversation } from "@/features/chat/start-conversation";
+import { openChatWidget } from "@/features/chat/widget-store";
 
-/** Starts (or reopens) a direct conversation with the identified occupant of a seat. */
+/** Starts (or reopens) a direct conversation with the identified occupant of a seat, in the chat widget. */
 export function MessageOccupantButton({ userId }: { userId: string }) {
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,12 +14,11 @@ export function MessageOccupantButton({ userId }: { userId: string }) {
     setBusy(true);
     setError(null);
     try {
-      const conversation = await apiPost<ConversationDto>("/api/v1/conversations", { userId }, createConversationSchema);
-      router.push(`/chat/dm/${conversation.id}`);
+      const conversation = await startConversation(userId);
+      openChatWidget({ view: "dm", conversationId: conversation.id, conversation });
+      setBusy(false);
     } catch (err) {
-      if (err instanceof ApiRequestError && err.code === "DM_NOT_ALLOWED") setError("Esta persona no acepta mensajes directos.");
-      else if (err instanceof ApiRequestError && err.code === "BLOCKED") setError("No podés enviarle mensajes a esta persona.");
-      else setError("No pudimos abrir la conversación.");
+      setError(conversationErrorMessage(err));
       setBusy(false);
     }
   }
