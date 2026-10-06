@@ -34,6 +34,9 @@ export class DmService {
 
     await this.restrictions.assertNot(requesterId, ["SUSPENDED", "BANNED"]);
 
+    const [target] = await this.db.select({ id: schema.user.id }).from(schema.user).where(eq(schema.user.id, targetId));
+    if (!target) throw ApiErrors.notFound("Usuario no encontrado.");
+
     if (await this.blocks.isBlockedEitherDirection(requesterId, targetId)) throw ApiErrors.blocked();
 
     const [privacy] = await this.db.select().from(schema.userPrivacySettings).where(eq(schema.userPrivacySettings.userId, targetId));

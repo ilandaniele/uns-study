@@ -45,6 +45,10 @@ describe("DmService", () => {
     await expect(svc.getOrCreateConversation("u1", "u2")).rejects.toMatchObject({ code: "DM_NOT_ALLOWED" });
   });
 
+  it("returns not found when the target user does not exist", async () => {
+    await expect(svc.getOrCreateConversation("u1", "ghost")).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
   it("rejects DMs when either user has blocked the other", async () => {
     await db.insert(schema.userBlocks).values({ blockerId: "u2", blockedId: "u1" });
     await expect(svc.getOrCreateConversation("u1", "u2")).rejects.toMatchObject({ code: "BLOCKED" });
