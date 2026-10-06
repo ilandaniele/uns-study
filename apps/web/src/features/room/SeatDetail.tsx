@@ -19,6 +19,7 @@ import { TurnstileChallenge } from "./TurnstileChallenge";
 import { useLocationPrompt } from "./useLocationPrompt";
 import { useNow } from "@/lib/use-now";
 import {
+  canReportLeft,
   confidenceWording,
   recencyLabel,
   seatDisplayLabel,
@@ -373,6 +374,16 @@ export function SeatDetail({
                 {searching("saved") ? "Buscando…" : "Está guardado"}
               </ObservationChip>
             </div>
+            {canReportLeft(seat) ? (
+              <button
+                type="button"
+                onClick={() => onOpenDispute("SAVED")}
+                disabled={pending}
+                className="min-h-11 rounded-xl border border-app px-3 text-sm font-semibold text-main transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-50"
+              >
+                Se fue hace más de 30 min
+              </button>
+            ) : null}
           </>
         )}
       </div>

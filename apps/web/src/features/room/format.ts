@@ -93,7 +93,7 @@ export function disputeKindTitle(kind: DisputeKind): string {
     case "ABSENT":
       return "Esa persona no está";
     case "SAVED":
-      return "Pedir que se libere";
+      return "Se fue hace más de 30 min";
   }
 }
 
@@ -101,7 +101,7 @@ export function disputeKindTitle(kind: DisputeKind): string {
 export const DISPUTE_OPTIONS: { kind: DisputeKind; label: string; helper: string }[] = [
   { kind: "CLAIM", label: "Me senté acá", helper: "Sos vos quien está en este lugar, no quien figura." },
   { kind: "ABSENT", label: "Esa persona no está", helper: "El lugar figura ocupado, pero no hay nadie ahí." },
-  { kind: "SAVED", label: "Pedir que se libere", helper: "Hay cosas guardadas hace 30 minutos o más y nadie vuelve." },
+  { kind: "SAVED", label: "Se fue hace más de 30 min", helper: "Figura ocupado, pero hace 30 minutos o más que nadie vuelve." },
 ];
 
 /**
@@ -133,7 +133,14 @@ export function disputeOptionsFor(
 ): typeof DISPUTE_OPTIONS {
   if (seat.verified) return [];
   const isCheckInSourced = seat.sourceSummary === "CHECK_IN";
-  return DISPUTE_OPTIONS.filter((option) => option.kind === "SAVED" || isCheckInSourced);
+  // SAVED ("Se fue hace más de 30 min") has its own button under the observation chips (canReportLeft).
+  return DISPUTE_OPTIONS.filter((option) => option.kind !== "SAVED" && isCheckInSourced);
+}
+
+/** Whether a signed-in visitor can say the person at this seat left 30+ minutes ago (opens a SAVED dispute). */
+export function canReportLeft(seat: Pick<SeatDto, "status" | "verified" | "dispute">): boolean {
+  if (seat.verified || seat.dispute) return false;
+  return seat.status === "OCCUPIED" || seat.status === "SAVED" || seat.status === "UNCERTAIN";
 }
 
 /** "hasta 14:32" — local time the photo-verification protection on a check-in ends. */

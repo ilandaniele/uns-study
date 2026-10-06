@@ -3,6 +3,7 @@ import {
   checkInExpiryStatus,
   confidenceWording,
   disputeCountdownLabel,
+  canReportLeft,
   disputeOptionsFor,
   seatCodeLabel,
   disputeKindTitle,
@@ -105,7 +106,7 @@ describe("disputeKindTitle", () => {
   it("translates each dispute kind to Spanish", () => {
     expect(disputeKindTitle("CLAIM")).toBe("Me senté acá");
     expect(disputeKindTitle("ABSENT")).toBe("Esa persona no está");
-    expect(disputeKindTitle("SAVED")).toBe("Pedir que se libere");
+    expect(disputeKindTitle("SAVED")).toBe("Se fue hace más de 30 min");
   });
 });
 
@@ -155,18 +156,18 @@ describe("disputeOptionsFor", () => {
     expect(disputeOptionsFor({ verified: true, sourceSummary: "CHECK_IN" })).toEqual([]);
   });
 
-  it("offers all three options when a check-in is the occupancy source", () => {
+  it("offers CLAIM and ABSENT when a check-in is the occupancy source", () => {
     const kinds = disputeOptionsFor({ verified: false, sourceSummary: "CHECK_IN" }).map((o) => o.kind);
-    expect(kinds).toEqual(["CLAIM", "ABSENT", "SAVED"]);
+    expect(kinds).toEqual(["CLAIM", "ABSENT"]);
   });
 
-  it("only offers SAVED when occupancy comes from observations, not a check-in", () => {
+  it("offers nothing in the list when occupancy comes from observations, not a check-in", () => {
     const kinds = disputeOptionsFor({ verified: false, sourceSummary: "OBSERVATION_OCCUPIED" }).map((o) => o.kind);
-    expect(kinds).toEqual(["SAVED"]);
+    expect(kinds).toEqual([]);
   });
 
-  it("only offers SAVED when there is no clear source yet", () => {
-    expect(disputeOptionsFor({ verified: false, sourceSummary: null }).map((o) => o.kind)).toEqual(["SAVED"]);
+  it("offers nothing in the list when there is no clear source yet", () => {
+    expect(disputeOptionsFor({ verified: false, sourceSummary: null }).map((o) => o.kind)).toEqual([]);
   });
 });
 
@@ -293,5 +294,21 @@ describe("seatCodeLabel", () => {
   it("turns raw seat codes into human labels", () => {
     expect(seatCodeLabel("M07-S05")).toBe("Mesa 7 · Asiento 5");
     expect(seatCodeLabel("M12-S1")).toBe("Mesa 12 · Asiento 1");
+  });
+});
+
+describe("canReportLeft", () => {
+  const dispute = { id: "d1", closesAt: "2026-10-05T12:05:00.000Z" };
+
+  it("allows it on occupied, saved and uncertain seats", () => {
+    for (const status of ["OCCUPIED", "SAVED", "UNCERTAIN"] as const) {
+      expect(canReportLeft({ status, verified: false, dispute: null })).toBe(true);
+    }
+  });
+
+  it("blocks it on free seats, photo-verified seats and seats with an open dispute", () => {
+    expect(canReportLeft({ status: "FREE", verified: false, dispute: null })).toBe(false);
+    expect(canReportLeft({ status: "OCCUPIED", verified: true, dispute: null })).toBe(false);
+    expect(canReportLeft({ status: "OCCUPIED", verified: false, dispute })).toBe(false);
   });
 });
