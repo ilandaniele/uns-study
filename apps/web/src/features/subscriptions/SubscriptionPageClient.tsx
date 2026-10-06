@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ApiRequestError } from "@/lib/api";
+import { BackButton } from "@/components/BackButton";
 import { refreshMe, useMe } from "@/lib/me-store";
 import { cancelSubscription, fetchSubscription, startCheckout } from "./api";
 import { CancelSubscriptionDialog } from "./CancelSubscriptionDialog";
@@ -104,6 +105,7 @@ export function SubscriptionPageClient() {
 
   return (
     <main className="mx-auto max-w-prose space-y-6 px-4 py-8 text-main">
+      <BackButton fallbackHref="/perfil" />
       <header className="space-y-2">
         <h1 className="font-display text-2xl font-semibold uppercase tracking-wide">Sala de Estudio sin anuncios</h1>
         {price !== undefined && <p className="text-lg font-semibold text-primary tabular-nums">${price.toLocaleString("es-AR")} por mes</p>}

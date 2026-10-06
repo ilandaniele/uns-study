@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
+import { BackButton } from "@/components/BackButton";
 import { ChatComposer } from "@/features/chat/ChatComposer";
 import { daySeparatorFlags, formatDaySeparator, formatMessageTime, groupMessages } from "@/features/chat/grouping";
 import { MessageMenu } from "@/features/chat/MessageMenu";
@@ -52,7 +53,8 @@ function DmThread({ conversationId, currentUserId }: { conversationId: string; c
   return (
     <main className="mx-auto flex h-[calc(100dvh_-_57px_-_56px_-_env(safe-area-inset-bottom))] max-w-2xl flex-col lg:h-[calc(100dvh_-_57px)]">
       <div className="flex items-center justify-between gap-3 border-b border-app bg-surface px-4 py-3">
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 items-center gap-1">
+          <BackButton fallbackHref="/chat/dm" />
           {otherUserId ? (
             <Avatar
               userId={otherUserId}
@@ -62,9 +64,6 @@ function DmThread({ conversationId, currentUserId }: { conversationId: string; c
             />
           ) : null}
           <div className="min-w-0">
-            <Link href="/chat/dm" className="text-xs text-muted hover:underline">
-              ← Mensajes
-            </Link>
             <h1 className="truncate font-display text-lg font-semibold text-main">
               {conversation?.otherUser.displayName ?? "Conversación"}
             </h1>

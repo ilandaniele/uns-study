@@ -6,17 +6,13 @@ import { useStickToBottom } from "./useStickToBottom";
 import { Avatar } from "@/components/Avatar";
 import { daySeparatorFlags, formatDaySeparator, formatMessageTime, groupMessages } from "./grouping";
 import { MessageMenu } from "./MessageMenu";
+import { isOwnMessage } from "./unread";
 
 export interface ChatMessageListProps {
   messages: ChatMessageDto[];
   currentUserId: string | null;
   onDelete: (messageId: string) => void;
   onBlock: (userId: string) => void;
-}
-
-/** Own message: the per-viewer `mine` flag (alias authors have no userId) or a matching author id. */
-function isOwnMessage(message: ChatMessageDto, currentUserId: string | null): boolean {
-  return message.mine === true || (currentUserId !== null && message.author.userId === currentUserId);
 }
 
 /** Grouping key; alias authors have no userId, so their (unique) alias name stands in. */

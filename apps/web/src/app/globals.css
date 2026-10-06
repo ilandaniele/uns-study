@@ -522,6 +522,47 @@ summary:focus-visible,
   }
 }
 
+/* Floating chat: the card grows out of the chat bubble (origin set on the element) and shrinks
+   back into it; the unread badge pops when its count changes. */
+@keyframes chat-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+@keyframes chat-pop-out {
+  to {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+@keyframes badge-pop {
+  from {
+    transform: scale(0.5);
+  }
+}
+.chat-pop-enter {
+  animation: chat-pop-in 220ms var(--ease-out);
+}
+.chat-pop-exit {
+  animation: chat-pop-out 140ms var(--ease-out) forwards;
+  pointer-events: none;
+}
+.badge-pop {
+  animation: badge-pop 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-pop-enter {
+    animation: backdrop-fade-in 0.18s var(--ease-out);
+  }
+  .chat-pop-exit {
+    animation: backdrop-fade-out 140ms var(--ease-out) forwards;
+  }
+  .badge-pop {
+    animation: none;
+  }
+}
+
 /* Toast entry: transitions from @starting-style so it works on first paint. */
 .toast-enter {
   transition: opacity 200ms var(--ease-out), transform 240ms var(--ease-out);

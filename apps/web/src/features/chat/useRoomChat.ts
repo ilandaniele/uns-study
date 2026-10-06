@@ -3,7 +3,7 @@
 import { SocketEvents } from "@sala/contracts/events";
 import { chatMessageSchema } from "@sala/contracts";
 import type { ChatHistoryDto, ChatMessageDto, Page } from "@sala/contracts";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiDelete, apiFetch, apiPost, ApiRequestError } from "@/lib/api";
 import { DataPaths } from "@/lib/prefetch";
 import { fetchCached, peekCached } from "@/lib/query-cache";
@@ -169,7 +169,11 @@ export function useRoomChat(roomSlug: string, blockedIds: Set<string>): UseRoomC
     }
   }, []);
 
-  const visibleMessages = messages.filter((m) => (m.author.userId === null || !blockedIds.has(m.author.userId)));
+  // Memoized so consumers can depend on the array identity (it only changes with the data).
+  const visibleMessages = useMemo(
+    () => messages.filter((m) => m.author.userId === null || !blockedIds.has(m.author.userId)),
+    [messages, blockedIds],
+  );
 
   return {
     messages: visibleMessages,

@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { NotifyCard, PresetChips, SoundCard, StatsCard, TasksCard, TimesCard } from "./cards";
 import { FocusTimer, MiniTimer } from "./FocusTimer";
 import { useFullscreen, usePipWindow, useShortcuts } from "./hooks";
+import { BackButton } from "@/components/BackButton";
 
 const iconBtn =
   "flex h-11 w-11 items-center justify-center rounded-lg border border-app text-main transition-[transform,background-color] duration-150 hover:bg-[var(--surface-2)] active:scale-[0.94]";
@@ -19,9 +20,12 @@ export function FocusView() {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 pb-24 pt-6 md:pb-10">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex flex-col gap-1">
+        <div className="flex items-start gap-1">
+          <BackButton fallbackHref="/" />
+          <div className="flex flex-col gap-1">
           <h1 className="font-display text-[22px] font-extrabold uppercase leading-none tracking-[0.01em] text-main">Foco</h1>
           <p className="text-sm text-muted">Bloques de estudio con pausas. Sigue corriendo aunque cambies de pantalla.</p>
+          </div>
         </div>
         <div className="flex shrink-0 gap-2">
           {pip.supported ? (

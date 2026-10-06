@@ -32,6 +32,7 @@ export interface AdminUserSearchResultDto {
   name: string;
   email: string | null;
   createdAt: string;
+  isAdmin: boolean;
 }
 
 export interface RoomQrCodeDto {

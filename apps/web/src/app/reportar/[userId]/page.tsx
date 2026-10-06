@@ -3,6 +3,7 @@
 import type { ReportContext, ReportReason } from "@sala/contracts";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
+import { BackButton } from "@/components/BackButton";
 import { ReportForm } from "@/features/reports/ReportForm";
 import { REPORT_REASONS } from "@/features/reports/reportReasons";
 import { useSession } from "@/lib/auth-client";
@@ -38,11 +39,17 @@ export default function ReportUserPage() {
   }
 
   if (session.user.id === userId) {
-    return <main className="p-6 text-center text-muted">No podés reportarte a vos mismo.</main>;
+    return (
+      <main className="mx-auto max-w-lg p-4">
+        <BackButton fallbackHref={`/u/${userId}`} />
+        <p className="p-6 text-center text-muted">No podés reportarte a vos mismo.</p>
+      </main>
+    );
   }
 
   return (
     <main className="mx-auto max-w-lg p-4">
+      <BackButton fallbackHref={`/u/${userId}`} />
       <ReportForm reportedUserId={userId} context={context} contextMessageId={contextMessageId} roomId={roomId} initialReason={initialReason} initialDescription={initialDescription} />
     </main>
   );

@@ -9,7 +9,8 @@ import { ModerationActionService } from "./moderation-action.service.js";
 
 const ADMIN_ONLY_ACTIONS: ModerationActionType[] = ["SUSPEND", "BAN", "LIFT"];
 
-const SEARCH_LIMIT = 20;
+const SEARCH_LIMIT = 50;
+const LIST_ALL_LIMIT = 500;
 const RECENT_SECURITY_EVENTS = 10;
 const SEARCH_QUERY_MAX_LENGTH = 100;
 
@@ -28,15 +29,23 @@ export class AdminUsersService {
 
   async search(q: string | undefined, actorId: string) {
     const canSeeEmail = await this.roles.hasRole(actorId, ["ADMIN"]);
-    const query = q?.slice(0, SEARCH_QUERY_MAX_LENGTH);
+    const query = q?.trim().slice(0, SEARCH_QUERY_MAX_LENGTH);
     const rows = query
       ? await this.db
           .select()
           .from(schema.user)
           .where(or(ilike(schema.user.name, `%${escapeLikePattern(query)}%`), ilike(schema.user.email, `%${escapeLikePattern(query)}%`)))
+          .orderBy(desc(schema.user.createdAt))
           .limit(SEARCH_LIMIT)
-      : await this.db.select().from(schema.user).limit(SEARCH_LIMIT);
-    return rows.map((u) => ({ userId: u.id, name: u.name, email: canSeeEmail ? u.email : null, createdAt: u.createdAt.toISOString() }));
+      : await this.db.select().from(schema.user).orderBy(desc(schema.user.createdAt)).limit(LIST_ALL_LIMIT);
+    const admins = await this.roles.adminIds(rows.map((u) => u.id));
+    return rows.map((u) => ({
+      userId: u.id,
+      name: u.name,
+      email: canSeeEmail ? u.email : null,
+      createdAt: u.createdAt.toISOString(),
+      isAdmin: admins.has(u.id),
+    }));
   }
 
   async getById(userId: string, actorId: string): Promise<AdminUserDto> {

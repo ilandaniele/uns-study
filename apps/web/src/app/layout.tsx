@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { AdsRoot } from "@/features/ads/AdsRoot";
 import { AnalyticsLoader } from "@/components/AnalyticsLoader";
 import { BottomNav } from "@/components/BottomNav";
+import { NavigationTracker } from "@/components/NavigationTracker";
+import { ChatLauncher } from "@/features/chat/ChatLauncher";
 import { Header } from "@/components/Header";
 import { FocusRuntime } from "@/features/focus/FocusRuntime";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -58,7 +60,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <OfflineBanner />
         <Header />
         {children}
+        <ChatLauncher />
         <BottomNav />
+        <NavigationTracker />
         <FocusRuntime />
         <AdsRoot />
         <ServiceWorkerRegistration />

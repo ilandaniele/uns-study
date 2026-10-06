@@ -15,7 +15,6 @@ const NAV_ITEMS: { label: string; href: string }[] = [
   { label: "Sala", href: "/" },
   { label: "Personas", href: "/personas" },
   { label: "Comunidad", href: "/comunidad" },
-  { label: "Chat", href: "/chat" },
   { label: "Ranking", href: "/ranking" },
   { label: "Foco", href: "/foco" },
   { label: "Perfil", href: "/perfil" },

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { Avatar } from "@/components/Avatar";
+import { BackButton } from "@/components/BackButton";
 import { formatMessageTime } from "@/features/chat/grouping";
 import { useConversations } from "@/features/chat/useConversations";
 import { useSession } from "@/lib/auth-client";
@@ -41,7 +42,10 @@ export default function ConversationsPage() {
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-3 p-4">
-      <h1 className="font-display text-[22px] font-extrabold uppercase leading-none tracking-[0.01em] text-main">Mensajes</h1>
+      <div className="flex items-center gap-1">
+        <BackButton fallbackHref="/chat" />
+        <h1 className="font-display text-[22px] font-extrabold uppercase leading-none tracking-[0.01em] text-main">Mensajes</h1>
+      </div>
 
       {loading ? (
         <p className="p-6 text-center text-muted">Cargando conversaciones…</p>

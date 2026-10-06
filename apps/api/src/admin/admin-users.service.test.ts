@@ -69,6 +69,11 @@ describe("AdminUsersService.search", () => {
     expect(results).toEqual([]);
   });
 
+  it("lists all users when the query is empty or whitespace-only", async () => {
+    expect(await svc.search(undefined, "plain")).toHaveLength(1);
+    expect(await svc.search("   ", "plain")).toHaveLength(1);
+  });
+
   it("caps the query length at 100 characters", async () => {
     const results = await svc.search("a".repeat(500), "plain");
     expect(results).toEqual([]);
@@ -101,6 +106,12 @@ describe("AdminUsersService email visibility", () => {
     expect(results).toHaveLength(1);
     expect(results[0]!.email).toBeNull();
     expect((await svc.getById("plain", "moderator")).email).toBeNull();
+  });
+
+  it("flags admins in the list", async () => {
+    const results = await svc.search(undefined, "admin");
+    const byId = Object.fromEntries(results.map((r) => [r.userId, r.isAdmin]));
+    expect(byId).toEqual({ admin: true, moderator: false, plain: false });
   });
 });
 

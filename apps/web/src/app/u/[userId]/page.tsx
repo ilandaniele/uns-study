@@ -4,7 +4,9 @@ import { createConversationSchema, type ConversationDto, type PublicProfileDto }
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { BackButton } from "@/components/BackButton";
 import { WithAdminBadge } from "@/components/AdminBadge";
+import { PhotoViewer } from "@/components/PhotoViewer";
 import { apiFetch, apiPost, ApiRequestError } from "@/lib/api";
 import { useSession } from "@/lib/auth-client";
 
@@ -80,17 +82,28 @@ export default function PublicProfilePage() {
   }
 
   if (!session?.user) {
-    return <main className="p-6 text-center text-muted">Iniciá sesión para ver este perfil.</main>;
+    return (
+      <main className="mx-auto max-w-lg p-4">
+        <BackButton fallbackHref="/personas" />
+        <p className="p-6 text-center text-muted">Iniciá sesión para ver este perfil.</p>
+      </main>
+    );
   }
 
   if (error || !profile) {
-    return <main className="p-6 text-center text-red-600">{error ?? "No encontramos ese perfil."}</main>;
+    return (
+      <main className="mx-auto max-w-lg p-4">
+        <BackButton fallbackHref="/personas" />
+        <p className="p-6 text-center text-red-600">{error ?? "No encontramos ese perfil."}</p>
+      </main>
+    );
   }
 
   const isSelf = session.user.id === userId;
 
   return (
     <main className="mx-auto max-w-lg p-4">
+      <BackButton fallbackHref="/personas" />
       <div className="rounded-[14px] border border-app bg-surface p-5">
         <div className="flex items-center gap-4">
           <WithAdminBadge show={profile.adminBadge} size={64}>
@@ -171,9 +184,22 @@ function Chip({ children }: { children: string }) {
 }
 
 function PersonAvatar({ name, avatarUrl }: { name: string; avatarUrl: string | null }) {
+  const [viewing, setViewing] = useState(false);
   if (avatarUrl) {
-    // eslint-disable-next-line @next/next/no-img-element -- avatars are arbitrary external HTTPS URLs, not a build-time asset
-    return <img src={avatarUrl} alt="" className="h-16 w-16 shrink-0 rounded-full object-cover" />;
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setViewing(true)}
+          aria-label={`Ver foto de ${name}`}
+          className="shrink-0 cursor-zoom-in rounded-full transition-transform duration-150 active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- avatars are arbitrary external HTTPS URLs, not a build-time asset */}
+          <img src={avatarUrl} alt="" className="h-16 w-16 rounded-full object-cover" />
+        </button>
+        {viewing ? <PhotoViewer src={avatarUrl} alt={`Foto de ${name}`} onClose={() => setViewing(false)} /> : null}
+      </>
+    );
   }
   return (
     <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] font-display text-2xl font-semibold text-main">

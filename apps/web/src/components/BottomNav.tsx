@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ChatCircleIcon,
   MegaphoneIcon,
   ShieldCheckIcon,
   SquaresFourIcon,
@@ -21,7 +20,6 @@ const ITEMS: { label: string; href: string; icon: ReactNode }[] = [
   { label: "Sala", href: "/", icon: <SquaresFourIcon size={ICON_SIZE} /> },
   { label: "Comunidad", href: "/comunidad", icon: <MegaphoneIcon size={ICON_SIZE} /> },
   { label: "Personas", href: "/personas", icon: <UsersThreeIcon size={ICON_SIZE} /> },
-  { label: "Chat", href: "/chat", icon: <ChatCircleIcon size={ICON_SIZE} /> },
   { label: "Ranking", href: "/ranking", icon: <TrophyIcon size={ICON_SIZE} /> },
   { label: "Perfil", href: "/perfil", icon: <UserCircleIcon size={ICON_SIZE} /> },
 ];
