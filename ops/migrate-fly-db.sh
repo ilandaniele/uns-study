@@ -13,6 +13,8 @@ set -euo pipefail
 DB_APP="sala-de-estudio-db"
 PROXY_PORT=15433
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# setup-flyctl installs `flyctl`; a local install may only have `fly`.
+FLY="$(command -v flyctl || command -v fly)" || { echo "flyctl not found."; exit 1; }
 
 db_sql() { # $1 = SQL, $2 = marker echoed on success
   local script b64 out
@@ -20,8 +22,11 @@ db_sql() { # $1 = SQL, $2 = marker echoed on success
   b64=$(printf '%s' "$script" | base64 -w0)
   # The payload can carry the one-time password; keep it out of the Actions log too.
   if [ -n "${GITHUB_ACTIONS:-}" ]; then echo "::add-mask::$b64"; fi
-  out=$(fly ssh console -a "$DB_APP" -q -C "sh -c 'echo $b64 | base64 -d | bash'" 2>&1 || true)
-  [[ "$out" == *"$2"* ]]
+  out=$("$FLY" ssh console -a "$DB_APP" -q -C "sh -c 'echo $b64 | base64 -d | bash'" 2>&1 || true)
+  [[ "$out" == *"$2"* ]] && return 0
+  # Last lines only: enough to diagnose (auth, psql error), never the script itself.
+  printf '%s\n' "$out" | tail -n 3 | sed 's/^/  ssh: /' >&2
+  return 1
 }
 
 lock() {
@@ -58,7 +63,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sala_owner IN SCHEMA drizzle GRANT SELECT ON T
   || { echo "Could not enable sala_owner."; exit 1; }
 
 echo "Opening proxy to $DB_APP..."
-fly proxy "${PROXY_PORT}:5432" -a "$DB_APP" >/dev/null 2>&1 &
+"$FLY" proxy "${PROXY_PORT}:5432" -a "$DB_APP" >/dev/null 2>&1 &
 PROXY_PID=$!
 for _ in $(seq 1 30); do
   if (exec 3<>"/dev/tcp/127.0.0.1/$PROXY_PORT") 2>/dev/null; then READY=1; break; fi
