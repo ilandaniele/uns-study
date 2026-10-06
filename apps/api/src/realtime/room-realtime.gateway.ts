@@ -33,7 +33,10 @@ import { RestrictionService } from "../users/restriction.service.js";
 import type { Auth } from "../auth/auth.instance.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { NotificationService } from "../notifications/notification.service.js";
-import { verifySocketToken } from "./socket-token.js";
+import { verifySocketToken, type SocketTokenClaims } from "./socket-token.js";
+import { and, eq, gt } from "drizzle-orm";
+import { schema, type Db } from "@sala/database";
+import { DB } from "../database/database.module.js";
 import { env } from "../env.js";
 import { socketClientIp, takeSocketToken, type SocketBucket } from "./socket-bucket.js";
 
@@ -74,17 +77,20 @@ const SUMMARY_COALESCE_MS = 250;
  * `handshake.auth.token` first (issued by `GET /api/v1/realtime/token` — required in production
  * since the socket server isn't behind the web app's same-origin proxy and can't read its session
  * cookie), then falls back to the Better Auth session cookie used by HTTP requests (works locally,
- * where the socket and API share an origin). Never rejects — anonymous sockets stay anonymous.
- * Exported standalone so it can be unit-tested against a mocked `Auth` without a real socket.
+ * where the socket and API share an origin). A token only counts while the session it was minted
+ * for is still live (`isSessionActive`), so signing out cuts realtime access immediately instead of
+ * after the token TTL. Never rejects — anonymous sockets stay anonymous. Exported standalone so it
+ * can be unit-tested against a mocked `Auth` without a real socket.
  */
 export async function resolveSocketUserId(
   auth: Auth,
   handshake: { headers: IncomingHttpHeaders; auth?: unknown },
+  isSessionActive: (claims: SocketTokenClaims) => Promise<boolean>,
 ): Promise<string | null> {
   const token = (handshake.auth as { token?: unknown } | undefined)?.token;
   if (typeof token === "string") {
-    const userId = verifySocketToken(token);
-    if (userId) return userId;
+    const claims = verifySocketToken(token);
+    if (claims && (await isSessionActive(claims).catch(() => false))) return claims.userId;
   }
 
   try {
@@ -123,7 +129,21 @@ export class RoomRealtimeGateway implements OnGatewayConnection, OnGatewayDiscon
     @Inject(AUTH) private readonly auth: Auth,
     @Inject(NotificationService) private readonly notifications: NotificationService,
     @Inject(RestrictionService) private readonly restrictions: RestrictionService,
+    // Optional only so unit tests can build the gateway without a DB; Nest always injects it.
+    @Inject(DB) private readonly db?: Db,
   ) {}
+
+  /** True while the Better Auth session a socket token was minted for still exists, belongs to the
+   *  same user and hasn't expired. Without a DB (unit tests) every token is refused. */
+  private async isSessionActive({ userId, sessionId }: SocketTokenClaims): Promise<boolean> {
+    if (!this.db) return false;
+    const rows = await this.db
+      .select({ id: schema.session.id })
+      .from(schema.session)
+      .where(and(eq(schema.session.id, sessionId), eq(schema.session.userId, userId), gt(schema.session.expiresAt, new Date())))
+      .limit(1);
+    return rows.length > 0;
+  }
 
   /** Anonymous connections are allowed; joining a room map is opt-in via `room:join`. Authed
    *  sockets are additionally auto-joined to their private `user:{userId}` channel for DMs. */
@@ -137,7 +157,7 @@ export class RoomRealtimeGateway implements OnGatewayConnection, OnGatewayDiscon
     this.connectionsPerIp.set(ip, open + 1);
     socket.data.ip = ip;
 
-    const userId = await resolveSocketUserId(this.auth, socket.handshake);
+    const userId = await resolveSocketUserId(this.auth, socket.handshake, (claims) => this.isSessionActive(claims));
     socket.data.userId = userId;
     if (userId) socket.join(userChannel(userId));
   }

@@ -22,34 +22,41 @@ function sign(payload: string, key: Buffer): string {
 }
 
 /**
- * Issues a short-lived signed token (`userId.exp.sig`) proving the caller had a valid Better Auth
- * session at issuance time. Socket.IO connects directly to the API host (it can't be proxied
- * through Vercel's rewrites like REST calls), so it can't rely on the same-origin session cookie —
- * this token is passed via `handshake.auth.token` instead.
+ * Issues a short-lived signed token (`userId.sessionId.exp.sig`) proving the caller had a valid
+ * Better Auth session at issuance time. Socket.IO connects directly to the API host (it can't be
+ * proxied through Vercel's rewrites like REST calls), so it can't rely on the same-origin session
+ * cookie — this token is passed via `handshake.auth.token` instead. The session id is bound in so
+ * the gateway can refuse a token whose session was signed out or revoked before it expired.
  */
-export function signSocketToken(userId: string, secret = env.betterAuthSecret): SocketToken {
+export function signSocketToken(userId: string, sessionId: string, secret = env.betterAuthSecret): SocketToken {
   const key = deriveKey(secret);
   const expiresAt = Date.now() + TTL_S * 1000;
-  const payload = `${userId}.${expiresAt}`;
+  const payload = `${userId}.${sessionId}.${expiresAt}`;
   return { token: `${payload}.${sign(payload, key)}`, expiresAt };
+}
+
+export interface SocketTokenClaims {
+  userId: string;
+  sessionId: string;
 }
 
 /**
  * Verifies a token minted by `signSocketToken`: well-formed, unexpired, and signed with the
- * current secret. Returns the `userId` on success, `null` on any failure (malformed, expired,
- * tampered). Signature comparison is timing-safe.
+ * current secret. Returns its claims on success, `null` on any failure (malformed, expired,
+ * tampered). Signature comparison is timing-safe. It does not check that the session is still
+ * live — callers must do that against the session table.
  */
-export function verifySocketToken(token: string, secret = env.betterAuthSecret): string | null {
+export function verifySocketToken(token: string, secret = env.betterAuthSecret): SocketTokenClaims | null {
   const parts = token.split(".");
-  if (parts.length !== 3) return null;
-  const [userId, expRaw, sig] = parts;
+  if (parts.length !== 4) return null;
+  const [userId, sessionId, expRaw, sig] = parts;
   const exp = Number(expRaw);
-  if (!userId || !sig || !Number.isFinite(exp)) return null;
+  if (!userId || !sessionId || !sig || !Number.isFinite(exp)) return null;
   if (Date.now() > exp) return null;
 
   const key = deriveKey(secret);
-  const expected = Buffer.from(sign(`${userId}.${expRaw}`, key));
+  const expected = Buffer.from(sign(`${userId}.${sessionId}.${expRaw}`, key));
   const actual = Buffer.from(sig);
   if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;
-  return userId;
+  return { userId, sessionId };
 }

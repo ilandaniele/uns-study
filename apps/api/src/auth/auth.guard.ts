@@ -13,7 +13,7 @@ const BLOCK_CACHE_TTL_MS = 30_000;
 async function resolveUser(auth: Auth, req: Request): Promise<RequestUser | null> {
   const session = await auth.api.getSession({ headers: toFetchHeaders(req.headers) });
   if (!session?.user) return null;
-  return { id: session.user.id, name: session.user.name, email: session.user.email, image: session.user.image ?? null, emailVerified: session.user.emailVerified === true };
+  return { id: session.user.id, name: session.user.name, email: session.user.email, image: session.user.image ?? null, emailVerified: session.user.emailVerified === true, sessionId: session.session?.id };
 }
 
 /** Requires an authenticated Better Auth session; populates `req.user`. */

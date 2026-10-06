@@ -4,6 +4,8 @@ export interface RequestUser {
   email: string;
   image: string | null;
   emailVerified?: boolean;
+  /** Better Auth session id behind this request (set by AuthGuard). */
+  sessionId?: string;
 }
 
 /** Converts Express request headers into a standard `Headers` instance for Better Auth's API. */

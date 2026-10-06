@@ -11,6 +11,7 @@ import { signSocketToken, type SocketToken } from "./socket-token.js";
 export class RealtimeTokenController {
   @Get("token")
   getToken(@CurrentUser() user: RequestUser): SocketToken {
-    return signSocketToken(user.id);
+    // AuthGuard always sets sessionId; the guard is the only way into this handler.
+    return signSocketToken(user.id, user.sessionId ?? "");
   }
 }
