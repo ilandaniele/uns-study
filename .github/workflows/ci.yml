@@ -2,20 +2,29 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches-ignore: [main]
   pull_request:
+  # Pushes to main run this through deploy.yml, which only ships a commit that passed every check.
+  workflow_call:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   checks:
+    name: Lint, typecheck, test, build
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
-      # Tests use in-memory PGlite; no external services needed.
       PGLITE_DIR: memory://
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -24,6 +33,67 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
+      # Includes the security suite: IDOR checks (authorization.http.test.ts), every route requires
+      # auth unless listed in PUBLIC_ROUTES (route-auth-coverage.http.test.ts), rate limits, abuse policy.
       - run: pnpm test
+      - name: Schema and migrations in sync
+        run: |
+          pnpm --filter @sala/database exec drizzle-kit generate
+          if [ -n "$(git status --porcelain packages/database/migrations)" ]; then
+            git status --porcelain packages/database/migrations
+            echo "::error::Schema changed without a migration. Run 'pnpm db:generate' and commit the result."
+            exit 1
+          fi
       - run: pnpm --filter @sala/api build
       - run: pnpm --filter @sala/web build
+
+  dependencies:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Everything that ships (runtime dependencies) must be free of high/critical advisories.
+      - run: pnpm audit --prod --audit-level=high
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install gitleaks (pinned, checksum verified)
+        env:
+          VERSION: 8.30.1
+          SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          curl -fsSLo gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz"
+          echo "${SHA256}  gitleaks.tgz" | sha256sum -c -
+          tar -xzf gitleaks.tgz gitleaks
+          rm gitleaks.tgz
+      # Whole history: a secret committed and later removed is still leaked.
+      - run: ./gitleaks git --redact --no-banner --exit-code 1 .
+
+  sast:
+    name: Static analysis (semgrep)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: semgrep/semgrep:1.179.0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: >-
+          semgrep scan --error --metrics=off
+          --config p/typescript --config p/nodejs --config p/react --config p/nextjs
+          --config p/secrets --config p/github-actions --config p/dockerfile

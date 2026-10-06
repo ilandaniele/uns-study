@@ -1,6 +1,6 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { checkBearer } from "./auth.js";
 import { describeLayout } from "./layout-description.js";
 import { GeminiSeatLocator } from "./gemini-locator.js";
@@ -20,7 +20,7 @@ const BODY = {
 
 let server: Server;
 let url: string;
-let locate: ReturnType<typeof vi.fn>;
+let locate: Mock;
 
 beforeEach(async () => {
   vi.spyOn(console, "log").mockImplementation(() => {});

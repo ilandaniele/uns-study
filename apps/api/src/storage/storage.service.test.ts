@@ -4,10 +4,18 @@ const sendMock = vi.fn();
 const getSignedUrlMock = vi.fn(async () => "https://signed.example/upload");
 
 vi.mock("@aws-sdk/client-s3", () => ({
-  S3Client: vi.fn().mockImplementation(() => ({ send: sendMock })),
-  PutObjectCommand: vi.fn().mockImplementation((input) => ({ input })),
-  GetObjectCommand: vi.fn().mockImplementation((input) => ({ input })),
-  HeadObjectCommand: vi.fn().mockImplementation((input) => ({ input })),
+  S3Client: vi.fn(function () {
+    return { send: sendMock };
+  }),
+  PutObjectCommand: vi.fn(function (input: unknown) {
+    return { input };
+  }),
+  GetObjectCommand: vi.fn(function (input: unknown) {
+    return { input };
+  }),
+  HeadObjectCommand: vi.fn(function (input: unknown) {
+    return { input };
+  }),
 }));
 vi.mock("@aws-sdk/s3-request-presigner", () => ({
   getSignedUrl: getSignedUrlMock,

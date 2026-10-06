@@ -1,0 +1,103 @@
+name: Deploy
+
+# Every push to main: full CI, then migrate the production DB, then deploy API, web and (when it
+# changed) the seat verifier to Fly. Nothing deploys unless every CI job passed.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never run two production deploys at once: overlapping bluegreen deploys leave stale machines.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  migrate:
+    name: Migrate production DB
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: superfly/flyctl-actions/setup-flyctl@1.5
+      # Token scoped to the DB app only (fly tokens create deploy -a sala-de-estudio-db).
+      - run: bash ops/migrate-fly-db.sh
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_TOKEN_DB }}
+
+  api:
+    name: Deploy API
+    needs: migrate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: superfly/flyctl-actions/setup-flyctl@1.5
+      - run: flyctl deploy -c fly.toml --remote-only --wait-timeout 10m
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_TOKEN_API }}
+      - name: Smoke test
+        run: |
+          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors https://uns-study-api.fly.dev/api/v1/health
+          # A protected route must still refuse anonymous callers.
+          code=$(curl -s -o /dev/null -w '%{http_code}' https://uns-study-api.fly.dev/api/v1/profiles/me)
+          [ "$code" = 401 ] || { echo "::error::/profiles/me returned $code without auth"; exit 1; }
+
+  web:
+    name: Deploy web
+    needs: api
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: superfly/flyctl-actions/setup-flyctl@1.5
+      - run: flyctl deploy -c fly.web.toml --remote-only --wait-timeout 10m
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_TOKEN_WEB }}
+      - name: Smoke test
+        run: curl -fsS --retry 5 --retry-delay 5 --retry-all-errors -o /dev/null https://saladeestudio.com.ar/
+
+  verifier:
+    name: Deploy seat verifier
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Changed?
+        id: changed
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "${{ github.event_name }}" = workflow_dispatch ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null \
+            || git diff --name-only "$BEFORE" HEAD | grep -qE '^(apps/verifier/|Dockerfile\.verifier|fly\.verifier\.toml|pnpm-lock\.yaml)'; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.changed.outputs.deploy == 'true'
+        uses: superfly/flyctl-actions/setup-flyctl@1.5
+      - if: steps.changed.outputs.deploy == 'true'
+        run: flyctl deploy -c fly.verifier.toml --remote-only --wait-timeout 10m
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_TOKEN_VERIFIER }}
