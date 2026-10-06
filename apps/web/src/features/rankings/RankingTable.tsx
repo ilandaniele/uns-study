@@ -1,6 +1,7 @@
 import type { RankingDto, RankingEntryDto, RankingPeriod } from "@sala/contracts";
 import { TrophyIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { AdminBadge } from "@/components/AdminBadge";
 import { Avatar } from "@/components/Avatar";
 import { emptyRankingMessage, formatRankingValue } from "./labels";
@@ -51,7 +52,7 @@ function Podium({ entries, format }: { entries: RankingEntryDto[]; format: (valu
               entry.rank === 1 ? "from-[var(--surface-2)] to-surface pt-7" : "from-[var(--surface-2)]/60 to-surface pt-3"
             } ${entry.isMe ? "border-[var(--primary)] bg-primary/10" : "border-app"}`}
           >
-            <div className="relative">
+            <PodiumAvatarLink userId={entry.userId}>
               <Avatar
                 userId={entry.userId ?? entry.displayName}
                 name={entry.displayName}
@@ -67,7 +68,7 @@ function Podium({ entries, format }: { entries: RankingEntryDto[]; format: (valu
               >
                 {entry.rank}
               </span>
-            </div>
+            </PodiumAvatarLink>
             {entry.userId ? (
               <Link
                 href={`/u/${entry.userId}`}
@@ -92,7 +93,20 @@ function Podium({ entries, format }: { entries: RankingEntryDto[]; format: (valu
   );
 }
 
+/** Podium avatar plus its badges; links to the profile when the entry is a real user. */
+function PodiumAvatarLink({ userId, children }: { userId: string | null; children: ReactNode }) {
+  if (!userId) return <div className="relative">{children}</div>;
+  return (
+    <Link href={`/u/${userId}`} aria-hidden="true" tabIndex={-1} className="relative block rounded-full">
+      {children}
+    </Link>
+  );
+}
+
 function RankingRow({ entry, value, highlighted }: { entry: RankingEntryDto; value: string; highlighted?: boolean }) {
+  const rowAvatar = (
+    <Avatar userId={entry.userId ?? entry.displayName} name={entry.displayName} url={entry.avatarUrl} aliasAnimal={entry.aliasAnimal} size={40} adminBadge={entry.adminBadge} />
+  );
   return (
     <li className={`flex items-center gap-3 px-4 py-3 ${highlighted ? "bg-primary/10" : ""}`}>
       <span
@@ -100,7 +114,13 @@ function RankingRow({ entry, value, highlighted }: { entry: RankingEntryDto; val
       >
         {entry.rank}
       </span>
-      <Avatar userId={entry.userId ?? entry.displayName} name={entry.displayName} url={entry.avatarUrl} aliasAnimal={entry.aliasAnimal} size={40} adminBadge={entry.adminBadge} />
+      {entry.userId ? (
+        <Link href={`/u/${entry.userId}`} aria-hidden="true" tabIndex={-1} className="shrink-0 rounded-full">
+          {rowAvatar}
+        </Link>
+      ) : (
+        rowAvatar
+      )}
       {entry.userId ? (
         <Link href={`/u/${entry.userId}`} className="min-w-0 flex-1 truncate text-sm font-medium text-main hover:underline">
           {entry.displayName}

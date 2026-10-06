@@ -15,6 +15,8 @@ export interface MyProfileDto {
   instagram: string | null;
   studentNumber: string | null;
   identityMode: IdentityMode;
+  /** Name the user typed themselves; overrides the name `identityMode` resolves to (ignored while HIDDEN). */
+  customName: string | null;
   /** Fun random alias, assigned once and never changed. Shown instead of a name while `identityMode` is HIDDEN. */
   alias: string | null;
   /** True when the user has the ADMIN role, so the profile page offers the admin badge toggle. */
@@ -102,6 +104,9 @@ export interface SeatMarkedByDto {
 /** Entry of `GET /rooms/:id/occupants`: discriminate with `"markedBy" in entry`. */
 export type SeatOccupancyDto = SeatOccupantDto | SeatMarkedByDto;
 
+/** Max length of the free-text display name typed in "¿Cómo te ven otras personas?". */
+export const CUSTOM_NAME_MAX_LENGTH = 40;
+
 // ---- zod ----
 
 export const updateProfileSchema = z.object({
@@ -122,6 +127,7 @@ export const updateProfileSchema = z.object({
   // `avatarUrl` is intentionally absent: the server owns it exclusively via `/profiles/me/avatar[/google]`
   // — accepting it here would let a client point their profile at an arbitrary URL.
   identityMode: z.enum(["FULL_NAME", "FIRST_NAME", "NICKNAME", "NICKNAME_AND_NAME", "HIDDEN"]).optional(),
+  customName: z.string().trim().max(CUSTOM_NAME_MAX_LENGTH).nullable().optional(),
 });
 
 export const updatePrivacySchema = z

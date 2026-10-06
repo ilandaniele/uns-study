@@ -108,7 +108,7 @@ export class ProfilesService {
     const aliasedProfile = await this.aliases.withAlias(profile ?? null);
     const name = displayName(
       profile
-        ? { firstName: profile.firstName, lastName: profile.lastName, nickname: profile.nickname, identityMode, alias: aliasedProfile?.alias ?? profile.alias }
+        ? { firstName: profile.firstName, lastName: profile.lastName, nickname: profile.nickname, customName: profile.customName, identityMode, alias: aliasedProfile?.alias ?? profile.alias }
         : null,
       null,
       targetUser.name,
@@ -170,6 +170,7 @@ function toMyProfileDto(row: ProfileRow, email: string, isAdmin: boolean): MyPro
     instagram: row.instagram,
     studentNumber: row.studentNumber,
     identityMode: row.identityMode,
+    customName: row.customName,
     alias: row.alias,
     isAdmin,
   };

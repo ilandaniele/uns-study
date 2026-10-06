@@ -1,21 +1,24 @@
 "use client";
 
-import type { MyProfileDto } from "@sala/contracts";
+import { CUSTOM_NAME_MAX_LENGTH, type MyProfileDto, type PrivacySettingsDto } from "@sala/contracts";
 import type { FormEvent, ReactNode } from "react";
 import { useState } from "react";
 import type { ProfilePatch } from "./useMyProfile";
 import { IDENTITY_MODES, identityModeHint, identityModeLabel } from "./identity-mode";
 import { CareerSelect } from "./CareerSelect";
 import { careerChoiceFromValue, careerValueFromChoice } from "./career-choice";
+import { computeAppearance } from "./appearance";
+import { OccupantAvatar } from "@/features/room/OccupantAvatar";
 
 export interface ProfileFormProps {
   profile: MyProfileDto;
+  privacy: PrivacySettingsDto;
   saving: boolean;
   onSave: (patch: ProfilePatch) => Promise<boolean>;
 }
 
 /** "Editar perfil" form: name/nickname/career/bio/instagram/legajo + identity-mode selector. */
-export function ProfileForm({ profile, saving, onSave }: ProfileFormProps) {
+export function ProfileForm({ profile, privacy, saving, onSave }: ProfileFormProps) {
   const [firstName, setFirstName] = useState(profile.firstName ?? "");
   const [lastName, setLastName] = useState(profile.lastName ?? "");
   const [nickname, setNickname] = useState(profile.nickname ?? "");
@@ -25,6 +28,17 @@ export function ProfileForm({ profile, saving, onSave }: ProfileFormProps) {
   const [instagram, setInstagram] = useState(profile.instagram ?? "");
   const [studentNumber, setStudentNumber] = useState(profile.studentNumber ?? "");
   const [identityMode, setIdentityMode] = useState(profile.identityMode);
+  // The shown-name box is prefilled with whatever the selected mode resolves to and follows it
+  // until the user types their own name; switching mode resets it to that mode's name.
+  const [customName, setCustomName] = useState(profile.customName ?? "");
+  const [customNameEdited, setCustomNameEdited] = useState(Boolean(profile.customName));
+  const draft = { ...profile, firstName, lastName, nickname, identityMode };
+  const modeAppearance = computeAppearance({ ...draft, customName: null }, privacy);
+  const defaultName = modeAppearance.identityVisible ? modeAppearance.name : "";
+  const shownName = customNameEdited ? customName : defaultName;
+  const trimmedCustom = customName.trim();
+  const savedCustomName = identityMode !== "HIDDEN" && customNameEdited && trimmedCustom && trimmedCustom !== defaultName ? trimmedCustom : null;
+  const preview = computeAppearance({ ...draft, customName: savedCustomName }, privacy);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -41,6 +55,7 @@ export function ProfileForm({ profile, saving, onSave }: ProfileFormProps) {
       instagram: instagram.trim() || null,
       studentNumber: studentNumber.trim() || null,
       identityMode,
+      customName: savedCustomName,
     });
     if (ok) setSavedAt(Date.now());
     else setSaveError("No pudimos guardar los cambios. Probá de nuevo.");
@@ -80,7 +95,15 @@ export function ProfileForm({ profile, saving, onSave }: ProfileFormProps) {
       </Field>
 
       <Field label="¿Cómo te ven otras personas?">
-        <select value={identityMode} onChange={(e) => setIdentityMode(e.target.value as MyProfileDto["identityMode"])} className={inputClass}>
+        <select
+          value={identityMode}
+          onChange={(e) => {
+            setIdentityMode(e.target.value as MyProfileDto["identityMode"]);
+            setCustomNameEdited(false);
+            setCustomName("");
+          }}
+          className={inputClass}
+        >
           {IDENTITY_MODES.map((mode) => (
             <option key={mode} value={mode}>
               {identityModeLabel(mode)}
@@ -90,10 +113,30 @@ export function ProfileForm({ profile, saving, onSave }: ProfileFormProps) {
         <p className="mt-1 text-xs text-muted">{identityModeHint(identityMode)}</p>
       </Field>
 
-      {identityMode === "HIDDEN" ? (
-        <p className="rounded-lg border border-app bg-surface px-3 py-2 text-sm text-main">
-          Tu nombre de animal es fijo: <span className="font-semibold">{profile.alias}</span>
-        </p>
+      <div className="flex items-center gap-3 rounded-lg border border-app bg-[var(--surface-2)] p-3">
+        <OccupantAvatar avatar={preview.avatar} size={48} adminBadge={preview.adminBadge} />
+        {identityMode === "HIDDEN" ? (
+          <p className="min-w-0 text-sm text-main">
+            Tu nombre de animal es fijo: <span className="font-semibold">{profile.alias}</span>
+          </p>
+        ) : (
+          <label className="block min-w-0 flex-1 text-xs font-medium text-muted">
+            Nombre que se muestra
+            <input
+              value={shownName}
+              onChange={(e) => {
+                setCustomNameEdited(true);
+                setCustomName(e.target.value);
+              }}
+              maxLength={CUSTOM_NAME_MAX_LENGTH}
+              placeholder={defaultName ? undefined : "Escribí cómo querés que te vean"}
+              className={`mt-1 ${inputClass}`}
+            />
+          </label>
+        )}
+      </div>
+      {identityMode !== "HIDDEN" && !preview.identityVisible ? (
+        <p className="-mt-2 text-xs text-muted">Sin nombre para mostrar: aparecés como tu animal ({profile.alias}).</p>
       ) : null}
 
       <div className="flex items-center gap-3">

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ChatMessageDto } from "@sala/contracts";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useStickToBottom } from "./useStickToBottom";
 import { Avatar } from "@/components/Avatar";
@@ -61,15 +62,14 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock, on
             >
               <div className="w-10 shrink-0">
                 {showHeader ? (
-                  tappable ? (
-                    <button
-                      type="button"
-                      onClick={() => onAuthorClick(authorUserId, message.author.displayName)}
-                      aria-label={`Escribirle a ${message.author.displayName}`}
-                      className="rounded-full transition-transform duration-150 ease-out active:scale-[0.96]"
+                  authorUserId !== null ? (
+                    <Link
+                      href={`/u/${authorUserId}`}
+                      aria-label={`Ver perfil de ${message.author.displayName}`}
+                      className="block rounded-full transition-transform duration-150 ease-out active:scale-[0.96]"
                     >
                       {avatar}
-                    </button>
+                    </Link>
                   ) : (
                     avatar
                   )

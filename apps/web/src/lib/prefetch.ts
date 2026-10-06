@@ -11,6 +11,9 @@ export const DataPaths = {
   roomChat: (roomSlug: string) => `/api/v1/rooms/${roomSlug}/messages`,
   conversations: () => "/api/v1/conversations",
   dmThread: (conversationId: string) => `/api/v1/conversations/${conversationId}/messages`,
+  groups: () => "/api/v1/groups",
+  groupThread: (groupId: string) => `/api/v1/groups/${groupId}/messages`,
+  groupContacts: () => "/api/v1/groups/contacts",
 } as const;
 
 /** The ranking view opens on this period/category. */

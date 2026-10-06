@@ -7,6 +7,8 @@ export interface DisplayNameProfile {
   lastName: string | null;
   nickname: string | null;
   identityMode: IdentityMode;
+  /** Name the user typed themselves; wins over the mode's name unless HIDDEN. */
+  customName?: string | null;
   /** Fun random alias shown instead of "Usuario anónimo" — `null` if none has been assigned yet. */
   alias?: string | null;
 }
@@ -23,6 +25,10 @@ function anonymousFallback(profile: DisplayNameProfile): string {
 
 /** The name `identityMode` + the chosen fields resolve to, ignoring HIDDEN/alias — `null` when empty. */
 function resolvedName(profile: DisplayNameProfile): string | null {
+  if (profile.identityMode !== "HIDDEN") {
+    const custom = profile.customName?.trim();
+    if (custom) return custom;
+  }
   switch (profile.identityMode) {
     case "FIRST_NAME":
       return profile.firstName?.trim() || profile.nickname?.trim() || null;
@@ -50,7 +56,7 @@ function resolvedName(profile: DisplayNameProfile): string | null {
  * True when `displayName` would need to fall back to the alias for this profile — HIDDEN, or a
  * visible mode whose chosen fields are still empty. Used to decide when to assign/release an alias.
  */
-export function needsAlias(profile: Pick<DisplayNameProfile, "identityMode" | "firstName" | "lastName" | "nickname">): boolean {
+export function needsAlias(profile: Pick<DisplayNameProfile, "identityMode" | "firstName" | "lastName" | "nickname" | "customName">): boolean {
   return resolvedName({ ...profile, alias: null }) === null;
 }
 
@@ -69,7 +75,7 @@ export function displayName(
 }
 
 /** Minimal shape needed to gate a profile's avatar on the owner's privacy setting. */
-export interface AvatarProfile extends Pick<DisplayNameProfile, "identityMode" | "firstName" | "lastName" | "nickname"> {
+export interface AvatarProfile extends Pick<DisplayNameProfile, "identityMode" | "firstName" | "lastName" | "nickname" | "customName"> {
   avatarUrl: string | null;
 }
 export interface AvatarPrivacy {
@@ -94,7 +100,7 @@ export function shownAliasAnimal(profile: DisplayNameProfile | null): string | n
  */
 export function showsAdminBadge(
   isAdmin: boolean,
-  profile: Pick<DisplayNameProfile, "identityMode" | "firstName" | "lastName" | "nickname"> | null,
+  profile: Pick<DisplayNameProfile, "identityMode" | "firstName" | "lastName" | "nickname" | "customName"> | null,
   privacy: { showAdminBadge: boolean } | null,
 ): boolean {
   return isAdmin && Boolean(profile) && !needsAlias(profile!) && (privacy?.showAdminBadge ?? true);

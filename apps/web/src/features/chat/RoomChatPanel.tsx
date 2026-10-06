@@ -1,6 +1,6 @@
 "use client";
 
-import { QuestionIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
+import { CaretLeftIcon, QuestionIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import type { ChatMessageDto } from "@sala/contracts";
 import { useEffect, useState, type ReactNode } from "react";
@@ -26,10 +26,10 @@ type RoomChatPanelProps = {
   titleId?: string;
   /** Called with the visible messages whenever they change (the widget derives its unread badge from it). */
   onMessagesChange?: (messages: ChatMessageDto[]) => void;
-  /** Unread private messages, shown on the "Privados" link. */
+  /** Unread private messages (DMs plus groups), shown on the "Privados" link / the widget's back caret. */
   dmUnread?: number;
-  /** Widget: "Privados" becomes a button calling this instead of linking to /chat/dm. */
-  onOpenPrivados?: () => void;
+  /** Widget: a caret before the heading calling this (back to the chat list); the page keeps its /chat/dm link. */
+  onBack?: () => void;
   /** Forwarded to ChatMessageList.onAuthorClick (tap an author to message them). */
   onOpenUser?: (userId: string, displayName: string) => void;
   /** Shown under the header (e.g. widget DM-open errors), with a dismiss button. */
@@ -38,7 +38,7 @@ type RoomChatPanelProps = {
 };
 
 /** The room's live chat: header with connection state, the message log and the composer. Fills its parent's height. */
-export function RoomChatPanel({ currentUserId, variant = "page", headerEnd, titleId, onMessagesChange, dmUnread = 0, onOpenPrivados, onOpenUser, notice, onDismissNotice }: RoomChatPanelProps) {
+export function RoomChatPanel({ currentUserId, variant = "page", headerEnd, titleId, onMessagesChange, dmUnread = 0, onBack, onOpenUser, notice, onDismissNotice }: RoomChatPanelProps) {
   const widget = variant === "widget";
   // The widget floats over pages that already have their own h1.
   const Heading = widget ? "h2" : "h1";
@@ -67,19 +67,27 @@ export function RoomChatPanel({ currentUserId, variant = "page", headerEnd, titl
     onMessagesChange?.(messages);
   }, [messages, onMessagesChange]);
 
-  const privadosLabel = dmUnread > 0 ? `${widget ? "Privados" : "Mensajes privados"}, ${dmUnread} sin leer` : undefined;
-  const privadosClass = `flex items-center gap-1.5 rounded-lg border border-app font-medium text-main hover:bg-[var(--surface-2)] ${widget ? "px-2.5 py-1.5 text-xs" : "px-3 py-1.5 text-sm"}`;
-  const privadosContent = (
-    <>
-      {widget ? "Privados" : "Mensajes privados"}
-      <UnreadBadge count={dmUnread} size="sm" />
-    </>
-  );
+  const showBack = widget && Boolean(onBack);
+  const privadosLabel = dmUnread > 0 ? `Mensajes privados, ${dmUnread} sin leer` : undefined;
+  const backLabel = dmUnread > 0 ? `Ver chats privados, ${dmUnread} sin leer` : "Ver chats privados";
 
   return (
     <>
-      <div className={`flex items-center justify-between gap-3 border-b border-app bg-surface ${widget ? "py-2.5 pl-4 pr-2" : "px-4 py-3"}`}>
-        <div className="min-w-0">
+      <div className={`flex items-center justify-between gap-3 border-b border-app bg-surface ${widget ? `py-2.5 pr-2 ${showBack ? "pl-2" : "pl-4"}` : "px-4 py-3"}`}>
+        <div className="flex min-w-0 items-center gap-1">
+          {showBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label={backLabel}
+              title="Ver chats privados"
+              className="relative inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-main transition-transform duration-150 ease-out hover:bg-[var(--surface-2)] active:scale-[0.96] active:bg-[var(--surface-2)]"
+            >
+              <CaretLeftIcon aria-hidden="true" weight="bold" size={20} />
+              <UnreadBadge count={dmUnread} size="sm" className="absolute -right-0.5 -top-0.5 ring-2 ring-[var(--bg)]" />
+            </button>
+          ) : null}
+          <div className="min-w-0">
           <Heading
             id={titleId}
             className={`font-display font-extrabold uppercase leading-none tracking-[0.01em] text-main ${widget ? "text-[17px]" : "text-[22px]"}`}
@@ -93,6 +101,7 @@ export function RoomChatPanel({ currentUserId, variant = "page", headerEnd, titl
             />
             {connected ? "En vivo" : everConnected ? "Reconectando…" : "Conectando…"}
           </p>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {widget && needsIdentityHelp ? (
@@ -107,13 +116,15 @@ export function RoomChatPanel({ currentUserId, variant = "page", headerEnd, titl
               <QuestionIcon aria-hidden="true" weight="bold" size={18} />
             </button>
           ) : null}
-          {widget && onOpenPrivados ? (
-            <button type="button" onClick={onOpenPrivados} aria-label={privadosLabel} className={`${privadosClass} min-h-11`}>
-              {privadosContent}
-            </button>
-          ) : (
-            <Link href="/chat/dm" {...prefetchHandlers("/chat/dm")} aria-label={privadosLabel} className={privadosClass}>
-              {privadosContent}
+          {widget ? null : (
+            <Link
+              href="/chat/dm"
+              {...prefetchHandlers("/chat/dm")}
+              aria-label={privadosLabel}
+              className="flex items-center gap-1.5 rounded-lg border border-app px-3 py-1.5 text-sm font-medium text-main hover:bg-[var(--surface-2)]"
+            >
+              Mensajes privados
+              <UnreadBadge count={dmUnread} size="sm" />
             </Link>
           )}
           {headerEnd}

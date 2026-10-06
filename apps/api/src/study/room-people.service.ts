@@ -10,7 +10,7 @@ import { toStudyStatusDto } from "./study.service.js";
 
 function profileForDisplay(profile: typeof schema.userProfiles.$inferSelect | null, alias?: string | null): DisplayNameProfile | null {
   if (!profile) return null;
-  return { firstName: profile.firstName, lastName: profile.lastName, nickname: profile.nickname, identityMode: profile.identityMode, alias: alias ?? profile.alias };
+  return { firstName: profile.firstName, lastName: profile.lastName, nickname: profile.nickname, customName: profile.customName, identityMode: profile.identityMode, alias: alias ?? profile.alias };
 }
 
 /** Read models for "who's in the room" — the `/rooms/:id/people` and `/rooms/:id/occupants` endpoints. */

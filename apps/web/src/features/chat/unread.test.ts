@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ChatMessageDto } from "@sala/contracts";
-import { countUnread, formatUnread, sumDmUnread } from "./unread";
+import { countUnread, formatUnread, sumDmUnread, sumGroupUnread } from "./unread";
 
 function message(overrides: Partial<ChatMessageDto> & { createdAt: string }): ChatMessageDto {
   return {
@@ -59,5 +59,24 @@ describe("formatUnread", () => {
   it("caps at 99+", () => {
     expect(formatUnread(7)).toBe("7");
     expect(formatUnread(100)).toBe("99+");
+  });
+});
+
+describe("sumGroupUnread", () => {
+  const groups = [
+    { id: "a", unread: 2 },
+    { id: "b", unread: 3 },
+  ];
+
+  it("sums everything without an exclusion", () => {
+    expect(sumGroupUnread(groups, null)).toBe(5);
+  });
+
+  it("leaves out the excluded group", () => {
+    expect(sumGroupUnread(groups, "a")).toBe(3);
+  });
+
+  it("handles an empty list", () => {
+    expect(sumGroupUnread([], "a")).toBe(0);
   });
 });

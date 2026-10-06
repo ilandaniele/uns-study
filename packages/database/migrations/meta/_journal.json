@@ -155,6 +155,20 @@
       "when": 1791242313585,
       "tag": "0021_hot_komodo",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791252394381,
+      "tag": "0022_group_chats",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791252950490,
+      "tag": "0023_custom_display_name",
+      "breakpoints": true
     }
   ]
 }

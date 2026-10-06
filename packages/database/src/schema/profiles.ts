@@ -21,6 +21,9 @@ export const userProfiles = pgTable(
     instagram: text("instagram"),
     studentNumber: text("student_number"),
     identityMode: identityModeEnum("identity_mode").notNull().default("HIDDEN"),
+    // Free-text name the user typed in "¿Cómo te ven otras personas?". Overrides the name
+    // `identityMode` resolves to (never applies while HIDDEN). NULL = use the mode's name.
+    customName: text("custom_name"),
     // Fun random Spanish alias shown instead of "Usuario anónimo" while hidden. NULL when the user
     // doesn't currently need one (visible identity with a non-empty name) — freed for reuse.
     alias: text("alias"),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { conversationIdFromPath, DM_SOUND_COOLDOWN_MS, shouldPlayDmSound, type DmNotifyInput } from "./dm-notify";
+import { conversationIdFromPath, DM_SOUND_COOLDOWN_MS, shouldPlayDmSound, shouldPlayGroupSound, type DmNotifyInput, type GroupNotifyInput } from "./dm-notify";
 
 const base: DmNotifyInput = {
   message: { senderId: "other", conversationId: "c1" },
@@ -53,5 +53,40 @@ describe("conversationIdFromPath", () => {
     expect(conversationIdFromPath("/chat/dm")).toBeNull();
     expect(conversationIdFromPath("/chat")).toBeNull();
     expect(conversationIdFromPath("/u/x")).toBeNull();
+  });
+});
+
+const groupBase: GroupNotifyInput = {
+  message: { senderId: "other", groupId: "g1" },
+  currentUserId: "me",
+  soundEnabled: true,
+  viewingGroupId: null,
+  documentVisible: true,
+  lastPlayedAt: null,
+  now: 10_000,
+};
+
+describe("shouldPlayGroupSound", () => {
+  it("plays for a message from someone else", () => {
+    expect(shouldPlayGroupSound(groupBase)).toBe(true);
+  });
+
+  it("is silent for your own message", () => {
+    expect(shouldPlayGroupSound({ ...groupBase, message: { senderId: "me", groupId: "g1" } })).toBe(false);
+  });
+
+  it("is silent when muted", () => {
+    expect(shouldPlayGroupSound({ ...groupBase, soundEnabled: false })).toBe(false);
+  });
+
+  it("is silent when that group is visibly on screen, but not when the tab is hidden", () => {
+    expect(shouldPlayGroupSound({ ...groupBase, viewingGroupId: "g1" })).toBe(false);
+    expect(shouldPlayGroupSound({ ...groupBase, viewingGroupId: "g1", documentVisible: false })).toBe(true);
+    expect(shouldPlayGroupSound({ ...groupBase, viewingGroupId: "g2" })).toBe(true);
+  });
+
+  it("respects the cooldown", () => {
+    expect(shouldPlayGroupSound({ ...groupBase, lastPlayedAt: 10_000 - DM_SOUND_COOLDOWN_MS + 1 })).toBe(false);
+    expect(shouldPlayGroupSound({ ...groupBase, lastPlayedAt: 10_000 - DM_SOUND_COOLDOWN_MS })).toBe(true);
   });
 });

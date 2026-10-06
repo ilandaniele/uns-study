@@ -2,7 +2,7 @@ import { animalIdFromAlias, type MyProfileDto, type PrivacySettingsDto, type Sea
 
 type AppearanceProfile = Pick<
   MyProfileDto,
-  "firstName" | "lastName" | "nickname" | "identityMode" | "alias" | "avatarUrl" | "career" | "currentSubject" | "instagram" | "studentNumber" | "isAdmin"
+  "firstName" | "lastName" | "nickname" | "customName" | "identityMode" | "alias" | "avatarUrl" | "career" | "currentSubject" | "instagram" | "studentNumber" | "isAdmin"
 >;
 type AppearancePrivacy = Pick<
   PrivacySettingsDto,
@@ -24,7 +24,11 @@ export interface Appearance {
 }
 
 /** Mirrors `resolvedName` in apps/api/src/users/display-name.ts — keep both in sync. */
-export function resolvedName(profile: Pick<AppearanceProfile, "firstName" | "lastName" | "nickname" | "identityMode">): string | null {
+export function resolvedName(profile: Pick<AppearanceProfile, "firstName" | "lastName" | "nickname" | "identityMode"> & { customName?: string | null }): string | null {
+  if (profile.identityMode !== "HIDDEN") {
+    const custom = profile.customName?.trim();
+    if (custom) return custom;
+  }
   const first = profile.firstName?.trim() ?? "";
   const last = profile.lastName?.trim() ?? "";
   const nickname = profile.nickname?.trim() ?? "";

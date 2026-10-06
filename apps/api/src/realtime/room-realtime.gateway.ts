@@ -17,6 +17,8 @@ import {
   type ChatMessageDto,
   type DirectMessageDto,
   type DisputeChallengedEvent,
+  type GroupMessageDto,
+  type GroupUpdatedEvent,
   type CheckInExpiringEvent,
   type DisputeWonEvent,
   type RoomAdminPresentEvent,
@@ -300,6 +302,19 @@ export class RoomRealtimeGateway implements OnGatewayConnection, OnGatewayDiscon
   emitDm(userIds: string[], message: DirectMessageDto): void {
     for (const userId of userIds) {
       this.server?.to(userChannel(userId)).emit(SocketEvents.DmMessageCreated, message);
+    }
+  }
+
+  /** Each member's private `user:{userId}` channel. */
+  emitGroupMessage(memberIds: string[], message: GroupMessageDto): void {
+    for (const userId of memberIds) {
+      this.server?.to(userChannel(userId)).emit(SocketEvents.GroupMessageCreated, message);
+    }
+  }
+
+  emitGroupUpdated(memberIds: string[], payload: GroupUpdatedEvent): void {
+    for (const userId of memberIds) {
+      this.server?.to(userChannel(userId)).emit(SocketEvents.GroupUpdated, payload);
     }
   }
 

@@ -25,7 +25,15 @@ export function PeopleList({ people, limit, emptyLabel = "Nadie está mostrándo
     <ul className="flex flex-col divide-y divide-[var(--border)]">
       {visible.map((person) => (
         <li key={person.userId ?? `alias-${person.displayName}-${person.seatCode ?? ""}`} className="flex items-center gap-3 py-2.5">
-          {person.aliasAnimal ? (
+          {person.userId ? (
+            <Link href={`/u/${person.userId}`} aria-hidden="true" tabIndex={-1} className="shrink-0 rounded-full">
+              {person.aliasAnimal ? (
+                <OccupantAvatar avatar={{ kind: "animal", animalId: person.aliasAnimal }} size={40} adminBadge={person.adminBadge} />
+              ) : (
+                <PersonAvatar name={person.displayName} avatarUrl={person.avatarUrl} adminBadge={person.adminBadge} />
+              )}
+            </Link>
+          ) : person.aliasAnimal ? (
             <OccupantAvatar avatar={{ kind: "animal", animalId: person.aliasAnimal }} size={40} adminBadge={person.adminBadge} />
           ) : (
             <PersonAvatar name={person.displayName} avatarUrl={person.avatarUrl} adminBadge={person.adminBadge} />

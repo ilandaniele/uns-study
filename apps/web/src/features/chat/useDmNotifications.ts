@@ -1,24 +1,26 @@
 "use client";
 
 import { SocketEvents } from "@sala/contracts/events";
-import type { DirectMessageDto } from "@sala/contracts";
+import type { DirectMessageDto, GroupMessageDto } from "@sala/contracts";
 import { useEffect, useRef } from "react";
 import { primeAudio, playDmBlip } from "@/features/focus/focus-audio";
 import { getSocket } from "@/lib/socket";
 import { useChatSoundEnabled } from "./chat-sound";
-import { shouldPlayDmSound } from "./dm-notify";
+import { shouldPlayDmSound, shouldPlayGroupSound } from "./dm-notify";
+import { useBlockedUsers } from "./useBlockedUsers";
 
 /**
- * Blips (and vibrates on Android) for incoming private messages that aren't already on screen.
+ * Blips (and vibrates on Android) for incoming private and group messages that aren't already on screen.
  * Renders nothing; mount it once on every route while signed in.
  */
-export function useDmNotifications(args: { currentUserId: string; viewingConversationId: string | null }): void {
+export function useDmNotifications(args: { currentUserId: string; viewingConversationId: string | null; viewingGroupId?: string | null }): void {
   const soundEnabled = useChatSoundEnabled();
-  const argsRef = useRef({ ...args, soundEnabled });
+  const { blockedIds } = useBlockedUsers();
+  const argsRef = useRef({ ...args, soundEnabled, blockedIds });
   const lastPlayedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
-    argsRef.current = { ...args, soundEnabled };
+    argsRef.current = { ...args, soundEnabled, blockedIds };
   });
 
   useEffect(() => {
@@ -37,6 +39,27 @@ export function useDmNotifications(args: { currentUserId: string; viewingConvers
         now,
       });
       if (!play) return;
+      blip(now, documentVisible);
+    };
+    const onGroup = (message: GroupMessageDto) => {
+      const documentVisible = document.visibilityState === "visible";
+      const now = Date.now();
+      const { currentUserId, viewingGroupId = null, soundEnabled: enabled, blockedIds: blocked } = argsRef.current;
+      // Members can't block each other out of a group, so a blocked sender is silenced here.
+      if (blocked.has(message.senderId)) return;
+      const play = shouldPlayGroupSound({
+        message,
+        currentUserId,
+        soundEnabled: enabled,
+        viewingGroupId,
+        documentVisible,
+        lastPlayedAt: lastPlayedAtRef.current,
+        now,
+      });
+      if (!play) return;
+      blip(now, documentVisible);
+    };
+    function blip(now: number, documentVisible: boolean) {
       lastPlayedAtRef.current = now;
       playDmBlip();
       if (documentVisible) {
@@ -46,10 +69,12 @@ export function useDmNotifications(args: { currentUserId: string; viewingConvers
           // Vibration is best-effort.
         }
       }
-    };
+    }
     socket.on(SocketEvents.DmMessageCreated, onDm);
+    socket.on(SocketEvents.GroupMessageCreated, onGroup);
     return () => {
       socket.off(SocketEvents.DmMessageCreated, onDm);
+      socket.off(SocketEvents.GroupMessageCreated, onGroup);
     };
   }, []);
 

@@ -9,7 +9,7 @@ export interface ChatComposerProps {
   disabled?: boolean;
   onSend: (content: string) => Promise<void>;
   /** Analytics event fired after a successful send (room chat by default, `dm_sent` for DM threads). */
-  analyticsEvent?: "chat_message_sent" | "dm_sent";
+  analyticsEvent?: "chat_message_sent" | "dm_sent" | "group_sent";
   /** "widget" sits inside the floating card, which already clears the safe area. */
   variant?: "page" | "widget";
 }

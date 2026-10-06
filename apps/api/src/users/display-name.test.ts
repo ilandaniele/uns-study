@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { displayName, type DisplayNameProfile } from "./display-name.js";
+import { displayName, needsAlias, type DisplayNameProfile } from "./display-name.js";
 
 function profile(overrides: Partial<DisplayNameProfile>): DisplayNameProfile {
   return { firstName: null, lastName: null, nickname: null, identityMode: "HIDDEN", ...overrides };
@@ -37,6 +37,13 @@ describe("displayName", () => {
     expect(
       displayName(profile({ identityMode: "NICKNAME_AND_NAME", nickname: "Mafe", firstName: "María" }), null, "x"),
     ).toBe("Mafe (María)");
+  });
+
+  it("a custom name wins over the mode's name, but never while HIDDEN", () => {
+    expect(displayName(profile({ identityMode: "NICKNAME", nickname: "Mafe", customName: "  Mafe de Ing  " }), null, "x")).toBe("Mafe de Ing");
+    expect(displayName(profile({ identityMode: "HIDDEN", customName: "Mafe", alias: "Coipo Feliz" }), null, "x")).toBe("Coipo Feliz");
+    expect(displayName(profile({ identityMode: "NICKNAME", customName: "   " }), null, "x")).toBe("Usuario anónimo");
+    expect(needsAlias(profile({ identityMode: "FULL_NAME", customName: "Mafe" }))).toBe(false);
   });
 
   it("HIDDEN with an assigned alias returns the alias instead of 'Usuario anónimo'", () => {

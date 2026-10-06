@@ -24,6 +24,7 @@ export type AnalyticsEvent =
   | "room_view"
   | "chat_message_sent"
   | "dm_sent"
+  | "group_sent"
   | "report_submitted"
   | "ranking_view"
   | "study_mode_started"

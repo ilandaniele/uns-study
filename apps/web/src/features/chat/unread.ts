@@ -21,3 +21,8 @@ export function formatUnread(count: number): string {
 export function sumDmUnread(conversations: readonly { id: string; unread: number }[], excludeConversationId: string | null): number {
   return conversations.reduce((sum, c) => (c.id === excludeConversationId ? sum : sum + c.unread), 0);
 }
+
+/** Total unread group messages, leaving out the group currently on screen. */
+export function sumGroupUnread(groups: readonly { id: string; unread: number }[], excludeGroupId: string | null): number {
+  return groups.reduce((sum, g) => (g.id === excludeGroupId ? sum : sum + g.unread), 0);
+}

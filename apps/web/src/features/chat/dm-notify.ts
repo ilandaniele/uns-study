@@ -1,4 +1,4 @@
-import type { DirectMessageDto } from "@sala/contracts";
+import type { DirectMessageDto, GroupMessageDto } from "@sala/contracts";
 
 export const DM_SOUND_COOLDOWN_MS = 2000;
 
@@ -18,6 +18,26 @@ export function shouldPlayDmSound(input: DmNotifyInput): boolean {
   if (input.message.senderId === input.currentUserId) return false;
   if (!input.soundEnabled) return false;
   if (input.documentVisible && input.viewingConversationId === input.message.conversationId) return false;
+  if (input.lastPlayedAt !== null && input.now - input.lastPlayedAt < DM_SOUND_COOLDOWN_MS) return false;
+  return true;
+}
+
+export interface GroupNotifyInput {
+  message: Pick<GroupMessageDto, "senderId" | "groupId">;
+  currentUserId: string;
+  soundEnabled: boolean;
+  /** Group visibly on screen (widget group thread on top + card visible). */
+  viewingGroupId: string | null;
+  documentVisible: boolean;
+  lastPlayedAt: number | null;
+  now: number;
+}
+
+/** Same rules as `shouldPlayDmSound`, keyed on the group. */
+export function shouldPlayGroupSound(input: GroupNotifyInput): boolean {
+  if (input.message.senderId === input.currentUserId) return false;
+  if (!input.soundEnabled) return false;
+  if (input.documentVisible && input.viewingGroupId === input.message.groupId) return false;
   if (input.lastPlayedAt !== null && input.now - input.lastPlayedAt < DM_SOUND_COOLDOWN_MS) return false;
   return true;
 }

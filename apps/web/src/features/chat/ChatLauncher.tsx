@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChatMessageDto } from "@sala/contracts";
-import { CaretLeftIcon, ChatCircleIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
+import { ChatCircleIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -21,12 +21,15 @@ import { ChatSoundToggle } from "./ChatSoundToggle";
 import { ConversationList } from "./ConversationList";
 import { conversationIdFromPath } from "./dm-notify";
 import { DmThread } from "./DmThread";
+import { GroupThread } from "./GroupThread";
+import { NewGroupView } from "./NewGroupView";
 import { RoomChatPanel } from "./RoomChatPanel";
 import { conversationErrorMessage, findConversationWith, startConversation } from "./start-conversation";
 import { UnreadBadge } from "./UnreadBadge";
-import { countUnread, sumDmUnread } from "./unread";
+import { countUnread, sumDmUnread, sumGroupUnread } from "./unread";
 import { useConversations } from "./useConversations";
 import { useDmNotifications } from "./useDmNotifications";
+import { useGroups } from "./useGroups";
 import {
   backChatView,
   closeChatWidget,
@@ -83,9 +86,9 @@ function directionClass(state: ChatWidgetState): string {
 
 /**
  * Floating chat bubble, like a messaging app's chat head: a round button at the bottom-right
- * that opens and closes a small messenger in a card anchored to it (room chat, private
- * conversations list, one conversation). Signed-in users get an unread badge (room messages
- * since they last looked, plus unread private messages), so the chat stays connected in the
+ * that opens and closes a small messenger in a card anchored to it (room chat, the chat
+ * list, private conversations, group chats). Signed-in users get an unread badge (room messages
+ * since they last looked, plus unread private and group messages), so the chat stays connected in the
  * background while the card is closed.
  */
 export function ChatLauncher() {
@@ -233,12 +236,15 @@ function SignedInLauncher({ userId }: { userId: string }) {
   const { state, view, hidden, visible } = shell;
   const baseId = useId();
   const { conversations, loading, error, refetch } = useConversations();
+  // A groups failure must not hide the DMs, so only the conversations request drives the list status.
+  const { groups, refetch: refetchGroups } = useGroups();
   const [notice, setNotice] = useState<string | null>(null);
   const pendingRef = useRef(false);
 
   // The DM on screen (widget thread or /chat/dm/{id}) is read as it arrives: no blip, no badge.
   const viewingConversationId = visible && view.kind === "dm" ? view.conversationId : conversationIdFromPath(pathname);
-  useDmNotifications({ currentUserId: userId, viewingConversationId });
+  const viewingGroupId = visible && view.kind === "group" ? view.groupId : null;
+  useDmNotifications({ currentUserId: userId, viewingConversationId, viewingGroupId });
 
   // Reading a conversation clears its unread count server-side; pick that up on the next route.
   const lastPath = useRef(pathname);
@@ -246,7 +252,8 @@ function SignedInLauncher({ userId }: { userId: string }) {
     if (pathname === lastPath.current) return;
     lastPath.current = pathname;
     refetch();
-  }, [pathname, refetch]);
+    refetchGroups();
+  }, [pathname, refetch, refetchGroups]);
 
   // Unread room messages are counted against the newest message the user has had on screen.
   const [messages, setMessages] = useState<ChatMessageDto[]>([]);
@@ -266,8 +273,8 @@ function SignedInLauncher({ userId }: { userId: string }) {
   }, [lastSeenAt]);
 
   const roomUnread = reading ? 0 : countUnread(messages, lastSeenAt, userId);
-  const dmUnread = sumDmUnread(conversations, viewingConversationId);
-  const totalUnread = roomUnread + dmUnread;
+  const privateUnread = sumDmUnread(conversations, viewingConversationId) + sumGroupUnread(groups, viewingGroupId);
+  const totalUnread = roomUnread + privateUnread;
 
   async function openDmWith(otherUserId: string) {
     if (pendingRef.current) return;
@@ -295,7 +302,10 @@ function SignedInLauncher({ userId }: { userId: string }) {
   const roomId = `${baseId}-room`;
   const listId = `${baseId}-list`;
   const dmId = `${baseId}-dm`;
-  const titleId = view.kind === "list" ? listId : view.kind === "dm" ? dmId : roomId;
+  const groupId = `${baseId}-group`;
+  const newGroupId = `${baseId}-new-group`;
+  const titleId =
+    view.kind === "list" ? listId : view.kind === "dm" ? dmId : view.kind === "group" ? groupId : view.kind === "new-group" ? newGroupId : roomId;
   const direction = directionClass(state);
   const { showCard } = shell;
 
@@ -313,8 +323,8 @@ function SignedInLauncher({ userId }: { userId: string }) {
           variant="widget"
           titleId={roomId}
           onMessagesChange={setMessages}
-          dmUnread={dmUnread}
-          onOpenPrivados={() => pushChatView({ kind: "list" })}
+          dmUnread={privateUnread}
+          onBack={backChatView}
           onOpenUser={(otherUserId) => void openDmWith(otherUserId)}
           notice={notice}
           onDismissNotice={() => setNotice(null)}
@@ -329,30 +339,27 @@ function SignedInLauncher({ userId }: { userId: string }) {
           tabIndex={-1}
           className={`flex min-h-0 flex-1 flex-col outline-none ${direction}`}
         >
-          <div className="flex items-center gap-1 border-b border-app bg-surface py-2.5 pl-2 pr-2">
-            <button
-              type="button"
-              onClick={backChatView}
-              aria-label="Volver"
-              title="Volver"
-              className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-main transition-transform duration-150 ease-out hover:bg-[var(--surface-2)] active:scale-[0.96] active:bg-[var(--surface-2)]"
-            >
-              <CaretLeftIcon aria-hidden="true" weight="bold" size={20} />
-            </button>
+          <div className="flex items-center gap-1 border-b border-app bg-surface py-2.5 pl-4 pr-2">
             <h2
               id={listId}
               className="min-w-0 flex-1 font-display text-[17px] font-extrabold uppercase leading-none tracking-[0.01em] text-main"
             >
-              Privados
+              Chats
             </h2>
             <ChatSoundToggle />
           </div>
           <ConversationList
             variant="widget"
             conversations={conversations}
+            groups={groups}
             loading={loading}
             error={error}
+            currentUserId={userId}
+            roomUnread={roomUnread}
+            onOpenRoom={() => pushChatView({ kind: "room" })}
+            onNewGroup={() => pushChatView({ kind: "new-group" })}
             onSelect={(id) => pushChatView({ kind: "dm", conversationId: id })}
+            onSelectGroup={(id) => pushChatView({ kind: "group", groupId: id, group: groups.find((g) => g.id === id) })}
           />
         </div>
       ) : null}
@@ -373,6 +380,48 @@ function SignedInLauncher({ userId }: { userId: string }) {
             headerEnd={<ChatSoundToggle />}
             titleId={dmId}
             onRead={refetch}
+          />
+        </div>
+      ) : null}
+
+      {showCard && view.kind === "group" ? (
+        <div
+          key={viewKey(view)}
+          data-chat-view={viewKey(view)}
+          tabIndex={-1}
+          className={`flex min-h-0 flex-1 flex-col outline-none ${direction}`}
+        >
+          <GroupThread
+            groupId={view.groupId}
+            group={groups.find((g) => g.id === view.groupId) ?? view.group ?? null}
+            currentUserId={userId}
+            onBack={backChatView}
+            onLeft={() => {
+              refetchGroups();
+              backChatView();
+            }}
+            headerEnd={<ChatSoundToggle />}
+            titleId={groupId}
+            onRead={refetchGroups}
+          />
+        </div>
+      ) : null}
+
+      {showCard && view.kind === "new-group" ? (
+        <div
+          key={viewKey(view)}
+          data-chat-view={viewKey(view)}
+          tabIndex={-1}
+          className={`flex min-h-0 flex-1 flex-col outline-none ${direction}`}
+        >
+          <NewGroupView
+            onBack={backChatView}
+            onCreated={(group) => {
+              pushChatView({ kind: "group", groupId: group.id, group });
+              refetchGroups();
+            }}
+            headerEnd={<ChatSoundToggle />}
+            titleId={newGroupId}
           />
         </div>
       ) : null}

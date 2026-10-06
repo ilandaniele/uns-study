@@ -235,7 +235,13 @@ export function SeatDetail({
         <div className="-mt-1 flex flex-col gap-1 rounded-lg bg-[var(--surface-2)] px-3 py-2 text-sm text-muted">
           {showOccupant && occupant ? (
             <div className="flex flex-wrap items-center gap-2">
-              <OccupantAvatar avatar={occupant.avatar} size={32} adminBadge={occupant.adminBadge} />
+              {occupant.userId ? (
+                <Link href={`/u/${occupant.userId}`} aria-hidden="true" tabIndex={-1} className="shrink-0 rounded-full">
+                  <OccupantAvatar avatar={occupant.avatar} size={32} adminBadge={occupant.adminBadge} />
+                </Link>
+              ) : (
+                <OccupantAvatar avatar={occupant.avatar} size={32} adminBadge={occupant.adminBadge} />
+              )}
               <span className="min-w-0 flex-1 break-words">
                 {occupant.userId ? (
                   <Link href={`/u/${occupant.userId}`} className="font-semibold text-primary hover:underline">

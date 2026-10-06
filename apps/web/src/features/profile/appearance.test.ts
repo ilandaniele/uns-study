@@ -5,6 +5,7 @@ const profile = {
   firstName: "Ana",
   lastName: "Pérez",
   nickname: "Anita",
+  customName: null as string | null,
   identityMode: "FULL_NAME" as const,
   alias: "Coipo Ingenioso",
   avatarUrl: "https://example.com/a.jpg" as string | null,
@@ -34,6 +35,8 @@ describe("resolvedName", () => {
     expect(resolvedName({ ...profile, identityMode: "NICKNAME_AND_NAME" })).toBe("Anita (Ana)");
     expect(resolvedName({ ...profile, identityMode: "NICKNAME_AND_NAME", nickname: null })).toBe("Ana");
     expect(resolvedName({ ...profile, identityMode: "HIDDEN" })).toBeNull();
+    expect(resolvedName({ ...profile, identityMode: "NICKNAME", customName: " Ani de Ing " })).toBe("Ani de Ing");
+    expect(resolvedName({ ...profile, identityMode: "HIDDEN", customName: "Ani" })).toBeNull();
   });
 });
 

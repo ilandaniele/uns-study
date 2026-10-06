@@ -1,19 +1,22 @@
 "use client";
 
-import type { ConversationDto } from "@sala/contracts";
+import type { ConversationDto, GroupConversationDto } from "@sala/contracts";
 import { useSyncExternalStore } from "react";
 
 export type ChatWidgetView =
   | { kind: "room" }
   | { kind: "list" }
   // `conversation` = optional snapshot (from create-or-get) for the header until the list refetch includes it.
-  | { kind: "dm"; conversationId: string; conversation?: ConversationDto };
+  | { kind: "dm"; conversationId: string; conversation?: ConversationDto }
+  // `group` = optional snapshot (from create) for the header until the list refetch includes it.
+  | { kind: "group"; groupId: string; group?: GroupConversationDto }
+  | { kind: "new-group" };
 
 export type ChatNavDirection = "none" | "forward" | "back";
 
 export interface ChatWidgetState {
   open: boolean;
-  /** Never empty; stack[0] is always `{ kind: "room" }`. */
+  /** Never empty; stack[0] is always `{ kind: "list" }`. */
   stack: readonly ChatWidgetView[];
   /** How the current top view was reached; "none" = card just opened. */
   direction: ChatNavDirection;
@@ -29,20 +32,28 @@ export type ChatWidgetAction =
 const ROOM: ChatWidgetView = { kind: "room" };
 const LIST: ChatWidgetView = { kind: "list" };
 
-export const initialChatWidgetState: ChatWidgetState = { open: false, stack: [ROOM], direction: "none" };
+export const initialChatWidgetState: ChatWidgetState = { open: false, stack: [LIST, ROOM], direction: "none" };
 
 function sameView(a: ChatWidgetView, b: ChatWidgetView): boolean {
   if (a.kind !== b.kind) return false;
-  return a.kind !== "dm" || a.conversationId === (b as { conversationId: string }).conversationId;
+  if (a.kind === "dm") return a.conversationId === (b as { conversationId: string }).conversationId;
+  if (a.kind === "group") return a.groupId === (b as { groupId: string }).groupId;
+  return true;
+}
+
+function isThread(view: ChatWidgetView): boolean {
+  return view.kind === "dm" || view.kind === "group";
 }
 
 export function topView(state: ChatWidgetState): ChatWidgetView {
   return state.stack[state.stack.length - 1];
 }
 
-/** Stable key for keyed rendering / animation: "room" | "list" | `dm:${id}`. */
+/** Stable key for keyed rendering / animation: "room" | "list" | "new-group" | `dm:${id}` | `group:${id}`. */
 export function viewKey(view: ChatWidgetView): string {
-  return view.kind === "dm" ? `dm:${view.conversationId}` : view.kind;
+  if (view.kind === "dm") return `dm:${view.conversationId}`;
+  if (view.kind === "group") return `group:${view.groupId}`;
+  return view.kind;
 }
 
 /** Conversation id when the card is open AND a DM is on top; else null. */
@@ -51,17 +62,24 @@ export function openDmId(state: ChatWidgetState): string | null {
   return state.open && top.kind === "dm" ? top.conversationId : null;
 }
 
+/** Group id when the card is open AND a group thread is on top; else null. */
+export function openGroupId(state: ChatWidgetState): string | null {
+  const top = topView(state);
+  return state.open && top.kind === "group" ? top.groupId : null;
+}
+
 /** Pure. Returns the SAME object reference for no-ops. */
 export function chatWidgetReducer(state: ChatWidgetState, action: ChatWidgetAction): ChatWidgetState {
   switch (action.type) {
     case "open": {
       if (!action.view) {
         if (state.open) return state;
-        return { ...state, open: true, direction: "none" };
+        // Opening the bubble always lands on the room, with the chat list one step back.
+        return { open: true, stack: [LIST, ROOM], direction: "none" };
       }
       if (state.open && sameView(topView(state), action.view)) return state;
       const stack: ChatWidgetView[] =
-        action.view.kind === "room" ? [ROOM] : action.view.kind === "list" ? [ROOM, LIST] : [ROOM, LIST, action.view];
+        action.view.kind === "room" ? [LIST, ROOM] : action.view.kind === "list" ? [LIST] : [LIST, action.view];
       return { open: true, stack, direction: state.open ? "forward" : "none" };
     }
     case "close":
@@ -70,7 +88,10 @@ export function chatWidgetReducer(state: ChatWidgetState, action: ChatWidgetActi
     case "push": {
       const top = topView(state);
       if (!state.open || sameView(top, action.view)) return state;
-      const base = top.kind === "dm" && action.view.kind === "dm" ? state.stack.slice(0, -1) : state.stack;
+      const index = state.stack.findIndex((v) => sameView(v, action.view));
+      if (index >= 0) return { ...state, stack: state.stack.slice(0, index + 1), direction: "back" };
+      const replaceTop = top.kind === "new-group" || (isThread(top) && isThread(action.view));
+      const base = replaceTop ? state.stack.slice(0, -1) : state.stack;
       return { ...state, stack: [...base, action.view], direction: "forward" };
     }
     case "back":
@@ -95,12 +116,16 @@ function dispatch(action: ChatWidgetAction): void {
 export type OpenChatWidgetTarget =
   | { view: "room" }
   | { view: "list" }
-  | { view: "dm"; conversationId: string; conversation?: ConversationDto };
+  | { view: "dm"; conversationId: string; conversation?: ConversationDto }
+  | { view: "group"; groupId: string; group?: GroupConversationDto };
 
 export function openChatWidget(target?: OpenChatWidgetTarget): void {
   if (!target) return dispatch({ type: "open" });
   if (target.view === "dm") {
     return dispatch({ type: "open", view: { kind: "dm", conversationId: target.conversationId, conversation: target.conversation } });
+  }
+  if (target.view === "group") {
+    return dispatch({ type: "open", view: { kind: "group", groupId: target.groupId, group: target.group } });
   }
   dispatch({ type: "open", view: { kind: target.view } });
 }

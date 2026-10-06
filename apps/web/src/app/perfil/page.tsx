@@ -121,6 +121,7 @@ export default function PerfilPage() {
         <h2 className="mb-3 font-display text-base font-semibold text-main">Tu perfil</h2>
         <ProfileForm
           profile={profile}
+          privacy={privacy}
           saving={saving}
           onSave={saveProfile}
         />

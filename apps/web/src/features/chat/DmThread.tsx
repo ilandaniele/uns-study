@@ -2,6 +2,7 @@
 
 import { CaretLeftIcon } from "@phosphor-icons/react/dist/ssr";
 import type { ConversationDto } from "@sala/contracts";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { Avatar } from "@/components/Avatar";
@@ -63,16 +64,24 @@ export function DmThread({ conversationId, currentUserId, conversation, variant 
             <BackButton fallbackHref="/chat/dm" />
           )}
           {otherUserId ? (
-            <Avatar
-              userId={otherUserId}
-              name={conversation?.otherUser.displayName ?? "?"}
-              url={conversation?.otherUser.avatarUrl ?? null}
-              size={widget ? 32 : 36}
-            />
+            <Link href={`/u/${otherUserId}`} aria-hidden="true" tabIndex={-1} className="shrink-0 rounded-full">
+              <Avatar
+                userId={otherUserId}
+                name={conversation?.otherUser.displayName ?? "?"}
+                url={conversation?.otherUser.avatarUrl ?? null}
+                size={widget ? 32 : 36}
+              />
+            </Link>
           ) : null}
           <div className="min-w-0">
             <Heading id={titleId} className={`truncate font-display font-semibold text-main ${widget ? "text-base" : "text-lg"}`}>
-              {conversation?.otherUser.displayName ?? "Conversación"}
+              {otherUserId ? (
+                <Link href={`/u/${otherUserId}`} className="hover:underline">
+                  {conversation?.otherUser.displayName ?? "Conversación"}
+                </Link>
+              ) : (
+                (conversation?.otherUser.displayName ?? "Conversación")
+              )}
             </Heading>
           </div>
         </div>

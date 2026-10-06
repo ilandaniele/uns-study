@@ -16,6 +16,7 @@ import { ProfilesModule } from "./profiles/profiles.module.js";
 import { StudyModule } from "./study/study.module.js";
 import { ChatModule } from "./chat/chat.module.js";
 import { DmModule } from "./dm/dm.module.js";
+import { GroupsModule } from "./groups/groups.module.js";
 import { BlocksModule } from "./blocks/blocks.module.js";
 import { ReportsModule } from "./reports/reports.module.js";
 import { StorageModule } from "./storage/storage.module.js";
@@ -52,6 +53,7 @@ import { NotificationsModule } from "./notifications/notifications.module.js";
     ProfilesModule,
     ChatModule,
     DmModule,
+    GroupsModule,
     AnnouncementsModule,
     ReportsModule,
     AdminModule,
