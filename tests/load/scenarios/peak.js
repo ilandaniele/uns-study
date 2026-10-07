@@ -41,7 +41,9 @@ export const options = {
     // Per-endpoint budgets are doubled for the burst (documented in the README).
     ...baseThresholds(),
     ...endpointThresholds({ only: endpointsFor(profile), scale: 2, maxErrors: 30 }),
-    map_304_ratio: ['rate>0.3'],
+    // map_304_ratio is reported, not gated: any seat write changes the map ETag, and this scenario writes
+    // every few seconds while each VU revalidates every 20-30 s, so few polls can match. smoke gates the
+    // 304 path itself (rate>0.9).
     checkin_latency: ['p(95)<1500', 'p(99)<3000'],
     observation_latency: ['p(95)<1500', 'p(99)<3000'],
     open_app_latency: ['p(95)<1500'],

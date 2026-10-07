@@ -53,7 +53,9 @@ export const options = {
     ...baseThresholds(),
     ...endpointThresholds({ only: endpointsFor(profile), maxErrors: 50 }),
     ...windowThresholds,
-    map_304_ratio: ['rate>0.5'],
+    // map_304_ratio is reported, not gated: any seat write changes the map ETag, and this scenario writes
+    // every few seconds while each VU revalidates every 20-30 s, so few polls can match. smoke gates the
+    // 304 path itself (rate>0.9).
     rate_limited_count: ['count<20'],
     server_error_count: ['count==0'],
     auth_failure_count: ['count<10', { threshold: 'count<50', abortOnFail: true }],

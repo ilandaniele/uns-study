@@ -30,7 +30,9 @@ export const options = {
   thresholds: {
     ...baseThresholds(), // p95 < 500, p99 < 1000, failed < 1%, checks > 99% on {phase:main}
     ...endpointThresholds({ only: endpointsFor(profile), maxErrors: 10 }),
-    map_304_ratio: ['rate>0.5'],
+    // map_304_ratio is reported, not gated: any seat write changes the map ETag, and this scenario writes
+    // every few seconds while each VU revalidates every 20-30 s, so few polls can match. smoke gates the
+    // 304 path itself (rate>0.9).
     checkin_latency: ['p(95)<800', 'p(99)<1500'],
     observation_latency: ['p(95)<800', 'p(99)<1500'],
     rate_limited_count: ['count<10'],
