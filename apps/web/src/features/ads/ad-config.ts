@@ -20,6 +20,18 @@ export const EXCLUDED_PREFIXES = ["/admin", "/login", "/privacidad", "/terminos"
 /** A 160px rail only fits beside the 1280px room grid from about this viewport width. */
 export const RAIL_MIN_VIEWPORT_PX = 1640;
 
+/**
+ * Routes with enough publisher content (text written for readers) to carry Google-served display
+ * ads. AdSense policy forbids its ads on app-only, navigation, login, loading, empty or error
+ * screens, so every other route gets house ads or nothing.
+ */
+export const ADSENSE_CONTENT_PREFIXES = ["/comunidad"];
+
+export function isAdSenseContentPath(pathname: string | null | undefined): boolean {
+  if (!pathname || isExcludedPath(pathname)) return false;
+  return ADSENSE_CONTENT_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
 export function isExcludedPath(pathname: string | null | undefined): boolean {
   if (!pathname) return false;
   return EXCLUDED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));

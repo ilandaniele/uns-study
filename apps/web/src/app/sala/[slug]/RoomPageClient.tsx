@@ -7,7 +7,6 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AdSlot } from "@/components/AdSlot";
 import { showPreCheckInAd } from "@/features/ads/ads";
 import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
 import { ActiveCheckInBanner } from "@/features/room/ActiveCheckInBanner";
@@ -555,7 +554,6 @@ export function RoomPageClient({ slug }: { slug: string }) {
             <ZoomableMap>{roomMap}</ZoomableMap>
           )}
         </div>
-        <AdSlot placement="room-bottom" />
       </section>
 
       {/* Mobile/tablet: people list below the map (desktop shows it in RoomInfoPanel instead). */}
