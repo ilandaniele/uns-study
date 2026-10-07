@@ -29,6 +29,15 @@ export interface MpPreapprovalBody {
   status: "pending";
 }
 
+export interface MpPreferenceBody {
+  items: Array<{ title: string; quantity: 1; unit_price: number; currency_id: "ARS" }>;
+  back_urls: { success: string; failure: string; pending: string };
+  auto_return: "approved";
+  statement_descriptor: string;
+}
+
+export type MpPreference = { id: string; init_point: string };
+
 const BASE_URL = "https://api.mercadopago.com";
 const TIMEOUT_MS = 10_000;
 
@@ -41,6 +50,11 @@ export class MercadoPagoClient {
 
   createPreapproval(body: MpPreapprovalBody): Promise<MpPreapproval> {
     return this.request<MpPreapproval>("POST", "/preapproval", body, { "X-Idempotency-Key": randomUUID() });
+  }
+
+  /** Checkout Pro preference for a one-time payment (donations). */
+  createPreference(body: MpPreferenceBody): Promise<MpPreference> {
+    return this.request<MpPreference>("POST", "/checkout/preferences", body, { "X-Idempotency-Key": randomUUID() });
   }
 
   getPreapproval(id: string): Promise<MpPreapproval> {

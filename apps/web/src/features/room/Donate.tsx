@@ -2,7 +2,9 @@
 
 import { CheckIcon, CopyIcon, HeartIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import { useEffect, useRef, useState } from "react";
+import { DONATION_AMOUNTS_ARS, donationCheckoutSchema, type DonationCheckoutDto } from "@sala/contracts";
 import { useHouseInterstitial } from "@/features/ads/ad-overlay-store";
+import { apiPost } from "@/lib/api";
 import { FIRST_CHECK_IN_KEY, FIRST_SEEN_KEY } from "@/lib/engagement";
 import { useExitTransition } from "@/lib/useExitTransition";
 
@@ -70,12 +72,60 @@ function AliasTicket() {
   );
 }
 
+const formatArs = (n: number) => `$${n.toLocaleString("es-AR")}`;
+
+/** Fixed amounts: each one opens Mercado Pago Checkout Pro straight away. */
+function MercadoPagoAmounts() {
+  const [busy, setBusy] = useState<number | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  async function donate(amount: number) {
+    if (busy != null) return;
+    setBusy(amount);
+    setFailed(false);
+    try {
+      const { initPoint } = await apiPost<DonationCheckoutDto>("/api/v1/donations/checkout", { amount }, donationCheckoutSchema);
+      window.location.assign(initPoint);
+    } catch {
+      setFailed(true);
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="label-caps text-muted">Donar con Mercado Pago</span>
+      <div className="grid grid-cols-2 gap-2">
+        {DONATION_AMOUNTS_ARS.map((amount) => (
+          <button
+            key={amount}
+            type="button"
+            onClick={() => void donate(amount)}
+            disabled={busy != null}
+            aria-busy={busy === amount}
+            className="min-h-11 rounded-xl bg-primary px-3 font-mono text-[15px] font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-60"
+          >
+            {busy === amount ? "Abriendo…" : formatArs(amount)}
+          </button>
+        ))}
+      </div>
+      {failed ? (
+        <p role="alert" className="text-xs text-[var(--seat-occupied)]">
+          No pudimos abrir Mercado Pago. Probá de nuevo o usá el alias.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function DonateBody() {
   return (
     <>
       <p className="text-sm leading-relaxed text-muted">
         La app es gratis. Si te sirve, cualquier aporte ayuda a pagar el servidor para que siga andando y no se caiga.
       </p>
+      <MercadoPagoAmounts />
+      <span className="label-caps text-muted">O por transferencia</span>
       <AliasTicket />
     </>
   );

@@ -44,6 +44,7 @@ const PUBLIC_ROUTES: Record<string, string> = {
   "GET /api/v1/email/unsubscribe": "token-authenticated unsubscribe status",
   "POST /api/v1/email/unsubscribe": "token-authenticated RFC 8058 one-click unsubscribe",
   "POST /api/v1/webhooks/mercadopago": "authenticated by Mercado Pago signature, not session",
+  "POST /api/v1/donations/checkout": "anonymous one-time donation; fixed amounts, rate limited per IP, stores nothing",
   "POST /api/v1/__e2e/expire-checkin": "only mounted with E2E_TEST_HOOKS, never in production",
 };
 

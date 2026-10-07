@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export type SubscriptionStatus = "pending" | "authorized" | "paused" | "cancelled";
 
 export interface SubscriptionDto {
@@ -11,5 +13,16 @@ export interface SubscriptionDto {
 }
 
 export interface SubscriptionCheckoutDto {
+  initPoint: string;
+}
+
+/** One-time donation amounts (ARS) offered as buttons; the API accepts only these. */
+export const DONATION_AMOUNTS_ARS = [1000, 2000, 5000, 10000] as const;
+
+export const donationCheckoutSchema = z.object({
+  amount: z.number().int().refine((n) => (DONATION_AMOUNTS_ARS as readonly number[]).includes(n), "Monto no permitido"),
+});
+
+export interface DonationCheckoutDto {
   initPoint: string;
 }
