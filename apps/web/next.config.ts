@@ -41,7 +41,7 @@ const nextConfig: NextConfig = {
           // Camera: report photo capture; geolocation: geofence checks.
           { key: "Permissions-Policy", value: "camera=(self), geolocation=(self), microphone=(), payment=()" },
           // Stop other sites from embedding our responses via <img>/<script> (Spectre-style leaks).
-          { key: "Cross-Origin-Resource-Policy", value: "same-site" },
+          { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
         ],
       },
     ];
