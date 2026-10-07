@@ -114,8 +114,13 @@ export function endpointThresholds({ only, scale = 1, maxErrors = 5 } = {}) {
   return out;
 }
 
-/** Shared timeouts: setup() creates up to MAX_VUS accounts one by one (scrypt hashing), far beyond k6's 60 s default. */
+/**
+ * Shared lifecycle options, spread into every scenario.
+ * - Timeouts: setup() creates up to MAX_VUS accounts one by one (scrypt hashing), far beyond k6's 60 s default.
+ * - noCookiesReset: k6 empties each VU's cookie jar before every iteration by default. activateSession() seeds the
+ *   jar once per VU, so without this every iteration after the first runs signed out (401 on all authed routes).
+ */
 export function lifecycleTimeouts(users) {
   const setupS = Math.max(120, Math.ceil(users * 1.5) + 60);
-  return { setupTimeout: `${setupS}s`, teardownTimeout: '5m' };
+  return { setupTimeout: `${setupS}s`, teardownTimeout: '5m', noCookiesReset: true };
 }
