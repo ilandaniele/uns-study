@@ -67,4 +67,26 @@ describe("attachPostgresAdapter", () => {
     expect(end).toHaveBeenCalled();
     expect(JSON.parse(err.mock.calls[0]![0] as string)).toMatchObject({ evt: "realtime_adapter_setup_failed", fallback: "memory" });
   });
+
+  it("does not hang shutdown when a client is still checked out (pool.end never resolves)", async () => {
+    const end = vi.fn(() => new Promise<void>(() => undefined));
+    const pool = { end } as unknown as pg.Pool;
+    vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    attachPostgresAdapter({ adapter: vi.fn() }, url, { createPool: () => pool, createAdapter: vi.fn(() => vi.fn()) as never });
+    await closeAdapterPool(20);
+    expect(end).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(warn.mock.calls[0]![0] as string)).toMatchObject({ evt: "realtime_adapter_close_timeout", timeoutMs: 20 });
+  });
+
+  it("passes an error handler to the adapter that logs instead of staying silent", () => {
+    const pool = { end: vi.fn(async () => undefined) } as unknown as pg.Pool;
+    vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const err = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const createAdapter = vi.fn((_pool: unknown, _opts: { errorHandler: (e: Error) => void }) => vi.fn());
+    attachPostgresAdapter({ adapter: vi.fn() }, url, { createPool: () => pool, createAdapter: createAdapter as never });
+    createAdapter.mock.calls[0]![1].errorHandler(new Error("notify failed"));
+    expect(JSON.parse(err.mock.calls[0]![0] as string)).toMatchObject({ evt: "realtime_adapter_error", msg: "notify failed" });
+    return closeAdapterPool();
+  });
 });

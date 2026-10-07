@@ -1,4 +1,4 @@
-import { Global, Inject, Module, type BeforeApplicationShutdown } from "@nestjs/common";
+import { Global, Inject, Module, type BeforeApplicationShutdown, type OnApplicationShutdown } from "@nestjs/common";
 import { RoomRealtimeGateway } from "./room-realtime.gateway.js";
 import { RealtimeTokenController } from "./realtime-token.controller.js";
 import { RoomsModule } from "../rooms/rooms.module.js";
@@ -37,13 +37,17 @@ export async function drainOnShutdown(gateway: Pick<RoomRealtimeGateway, "flushP
   providers: [RoomRealtimeGateway],
   exports: [RoomRealtimeGateway],
 })
-export class RealtimeModule implements BeforeApplicationShutdown {
+export class RealtimeModule implements BeforeApplicationShutdown, OnApplicationShutdown {
   constructor(@Inject(RoomRealtimeGateway) private readonly gateway: RoomRealtimeGateway) {}
 
   // Runs before DatabaseModule closes the pool (onApplicationShutdown), so queued security events
   // and coalesced seat summaries can still hit the DB.
   async beforeApplicationShutdown(): Promise<void> {
     await drainOnShutdown(this.gateway);
+  }
+
+  // After Nest has closed the Socket.IO server, which releases the adapter's LISTEN client.
+  async onApplicationShutdown(): Promise<void> {
     await closeAdapterPool();
   }
 }

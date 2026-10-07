@@ -32,6 +32,14 @@ function createAdapterPool(databaseUrl: string): pg.Pool {
   pool.on("error", (err) => {
     console.error(JSON.stringify({ evt: "realtime_adapter_pool_error", msg: err.message }));
   });
+  // pg-pool drops its idle error listener while a client is checked out, and the adapter keeps one
+  // client checked out forever for LISTEN. Without a permanent listener a dropped connection would
+  // emit an unhandled 'error' and crash the process instead of letting the adapter reconnect.
+  pool.on("connect", (client) => {
+    client.on("error", (err) => {
+      console.error(JSON.stringify({ evt: "realtime_adapter_client_error", msg: err.message }));
+    });
+  });
   return pool;
 }
 
@@ -47,7 +55,14 @@ export function attachPostgresAdapter(
   let pool: pg.Pool | null = null;
   try {
     pool = (deps.createPool ?? createAdapterPool)(databaseUrl);
-    io.adapter((deps.createAdapter ?? createAdapter)(pool, { tableName: ATTACHMENTS_TABLE, cleanupInterval: ATTACHMENTS_CLEANUP_INTERVAL_MS }));
+    io.adapter((deps.createAdapter ?? createAdapter)(pool, {
+        tableName: ATTACHMENTS_TABLE,
+        cleanupInterval: ATTACHMENTS_CLEANUP_INTERVAL_MS,
+        // The default handler only writes to `debug`, which hides NOTIFY/cleanup failures in production.
+        errorHandler: (err: Error) => {
+          console.error(JSON.stringify({ evt: "realtime_adapter_error", msg: err.message }));
+        },
+      }));
     adapterPool = pool;
     console.info(JSON.stringify({ evt: "realtime_adapter", adapter: "postgres" }));
     return true;
@@ -58,14 +73,33 @@ export function attachPostgresAdapter(
   }
 }
 
-/** Closes the adapter's pool (no-op when the adapter was never attached). */
-export async function closeAdapterPool(): Promise<void> {
+/** Upper bound on waiting for the adapter pool to close during shutdown. */
+export const ADAPTER_POOL_CLOSE_TIMEOUT_MS = 2_000;
+
+/**
+ * Closes the adapter's pool (no-op when the adapter was never attached). `pool.end()` only resolves
+ * once every client is released, and the adapter holds its LISTEN client until `io.close()`; the
+ * timeout keeps a still-held client from hanging shutdown until Fly hard-kills the VM.
+ */
+export async function closeAdapterPool(timeoutMs: number = ADAPTER_POOL_CLOSE_TIMEOUT_MS): Promise<void> {
   const pool = adapterPool;
   adapterPool = null;
   if (!pool) return;
-  await pool.end().catch((err: unknown) => {
-    console.error(JSON.stringify({ evt: "realtime_adapter_close_error", msg: err instanceof Error ? err.message : String(err) }));
+  let timer: NodeJS.Timeout | undefined;
+  const timedOut = new Promise<"timeout">((resolve) => {
+    timer = setTimeout(() => resolve("timeout"), timeoutMs);
+    timer.unref();
   });
+  const ended = pool.end().then(
+    () => "ended" as const,
+    (err: unknown) => {
+      console.error(JSON.stringify({ evt: "realtime_adapter_close_error", msg: err instanceof Error ? err.message : String(err) }));
+      return "ended" as const;
+    },
+  );
+  const result = await Promise.race([ended, timedOut]);
+  clearTimeout(timer);
+  if (result === "timeout") console.warn(JSON.stringify({ evt: "realtime_adapter_close_timeout", timeoutMs }));
 }
 
 /** Nest's default Socket.IO adapter, plus the Postgres cross-machine adapter when enabled. */

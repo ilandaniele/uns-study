@@ -81,8 +81,9 @@ export class RoomStateService {
     await db.execute(sql`select pg_advisory_xact_lock(hashtext(u.id)) from unnest(array[${seatIdList}]::text[]) with ordinality as u(id, o) order by u.o`);
 
     // One batched read per source for the whole seat set (after the locks, so it's consistent).
-    const [checkInRows, openRows, observationRows, previousRows] = await Promise.all([
-      db
+    // Awaited one at a time: `db` is a transaction (a single pg client), which cannot run queries concurrently.
+    const [checkInRows, openRows, observationRows, previousRows] = [
+      await db
         .select({
           seatId: schema.checkIns.seatId,
           id: schema.checkIns.id,
@@ -92,11 +93,11 @@ export class RoomStateService {
         })
         .from(schema.checkIns)
         .where(and(inArray(schema.checkIns.seatId, uniqueSeatIds), eq(schema.checkIns.status, "ACTIVE"))),
-      db
+      await db
         .select({ seatId: schema.seatDisputes.seatId })
         .from(schema.seatDisputes)
         .where(and(inArray(schema.seatDisputes.seatId, uniqueSeatIds), eq(schema.seatDisputes.status, "OPEN"))),
-      db
+      await db
         .select({
           seatId: schema.seatObservations.seatId,
           userId: schema.seatObservations.userId,
@@ -106,8 +107,8 @@ export class RoomStateService {
         })
         .from(schema.seatObservations)
         .where(and(inArray(schema.seatObservations.seatId, uniqueSeatIds), gt(schema.seatObservations.expiresAt, now))),
-      db.select().from(schema.seatCurrentState).where(inArray(schema.seatCurrentState.seatId, uniqueSeatIds)),
-    ]);
+      await db.select().from(schema.seatCurrentState).where(inArray(schema.seatCurrentState.seatId, uniqueSeatIds)),
+    ];
 
     const checkInBySeat = new Map<string, (typeof checkInRows)[number]>();
     for (const c of checkInRows) if (!checkInBySeat.has(c.seatId)) checkInBySeat.set(c.seatId, c);
