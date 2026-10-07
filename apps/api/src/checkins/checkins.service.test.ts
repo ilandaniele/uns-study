@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@sala/database";
 import { schema } from "@sala/database";
 import { eq } from "drizzle-orm";
@@ -116,6 +116,45 @@ describe("CheckInService", () => {
 
     const rows = await db.select().from(schema.checkIns).where(eq(schema.checkIns.userId, "u1"));
     expect(rows.filter((r) => r.status === "ACTIVE")).toHaveLength(1);
+  });
+
+  it("rethrows a non-unique-violation error from the retry instead of masking it as a validation error", async () => {
+    await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    const roomState = (svc as unknown as { roomState: RoomStateService }).roomState;
+    const spy = vi
+      .spyOn(roomState, "recomputeSeats")
+      .mockRejectedValueOnce(Object.assign(new Error("dup"), { code: "23505", constraint: "uq_checkin_active_user" }))
+      .mockRejectedValueOnce(new Error("db down"));
+    await expect(svc.checkIn({ userId: "u1", roomId, seatId: seatIds[1]!, location, showIdentity: false })).rejects.toThrow("db down");
+    spy.mockRestore();
+  });
+
+  it("re-checking into the same seat resets the expiry reminder so the new window gets one", async () => {
+    const { checkIn } = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await db.update(schema.checkIns).set({ expiryReminderSentAt: new Date() }).where(eq(schema.checkIns.id, checkIn.id));
+    await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    const [row] = await db.select().from(schema.checkIns).where(eq(schema.checkIns.id, checkIn.id));
+    expect(row?.expiryReminderSentAt).toBeNull();
+  });
+
+  it("moving from a seat in another room recomputes it against its own room and reports that room's changes", async () => {
+    const room = await getRoom(db);
+    const [otherRoom] = await db
+      .insert(schema.rooms)
+      .values({ slug: "otra-sala", name: "Otra sala", timezone: room.timezone, latitude: room.latitude, longitude: room.longitude, geofenceRadiusM: room.geofenceRadiusM, dailyResetTime: "04:00" })
+      .returning();
+    const [otherTable] = await db.insert(schema.roomTables).values({ roomId: otherRoom!.id, code: "T1", label: "T1", type: "MAIN_TABLE", x: 0, y: 0, width: 1, height: 1 }).returning();
+    const [otherSeat] = await db.insert(schema.seats).values({ roomId: otherRoom!.id, tableId: otherTable!.id, code: "X1", seatNumber: 1, x: 0, y: 0 }).returning();
+
+    const first = await svc.checkIn({ userId: "u1", roomId: otherRoom!.id, seatId: otherSeat!.id, location, showIdentity: false });
+    expect(first.previousRoom).toBeNull();
+
+    const moved = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    expect(moved.changes.map((c) => c.seatId)).toEqual([seatIds[0]]);
+    expect(moved.previousRoom?.roomId).toBe(otherRoom!.id);
+    expect(moved.previousRoom?.changes.map((c) => c.seatId)).toEqual([otherSeat!.id]);
+    const [state] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, otherSeat!.id));
+    expect(state?.status).not.toBe("OCCUPIED");
   });
 
   it("checks out and frees the seat", async () => {

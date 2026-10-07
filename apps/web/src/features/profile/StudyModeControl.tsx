@@ -66,6 +66,7 @@ export function StudyModeControl({ roomId, initialStatus }: StudyModeControlProp
         <>
           <input
             value={subject}
+            aria-label="Qué estás estudiando"
             onChange={(e) => setSubject(e.target.value)}
             maxLength={80}
             placeholder="¿Qué estás estudiando? (opcional)"
@@ -73,6 +74,7 @@ export function StudyModeControl({ roomId, initialStatus }: StudyModeControlProp
           />
           <input
             value={message}
+            aria-label="Mensaje corto"
             onChange={(e) => setMessage(e.target.value)}
             maxLength={140}
             placeholder="Mensaje corto (opcional)"

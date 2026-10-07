@@ -51,6 +51,8 @@ export const directConversations = pgTable(
   (table) => [
     check("chk_direct_conversations_ordered", sql`${table.userA} < ${table.userB}`),
     uniqueIndex("uq_direct_conversations_pair").on(table.userA, table.userB),
+    index("idx_direct_conversations_user_a_last").on(table.userA, table.lastMessageAt),
+    index("idx_direct_conversations_user_b_last").on(table.userB, table.lastMessageAt),
   ],
 );
 

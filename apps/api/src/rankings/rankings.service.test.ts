@@ -185,4 +185,45 @@ describe("RankingsService", () => {
     expect(asLast.entries.some((e) => e.isMe)).toBe(false);
     expect(asLast.me).toMatchObject({ isMe: true, value: 96, rank: 105 });
   });
+
+  it("caps contribution per local day (not per UTC day) across the whole history for `all`", async () => {
+    await insertUsers(db, ["u9"]);
+    await makeVisible("u9");
+
+    // 2026-01-10T02:00Z is still 2026-01-09 in Buenos Aires (UTC-3); 04:00Z is 2026-01-10.
+    const earlyUtcSameLocalDay = new Date("2026-01-10T02:00:00Z");
+    const nextLocalDay = new Date("2026-01-10T04:00:00Z");
+    const insertObs = (createdAt: Date, n: number) =>
+      db.insert(schema.seatObservations).values(
+        Array.from({ length: n }, () => ({
+          userId: "u9",
+          roomId,
+          seatId,
+          observedStatus: "FREE" as const,
+          expiresAt: new Date(createdAt.getTime() + 60_000),
+          createdAt,
+        })),
+      );
+    await insertObs(new Date("2026-01-09T20:00:00Z"), 15); // local 01-09
+    await insertObs(earlyUtcSameLocalDay, 10); // local 01-09 -> 25 capped to 20
+    await insertObs(nextLocalDay, 3); // local 01-10 -> 3
+    await insertObs(new Date("2025-12-01T15:00:00Z"), 30); // older day -> 20
+
+    const ranking = await svc.getRankings(roomSlug, "all", "contribution", null, TODAY);
+    expect(ranking.entries).toMatchObject([{ rank: 1, value: 43 }]);
+  });
+
+  it("sums per-user capped study minutes over all time independently per user", async () => {
+    await insertUsers(db, ["s1", "s2"]);
+    await makeVisible("s1");
+    await makeVisible("s2");
+    await insertStudySession("s1", "2026-01-02", 600, "e1111111-1111-1111-1111-111111111111");
+    await insertStudySession("s1", "2026-01-02", 300, "e2222222-2222-2222-2222-222222222222"); // day total 900 -> 720
+    await insertStudySession("s1", "2026-01-03", 50, "e3333333-3333-3333-3333-333333333333");
+    await insertStudySession("s2", "2026-01-02", 100, "e4444444-4444-4444-4444-444444444444");
+
+    const ranking = await svc.getRankings(roomSlug, "all", "study_time", "s2", TODAY);
+    expect(ranking.entries.map((e) => e.value)).toEqual([770, 100]);
+    expect(ranking.me).toMatchObject({ rank: 2, value: 100 });
+  });
 });

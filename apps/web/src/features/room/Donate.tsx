@@ -7,6 +7,7 @@ import { useHouseInterstitial } from "@/features/ads/ad-overlay-store";
 import { apiPost } from "@/lib/api";
 import { FIRST_CHECK_IN_KEY, FIRST_SEEN_KEY } from "@/lib/engagement";
 import { useExitTransition } from "@/lib/useExitTransition";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 export const DONATION_ALIAS = "golf.cabina.mulita";
 const DONATION_BANK = "Banco Provincia";
@@ -209,6 +210,7 @@ export function DonatePrompt({ blocked }: { blocked: boolean }) {
 
   const adOpen = useHouseInterstitial().open;
   const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (Date.now() - readDismissedAt() < PROMPT_EVERY_MS) return;
@@ -229,32 +231,16 @@ export function DonatePrompt({ blocked }: { blocked: boolean }) {
     requestClose();
   }
 
-  const closeLatest = useRef(close);
-  useEffect(() => {
-    closeLatest.current = close;
-  });
-
   const visible = due && !dismissed && !blocked && !adOpen;
 
-  useEffect(() => {
-    if (!visible) return;
-    const previous = document.activeElement as HTMLElement | null;
-    closeRef.current?.focus();
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") closeLatest.current();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      previous?.focus();
-    };
-  }, [visible]);
+  useFocusTrap(dialogRef, { initialFocus: closeRef, onEscape: close, active: visible });
 
   if (!visible) return null;
 
   return (
     <div className={`${closing ? "backdrop-exit" : "backdrop-enter"} fixed inset-0 z-50 flex items-end bg-black/40`} onClick={close}>
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="donate-prompt-title"

@@ -1,4 +1,5 @@
-import { boolean, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { boolean, index, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { rooms } from "./rooms.js";
 import { user } from "./auth.js";
 
@@ -36,5 +37,10 @@ export const studyStatus = pgTable(
     startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [primaryKey({ columns: [table.userId, table.roomId] })],
+  (table) => [
+    primaryKey({ columns: [table.userId, table.roomId] }),
+    index("idx_study_status_room_active")
+      .on(table.roomId)
+      .where(sql`active`),
+  ],
 );

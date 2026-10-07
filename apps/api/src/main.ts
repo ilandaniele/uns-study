@@ -70,6 +70,10 @@ async function bootstrap() {
   httpAdapter.set("trust proxy", env.trustProxyHops); // behind a reverse proxy — @Ip() must see the real client IP
   // First of all, before anything reads `req.ip`: a direct hit on the API could forge X-Forwarded-For,
   // so unless the web app's shared secret is present the header is swapped for Fly-Client-IP.
+  if (env.isProduction && !env.proxySharedSecret) {
+    // Without the secret, forged X-Forwarded-For on direct hits defeats every per-IP limiter.
+    console.error(JSON.stringify({ evt: "config_warning", msg: "PROXY_SHARED_SECRET unset in production; per-IP rate limits are weakened" }));
+  }
   httpAdapter.use(proxyTrustMiddleware(env.proxySharedSecret));
   // Coarse per-IP cap (300/min) over every /api/v1 route; health and the MP webhook are skipped.
   httpAdapter.use("/api/v1", globalIpRateLimitMiddleware());

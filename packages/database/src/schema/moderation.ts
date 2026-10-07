@@ -54,23 +54,31 @@ export const userReports = pgTable(
   (table) => [
     index("idx_user_reports_status_created").on(table.status, table.createdAt),
     index("idx_user_reports_reporter_created").on(table.reporterId, table.createdAt),
+    index("idx_user_reports_created").on(table.createdAt.desc()),
   ],
 );
 
-export const userReportAttachments = pgTable("user_report_attachments", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  reportId: uuid("report_id")
-    .notNull()
-    .references(() => userReports.id, { onDelete: "cascade" }),
-  objectKey: text("object_key").notNull().unique(),
-  contentType: text("content_type").notNull(),
-  sizeBytes: integer("size_bytes").notNull(),
-  uploadedBy: text("uploaded_by")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  status: reportAttachmentStatusEnum("status").notNull().default("PENDING"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const userReportAttachments = pgTable(
+  "user_report_attachments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reportId: uuid("report_id")
+      .notNull()
+      .references(() => userReports.id, { onDelete: "cascade" }),
+    objectKey: text("object_key").notNull().unique(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    uploadedBy: text("uploaded_by")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    status: reportAttachmentStatusEnum("status").notNull().default("PENDING"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_user_report_attachments_report").on(table.reportId),
+    index("idx_user_report_attachments_status_created").on(table.status, table.createdAt),
+  ],
+);
 
 export const userRestrictions = pgTable(
   "user_restrictions",
@@ -89,15 +97,19 @@ export const userRestrictions = pgTable(
   (table) => [index("idx_user_restrictions_user").on(table.userId)],
 );
 
-export const moderationActions = pgTable("moderation_actions", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  actorId: text("actor_id").references(() => user.id, { onDelete: "set null" }),
-  targetUserId: text("target_user_id").references(() => user.id, { onDelete: "set null" }),
-  reportId: uuid("report_id").references(() => userReports.id, { onDelete: "set null" }),
-  action: text("action").notNull(),
-  metadata: jsonb("metadata"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const moderationActions = pgTable(
+  "moderation_actions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    actorId: text("actor_id").references(() => user.id, { onDelete: "set null" }),
+    targetUserId: text("target_user_id").references(() => user.id, { onDelete: "set null" }),
+    reportId: uuid("report_id").references(() => userReports.id, { onDelete: "set null" }),
+    action: text("action").notNull(),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("idx_moderation_actions_created").on(table.createdAt.desc())],
+);
 
 export const announcements = pgTable(
   "announcements",

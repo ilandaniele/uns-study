@@ -4,12 +4,11 @@ import { XIcon } from "@phosphor-icons/react/dist/ssr";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { useExitTransition } from "@/lib/useExitTransition";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 import { CLOSE_COUNTDOWN_S } from "./ad-config";
 import { closeHouseInterstitial, useHouseInterstitial } from "./ad-overlay-store";
 import { HouseAd } from "./HouseAd";
 import { RewardedAdButton } from "./RewardedAdButton";
-
-const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
  * Our own interstitial; it only ever wraps house ads (GAM formats draw Google's own UI).
@@ -49,47 +48,8 @@ function Overlay({ placement }: { placement: NonNullable<ReturnType<typeof useHo
     return () => window.clearTimeout(id);
   }, [remaining]);
 
-  // Focus moves into the dialog and returns to the trigger on close.
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    const panel = panelRef.current;
-    const first = panel?.querySelector<HTMLElement>(FOCUSABLE);
-    (first ?? panel)?.focus();
-    return () => previous?.focus?.();
-  }, []);
-
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        if (canClose) {
-          e.preventDefault();
-          requestClose();
-        }
-        return;
-      }
-      if (e.key !== "Tab") return;
-      const panel = panelRef.current;
-      if (!panel) return;
-      const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
-      if (items.length === 0) {
-        e.preventDefault();
-        panel.focus();
-        return;
-      }
-      const firstEl = items[0]!;
-      const lastEl = items[items.length - 1]!;
-      const active = document.activeElement;
-      if (e.shiftKey && (active === firstEl || !panel.contains(active))) {
-        e.preventDefault();
-        lastEl.focus();
-      } else if (!e.shiftKey && (active === lastEl || !panel.contains(active))) {
-        e.preventDefault();
-        firstEl.focus();
-      }
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [canClose, requestClose]);
+  // Focus moves into the dialog, Tab stays inside, and focus returns to the trigger on close.
+  useFocusTrap(panelRef, { onEscape: canClose ? requestClose : undefined });
 
   return (
     <div

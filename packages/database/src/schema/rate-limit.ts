@@ -1,4 +1,4 @@
-import { integer, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
+import { index, integer, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
 
 /**
  * Fixed-window hit counters for the Postgres-backed rate limiter (used when neither Upstash nor a
@@ -12,5 +12,5 @@ export const rateLimitHits = pgTable(
     windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
     count: integer("count").notNull().default(0),
   },
-  (table) => [primaryKey({ columns: [table.key, table.windowStart] })],
+  (table) => [primaryKey({ columns: [table.key, table.windowStart] }), index("idx_rate_limit_hits_window_start").on(table.windowStart)],
 );

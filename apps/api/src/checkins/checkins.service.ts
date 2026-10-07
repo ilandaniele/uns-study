@@ -63,7 +63,9 @@ export class CheckInService {
   /** Creates (or moves) the caller's active check-in. Returns the changed seats for realtime
    *  emission, plus whether this was a fresh check-in (not a move/refresh) by an ADMIN/MODERATOR —
    *  the caller uses that to trigger the "admin present" room banner + push notification. */
-  async checkIn(input: CreateCheckInInput): Promise<{ checkIn: CheckInDto; changes: SeatStateChange[]; adminPresent: boolean }> {
+  async checkIn(
+    input: CreateCheckInInput,
+  ): Promise<{ checkIn: CheckInDto; changes: SeatStateChange[]; previousRoom: { roomId: string; changes: SeatStateChange[] } | null; adminPresent: boolean }> {
     // Room + seat come from the in-memory cache (invalidated by geofence/seed writes).
     const room = await this.roomCache.getRoom(this.db, input.roomId);
 
@@ -96,6 +98,7 @@ export class CheckInService {
       const qrVerified = await qrVerifiedPromise;
       return this.db.transaction(async (tx) => {
         let previousSeatId: string | null = null;
+        let previousRoomId: string | null = null;
         const [existing] = await tx
           .select()
           .from(schema.checkIns)
@@ -109,7 +112,7 @@ export class CheckInService {
           // Re-checking into the same seat just refreshes the window.
           const [refreshed] = await tx
             .update(schema.checkIns)
-            .set({ expiresAt, updatedAt: now, showIdentity: input.showIdentity, locationAccuracyM: input.location.accuracy })
+            .set({ expiresAt, expiryReminderSentAt: null, updatedAt: now, showIdentity: input.showIdentity, locationAccuracyM: input.location.accuracy })
             .where(eq(schema.checkIns.id, existing.id))
             .returning();
           if (!refreshed) throw new Error("Check-in vanished during refresh");
@@ -117,6 +120,7 @@ export class CheckInService {
         } else {
           if (existing) {
             previousSeatId = existing.seatId;
+            previousRoomId = existing.roomId;
             previousCheckInId = existing.id;
             await tx
               .update(schema.checkIns)
@@ -145,7 +149,10 @@ export class CheckInService {
 
         // Same transaction: one BEGIN/COMMIT for the whole action, and the seat state can never
         // lag behind the check-in it was derived from.
-        const changes = await this.roomState.recomputeSeats(previousSeatId ? [input.seatId, previousSeatId] : [input.seatId], {
+        // The seat being left may be in another room: recompute it against ITS room, and hand the
+        // caller those changes separately so that room's viewers get the broadcast too.
+        const crossRoom = previousSeatId !== null && previousRoomId !== input.roomId;
+        const changes = await this.roomState.recomputeSeats(previousSeatId && !crossRoom ? [input.seatId, previousSeatId] : [input.seatId], {
           roomId: input.roomId,
           now,
           eventType: "CHECK_IN",
@@ -153,7 +160,20 @@ export class CheckInService {
           seatMetadata: qrVerified ? { [input.seatId]: { qrVerified: true } } : undefined,
           tx,
         });
-        return { row, changes };
+        const previousRoom =
+          crossRoom && previousSeatId && previousRoomId
+            ? {
+                roomId: previousRoomId,
+                changes: await this.roomState.recomputeSeats([previousSeatId], {
+                  roomId: previousRoomId,
+                  now,
+                  eventType: "CHECK_IN",
+                  actingUserId: input.userId,
+                  tx,
+                }),
+              }
+            : null;
+        return { row, changes, previousRoom };
       });
     };
 
@@ -172,10 +192,11 @@ export class CheckInService {
         if (isUniqueViolation(retryErr) && uniqueViolationConstraint(retryErr) === "uq_checkin_active_seat") {
           throw ApiErrors.seatTaken();
         }
+        if (!isUniqueViolation(retryErr)) throw retryErr;
         throw ApiErrors.validation("Intentá de nuevo.");
       }
     }
-    const { row: checkInRow, changes } = written;
+    const { row: checkInRow, changes, previousRoom } = written;
 
     // Moving away from a seat ends that check-in — resolve any dispute still OPEN against it.
     // A failure here must not turn an otherwise-successful move into a 500.
@@ -192,7 +213,7 @@ export class CheckInService {
 
     const adminPresent = isFreshCheckIn && (await isAdminPromise);
 
-    return { checkIn: toDto(checkInRow, seat.code), changes, adminPresent };
+    return { checkIn: toDto(checkInRow, seat.code), changes, previousRoom, adminPresent };
   }
 
   /** Records a `SEAT_TOGGLE_RAPID` security event when a user has created >= 4 check-ins in 10 min. */

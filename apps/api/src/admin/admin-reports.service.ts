@@ -1,11 +1,12 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, asc, desc, eq, lt } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { AdminReportDto, Page } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { StorageService } from "../storage/storage.service.js";
 import { RolesService } from "../users/roles.service.js";
+import { parseCursor } from "./admin-audit.service.js";
 
 const PAGE_SIZE = 20;
 
@@ -22,7 +23,7 @@ export class AdminReportsService {
   async list(status: string | undefined, cursor: string | undefined, actorId: string): Promise<Page<AdminReportDto>> {
     const conditions = [
       status ? eq(schema.userReports.status, status as ReportStatus) : undefined,
-      cursor ? lt(schema.userReports.createdAt, new Date(cursor)) : undefined,
+      (() => { const before = parseCursor(cursor); return before ? lt(schema.userReports.createdAt, before) : undefined; })(),
     ].filter((c): c is NonNullable<typeof c> => Boolean(c));
 
     const rows = await this.db
@@ -34,7 +35,7 @@ export class AdminReportsService {
 
     const page = rows.slice(0, PAGE_SIZE);
     const canSeeEmail = await this.roles.hasRole(actorId, ["ADMIN"]);
-    const items = await Promise.all(page.map((r) => this.toDto(r, canSeeEmail)));
+    const items = await this.toDtos(page, canSeeEmail);
     const nextCursor = rows.length > PAGE_SIZE ? page[page.length - 1]!.createdAt.toISOString() : null;
     return { items, nextCursor };
   }
@@ -94,33 +95,43 @@ export class AdminReportsService {
     return url;
   }
 
+  private async toDto(row: typeof schema.userReports.$inferSelect, canSeeEmail: boolean): Promise<AdminReportDto> {
+    const [dto] = await this.toDtos([row], canSeeEmail);
+    if (!dto) throw new Error("Failed to build report DTO");
+    return dto;
+  }
+
   /** `reporterId`/`reportedUserId` are null once the account has been deleted; the DTO surfaces `null` so the UI can show "Cuenta eliminada". */
   /** `canSeeEmail` is true only for ADMIN callers; moderators get `email: null`. */
-  private async toDto(row: typeof schema.userReports.$inferSelect, canSeeEmail: boolean): Promise<AdminReportDto> {
-    const reporter = row.reporterId
-      ? (await this.db.select().from(schema.user).where(eq(schema.user.id, row.reporterId)).limit(1))[0]
-      : undefined;
-    const reported = row.reportedUserId
-      ? (await this.db.select().from(schema.user).where(eq(schema.user.id, row.reportedUserId)).limit(1))[0]
-      : undefined;
-    const attachments = await this.db
+  private async toDtos(rows: (typeof schema.userReports.$inferSelect)[], canSeeEmail: boolean): Promise<AdminReportDto[]> {
+    if (rows.length === 0) return [];
+
+    const userIds = [...new Set(rows.flatMap((r) => [r.reporterId, r.reportedUserId]).filter((id): id is string => Boolean(id)))];
+    const users = userIds.length ? await this.db.select().from(schema.user).where(inArray(schema.user.id, userIds)) : [];
+    const attachmentRows = await this.db
       .select()
       .from(schema.userReportAttachments)
-      .where(eq(schema.userReportAttachments.reportId, row.id))
+      .where(inArray(schema.userReportAttachments.reportId, rows.map((r) => r.id)))
       .orderBy(asc(schema.userReportAttachments.createdAt));
 
-    return {
-      id: row.id,
-      reporter: row.reporterId ? { userId: row.reporterId, name: reporter?.name ?? "", email: canSeeEmail ? (reporter?.email ?? "") : null } : null,
-      reported: row.reportedUserId ? { userId: row.reportedUserId, name: reported?.name ?? "", email: canSeeEmail ? (reported?.email ?? "") : null } : null,
-      reason: row.reason,
-      description: row.description,
-      context: row.context,
-      contextMessageId: row.contextMessageId,
-      status: row.status,
-      createdAt: row.createdAt.toISOString(),
-      resolvedAt: row.resolvedAt ? row.resolvedAt.toISOString() : null,
-      attachments: attachments.map((a) => ({ id: a.id, contentType: a.contentType, sizeBytes: a.sizeBytes, status: a.status })),
-    };
+    const userById = new Map(users.map((u) => [u.id, u]));
+    return rows.map((row) => {
+      const reporter = row.reporterId ? userById.get(row.reporterId) : undefined;
+      const reported = row.reportedUserId ? userById.get(row.reportedUserId) : undefined;
+      const attachments = attachmentRows.filter((a) => a.reportId === row.id);
+      return {
+        id: row.id,
+        reporter: row.reporterId ? { userId: row.reporterId, name: reporter?.name ?? "", email: canSeeEmail ? (reporter?.email ?? "") : null } : null,
+        reported: row.reportedUserId ? { userId: row.reportedUserId, name: reported?.name ?? "", email: canSeeEmail ? (reported?.email ?? "") : null } : null,
+        reason: row.reason,
+        description: row.description,
+        context: row.context,
+        contextMessageId: row.contextMessageId,
+        status: row.status,
+        createdAt: row.createdAt.toISOString(),
+        resolvedAt: row.resolvedAt ? row.resolvedAt.toISOString() : null,
+        attachments: attachments.map((a) => ({ id: a.id, contentType: a.contentType, sizeBytes: a.sizeBytes, status: a.status })),
+      };
+    });
   }
 }

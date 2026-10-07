@@ -13,7 +13,13 @@
     "test": "turbo run test",
     "db:generate": "pnpm --filter @sala/database db:generate",
     "db:migrate": "pnpm --filter @sala/database db:migrate",
-    "db:seed": "pnpm --filter @sala/database db:seed"
+    "db:seed": "pnpm --filter @sala/database db:seed",
+    "load:smoke": "k6 run tests/load/scenarios/smoke.js",
+    "load:load": "k6 run tests/load/scenarios/load.js",
+    "load:stress": "k6 run tests/load/scenarios/stress.js",
+    "load:spike": "k6 run tests/load/scenarios/spike.js",
+    "load:soak": "k6 run tests/load/scenarios/soak.js",
+    "load:peak": "k6 run tests/load/scenarios/peak.js"
   },
   "devDependencies": {
     "turbo": "^2.3.3",

@@ -1,9 +1,10 @@
 "use client";
 
 import type { SeatDto } from "@sala/contracts";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiFetch, ApiRequestError } from "@/lib/api";
 import { useExitTransition } from "@/lib/useExitTransition";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 import { SeatFreedToast } from "@/features/room/SeatFreedToast";
 import {
   confirmMessage,
@@ -31,6 +32,8 @@ export function MarkAllOccupiedCard({ roomSlug, seats, onDone }: MarkAllOccupied
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, { active: confirming, onEscape: pending ? undefined : requestClose });
 
   useEffect(() => {
     if (!message) return;
@@ -91,9 +94,11 @@ export function MarkAllOccupiedCard({ roomSlug, seats, onDone }: MarkAllOccupied
       {confirming ? (
         <div className={`${closing ? "backdrop-exit" : "backdrop-enter"} fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4`} onClick={requestClose}>
           <div
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="mark-all-title"
+            tabIndex={-1}
             className={`${closing ? "dialog-exit" : "dialog-enter"} w-full max-w-sm rounded-t-2xl border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl sm:rounded-2xl`}
             onClick={(e) => e.stopPropagation()}
           >

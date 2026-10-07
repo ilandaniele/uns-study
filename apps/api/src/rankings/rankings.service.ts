@@ -1,5 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, gte, inArray, lt, lte } from "drizzle-orm";
+import { and, eq, gte, inArray, lt, lte, sql, type SQL } from "drizzle-orm";
+import type { PgColumn } from "drizzle-orm/pg-core";
 import { fromZonedTime } from "date-fns-tz";
 import { schema, type Db } from "@sala/database";
 import type { RankingCategory, RankingDto, RankingEntryDto, RankingPeriod } from "@sala/contracts";
@@ -63,23 +64,6 @@ function currentStreak(qualifyingDatesAsc: string[], todayLocal: string): number
     cursor = prev;
   }
   return streak;
-}
-
-function cappedDailyCount(rows: { userId: string; createdAt: Date | string }[], tz: string, cap: number): Map<string, number> {
-  const perUserDay = new Map<string, Map<string, number>>();
-  for (const row of rows) {
-    const day = localDateOf(new Date(row.createdAt), tz);
-    const byDay = perUserDay.get(row.userId) ?? new Map<string, number>();
-    byDay.set(day, (byDay.get(day) ?? 0) + 1);
-    perUserDay.set(row.userId, byDay);
-  }
-  const result = new Map<string, number>();
-  for (const [userId, byDay] of perUserDay) {
-    let total = 0;
-    for (const count of byDay.values()) total += Math.min(count, cap);
-    result.set(userId, total);
-  }
-  return result;
 }
 
 interface VisibilityInfo {
@@ -240,19 +224,22 @@ export class RankingsService {
     if (start) conditions.push(gte(schema.studySessions.localDate, start));
     if (end) conditions.push(lte(schema.studySessions.localDate, end));
 
-    const rows = await this.db
-      .select({ userId: schema.studySessions.userId, localDate: schema.studySessions.localDate, minutes: schema.studySessions.verifiedMinutes })
+    // Cap per (user, local day) in SQL, then sum the capped days per user.
+    const perDay = this.db
+      .select({
+        userId: schema.studySessions.userId,
+        capped: sql<number>`LEAST(sum(${schema.studySessions.verifiedMinutes}), ${STUDY_TIME_DAILY_CAP_MIN})`.as("capped"),
+      })
       .from(schema.studySessions)
-      .where(and(...conditions));
+      .where(and(...conditions))
+      .groupBy(schema.studySessions.userId, schema.studySessions.localDate)
+      .as("per_day");
+    const rows = await this.db
+      .select({ userId: perDay.userId, total: sql<string>`sum(${perDay.capped})` })
+      .from(perDay)
+      .groupBy(perDay.userId);
 
-    const perUserDay = groupByUserDay(rows.map((r) => ({ userId: r.userId, day: r.localDate, value: r.minutes })));
-    const values = new Map<string, number>();
-    for (const [userId, byDay] of perUserDay) {
-      let total = 0;
-      for (const minutes of byDay.values()) total += Math.min(minutes, STUDY_TIME_DAILY_CAP_MIN);
-      values.set(userId, total);
-    }
-    return values;
+    return new Map(rows.map((r) => [r.userId, Number(r.total)]));
   }
 
   private async streakValues(room: { id: string; timezone: string }, now: Date): Promise<Map<string, number>> {
@@ -284,26 +271,45 @@ export class RankingsService {
     const obsConditions = [eq(schema.seatObservations.roomId, room.id)];
     if (fromUtc) obsConditions.push(gte(schema.seatObservations.createdAt, fromUtc));
     if (toUtcExclusive) obsConditions.push(lt(schema.seatObservations.createdAt, toUtcExclusive));
-    const obsRows = await this.db
-      .select({ userId: schema.seatObservations.userId, createdAt: schema.seatObservations.createdAt })
-      .from(schema.seatObservations)
-      .where(and(...obsConditions));
 
     const ciConditions = [eq(schema.checkIns.roomId, room.id)];
     if (fromUtc) ciConditions.push(gte(schema.checkIns.createdAt, fromUtc));
     if (toUtcExclusive) ciConditions.push(lt(schema.checkIns.createdAt, toUtcExclusive));
-    const ciRows = await this.db
-      .select({ userId: schema.checkIns.userId, createdAt: schema.checkIns.createdAt })
-      .from(schema.checkIns)
-      .where(and(...ciConditions));
 
-    const obsPoints = cappedDailyCount(obsRows, room.timezone, CONTRIBUTION_OBSERVATION_DAILY_CAP);
-    const ciPoints = cappedDailyCount(ciRows, room.timezone, CONTRIBUTION_CHECKIN_DAILY_CAP);
+    const [obsPoints, ciPoints] = await Promise.all([
+      this.cappedDailyCount(schema.seatObservations, schema.seatObservations.userId, schema.seatObservations.createdAt, and(...obsConditions), room.timezone, CONTRIBUTION_OBSERVATION_DAILY_CAP),
+      this.cappedDailyCount(schema.checkIns, schema.checkIns.userId, schema.checkIns.createdAt, and(...ciConditions), room.timezone, CONTRIBUTION_CHECKIN_DAILY_CAP),
+    ]);
 
     const values = new Map<string, number>();
     for (const [userId, points] of obsPoints) values.set(userId, (values.get(userId) ?? 0) + points);
     for (const [userId, points] of ciPoints) values.set(userId, (values.get(userId) ?? 0) + points);
     return values;
+  }
+
+  /** Per user: sum over local days (in `tz`) of `LEAST(count(*), cap)`, computed in SQL. */
+  private async cappedDailyCount(
+    table: typeof schema.seatObservations | typeof schema.checkIns,
+    userIdCol: PgColumn,
+    createdAtCol: PgColumn,
+    where: SQL | undefined,
+    tz: string,
+    cap: number,
+  ): Promise<Map<string, number>> {
+    const perDay = this.db
+      .select({
+        userId: sql<string>`${userIdCol}`.as("user_id"),
+        capped: sql<number>`LEAST(count(*), ${cap})`.as("capped"),
+      })
+      .from(table)
+      .where(where)
+      .groupBy(userIdCol, sql`((${createdAtCol} AT TIME ZONE ${tz}::text))::date`)
+      .as("per_day");
+    const rows = await this.db
+      .select({ userId: perDay.userId, total: sql<string>`sum(${perDay.capped})` })
+      .from(perDay)
+      .groupBy(perDay.userId);
+    return new Map(rows.map((r) => [r.userId, Number(r.total)]));
   }
 }
 

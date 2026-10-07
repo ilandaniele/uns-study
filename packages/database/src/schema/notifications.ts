@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { boolean, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
 
@@ -6,18 +7,29 @@ import { user } from "./auth.js";
  * privacy, nothing is sent unless the user explicitly turns it on. One row per user, upserted
  * lazily on first read/write (same pattern as `user_privacy_settings`).
  */
-export const notificationPreferences = pgTable("notification_preferences", {
-  userId: text("user_id")
-    .primaryKey()
-    .references(() => user.id, { onDelete: "cascade" }),
-  seatFreed: boolean("seat_freed").notNull().default(false),
-  adminPresent: boolean("admin_present").notNull().default(false),
-  // Unlike the two above this one defaults ON: it only ever concerns the user's own seat.
-  checkinExpiry: boolean("checkin_expiry").notNull().default(true),
-  // Opt-out model: admin email campaigns go to everyone who has not turned this off.
-  marketingEmails: boolean("marketing_emails").notNull().default(true),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const notificationPreferences = pgTable(
+  "notification_preferences",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => user.id, { onDelete: "cascade" }),
+    seatFreed: boolean("seat_freed").notNull().default(false),
+    adminPresent: boolean("admin_present").notNull().default(false),
+    // Unlike the two above this one defaults ON: it only ever concerns the user's own seat.
+    checkinExpiry: boolean("checkin_expiry").notNull().default(true),
+    // Opt-out model: admin email campaigns go to everyone who has not turned this off.
+    marketingEmails: boolean("marketing_emails").notNull().default(true),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_notification_preferences_seat_freed")
+      .on(table.userId)
+      .where(sql`seat_freed`),
+    index("idx_notification_preferences_admin_present")
+      .on(table.userId)
+      .where(sql`admin_present`),
+  ],
+);
 
 /**
  * One row per subscribed device/browser (`PushSubscription` from the Web Push API). `endpoint` is

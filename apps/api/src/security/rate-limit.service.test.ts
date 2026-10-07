@@ -1,7 +1,7 @@
 import RedisMock from "ioredis-mock";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createDb, migrate } from "@sala/database";
-import { PostgresWindow, RateLimitService } from "./rate-limit.service.js";
+import { PostgresWindow, RateLimitService, RedisWindow } from "./rate-limit.service.js";
 
 describe("RateLimitService (in-memory fallback)", () => {
   it("allows up to the limit within the window, then blocks", async () => {
@@ -121,5 +121,20 @@ describe("PostgresWindow (Postgres fallback, no Redis configured)", () => {
     expect((await window.check(key, 3, windowMs, start)).allowed).toBe(false);
     // Two windows later, the previous window's overlap has fully decayed.
     expect((await window.check(key, 3, windowMs, start + windowMs * 2)).allowed).toBe(true);
+  });
+});
+
+describe("backend failures fail closed and are logged", () => {
+  it("logs rate_limit_backend_error when Redis throws", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const broken = new RedisWindow({
+      multi: () => {
+        throw new Error("redis down");
+      },
+      zrem: async () => undefined,
+    });
+    expect(await broken.check("k", 5, 1000)).toEqual({ allowed: false, remaining: 0 });
+    expect(JSON.parse(spy.mock.calls[0]![0] as string)).toEqual({ evt: "rate_limit_backend_error", backend: "redis", msg: "redis down" });
+    spy.mockRestore();
   });
 });

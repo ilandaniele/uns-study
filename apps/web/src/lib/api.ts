@@ -81,7 +81,8 @@ async function fetchWithTimeout(path: string, init: RequestInit | undefined, tim
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const outerSignal = init?.signal;
-  outerSignal?.addEventListener("abort", () => controller.abort(), { once: true });
+  const onOuterAbort = () => controller.abort();
+  outerSignal?.addEventListener("abort", onOuterAbort, { once: true });
   try {
     return await fetch(`${API_URL}${path}`, {
       ...init,
@@ -98,6 +99,7 @@ async function fetchWithTimeout(path: string, init: RequestInit | undefined, tim
     throw error;
   } finally {
     clearTimeout(timer);
+    outerSignal?.removeEventListener("abort", onOuterAbort);
   }
 }
 

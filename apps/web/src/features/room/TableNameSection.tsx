@@ -90,6 +90,7 @@ export function TableNameSection({ tableId, loggedIn }: TableNameSectionProps) {
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="Proponé un nombre"
+            aria-label="Nombre propuesto para la mesa"
             maxLength={24}
             className="min-w-0 flex-1 rounded-lg border border-app bg-transparent px-2.5 py-1.5 text-sm"
           />

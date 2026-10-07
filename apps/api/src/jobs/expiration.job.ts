@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Interval } from "@nestjs/schedule";
-import { and, eq, lte } from "drizzle-orm";
+import { and, eq, inArray, lte } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import { DB } from "../database/database.module.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
@@ -35,10 +35,10 @@ export class ExpirationJob {
       .from(schema.checkIns)
       .where(and(eq(schema.checkIns.status, "ACTIVE"), lte(schema.checkIns.expiresAt, now)));
 
-    // Expire (and only then act on) each candidate with a conditional per-row update — a
-    // concurrent `extend()` may have pushed `expires_at` into the future or moved the check-in
-    // off ACTIVE between the select above and this write, and a row that update touches nothing
-    // for must not be treated as expired (no study session, no dispute resolution, no recompute).
+    // Expire (and only then act on) the candidates with one conditional update — a concurrent
+    // `extend()` may have pushed `expires_at` into the future or moved the check-in off ACTIVE
+    // between the select above and this write, and a row the update doesn't return must not be
+    // treated as expired (no study session, no dispute resolution, no recompute).
     const expiredCheckIns: {
       id: string;
       seatId: string;
@@ -47,12 +47,21 @@ export class ExpirationJob {
       startedAt: Date;
       expiresAt: Date;
     }[] = [];
-    await this.db.transaction(async (tx) => {
-      for (const candidate of candidates) {
-        const [expired] = await tx
+    if (candidates.length > 0) {
+      await this.db.transaction(async (tx) => {
+        const expiredRows = await tx
           .update(schema.checkIns)
           .set({ status: "EXPIRED", endedAt: now, updatedAt: now })
-          .where(and(eq(schema.checkIns.id, candidate.id), eq(schema.checkIns.status, "ACTIVE"), lte(schema.checkIns.expiresAt, now)))
+          .where(
+            and(
+              inArray(
+                schema.checkIns.id,
+                candidates.map((c) => c.id),
+              ),
+              eq(schema.checkIns.status, "ACTIVE"),
+              lte(schema.checkIns.expiresAt, now),
+            ),
+          )
           .returning({
             id: schema.checkIns.id,
             seatId: schema.checkIns.seatId,
@@ -61,18 +70,19 @@ export class ExpirationJob {
             startedAt: schema.checkIns.startedAt,
             expiresAt: schema.checkIns.expiresAt,
           });
-        if (!expired) continue; // raced with an extend (or another sweep) — leave it alone
-        expiredCheckIns.push({
-          id: expired.id,
-          seatId: expired.seatId,
-          roomId: expired.roomId,
-          userId: expired.userId,
-          startedAt: new Date(expired.startedAt),
-          expiresAt: new Date(expired.expiresAt),
-        });
-        await this.studySessions.recordFromCheckIn(tx, expired, now);
-      }
-    });
+        for (const expired of expiredRows) {
+          expiredCheckIns.push({
+            id: expired.id,
+            seatId: expired.seatId,
+            roomId: expired.roomId,
+            userId: expired.userId,
+            startedAt: new Date(expired.startedAt),
+            expiresAt: new Date(expired.expiresAt),
+          });
+          await this.studySessions.recordFromCheckIn(tx, expired, now);
+        }
+      });
+    }
 
     // Expiry ends the check-in — resolve any dispute still OPEN against it. One failing dispute
     // must not abort the sweep for every other check-in that already expired.

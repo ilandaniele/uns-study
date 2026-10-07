@@ -77,6 +77,7 @@ export function QrCodes({ roomSlug }: { roomSlug: string }) {
       <div className="qr-print-hide flex gap-2 rounded-[14px] border border-app bg-surface p-4">
         <input
           value={tableCode}
+          aria-label="Código de mesa"
           onChange={(e) => setTableCode(e.target.value)}
           placeholder="Código de mesa (opcional, ej. M01)"
           className="flex-1 rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"

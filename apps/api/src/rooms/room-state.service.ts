@@ -76,9 +76,9 @@ export class RoomStateService {
 
     // Advisory locks, held for the rest of this transaction, serialize concurrent
     // read-compute-upsert cycles for the same seat (works under both Postgres and PGlite).
-    for (const seatId of uniqueSeatIds) {
-      await db.execute(sql`select pg_advisory_xact_lock(hashtext(${seatId}))`);
-    }
+    // One statement; `order by u.o` keeps the sorted acquisition order.
+    const seatIdList = sql.join(uniqueSeatIds.map((id) => sql`${id}`), sql`, `);
+    await db.execute(sql`select pg_advisory_xact_lock(hashtext(u.id)) from unnest(array[${seatIdList}]::text[]) with ordinality as u(id, o) order by u.o`);
 
     // One batched read per source for the whole seat set (after the locks, so it's consistent).
     const [checkInRows, openRows, observationRows, previousRows] = await Promise.all([

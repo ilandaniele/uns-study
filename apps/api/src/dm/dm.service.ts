@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, count, desc, eq, gt, lt, ne, or } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, isNull, lt, ne, or } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { ConversationDto, DirectMessageDto, Page } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
@@ -90,7 +90,7 @@ export class DmService {
       .orderBy(desc(schema.directConversations.lastMessageAt))
       .limit(MAX_LIST_ROWS);
 
-    return Promise.all(rows.map((row) => this.toConversationDto(row, userId)));
+    return this.buildDtos(rows, userId);
   }
 
   async listMessages(conversationId: string, viewerId: string, cursor?: string | null): Promise<Page<DirectMessageDto>> {
@@ -159,43 +159,69 @@ export class DmService {
   }
 
   private async toConversationDto(conversation: ConversationRow, viewerId: string): Promise<ConversationDto> {
-    const otherId = this.otherUserId(conversation, viewerId);
+    const [dto] = await this.buildDtos([conversation], viewerId);
+    if (!dto) throw new Error("Failed to build conversation DTO");
+    return dto;
+  }
 
-    const [otherUser] = await this.db.select().from(schema.user).where(eq(schema.user.id, otherId));
-    const [profileRow] = await this.db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, otherId));
-    const profile = await this.aliases.withAlias(profileRow);
-    const [privacy] = await this.db.select().from(schema.userPrivacySettings).where(eq(schema.userPrivacySettings.userId, otherId));
+  /** Builds DTOs for the viewer's conversations in a constant number of queries, keeping the order of `conversations`. */
+  private async buildDtos(conversations: ConversationRow[], viewerId: string): Promise<ConversationDto[]> {
+    if (conversations.length === 0) return [];
 
-    const [lastMessageRow] = await this.db
-      .select()
+    const conversationIds = conversations.map((c) => c.id);
+    const otherIds = [...new Set(conversations.map((c) => this.otherUserId(c, viewerId)))];
+
+    const users = await this.db.select().from(schema.user).where(inArray(schema.user.id, otherIds));
+    const profileRows = await this.db.select().from(schema.userProfiles).where(inArray(schema.userProfiles.userId, otherIds));
+    const aliasByUser = await this.aliases.ensureAliasesForProfiles(profileRows);
+    const privacyRows = await this.db.select().from(schema.userPrivacySettings).where(inArray(schema.userPrivacySettings.userId, otherIds));
+
+    const lastRows = await this.db
+      .selectDistinctOn([schema.directMessages.conversationId])
       .from(schema.directMessages)
-      .where(eq(schema.directMessages.conversationId, conversation.id))
-      .orderBy(desc(schema.directMessages.createdAt))
-      .limit(1);
+      .where(inArray(schema.directMessages.conversationId, conversationIds))
+      .orderBy(schema.directMessages.conversationId, desc(schema.directMessages.createdAt));
 
-    const [readRow] = await this.db
-      .select()
-      .from(schema.directConversationReads)
-      .where(and(eq(schema.directConversationReads.conversationId, conversation.id), eq(schema.directConversationReads.userId, viewerId)));
-
-    const unreadConditions = [eq(schema.directMessages.conversationId, conversation.id), ne(schema.directMessages.senderId, viewerId)];
-    if (readRow) unreadConditions.push(gt(schema.directMessages.createdAt, readRow.lastReadAt));
-    const [unreadRow] = await this.db
-      .select({ count: count() })
+    // No read row means everything from the other side is unread.
+    const unreadRows = await this.db
+      .select({ conversationId: schema.directMessages.conversationId, count: count() })
       .from(schema.directMessages)
-      .where(and(...unreadConditions));
+      .leftJoin(
+        schema.directConversationReads,
+        and(eq(schema.directConversationReads.conversationId, schema.directMessages.conversationId), eq(schema.directConversationReads.userId, viewerId)),
+      )
+      .where(
+        and(
+          inArray(schema.directMessages.conversationId, conversationIds),
+          ne(schema.directMessages.senderId, viewerId),
+          or(isNull(schema.directConversationReads.lastReadAt), gt(schema.directMessages.createdAt, schema.directConversationReads.lastReadAt)),
+        ),
+      )
+      .groupBy(schema.directMessages.conversationId);
 
-    return {
-      id: conversation.id,
-      otherUser: {
-        userId: otherId,
-        displayName: displayName(profile ?? null, privacy ?? null, otherUser?.name ?? "Usuario"),
-        avatarUrl: visibleAvatarUrl(profile ?? null, privacy ?? null),
-      },
-      lastMessage: lastMessageRow ? toMessageDto(lastMessageRow) : null,
-      unread: Number(unreadRow?.count ?? 0),
-      lastMessageAt: conversation.lastMessageAt.toISOString(),
-    };
+    const userById = new Map(users.map((u) => [u.id, u]));
+    const profileByUser = new Map(profileRows.map((p) => [p.userId, { ...p, alias: aliasByUser.get(p.userId) ?? p.alias }]));
+    const privacyByUser = new Map(privacyRows.map((p) => [p.userId, p]));
+    const lastByConversation = new Map(lastRows.map((m) => [m.conversationId, m]));
+    const unreadByConversation = new Map(unreadRows.map((r) => [r.conversationId, Number(r.count)]));
+
+    return conversations.map((conversation) => {
+      const otherId = this.otherUserId(conversation, viewerId);
+      const profile = profileByUser.get(otherId) ?? null;
+      const privacy = privacyByUser.get(otherId) ?? null;
+      const lastMessageRow = lastByConversation.get(conversation.id);
+      return {
+        id: conversation.id,
+        otherUser: {
+          userId: otherId,
+          displayName: displayName(profile, privacy, userById.get(otherId)?.name ?? "Usuario"),
+          avatarUrl: visibleAvatarUrl(profile, privacy),
+        },
+        lastMessage: lastMessageRow ? toMessageDto(lastMessageRow) : null,
+        unread: unreadByConversation.get(conversation.id) ?? 0,
+        lastMessageAt: conversation.lastMessageAt.toISOString(),
+      };
+    });
   }
 }
 

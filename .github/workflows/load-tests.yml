@@ -1,0 +1,113 @@
+name: Load Tests
+
+# k6 load tests against a stack booted INSIDE the runner (Postgres service container + the API built from
+# this commit), reached on localhost. There is deliberately no input for a target URL: this workflow can
+# never point at production (and tests/load/config/base.js refuses *.fly.dev / saladeestudio.com.ar anyway).
+#
+# Not wired to pull_request: ci.yml never boots the API (its tests run on in-memory PGlite), and a PR smoke
+# run would add an API build + DB boot to every PR. Run it on demand or on the weekly schedule instead.
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: Scenario to run
+        required: true
+        default: smoke
+        type: choice
+        options: [smoke, load, stress, spike, soak, peak]
+      soak_hold:
+        description: Soak plateau duration (only used by soak; default 2h)
+        required: false
+        default: 2h
+        type: string
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC; the scheduled run is the `load` scenario
+
+permissions:
+  contents: read
+
+concurrency:
+  group: load-tests
+  cancel-in-progress: false
+
+jobs:
+  k6:
+    name: k6 (local stack)
+    runs-on: ubuntu-latest
+    timeout-minutes: 200
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: loadtest
+          POSTGRES_PASSWORD: loadtest
+          POSTGRES_DB: sala_load
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U loadtest -d sala_load"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      SCENARIO: ${{ inputs.scenario || 'load' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @sala/api build
+
+      # NODE_ENV stays development: migrations run on boot and Better Auth's per-IP limiter (3 sign-ups/min,
+      # production only) does not throttle the setup() sign-ups. BETTER_AUTH_SECRET / IP_HASH_SALT are
+      # generated and stored in the throwaway DB by the API itself (apps/api/src/secrets.ts).
+      - name: Start API
+        env:
+          NODE_ENV: development
+          PORT: "4000"
+          DATABASE_URL: postgres://loadtest:loadtest@localhost:5432/sala_load
+          BOOT_MIGRATE_SEED: "true"
+          WEB_ORIGIN: http://localhost:3000
+          BETTER_AUTH_URL: http://localhost:4000
+          TRUST_PROXY_HOPS: "1"
+          PRESENCE_DEV_BYPASS: "false"
+        run: |
+          mkdir -p tests/load/results
+          nohup node apps/api/dist/main.js > tests/load/results/api.log 2>&1 &
+          echo "API_PID=$!" >> "$GITHUB_ENV"
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:4000/api/v1/health > /dev/null; then echo "API up after ${i}s"; exit 0; fi
+            sleep 1
+          done
+          echo "::error::API did not become healthy"
+          tail -n 50 tests/load/results/api.log
+          exit 1
+
+      # k6 cannot see server memory; sample the API process RSS so soak runs can show growth.
+      - name: Sample API memory
+        run: |
+          nohup bash -c 'echo "ts,rss_kb" > tests/load/results/api-rss.csv; while kill -0 "$API_PID" 2>/dev/null; do echo "$(date +%s),$(awk "/VmRSS/{print \$2}" /proc/$API_PID/status)" >> tests/load/results/api-rss.csv; sleep 30; done' > /dev/null 2>&1 &
+
+      # TODO: pin to a commit SHA like the other actions (SHA not resolved offline when this was written).
+      - uses: grafana/setup-k6-action@v1
+
+      - name: Run k6 ${{ env.SCENARIO }}
+        env:
+          BASE_URL: http://localhost:4000
+          ORIGIN: http://localhost:3000
+          SOAK_HOLD: ${{ inputs.soak_hold || '2h' }}
+        run: k6 run "tests/load/scenarios/${SCENARIO}.js"
+
+      - name: Upload results
+        if: always()
+        # TODO: pin to a commit SHA like the other actions.
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-${{ env.SCENARIO }}-results
+          path: tests/load/results/
+          if-no-files-found: warn

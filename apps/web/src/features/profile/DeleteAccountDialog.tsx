@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { useExitTransition } from "@/lib/useExitTransition";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 const CONFIRM_WORD = "ELIMINAR";
 
@@ -15,19 +16,15 @@ export interface DeleteAccountDialogProps {
 export function DeleteAccountDialog({ pending, onConfirm, onCancel }: DeleteAccountDialogProps) {
   const [value, setValue] = useState("");
   const { closing, requestClose } = useExitTransition(onCancel);
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !pending) requestClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [requestClose, pending]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, { onEscape: pending ? undefined : requestClose });
 
   const canConfirm = value.trim().toUpperCase() === CONFIRM_WORD && !pending;
 
   return (
     <div className={`${closing ? "backdrop-exit" : "backdrop-enter"} fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4`}>
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="delete-title"

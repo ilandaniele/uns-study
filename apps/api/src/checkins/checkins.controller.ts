@@ -70,7 +70,7 @@ export class CheckInsController {
       }
     }
 
-    const { checkIn, changes, adminPresent } = await this.checkIns.checkIn({
+    const { checkIn, changes, previousRoom, adminPresent } = await this.checkIns.checkIn({
       userId: user.id,
       roomId: body.roomId,
       seatId: body.seatId,
@@ -80,6 +80,7 @@ export class CheckInsController {
       durationMinutes: body.durationMinutes,
     });
     await this.realtime.broadcastSeatChanges(body.roomId, changes);
+    if (previousRoom) await this.realtime.broadcastSeatChanges(previousRoom.roomId, previousRoom.changes);
     if (adminPresent) {
       // Delayed by `NotificationService` itself (random 2-5 min, only if still checked in when it
       // fires) so the banner/push timing can't be correlated back to this specific check-in.

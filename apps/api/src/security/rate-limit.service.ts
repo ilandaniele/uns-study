@@ -10,6 +10,11 @@ import { env } from "../env.js";
 const CLEANUP_INTERVAL_MS = 10 * 60 * 1000;
 const CLEANUP_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
+/** One JSON line per backend failure (no keys/IPs) so a fail-closed outage is visible in `fly logs`. */
+function logBackendError(backend: "redis" | "postgres" | "postgres_cleanup", err: unknown): void {
+  console.error(JSON.stringify({ evt: "rate_limit_backend_error", backend, msg: err instanceof Error ? err.message : String(err) }));
+}
+
 export interface RateLimitResult {
   allowed: boolean;
   remaining: number;
@@ -81,7 +86,8 @@ export class RedisWindow {
         return { allowed: false, remaining: 0 };
       }
       return { allowed: true, remaining: limit - count };
-    } catch {
+    } catch (err) {
+      logBackendError("redis", err);
       // Fail closed: a Redis outage must not silently disable rate limiting.
       return { allowed: false, remaining: 0 };
     }
@@ -133,7 +139,8 @@ export class PostgresWindow {
         return { allowed: false, remaining: 0 };
       }
       return { allowed: true, remaining: Math.max(0, Math.floor(limit - weighted)) };
-    } catch {
+    } catch (err) {
+      logBackendError("postgres", err);
       // Fail closed: a Postgres outage must not silently disable rate limiting.
       return { allowed: false, remaining: 0 };
     }
@@ -146,8 +153,9 @@ export class PostgresWindow {
     void this.db
       .delete(schema.rateLimitHits)
       .where(lt(schema.rateLimitHits.windowStart, new Date(now - CLEANUP_MAX_AGE_MS)))
-      .catch(() => {
+      .catch((err: unknown) => {
         // best effort
+        logBackendError("postgres_cleanup", err);
       });
   }
 }

@@ -149,6 +149,45 @@ describe("DailyResetJob", () => {
     expect(row?.expiresAt.getTime()).toBe(new Date(resetInstant.getTime() + 15 * 60_000).getTime());
   });
 
+  it("leaves already-expired observations untouched (only live rows are updated)", async () => {
+    const room = await getRoom(db);
+    const resetInstant = resetInstantFor(room, new Date());
+    const after = new Date(resetInstant.getTime() + 60_000);
+    const expiredAt = new Date(resetInstant.getTime() - 30 * 60_000);
+    await db.insert(schema.seatObservations).values({
+      userId: "u1",
+      roomId,
+      seatId,
+      observedStatus: "FREE",
+      presenceVerified: true,
+      qrVerified: false,
+      confidenceWeight: 1,
+      observedAt: new Date(resetInstant.getTime() - 60 * 60_000),
+      expiresAt: expiredAt,
+    });
+
+    await job.runReset(roomId, after);
+
+    const [row] = await db.select().from(schema.seatObservations).where(eq(schema.seatObservations.seatId, seatId));
+    expect(row?.expiresAt.getTime()).toBe(expiredAt.getTime());
+  });
+
+  it("deletes seat_state_events older than 90 days but keeps recent ones", async () => {
+    const room = await getRoom(db);
+    const after = new Date(resetInstantFor(room, new Date()).getTime() + 60_000);
+    const base = { roomId, seatId, userId: null, eventType: "TEST", oldStatus: null, newStatus: "UNKNOWN" as const, metadata: null };
+    await db.insert(schema.seatStateEvents).values([
+      { ...base, eventType: "OLD", createdAt: new Date(after.getTime() - 91 * 24 * 60 * 60_000) },
+      { ...base, eventType: "RECENT", createdAt: new Date(after.getTime() - 89 * 24 * 60 * 60_000) },
+    ]);
+
+    await job.runReset(roomId, after);
+
+    const types = (await db.select().from(schema.seatStateEvents)).map((e) => e.eventType);
+    expect(types).not.toContain("OLD");
+    expect(types).toContain("RECENT");
+  });
+
   it("cancels an OPEN dispute and emits seat:dispute-resolved with a CANCELLED payload", async () => {
     const { checkIn } = await checkIns.checkIn({ userId: "u1", roomId, seatId, location, showIdentity: false });
     await insertUsers(db, ["u2"]);
@@ -157,6 +196,7 @@ describe("DailyResetJob", () => {
     const room = await getRoom(db);
     const after = new Date(resetInstantFor(room, new Date()).getTime() + 60_000);
     await db.update(schema.checkIns).set({ startedAt: new Date(after.getTime() - 60 * 60_000) }).where(eq(schema.checkIns.id, checkIn.id));
+    await db.update(schema.seatDisputes).set({ openedAt: new Date(after.getTime() - 30 * 60_000) }).where(eq(schema.seatDisputes.id, dispute.id));
 
     const spy = vi.spyOn(gateway, "emitDisputeResolved");
     await job.runReset(roomId, after);
@@ -166,6 +206,43 @@ describe("DailyResetJob", () => {
       expect.objectContaining({ id: dispute.id, seatId, status: "CANCELLED" }),
     );
     spy.mockRestore();
+  });
+
+  it("keeps an OPEN dispute opened after the reset instant (late cron tick)", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId, location, showIdentity: false });
+    await insertUsers(db, ["u2"]);
+    const { dispute } = await disputes.open({ userId: "u2", roomId, seatId, kind: "CLAIM", location });
+    const room = await getRoom(db);
+    const resetInstant = resetInstantFor(room, new Date());
+    await db.update(schema.seatDisputes).set({ openedAt: new Date(resetInstant.getTime() + 10_000) }).where(eq(schema.seatDisputes.id, dispute.id));
+
+    await job.runReset(roomId, new Date(resetInstant.getTime() + 60_000));
+
+    const [row] = await db.select().from(schema.seatDisputes).where(eq(schema.seatDisputes.id, dispute.id));
+    expect(row?.status).toBe("OPEN");
+  });
+
+  it("does not force UNKNOWN on a seat with a check-in from the new day", async () => {
+    const { checkIn } = await checkIns.checkIn({ userId: "u1", roomId, seatId, location, showIdentity: false });
+    const room = await getRoom(db);
+    const resetInstant = resetInstantFor(room, new Date());
+    await db.update(schema.checkIns).set({ startedAt: new Date(resetInstant.getTime() + 10_000) }).where(eq(schema.checkIns.id, checkIn.id));
+    const [before] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatId));
+
+    await job.runReset(roomId, new Date(resetInstant.getTime() + 60_000));
+
+    const [after] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatId));
+    expect(after?.status).toBe(before?.status);
+    expect(after?.status).not.toBe("UNKNOWN");
+  });
+
+  it("tick keeps resetting other rooms when one room fails", async () => {
+    const spy = vi.spyOn(job, "runReset").mockRejectedValueOnce(new Error("boom"));
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    await expect(job.tick()).resolves.toBeUndefined();
+    expect(err).toHaveBeenCalled();
+    spy.mockRestore();
+    err.mockRestore();
   });
 
   it("a second run the same day is a no-op", async () => {

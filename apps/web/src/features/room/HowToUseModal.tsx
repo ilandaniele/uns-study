@@ -2,8 +2,9 @@
 
 import { CheckCircleIcon, HandPointingIcon, MapPinIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { useExitTransition } from "@/lib/useExitTransition";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 const STEPS: { icon: ReactNode; title: string; body: string }[] = [
   {
@@ -31,27 +32,17 @@ const STEPS: { icon: ReactNode; title: string; body: string }[] = [
 /** "Ver cómo usar la app" — a short, static walkthrough opened from the left panel. */
 export function HowToUseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const { closing, requestClose } = useExitTransition(onClose);
 
-  useEffect(() => {
-    if (!open) return;
-    const previous = document.activeElement as HTMLElement | null;
-    closeRef.current?.focus();
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") requestClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      previous?.focus();
-    };
-  }, [open, requestClose]);
+  useFocusTrap(dialogRef, { initialFocus: closeRef, onEscape: requestClose, active: open });
 
   if (!open) return null;
 
   return (
     <div className={`${closing ? "backdrop-exit" : "backdrop-enter"} fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4`} onClick={requestClose}>
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="how-to-use-title"

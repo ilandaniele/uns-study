@@ -18,3 +18,7 @@ apps/web/scripts/debug-*.mjs
 
 # Local database backups (ops/backup-fly-db.ps1)
 backups/
+
+# k6 load-test output (tests/load); keep the directory itself
+tests/load/results/*
+!tests/load/results/.gitkeep

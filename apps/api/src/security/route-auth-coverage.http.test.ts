@@ -27,6 +27,7 @@ vi.hoisted(() => {
  */
 const PUBLIC_ROUTES: Record<string, string> = {
   "GET /api/v1/health": "liveness probe",
+  "GET /api/v1/health/ready": "readiness probe",
   "GET /api/v1/auth-providers": "tells the login page which providers are configured",
   "GET /api/v1/verification/status": "feature flag only, no user data",
   "GET /api/v1/notifications/vapid-public-key": "VAPID public key is public by design",

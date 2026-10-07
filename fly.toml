@@ -1,5 +1,8 @@
 app = "uns-study-api"
 primary_region = "gru"
+# Lets Nest's beforeApplicationShutdown hook drain background work before the machine is killed.
+kill_signal = "SIGTERM"
+kill_timeout = "15s"
 
 [build]
   dockerfile = "Dockerfile.api"
@@ -53,7 +56,7 @@ primary_region = "gru"
     grace_period = "30s"
     interval = "15s"
     method = "GET"
-    path = "/api/v1/health"
+    path = "/api/v1/health/ready"
     timeout = "5s"
 
 # 256mb is the spec'd default; migrations + seed now run inside the API process (no tsx), so the

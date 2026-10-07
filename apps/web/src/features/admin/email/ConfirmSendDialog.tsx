@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { useExitTransition } from "@/lib/useExitTransition";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 export interface ConfirmSendDialogProps {
   recipientCount: number;
@@ -14,20 +15,15 @@ export interface ConfirmSendDialogProps {
 /** Last stop before a campaign is queued: states the exact audience size and that it can't be undone. */
 export function ConfirmSendDialog({ recipientCount, pending, error, onConfirm, onCancel }: ConfirmSendDialogProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const { closing, requestClose } = useExitTransition(onCancel);
 
-  useEffect(() => {
-    cancelRef.current?.focus();
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !pending) requestClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [requestClose, pending]);
+  useFocusTrap(dialogRef, { initialFocus: cancelRef, onEscape: pending ? undefined : requestClose });
 
   return (
     <div className={`${closing ? "backdrop-exit" : "backdrop-enter"} fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4`} onClick={pending ? undefined : requestClose}>
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-send-title"

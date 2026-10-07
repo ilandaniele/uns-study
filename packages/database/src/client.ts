@@ -15,6 +15,11 @@ export interface CreateDbOptions {
   databaseUrl?: string;
   /** Directory (or `memory://`) used for the PGlite fallback. Defaults to `<repo>/.data/pglite`. */
   pgliteDir?: string;
+  /**
+   * Applies statement/query timeouts to the Postgres pool. Only the request-serving app pool should
+   * set this: migrations, seed and one-off scripts share `createDb()` and may run long statements.
+   */
+  queryTimeouts?: boolean;
 }
 
 /**
@@ -89,6 +94,12 @@ export function createDb(options: CreateDbOptions = {}): Db {
       idleTimeoutMillis: 300_000,
       connectionTimeoutMillis: 10_000,
       keepAlive: true,
+      ...(options.queryTimeouts ? { statement_timeout: 15_000, query_timeout: 20_000 } : {}),
+    });
+    // An idle client erroring (Neon/proxy dropping the socket) emits 'error' on the pool; without a
+    // listener that is an uncaught exception and kills the process.
+    pool.on("error", (err) => {
+      console.error(JSON.stringify({ evt: "pg_pool_error", msg: err.message }));
     });
     const db = drizzleNodePostgres(pool, { schema }) as unknown as Db;
     closers.set(db, () => pool.end());

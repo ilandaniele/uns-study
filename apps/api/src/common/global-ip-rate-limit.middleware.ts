@@ -6,7 +6,7 @@ import { ApiErrors } from "./api-error.js";
 // queries to every request and turn a database hiccup into a site-wide 429.
 const GLOBAL_IP_LIMIT = 300;
 const GLOBAL_IP_WINDOW_MS = 60_000;
-const SKIPPED_PATHS = new Set(["/api/v1/health"]);
+const SKIPPED_PATHS = new Set(["/api/v1/health", "/api/v1/health/ready"]);
 const SKIPPED_PREFIXES = ["/api/v1/webhooks/mercadopago"];
 
 /** Fixed-window counter per key. Expired windows are swept when the map grows. */

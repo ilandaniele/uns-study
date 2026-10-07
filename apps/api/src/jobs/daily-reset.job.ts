@@ -1,13 +1,15 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { fromZonedTime } from "date-fns-tz";
-import { and, eq, gte, isNull, lt, or } from "drizzle-orm";
+import { and, eq, gt, gte, isNull, lt, or } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { SeatDisputeLiteDto } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { localDateOf } from "../common/dates.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
+
+const SEAT_STATE_EVENT_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 
 /** Computes the UTC instant of `room`'s next-or-most-recent daily reset (`daily_reset_time`, local tz) at/around `now`. */
 export function resetInstantFor(room: { timezone: string; dailyResetTime: string }, now: Date): Date {
@@ -33,7 +35,12 @@ export class DailyResetJob {
     const now = new Date();
     const rooms = await this.db.select().from(schema.rooms).where(eq(schema.rooms.active, true));
     for (const room of rooms) {
-      await this.runReset(room.id, now);
+      // One failing room must not block the reset of the others.
+      try {
+        await this.runReset(room.id, now);
+      } catch (err) {
+        console.error(JSON.stringify({ evt: "daily_reset_failed", roomId: room.id, msg: err instanceof Error ? err.message : String(err) }));
+      }
     }
   }
 
@@ -126,16 +133,37 @@ export class DailyResetJob {
       await tx
         .update(schema.seatObservations)
         .set({ expiresAt: now, updatedAt: now })
-        .where(and(eq(schema.seatObservations.roomId, roomId), lt(schema.seatObservations.observedAt, resetInstant)));
+        .where(
+          and(eq(schema.seatObservations.roomId, roomId), lt(schema.seatObservations.observedAt, resetInstant), gt(schema.seatObservations.expiresAt, now)),
+        );
+
+      // Retention: seat_state_events is append-only (one row per seat per change), so drop old history.
+      await tx
+        .delete(schema.seatStateEvents)
+        .where(and(eq(schema.seatStateEvents.roomId, roomId), lt(schema.seatStateEvents.createdAt, new Date(now.getTime() - SEAT_STATE_EVENT_RETENTION_MS))));
 
       // Daily reset cancels any dispute still voting — it never resolves as absent/present here.
       const cancelledDisputes = await tx
         .update(schema.seatDisputes)
         .set({ status: "CANCELLED", resolvedAt: now })
-        .where(and(eq(schema.seatDisputes.roomId, roomId), eq(schema.seatDisputes.status, "OPEN")))
+        .where(and(eq(schema.seatDisputes.roomId, roomId), eq(schema.seatDisputes.status, "OPEN"), lt(schema.seatDisputes.openedAt, resetInstant)))
         .returning();
 
+      // Seats with a check-in or observation from the new day (a late tick) keep their state.
+      const survivingCheckIns = await tx
+        .select({ seatId: schema.checkIns.seatId })
+        .from(schema.checkIns)
+        .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE"), gte(schema.checkIns.startedAt, resetInstant)));
+      const survivingObservations = await tx
+        .select({ seatId: schema.seatObservations.seatId })
+        .from(schema.seatObservations)
+        .where(
+          and(eq(schema.seatObservations.roomId, roomId), gte(schema.seatObservations.observedAt, resetInstant), gt(schema.seatObservations.expiresAt, now)),
+        );
+      const keep = new Set([...survivingCheckIns, ...survivingObservations].map((r) => r.seatId));
+
       for (const seat of seatRows) {
+        if (keep.has(seat.id)) continue;
         await tx
           .insert(schema.seatCurrentState)
           .values({ seatId: seat.id, status: "UNKNOWN", confidence: 0, sourceSummary: "DAILY_RESET", lastUpdatedAt: now, updatedAt: now })

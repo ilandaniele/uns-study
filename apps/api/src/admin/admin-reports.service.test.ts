@@ -60,4 +60,28 @@ describe("AdminReportsService.getAttachmentUrl", () => {
     const listed = await svc.list(undefined, undefined, "mod");
     expect(listed.items[0]?.reporter?.email).toBeNull();
   });
+
+  it("lists a page of reports with the right parties and attachments per report", async () => {
+    await insertUsers(db, ["other"]);
+    const [second] = await db
+      .insert(schema.userReports)
+      .values({ reporterId: "other", reportedUserId: null, reason: "SPAM", context: "PROFILE" })
+      .returning();
+    await addAttachment("UPLOADED", "k-first");
+    await db
+      .insert(schema.userReportAttachments)
+      .values({ reportId: second!.id, objectKey: "k-second", contentType: "image/png", sizeBytes: 5, uploadedBy: "other", status: "PENDING" });
+
+    const listed = await svc.list(undefined, undefined, "admin");
+    expect(listed.items).toHaveLength(2);
+    const first = listed.items.find((i) => i.id === reportId)!;
+    const other = listed.items.find((i) => i.id === second!.id)!;
+    expect(first.reporter).toMatchObject({ userId: "reporter" });
+    expect(first.reported).toMatchObject({ userId: "reported" });
+    expect(first.attachments).toHaveLength(1);
+    expect(first.attachments[0]).toMatchObject({ status: "UPLOADED" });
+    expect(other.reporter).toMatchObject({ userId: "other" });
+    expect(other.reported).toBeNull();
+    expect(other.attachments).toMatchObject([{ status: "PENDING", sizeBytes: 5 }]);
+  });
 });

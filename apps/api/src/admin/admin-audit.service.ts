@@ -22,10 +22,11 @@ export class AdminAuditService {
   constructor(@Inject(DB) private readonly db: Db) {}
 
   async list(cursor: string | undefined): Promise<Page<AuditEntryDto>> {
+    const before = parseCursor(cursor);
     const rows = await this.db
       .select()
       .from(schema.moderationActions)
-      .where(cursor ? lt(schema.moderationActions.createdAt, new Date(cursor)) : undefined)
+      .where(before ? lt(schema.moderationActions.createdAt, before) : undefined)
       .orderBy(desc(schema.moderationActions.createdAt))
       .limit(PAGE_SIZE + 1);
 
@@ -42,4 +43,11 @@ export class AdminAuditService {
     const nextCursor = rows.length > PAGE_SIZE ? page[page.length - 1]!.createdAt.toISOString() : null;
     return { items, nextCursor };
   }
+}
+
+/** A malformed `?cursor=` is treated as "first page" instead of reaching the DB as Invalid Date. */
+export function parseCursor(cursor: string | undefined): Date | null {
+  if (!cursor) return null;
+  const d = new Date(cursor);
+  return Number.isNaN(d.getTime()) ? null : d;
 }

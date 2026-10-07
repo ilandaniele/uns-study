@@ -113,6 +113,41 @@ describe("RoomRealtimeGateway.onChatJoin", () => {
     }
   });
 
+  it("waits for authentication when chat:join arrives before handleConnection resolved the user", async () => {
+    const rooms = new Set<string>();
+    const socket = {
+      id: "s",
+      rooms,
+      data: {} as Record<string, unknown>,
+      handshake: { headers: {}, address: "1.2.3.4" },
+      join: (r: string) => void rooms.add(r),
+    } as unknown as Socket & { rooms: Set<string> };
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const auth = mockAuth(async () => {
+      await gate;
+      return { user: { id: "u1" } };
+    });
+    const restrictions = { activeRestrictions: async () => [] } as unknown as RestrictionService;
+    const gateway = new RoomRealtimeGateway({} as RoomStateService, auth, {} as NotificationService, restrictions);
+
+    const connecting = gateway.handleConnection(socket);
+    const joining = gateway.onChatJoin(socket, { roomId: CHAT_ID }); // before auth resolved
+    release();
+    await Promise.all([connecting, joining]);
+    expect(rooms.has(`chat:${CHAT_ID}`)).toBe(true);
+  });
+
+  it("logs a failing token session check instead of swallowing it silently", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { token } = signSocketToken("u2", "s2");
+    await resolveSocketUserId(mockAuth(async () => null), { headers: {}, auth: { token } }, async () => {
+      throw new Error("db down");
+    });
+    expect(JSON.parse(spy.mock.calls[0]![0] as string)).toMatchObject({ evt: "socket_session_check_error", msg: "db down" });
+    spy.mockRestore();
+  });
+
   it("rejects an anonymous socket", async () => {
     const socket = chatSocket(undefined);
     await gatewayWith([]).onChatJoin(socket, { roomId: CHAT_ID });

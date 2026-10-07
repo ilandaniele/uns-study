@@ -44,6 +44,7 @@ export const seatDisputes = pgTable(
     index("idx_seat_disputes_room").on(table.roomId),
     index("idx_seat_disputes_room_status").on(table.roomId, table.status),
     index("idx_seat_disputes_check_in").on(table.checkInId),
+    index("idx_seat_disputes_seat_resolved").on(table.seatId, table.resolvedAt),
   ],
 );
 

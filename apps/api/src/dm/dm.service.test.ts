@@ -117,4 +117,43 @@ describe("DmService", () => {
     await db.insert(schema.userRestrictions).values({ userId: "u1", type: "MUTE_CHAT", reason: "spam" });
     await expect(svc.sendMessage(conversation.id, "u1", "hola")).rejects.toMatchObject({ code: "RESTRICTED" });
   });
+
+  it("batches a multi-conversation list with per-conversation unread, last message, ordering and privacy", async () => {
+    await insertUsers(db, ["u4"]);
+    await db.insert(schema.userProfiles).values([
+      { userId: "u2", identityMode: "FIRST_NAME", firstName: "Ana", avatarUrl: "https://example.test/a.png" },
+      { userId: "u3", avatarUrl: "https://example.test/b.png" },
+    ]);
+    await db.insert(schema.userPrivacySettings).values([
+      { userId: "u2", showAvatar: true },
+      { userId: "u3", showAvatar: false },
+    ]);
+
+    const c2 = await svc.getOrCreateConversation("u1", "u2");
+    const c3 = await svc.getOrCreateConversation("u1", "u3");
+    const c4 = await svc.getOrCreateConversation("u1", "u4");
+
+    await svc.sendMessage(c2.id, "u2", "a1");
+    await svc.sendMessage(c2.id, "u2", "a2");
+    await svc.sendMessage(c3.id, "u3", "b1");
+    await svc.markRead(c3.id, "u1");
+    await svc.sendMessage(c3.id, "u3", "b2");
+    await svc.sendMessage(c3.id, "u1", "mine");
+    await svc.sendMessage(c2.id, "u1", "reply"); // own message never counts as unread
+
+    const list = await svc.listConversations("u1");
+    expect(list.map((c) => c.id)).toEqual([c2.id, c3.id, c4.id]);
+
+    const byId = new Map(list.map((c) => [c.id, c]));
+    expect(byId.get(c2.id)).toMatchObject({
+      unread: 2,
+      lastMessage: { content: "reply", senderId: "u1" },
+      otherUser: { userId: "u2", displayName: "Ana", avatarUrl: "https://example.test/a.png" },
+    });
+    expect(byId.get(c3.id)).toMatchObject({ unread: 1, lastMessage: { content: "mine" }, otherUser: { userId: "u3", avatarUrl: null } });
+    expect(byId.get(c4.id)).toMatchObject({ unread: 0, lastMessage: null, otherUser: { userId: "u4" } });
+
+    // The single-conversation path must agree with the batched one.
+    expect(await svc.getOrCreateConversation("u1", "u3")).toEqual(byId.get(c3.id));
+  });
 });

@@ -9,6 +9,8 @@ function buildDb(): Db {
   return createDb({
     databaseUrl: env.databaseUrl || undefined,
     pgliteDir: env.pgliteDir || undefined,
+    // In-process auto-migrate shares this pool and may run long DDL, so only cap when it is off.
+    queryTimeouts: !env.dbAutoMigrate,
   });
 }
 

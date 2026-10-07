@@ -90,7 +90,10 @@ export async function resolveSocketUserId(
   const token = (handshake.auth as { token?: unknown } | undefined)?.token;
   if (typeof token === "string") {
     const claims = verifySocketToken(token);
-    if (claims && (await isSessionActive(claims).catch(() => false))) return claims.userId;
+    if (claims && (await isSessionActive(claims).catch((err: unknown) => {
+      console.error(JSON.stringify({ evt: "socket_session_check_error", msg: err instanceof Error ? err.message : String(err) }));
+      return false;
+    }))) return claims.userId;
   }
 
   try {
@@ -157,6 +160,14 @@ export class RoomRealtimeGateway implements OnGatewayConnection, OnGatewayDiscon
     this.connectionsPerIp.set(ip, open + 1);
     socket.data.ip = ip;
 
+    // Message handlers can fire before this resolves (the client emits `chat:join` right after
+    // connecting); they await `socket.data.ready` so they never see a not-yet-authenticated socket.
+    const ready = this.authenticate(socket);
+    socket.data.ready = ready;
+    await ready;
+  }
+
+  private async authenticate(socket: Socket): Promise<void> {
     const userId = await resolveSocketUserId(this.auth, socket.handshake, (claims) => this.isSessionActive(claims));
     socket.data.userId = userId;
     if (userId) socket.join(userChannel(userId));
@@ -216,6 +227,7 @@ export class RoomRealtimeGateway implements OnGatewayConnection, OnGatewayDiscon
   /** `roomId` here is the chat room id (`ChatMessageDto.chatRoomId`), not the map room id. Requires auth. */
   @SubscribeMessage(SocketEvents.ChatJoin)
   async onChatJoin(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): Promise<void> {
+    await socket.data.ready;
     if (!socket.data.userId) return;
     if (!this.allowEvent(socket)) return;
     const parsed = chatPayloadSchema.safeParse(body);

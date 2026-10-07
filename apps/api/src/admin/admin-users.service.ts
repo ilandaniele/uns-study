@@ -53,19 +53,17 @@ export class AdminUsersService {
     const [u] = await this.db.select().from(schema.user).where(eq(schema.user.id, userId)).limit(1);
     if (!u) throw ApiErrors.notFound("Usuario no encontrado.");
 
-    const roleRows = await this.db.select().from(schema.userRoles).where(eq(schema.userRoles.userId, userId));
-    const restrictionRows = await this.db
-      .select()
-      .from(schema.userRestrictions)
-      .where(eq(schema.userRestrictions.userId, userId))
-      .orderBy(desc(schema.userRestrictions.createdAt));
-    const [reputation] = await this.db.select().from(schema.userReputation).where(eq(schema.userReputation.userId, userId)).limit(1);
-    const events = await this.db
-      .select()
-      .from(schema.securityEvents)
-      .where(eq(schema.securityEvents.userId, userId))
-      .orderBy(desc(schema.securityEvents.createdAt))
-      .limit(RECENT_SECURITY_EVENTS);
+    const [roleRows, restrictionRows, [reputation], events] = await Promise.all([
+      this.db.select().from(schema.userRoles).where(eq(schema.userRoles.userId, userId)),
+      this.db.select().from(schema.userRestrictions).where(eq(schema.userRestrictions.userId, userId)).orderBy(desc(schema.userRestrictions.createdAt)),
+      this.db.select().from(schema.userReputation).where(eq(schema.userReputation.userId, userId)).limit(1),
+      this.db
+        .select()
+        .from(schema.securityEvents)
+        .where(eq(schema.securityEvents.userId, userId))
+        .orderBy(desc(schema.securityEvents.createdAt))
+        .limit(RECENT_SECURITY_EVENTS),
+    ]);
 
     return {
       userId: u.id,
