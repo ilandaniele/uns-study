@@ -93,8 +93,7 @@ jobs:
         run: |
           nohup bash -c 'echo "ts,rss_kb" > tests/load/results/api-rss.csv; while kill -0 "$API_PID" 2>/dev/null; do echo "$(date +%s),$(awk "/VmRSS/{print \$2}" /proc/$API_PID/status)" >> tests/load/results/api-rss.csv; sleep 30; done' > /dev/null 2>&1 &
 
-      # TODO: pin to a commit SHA like the other actions (SHA not resolved offline when this was written).
-      - uses: grafana/setup-k6-action@v1
+      - uses: grafana/setup-k6-action@43b9fc21641a76002687994433dd586f56e791b1 # v1
 
       - name: Run k6 ${{ env.SCENARIO }}
         env:
@@ -105,8 +104,7 @@ jobs:
 
       - name: Upload results
         if: always()
-        # TODO: pin to a commit SHA like the other actions.
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: k6-${{ env.SCENARIO }}-results
           path: tests/load/results/
