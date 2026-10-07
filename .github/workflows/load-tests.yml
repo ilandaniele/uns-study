@@ -26,8 +26,11 @@ on:
 permissions:
   contents: read
 
+# One run per scenario: each run boots its own Postgres + API inside its own runner, so scenarios do not share
+# state and can run in parallel. (A shared concurrency group would keep only one pending run and silently
+# cancel the rest when several scenarios are dispatched at once.)
 concurrency:
-  group: load-tests
+  group: load-tests-${{ inputs.scenario || 'load' }}
   cancel-in-progress: false
 
 jobs:
