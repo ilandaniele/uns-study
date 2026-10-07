@@ -22,3 +22,4 @@ backups/
 # k6 load-test output (tests/load); keep the directory itself
 tests/load/results/*
 !tests/load/results/.gitkeep
+pentest-reports/
