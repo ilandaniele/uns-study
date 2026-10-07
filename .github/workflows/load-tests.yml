@@ -79,6 +79,8 @@ jobs:
           BETTER_AUTH_URL: http://localhost:4000
           TRUST_PROXY_HOPS: "1"
           PRESENCE_DEV_BYPASS: "false"
+          # Same heap cap as production (fly.toml, 256 MB VM), so api-rss.csv is comparable and a heap OOM fails the run.
+          NODE_OPTIONS: --max-old-space-size=200
         run: |
           mkdir -p tests/load/results
           nohup node apps/api/dist/main.js > tests/load/results/api.log 2>&1 &
@@ -104,6 +106,15 @@ jobs:
           ORIGIN: http://localhost:3000
           SOAK_HOLD: ${{ inputs.soak_hold || '2h' }}
         run: k6 run "tests/load/scenarios/${SCENARIO}.js"
+
+      - name: Check API survived
+        run: |
+          if ! kill -0 "$API_PID" 2>/dev/null; then
+            echo "::error::API process exited during the run (OOM or crash)"
+            tail -n 50 tests/load/results/api.log
+            exit 1
+          fi
+          echo "API alive, RSS $(awk '/VmRSS/{print $2}' /proc/$API_PID/status) kB"
 
       - name: Upload results
         if: always()
