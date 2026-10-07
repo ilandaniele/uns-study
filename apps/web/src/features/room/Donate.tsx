@@ -2,7 +2,7 @@
 
 import { CheckIcon, CopyIcon, HeartIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import { useEffect, useRef, useState } from "react";
-import { DONATION_AMOUNTS_ARS, donationCheckoutSchema, type DonationCheckoutDto } from "@sala/contracts";
+import { DONATION_AMOUNTS_ARS, DONATION_MAX_ARS, DONATION_MIN_ARS, donationCheckoutSchema, type DonationCheckoutDto } from "@sala/contracts";
 import { useHouseInterstitial } from "@/features/ads/ad-overlay-store";
 import { apiPost } from "@/lib/api";
 import { FIRST_CHECK_IN_KEY, FIRST_SEEN_KEY } from "@/lib/engagement";
@@ -74,10 +74,13 @@ function AliasTicket() {
 
 const formatArs = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
-/** Fixed amounts: each one opens Mercado Pago Checkout Pro straight away. */
+/** Quick amounts or a custom one: each opens Mercado Pago Checkout Pro straight away. */
 function MercadoPagoAmounts() {
   const [busy, setBusy] = useState<number | null>(null);
   const [failed, setFailed] = useState(false);
+  const [custom, setCustom] = useState("");
+  const customAmount = Number(custom);
+  const customValid = Number.isInteger(customAmount) && customAmount >= DONATION_MIN_ARS && customAmount <= DONATION_MAX_ARS;
 
   async function donate(amount: number) {
     if (busy != null) return;
@@ -109,6 +112,39 @@ function MercadoPagoAmounts() {
           </button>
         ))}
       </div>
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (customValid) void donate(customAmount);
+        }}
+      >
+        <label className="flex min-h-11 min-w-0 flex-1 items-center gap-1 rounded-xl border border-app bg-surface px-3 focus-within:border-primary">
+          <span aria-hidden="true" className="font-mono text-muted">$</span>
+          <span className="sr-only">Otro monto en pesos</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            placeholder="Otro monto"
+            value={custom}
+            onChange={(e) => setCustom(e.target.value.replace(/\D/g, "").slice(0, 7))}
+            className="min-w-0 flex-1 bg-transparent font-mono text-base text-main outline-none"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={!customValid || busy != null}
+          className="min-h-11 shrink-0 rounded-xl bg-primary px-4 text-sm font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-50"
+        >
+          {busy != null && busy === customAmount ? "Abriendo…" : "Donar"}
+        </button>
+      </form>
+      {custom && !customValid ? (
+        <p className="text-xs text-muted">
+          Entre {formatArs(DONATION_MIN_ARS)} y {formatArs(DONATION_MAX_ARS)}.
+        </p>
+      ) : null}
       {failed ? (
         <p role="alert" className="text-xs text-[var(--seat-occupied)]">
           No pudimos abrir Mercado Pago. Probá de nuevo o usá el alias.

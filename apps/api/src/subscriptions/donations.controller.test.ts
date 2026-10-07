@@ -21,9 +21,11 @@ describe("DonationsController", () => {
     expect(mp.createPreference.mock.calls[0][0].items[0].unit_price).toBe(2000);
   });
 
-  it("rejects amounts outside the fixed list", () => {
+  it("accepts custom whole-peso amounts within bounds only", () => {
     expect(donationCheckoutSchema.safeParse({ amount: 1 }).success).toBe(false);
-    expect(donationCheckoutSchema.safeParse({ amount: 1000 }).success).toBe(true);
+    expect(donationCheckoutSchema.safeParse({ amount: 1500.5 }).success).toBe(false);
+    expect(donationCheckoutSchema.safeParse({ amount: 2_000_000 }).success).toBe(false);
+    expect(donationCheckoutSchema.safeParse({ amount: 1500 }).success).toBe(true);
   });
 
   it("rate limits per IP", async () => {

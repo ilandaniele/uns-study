@@ -14,7 +14,7 @@ const WINDOW_S = 3600;
 
 /**
  * `/donations/checkout`: public, anonymous one-time donation. Creates a Mercado Pago Checkout Pro
- * preference for one of the fixed amounts and returns its URL; nothing is stored, the money goes
+ * preference for a bounded whole-peso amount and returns its URL; nothing is stored, the money goes
  * straight to the MP account. The webhook ignores `payment` events, so donations never touch user rows.
  */
 @Controller("donations")

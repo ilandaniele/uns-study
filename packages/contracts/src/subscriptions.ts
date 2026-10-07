@@ -16,11 +16,15 @@ export interface SubscriptionCheckoutDto {
   initPoint: string;
 }
 
-/** One-time donation amounts (ARS) offered as buttons; the API accepts only these. */
+/** One-time donation amounts (ARS) offered as quick buttons. */
 export const DONATION_AMOUNTS_ARS = [1000, 2000, 5000, 10000] as const;
 
+/** Bounds for a custom amount (whole pesos). */
+export const DONATION_MIN_ARS = 100;
+export const DONATION_MAX_ARS = 1_000_000;
+
 export const donationCheckoutSchema = z.object({
-  amount: z.number().int().refine((n) => (DONATION_AMOUNTS_ARS as readonly number[]).includes(n), "Monto no permitido"),
+  amount: z.number().int().min(DONATION_MIN_ARS).max(DONATION_MAX_ARS),
 });
 
 export interface DonationCheckoutDto {
