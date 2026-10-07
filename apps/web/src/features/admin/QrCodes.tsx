@@ -7,7 +7,11 @@ import { apiDelete, apiFetch, apiPost } from "@/lib/api";
 import { tableDisplayName } from "@/features/room/format";
 import type { RoomQrCodeDto } from "./types";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+// The QR must open the deployed app. Prefer an explicit build-time URL, else the origin serving this admin page.
+function qrUrl(token: string): string {
+  const base = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "https://saladeestudio.com.ar");
+  return `${base.replace(/\/$/, "")}/q/${token}`;
+}
 
 /** "M04" -> "Mesa 4", "B01" -> "Barra entrada izquierda", for the printed card's big label. */
 function friendlyTableName(tableCode: string): string {
@@ -40,7 +44,7 @@ export function QrCodes({ roomSlug }: { roomSlug: string }) {
     async function renderAll() {
       const entries = await Promise.all(
         items.map(async (item) => {
-          const url = `${APP_URL}/q/${item.token}`;
+          const url = qrUrl(item.token);
           const svg = await QRCode.toString(url, { type: "svg", margin: 1, width: 200 });
           return [item.id, svg] as const;
         }),
@@ -103,7 +107,7 @@ export function QrCodes({ roomSlug }: { roomSlug: string }) {
               )}
               <p className="text-lg font-semibold text-main">{item.tableCode ? friendlyTableName(item.tableCode) : "Sala completa"}</p>
               {item.tableCode ? <p className="font-mono text-[11px] text-muted">{item.tableCode}</p> : null}
-              <p className="w-full break-all text-center font-mono text-[11px] text-muted">{`${APP_URL}/q/${item.token}`}</p>
+              <p className="w-full break-all text-center font-mono text-[11px] text-muted">{qrUrl(item.token)}</p>
               <p
                 className="qr-print-hide text-xs font-semibold"
                 style={{ color: item.active ? "var(--seat-free)" : "var(--text-faint)" }}
