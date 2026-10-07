@@ -14,7 +14,7 @@ describe("authRateLimitMiddleware", () => {
     reached = [];
     const app = express();
     app.use("/api/auth", authRateLimitMiddleware(new RateLimitService()));
-    app.all("/api/auth/*", (req, res) => {
+    app.all("/api/auth/*splat", (req, res) => {
       reached.push(req.body);
       res.json({ ok: true });
     });
@@ -103,7 +103,7 @@ describe("authRateLimitMiddleware", () => {
     const app = express();
     app.set("trust proxy", 2);
     app.use("/api/auth", authRateLimitMiddleware(new RateLimitService(), { trustReqIp: true }));
-    app.all("/api/auth/*", (_req, res) => res.json({ ok: true }));
+    app.all("/api/auth/*splat", (_req, res) => res.json({ ok: true }));
     const proxied = await new Promise<Server>((resolve) => {
       const s: Server = app.listen(0, () => resolve(s));
     });

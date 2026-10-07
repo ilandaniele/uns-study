@@ -72,7 +72,7 @@ describe("route auth coverage", () => {
 
     app = await NestFactory.create(AppModule, { bodyParser: false, logger: false });
     const http = app.getHttpAdapter().getInstance();
-    http.all("/api/auth/*", toNodeHandler(app.get(AUTH)));
+    http.all("/api/auth/*splat", toNodeHandler(app.get(AUTH)));
     app.use(express.json());
     app.setGlobalPrefix("api/v1");
     app.useGlobalFilters(new ApiExceptionFilter());
@@ -81,7 +81,7 @@ describe("route auth coverage", () => {
 
     await seedInitialRoom(app.get(DB));
 
-    const stack = ((http as { _router?: { stack: RouteLayer[] } })._router?.stack ?? []) as RouteLayer[];
+    const stack = ((http as { router?: { stack: RouteLayer[] } }).router?.stack ?? []) as RouteLayer[];
     const found = new Set<string>();
     for (const layer of stack) {
       if (!layer.route || !layer.route.path.startsWith(`${PREFIX}/`)) continue;

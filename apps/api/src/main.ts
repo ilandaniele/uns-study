@@ -118,7 +118,7 @@ async function bootstrap() {
   });
   // Per-email + Fly-Client-IP limits on email sign-in/sign-up (defense in depth: `req.ip` is only trustworthy when `PROXY_SHARED_SECRET` is set; see `proxyTrustMiddleware`).
   httpAdapter.use("/api/auth", authRateLimitMiddleware(app.get(RateLimitService), { trustReqIp: Boolean(env.proxySharedSecret) }));
-  httpAdapter.all("/api/auth/*", toNodeHandler(auth));
+  httpAdapter.all("/api/auth/*splat", toNodeHandler(auth));
 
   // The photo-verification body carries a base64 image (~2MB decoded, larger encoded) — give just
   // that route a bigger JSON limit before the global parser below (which body-parser then skips,

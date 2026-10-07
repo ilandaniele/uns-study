@@ -74,7 +74,7 @@ describe("authorization over HTTP (IDOR)", () => {
 
     app = await NestFactory.create(AppModule, { bodyParser: false, logger: false });
     const http = app.getHttpAdapter().getInstance();
-    http.all("/api/auth/*", toNodeHandler(app.get(AUTH)));
+    http.all("/api/auth/*splat", toNodeHandler(app.get(AUTH)));
     app.use(express.json());
     app.setGlobalPrefix("api/v1");
     app.useGlobalFilters(new ApiExceptionFilter());

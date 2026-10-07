@@ -8,7 +8,7 @@ let server: ReturnType<express.Express["listen"]> | null = null;
 async function start(counter: IpWindowCounter) {
   const app = express();
   app.use("/api/v1", globalIpRateLimitMiddleware(counter));
-  app.all("/api/v1/*", (_req, res) => void res.json({ ok: true }));
+  app.all("/api/v1/*splat", (_req, res) => void res.json({ ok: true }));
   server = app.listen(0);
   return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
