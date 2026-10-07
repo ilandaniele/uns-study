@@ -257,6 +257,8 @@ describe("DailyResetJob", () => {
 
     const room = await getRoom(db);
     const after = new Date(resetInstantFor(room, new Date()).getTime() + 60_000);
+    // Backdate the check-in to before the reset instant, otherwise it counts as a new-day check-in and is kept.
+    await db.update(schema.checkIns).set({ startedAt: new Date(after.getTime() - 60 * 60_000) }).where(eq(schema.checkIns.userId, "u1"));
     const results = await Promise.all([job.runReset(roomId, after), job.runReset(roomId, after)]);
     expect(results.filter(Boolean)).toHaveLength(1);
 

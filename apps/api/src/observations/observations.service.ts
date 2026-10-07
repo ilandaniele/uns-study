@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, gt, gte, or } from "drizzle-orm";
+import { and, eq, gt, gte, or, sql } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import { FREE_OBS_MINUTES, OCCUPIED_OBS_MINUTES, SAVED_OBS_MINUTES, type LocationInput } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
@@ -66,7 +66,7 @@ export class ObservationService {
     const now = new Date();
     const windowStart = new Date(now.getTime() - SPREAD_WINDOW_MIN * 60_000);
     // All the independent reads in one parallel batch; the checks below run in the original order.
-    const [activeCheckIns, recentSeats, limits, qrVerified, reputationWeight] = await Promise.all([
+    const [activeCheckIns, limits, qrVerified, reputationWeight] = await Promise.all([
       // The caller's own active check-in and whoever holds this seat, in a single query.
       this.db
         .select({
@@ -82,10 +82,6 @@ export class ObservationService {
             or(eq(schema.checkIns.seatId, input.seatId), eq(schema.checkIns.userId, input.userId)),
           ),
         ),
-      this.db
-        .select({ seatId: schema.seatObservations.seatId })
-        .from(schema.seatObservations)
-        .where(and(eq(schema.seatObservations.userId, input.userId), gte(schema.seatObservations.createdAt, windowStart))),
       input.limits ?? this.abusePolicy.observationLimits(input.userId),
       this.qr.isValidForTable(input.qrToken, input.roomId, seat.tableId),
       this.reputation.observationWeight(input.userId),
@@ -100,24 +96,25 @@ export class ObservationService {
       }
     }
 
-    const distinctSeats = new Set(recentSeats.map((r) => r.seatId));
-    const { distinctSeatCap } = limits;
-    if (distinctSeats.size >= distinctSeatCap && !distinctSeats.has(input.seatId)) {
-      await this.securityEvents.record({
-        userId: input.userId,
-        eventType: "OBSERVATION_SPREAD",
-        ip: input.ip,
-        metadata: { distinctSeats: distinctSeats.size },
-      });
-      throw ApiErrors.rateLimited();
-    }
-
     const minutes = input.status === "FREE" ? FREE_OBS_MINUTES : input.status === "SAVED" ? SAVED_OBS_MINUTES : OCCUPIED_OBS_MINUTES;
     const expiresAt = new Date(now.getTime() + minutes * 60_000);
     const confidenceWeight = reputationWeight * (qrVerified ? QR_VERIFIED_FACTOR : 1);
 
     // One transaction for the write and the seat-state recompute (a single BEGIN/COMMIT).
-    const changes = await this.db.transaction(async (tx) => {
+    const outcome = await this.db.transaction(async (tx) => {
+      // Serialises this user's observation writes so the spread cap below (a read-then-insert)
+      // can't be bypassed by concurrent requests that each see a count under the cap.
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`observation-user:${input.userId}`}))`);
+
+      const recentSeats = await tx
+        .select({ seatId: schema.seatObservations.seatId })
+        .from(schema.seatObservations)
+        .where(and(eq(schema.seatObservations.userId, input.userId), gte(schema.seatObservations.createdAt, windowStart)));
+      const distinctSeats = new Set(recentSeats.map((r) => r.seatId));
+      if (distinctSeats.size >= limits.distinctSeatCap && !distinctSeats.has(input.seatId)) {
+        return { spread: distinctSeats.size };
+      }
+
       // Duplicate observation by the same user on the same seat replaces the previous one.
       await tx
         .update(schema.seatObservations)
@@ -142,14 +139,26 @@ export class ObservationService {
         expiresAt,
       });
 
-      return this.roomState.recomputeSeats([input.seatId], {
+      const changes = await this.roomState.recomputeSeats([input.seatId], {
         roomId: input.roomId,
         now,
         eventType: "OBSERVATION",
         actingUserId: input.userId,
         tx,
       });
+      return { changes };
     });
+
+    if ("spread" in outcome) {
+      await this.securityEvents.record({
+        userId: input.userId,
+        eventType: "OBSERVATION_SPREAD",
+        ip: input.ip,
+        metadata: { distinctSeats: outcome.spread },
+      });
+      throw ApiErrors.rateLimited();
+    }
+    const { changes } = outcome;
 
     return { roomId: input.roomId, changes };
   }

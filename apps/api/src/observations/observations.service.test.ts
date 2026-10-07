@@ -14,6 +14,7 @@ import { StudySessionService } from "../rankings/study-session.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";
 import { RolesService } from "../users/roles.service.js";
 import { ObservationService } from "./observations.service.js";
+import type { ObservationLimits } from "../security/abuse-policy.service.js";
 
 async function build(db: Db) {
   const roomState = new RoomStateService(db);
@@ -169,5 +170,18 @@ describe("ObservationService", () => {
 
     const [obs] = await db.select().from(schema.seatObservations).where(eq(schema.seatObservations.seatId, seatIds[0]!));
     expect(obs?.confidenceWeight).toBeCloseTo(0.5, 5);
+  });
+
+  it("concurrent observations on different seats cannot bypass the distinct-seat cap", async () => {
+    const limits = { perMinuteLimit: 6, distinctSeatCap: 2 } as unknown as ObservationLimits;
+    const results = await Promise.allSettled(
+      seatIds.slice(0, 5).map((seatId) => observations.observe({ userId: "u1", roomId, seatId, status: "FREE", location, limits })),
+    );
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(2);
+    for (const r of results.filter((r) => r.status === "rejected")) {
+      expect((r as PromiseRejectedResult).reason).toMatchObject({ code: "RATE_LIMITED" });
+    }
+    const rows = await db.select().from(schema.seatObservations).where(eq(schema.seatObservations.userId, "u1"));
+    expect(new Set(rows.map((r) => r.seatId)).size).toBe(2);
   });
 });

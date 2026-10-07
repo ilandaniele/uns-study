@@ -72,7 +72,7 @@ function acquirePgliteLock(dir: string): () => void {
 }
 
 /** TLS unless the host is loopback or the URL says `sslmode=disable`. */
-function needsSsl(databaseUrl: string): boolean {
+export function needsSsl(databaseUrl: string): boolean {
   if (/[?&]sslmode=disable(?:&|$)/.test(databaseUrl)) return false;
   try {
     const host = new URL(databaseUrl).hostname.replace(/^\[|\]$/g, "");

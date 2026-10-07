@@ -6,9 +6,7 @@ import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";
 import { ZodBodyPipe } from "../common/zod-body.pipe.js";
 import { UuidParamPipe } from "../common/uuid-param.pipe.js";
-import { ApiErrors } from "../common/api-error.js";
-import { RateLimitService } from "../security/rate-limit.service.js";
-import { SecurityEventService } from "../security/security-event.service.js";
+import { AntiAbuseService } from "../security/anti-abuse.service.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { DisputeService } from "./disputes.service.js";
 
@@ -18,8 +16,7 @@ import { DisputeService } from "./disputes.service.js";
 export class DisputesController {
   constructor(
     @Inject(DisputeService) private readonly disputes: DisputeService,
-    @Inject(RateLimitService) private readonly rateLimit: RateLimitService,
-    @Inject(SecurityEventService) private readonly securityEvents: SecurityEventService,
+    @Inject(AntiAbuseService) private readonly antiAbuse: AntiAbuseService,
     @Inject(RestrictionService) private readonly restrictions: RestrictionService,
   ) {}
 
@@ -33,11 +30,12 @@ export class DisputesController {
 
     await this.disputes.assertPresence(body.roomId, body.location);
 
-    const limit = await this.rateLimit.check(`dispute:open:${user.id}`, 3, 3600);
-    if (!limit.allowed) {
-      await this.securityEvents.record({ userId: user.id, eventType: "DISPUTE_SPAM", ip, metadata: { bucket: "dispute_open" } });
-      throw ApiErrors.rateLimited();
-    }
+    await this.antiAbuse.enforceRateLimit({
+      key: `dispute:open:${user.id}`,
+      limit: 3,
+      windowSeconds: 3600,
+      event: { userId: user.id, eventType: "DISPUTE_SPAM", ip, metadata: { bucket: "dispute_open" } },
+    });
 
     const { dispute } = await this.disputes.open({
       userId: user.id,
@@ -55,8 +53,7 @@ export class DisputesController {
     @Param("id", UuidParamPipe) id: string,
     @Body(new ZodBodyPipe(voteDisputeSchema)) body: z.infer<typeof voteDisputeSchema>,
   ) {
-    const limit = await this.rateLimit.check(`dispute:vote:${user.id}`, 20, 600);
-    if (!limit.allowed) throw ApiErrors.rateLimited();
+    await this.antiAbuse.enforceRateLimit({ key: `dispute:vote:${user.id}`, limit: 20, windowSeconds: 600 });
 
     return this.disputes.vote(id, user.id, body.vote, body.location);
   }
@@ -67,8 +64,7 @@ export class DisputesController {
     @Param("id", UuidParamPipe) id: string,
     @Body(new ZodBodyPipe(incumbentRespondSchema)) body: z.infer<typeof incumbentRespondSchema>,
   ) {
-    const limit = await this.rateLimit.check(`dispute:respond:${user.id}`, 5, 60);
-    if (!limit.allowed) throw ApiErrors.rateLimited();
+    await this.antiAbuse.enforceRateLimit({ key: `dispute:respond:${user.id}`, limit: 5, windowSeconds: 60 });
 
     const { dispute } = await this.disputes.respond(id, user.id, body.action, body.location);
     return dispute;

@@ -60,9 +60,11 @@ async function bootstrap() {
   const { proxyTrustMiddleware } = await import("./common/proxy-trust.middleware.js");
   const { RateLimitService } = await import("./security/rate-limit.service.js");
   const { env } = await import("./env.js");
+  const { PostgresIoAdapter } = await import("./realtime/postgres-adapter.js");
   type Auth = import("./auth/auth.instance.js").Auth;
 
   const app = await NestFactory.create(AppModule, { bodyParser: false });
+  app.useWebSocketAdapter(new PostgresIoAdapter(app)); // cross-machine broadcasts (no-op unless enabled)
   app.enableShutdownHooks(); // closes the DB (and releases the PGlite lock) on SIGINT/SIGTERM
 
   // CORS must be registered before the Better Auth handler so its routes/preflight get headers too.

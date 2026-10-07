@@ -68,7 +68,7 @@ describe("action query counts", () => {
     console.info("round trips", JSON.stringify(counts));
     expect(counts.checkIn).toBeLessThanOrEqual(14);
     expect(counts.extend).toBeLessThanOrEqual(1);
-    expect(counts.observe).toBeLessThanOrEqual(15);
+    expect(counts.observe).toBeLessThanOrEqual(16); // +1: per-user advisory lock guarding the spread-cap check
     expect(counts.checkOut).toBeLessThanOrEqual(12);
   });
 

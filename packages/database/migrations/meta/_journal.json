@@ -176,6 +176,13 @@
       "when": 1791347707755,
       "tag": "0024_dba_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791386130223,
+      "tag": "0025_socket_io_attachments",
+      "breakpoints": true
     }
   ]
 }

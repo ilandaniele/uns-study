@@ -5,6 +5,7 @@ import { RoomsModule } from "../rooms/rooms.module.js";
 import { AuthModule } from "../auth/auth.module.js";
 import { NotificationsModule } from "../notifications/notifications.module.js";
 import { flushBackground } from "../common/background.js";
+import { closeAdapterPool } from "./postgres-adapter.js";
 
 /** Upper bound on draining in-flight work at shutdown; Fly's `kill_timeout` is 15 s. */
 export const SHUTDOWN_DRAIN_TIMEOUT_MS = 10_000;
@@ -43,5 +44,6 @@ export class RealtimeModule implements BeforeApplicationShutdown {
   // and coalesced seat summaries can still hit the DB.
   async beforeApplicationShutdown(): Promise<void> {
     await drainOnShutdown(this.gateway);
+    await closeAdapterPool();
   }
 }

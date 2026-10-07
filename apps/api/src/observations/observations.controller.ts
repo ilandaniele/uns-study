@@ -5,12 +5,9 @@ import { AuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";
 import { ZodBodyPipe } from "../common/zod-body.pipe.js";
-import { ApiErrors } from "../common/api-error.js";
 import { allInOrder } from "../common/background.js";
-import { RateLimitService } from "../security/rate-limit.service.js";
-import { SecurityEventService } from "../security/security-event.service.js";
+import { AntiAbuseService } from "../security/anti-abuse.service.js";
 import { AbusePolicyService } from "../security/abuse-policy.service.js";
-import { TurnstileService } from "../security/turnstile.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { ObservationService } from "./observations.service.js";
@@ -20,10 +17,8 @@ import { ObservationService } from "./observations.service.js";
 export class ObservationsController {
   constructor(
     @Inject(ObservationService) private readonly observations: ObservationService,
-    @Inject(RateLimitService) private readonly rateLimit: RateLimitService,
-    @Inject(SecurityEventService) private readonly securityEvents: SecurityEventService,
+    @Inject(AntiAbuseService) private readonly antiAbuse: AntiAbuseService,
     @Inject(AbusePolicyService) private readonly abusePolicy: AbusePolicyService,
-    @Inject(TurnstileService) private readonly turnstile: TurnstileService,
     @Inject(RoomRealtimeGateway) private readonly realtime: RoomRealtimeGateway,
     @Inject(RestrictionService) private readonly restrictions: RestrictionService,
   ) {}
@@ -42,21 +37,14 @@ export class ObservationsController {
 
     await this.observations.assertPresence(body.roomId, body.location);
 
-    const limit = await this.rateLimit.check(`observation:${user.id}`, limits.perMinuteLimit, 60);
-    if (!limit.allowed) {
-      await this.securityEvents.record({ userId: user.id, eventType: "RATE_LIMITED", ip, metadata: { bucket: "observation" } });
-      throw ApiErrors.rateLimited();
-    }
+    await this.antiAbuse.enforceRateLimit({
+      key: `observation:${user.id}`,
+      limit: limits.perMinuteLimit,
+      windowSeconds: 60,
+      event: { userId: user.id, eventType: "RATE_LIMITED", ip, metadata: { bucket: "observation" } },
+    });
 
-    if (await this.abusePolicy.requiresChallenge(user.id)) {
-      const verified = await this.turnstile.verify(body.turnstileToken, ip);
-      if (!verified) {
-        if (body.turnstileToken) {
-          await this.securityEvents.record({ userId: user.id, eventType: "TURNSTILE_FAILED", ip });
-        }
-        throw ApiErrors.turnstileRequired();
-      }
-    }
+    await this.antiAbuse.assertChallengePassed(user.id, body.turnstileToken, ip);
 
     const { roomId, changes } = await this.observations.observe({
       userId: user.id,

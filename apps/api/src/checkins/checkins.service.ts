@@ -60,6 +60,13 @@ export class CheckInService {
     return toDto(row.checkIn, row.seatCode);
   }
 
+  /** Cheap presence pre-check so a rejected fix never eats into the caller's rate-limit budget. */
+  async assertPresence(roomId: string, location: LocationInput): Promise<void> {
+    const room = await this.roomCache.getRoom(this.db, roomId);
+    const result = this.presence.validate(room, location);
+    if (!result.valid) throw ApiErrors.presenceRejected(result.reason!, presenceMessage(result.reason!), result.details);
+  }
+
   /** Creates (or moves) the caller's active check-in. Returns the changed seats for realtime
    *  emission, plus whether this was a fresh check-in (not a move/refresh) by an ADMIN/MODERATOR —
    *  the caller uses that to trigger the "admin present" room banner + push notification. */

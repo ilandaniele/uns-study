@@ -392,6 +392,8 @@ describe("DisputeService", () => {
 
     const room = await getRoom(db);
     const after = new Date(resetInstantFor(room, new Date()).getTime() + 60_000);
+    // Backdate the dispute to before the reset instant; disputes opened after it survive the reset.
+    await db.update(schema.seatDisputes).set({ openedAt: new Date(after.getTime() - 60 * 60_000) }).where(eq(schema.seatDisputes.id, dispute.id));
     await dailyReset.runReset(roomId, after);
 
     const resolved = await svc.getById(dispute.id, null);

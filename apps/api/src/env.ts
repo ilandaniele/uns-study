@@ -49,6 +49,12 @@ export const env = {
   upstashUrl: process.env.UPSTASH_REDIS_REST_URL ?? "",
   upstashToken: process.env.UPSTASH_REDIS_REST_TOKEN ?? "",
   redisUrl: process.env.REDIS_URL ?? "",
+  // Socket.IO cross-machine broadcasts over Postgres LISTEN/NOTIFY (`@socket.io/postgres-adapter`).
+  // `REALTIME_ADAPTER=postgres` forces it on, any other non-empty value (e.g. `memory`) forces it
+  // off; unset = on in production (Fly bluegreen runs two machines briefly), off elsewhere.
+  realtimeAdapter: (process.env.REALTIME_ADAPTER ? process.env.REALTIME_ADAPTER.trim().toLowerCase() === "postgres" : isProduction)
+    ? ("postgres" as const)
+    : ("memory" as const),
   ipHashSalt: ipHashSalt(),
   // Number of reverse-proxy hops in front of the API (Express `trust proxy`), so `req.ip` /
   // `@Ip()` see the real client IP. 1 for a single proxy; 2 on Fly in production, where the
