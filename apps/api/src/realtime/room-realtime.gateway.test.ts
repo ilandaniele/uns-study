@@ -178,3 +178,37 @@ describe("RoomRealtimeGateway.broadcastSeatChanges", () => {
     expect(handleSeatFreed).toHaveBeenCalledWith(ROOM_ID, [expect.objectContaining({ seatId: "a" }), expect.objectContaining({ seatId: "b" })], summary);
   });
 });
+
+describe("RoomRealtimeGateway session sweep", () => {
+  it("disconnects sockets whose session was revoked or expired and keeps the rest", async () => {
+    const { freshDb, insertUsers } = await import("../test-utils.js");
+    const { schema } = await import("@sala/database");
+    const db = await freshDb();
+    await insertUsers(db, ["u1", "u2", "u3"]);
+    const hour = 3600_000;
+    await db.insert(schema.session).values([
+      { id: "s1-live", token: "t1", userId: "u1", expiresAt: new Date(Date.now() + hour) },
+      { id: "s2-expired", token: "t2", userId: "u2", expiresAt: new Date(Date.now() - hour) },
+    ]);
+
+    const makeSocket = (data: Record<string, unknown>) => ({ data, disconnect: vi.fn() });
+    const tokenLive = makeSocket({ userId: "u1", sessionId: "s1-live" });
+    const tokenRevoked = makeSocket({ userId: "u1", sessionId: "s1-gone" });
+    const cookieLive = makeSocket({ userId: "u1" });
+    const cookieExpired = makeSocket({ userId: "u2" });
+    const cookieNoSession = makeSocket({ userId: "u3" });
+    const anonymous = makeSocket({});
+    const all = [tokenLive, tokenRevoked, cookieLive, cookieExpired, cookieNoSession, anonymous];
+
+    const gateway = new RoomRealtimeGateway({} as RoomStateService, {} as Auth, {} as NotificationService, {} as RestrictionService, db);
+    gateway.server = { sockets: { sockets: new Map(all.map((s, i) => [String(i), s])) } } as unknown as Server;
+    await (gateway as unknown as { disconnectEndedSessions(): Promise<void> }).disconnectEndedSessions();
+
+    expect(tokenLive.disconnect).not.toHaveBeenCalled();
+    expect(cookieLive.disconnect).not.toHaveBeenCalled();
+    expect(anonymous.disconnect).not.toHaveBeenCalled();
+    expect(tokenRevoked.disconnect).toHaveBeenCalledWith(true);
+    expect(cookieExpired.disconnect).toHaveBeenCalledWith(true);
+    expect(cookieNoSession.disconnect).toHaveBeenCalledWith(true);
+  }, 30_000);
+});

@@ -6,22 +6,14 @@ import { Suspense, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { signIn, signUp } from "@/lib/auth-client";
 import { invalidateMe } from "@/lib/me-store";
+import { safeNextPath } from "@/lib/safe-next";
 import { resetSocket } from "@/lib/socket";
 
 type Tab = "signin" | "signup";
 
-/** Only same-origin relative paths are honoured, so `next` can't become an open redirect. */
 function safeNext(): string | null {
   if (typeof window === "undefined") return null;
-  const next = new URLSearchParams(window.location.search).get("next");
-  // Control characters and backslashes are rejected because the URL parser strips or rewrites them
-  // ("/%09/evil.com" would resolve to https://evil.com/); the parsed origin is checked as a second guard.
-  if (!next || !next.startsWith("/") || /[\u0000-\u001F\\]/.test(next)) return null;
-  const url = new URL(next, window.location.origin);
-  // Dot segments normalize away ("/.//evil.com" -> "//evil.com"), and a pathname starting with "//" is a
-  // protocol-relative URL once handed to the router.
-  if (url.origin !== window.location.origin || url.pathname.startsWith("//")) return null;
-  return url.pathname + url.search + url.hash;
+  return safeNextPath(new URLSearchParams(window.location.search).get("next"), window.location.origin);
 }
 
 function authErrorMessage(error: { code?: string; status?: number }): string {
