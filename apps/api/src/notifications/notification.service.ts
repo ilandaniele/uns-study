@@ -12,6 +12,8 @@ import { mapWithConcurrency } from "./concurrency.js";
 const SEAT_FREED_THROTTLE_MIN = 10;
 /** At most one "admin present" push per user per this many minutes. */
 const ADMIN_PRESENT_THROTTLE_MIN = 60;
+/** At most one "marked as free" push per holder per seat per this many minutes. */
+const SEAT_CHALLENGE_THROTTLE_MIN = 10;
 /** At most this many pushes are sent concurrently per notification batch. */
 const SEND_CONCURRENCY = 10;
 /** Direct/group message push bodies are cut to this many characters. */
@@ -161,6 +163,34 @@ export class NotificationService {
       body,
       url: input.url ?? `/chat/dm/${input.conversationId}`,
       tag: `dm-${input.conversationId}`,
+    });
+  }
+
+  /**
+   * Push to the checked-in holder of a seat that someone is trying to take (`dispute`) or has
+   * reported as free (`marked-free`), so they can open the room and answer "Sigo acá". Respects the
+   * holder's `checkinExpiry` preference (default on — it only concerns their own seat). Dispute
+   * pushes are not throttled (the dispute flow already limits them); free reports are throttled to
+   * one per holder per seat per 10 minutes.
+   */
+  async notifySeatChallenged(input: { userId: string; roomId: string; seatId: string; seatCode: string; reason: "dispute" | "marked-free" }): Promise<void> {
+    const [prefs] = await this.db
+      .select({ checkinExpiry: schema.notificationPreferences.checkinExpiry })
+      .from(schema.notificationPreferences)
+      .where(eq(schema.notificationPreferences.userId, input.userId))
+      .limit(1);
+    if (prefs && !prefs.checkinExpiry) return;
+
+    if (input.reason === "marked-free") {
+      const claimed = await this.claimThrottle([input.userId], `SEAT_CHALLENGE_FREE:${input.seatId}`, SEAT_CHALLENGE_THROTTLE_MIN);
+      if (claimed.length === 0) return;
+    }
+
+    await this.push.sendToUser(input.userId, {
+      title: input.reason === "dispute" ? "Están reclamando tu lugar" : "Marcaron tu lugar como libre",
+      body: `Asiento ${input.seatCode}. Si seguís acá, entrá y tocá "Sigo acá".`,
+      url: await this.roomUrl(input.roomId),
+      tag: `seat-challenge-${input.seatId}`,
     });
   }
 

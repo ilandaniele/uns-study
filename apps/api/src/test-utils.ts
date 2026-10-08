@@ -59,7 +59,7 @@ export function buildDisputeService(db: Db): DisputeService {
   const gateway = new RoomRealtimeGateway(roomState, mockAuth, buildNotificationService(db), new RestrictionService(db)); // no @WebSocketServer() attached — emits are no-ops in tests
   const rateLimit = new RateLimitService();
   const abusePolicy = new AbusePolicyService(db, new TurnstileService());
-  return new DisputeService(db, roomState, presence, security, studySessions, reputation, restrictions, gateway, rateLimit, abusePolicy);
+  return new DisputeService(db, roomState, presence, security, studySessions, reputation, restrictions, gateway, rateLimit, abusePolicy, buildNotificationService(db));
 }
 
 /** A `PhotoVerificationService` wired with the given (possibly `null`) verifier stand-in. */

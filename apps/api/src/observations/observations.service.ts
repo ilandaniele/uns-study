@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { and, eq, gt, gte, or, sql } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import { FREE_OBS_MINUTES, OCCUPIED_OBS_MINUTES, SAVED_OBS_MINUTES, type LocationInput } from "@sala/contracts";
@@ -12,6 +12,8 @@ import { ReputationService } from "../reputation/reputation.service.js";
 import { ApiErrors } from "../common/api-error.js";
 import { RoomCache } from "../common/cache/room-cache.service.js";
 import { isCheckInVerified } from "../checkins/verification.js";
+import { runInBackground } from "../common/background.js";
+import { NotificationService } from "../notifications/notification.service.js";
 
 const SPREAD_WINDOW_MIN = 10;
 /** A QR-verified observation counts for 1.5x its base (reputation) confidence weight. */
@@ -32,6 +34,8 @@ export interface CreateObservationInput {
 
 @Injectable()
 export class ObservationService {
+  private readonly logger = new Logger(ObservationService.name);
+
   constructor(
     @Inject(DB) private readonly db: Db,
     @Inject(RoomStateService) private readonly roomState: RoomStateService,
@@ -40,6 +44,7 @@ export class ObservationService {
     @Inject(AbusePolicyService) private readonly abusePolicy: AbusePolicyService,
     @Inject(QrService) private readonly qr: QrService,
     @Inject(ReputationService) private readonly reputation: ReputationService,
+    @Inject(NotificationService) private readonly notifications: NotificationService,
     @Inject(RoomCache) private readonly roomCache: RoomCache = new RoomCache(),
   ) {}
 
@@ -159,6 +164,16 @@ export class ObservationService {
       throw ApiErrors.rateLimited();
     }
     const { changes } = outcome;
+
+    if (input.status === "FREE") {
+      // Tell the checked-in holder (if any) so they can defend the seat; never blocks the response.
+      const holder = activeCheckIns.find((c) => c.seatId === input.seatId && c.userId !== input.userId);
+      if (holder) {
+        runInBackground(this.logger, "marked-free push", () =>
+          this.notifications.notifySeatChallenged({ userId: holder.userId, roomId: input.roomId, seatId: input.seatId, seatCode: seat.code, reason: "marked-free" }),
+        );
+      }
+    }
 
     return { roomId: input.roomId, changes };
   }

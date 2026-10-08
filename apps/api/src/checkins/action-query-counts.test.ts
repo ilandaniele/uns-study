@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "@sala/database";
 import { schema } from "@sala/database";
 import { eq } from "drizzle-orm";
-import { buildDisputeService, countQueries, freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
+import { buildDisputeService, buildNotificationService, countQueries, freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { PresenceService } from "../presence/presence.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
@@ -37,7 +37,7 @@ describe("action query counts", () => {
     const qr = new QrService(db);
     const roomCache = new RoomCache();
     checkIns = new CheckInService(db, roomState, presence, security, new StudySessionService(db), qr, buildDisputeService(db), new RolesService(db), roomCache);
-    observations = new ObservationService(db, roomState, presence, security, abusePolicy, qr, reputation, roomCache);
+    observations = new ObservationService(db, roomState, presence, security, abusePolicy, qr, reputation, buildNotificationService(db), roomCache);
     const room = await getRoom(db);
     roomId = room.id;
     location = { latitude: room.latitude, longitude: room.longitude, accuracy: 10, capturedAt: new Date().toISOString() };

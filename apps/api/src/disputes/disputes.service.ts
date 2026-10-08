@@ -25,6 +25,8 @@ import { ApiErrors } from "../common/api-error.js";
 import { isCheckInVerified } from "../checkins/verification.js";
 import { presenceMessage } from "../checkins/checkins.service.js";
 import { isUniqueViolation } from "../common/pg-errors.js";
+import { runInBackground } from "../common/background.js";
+import { NotificationService } from "../notifications/notification.service.js";
 
 /** Same opener can't re-open a dispute on the same seat within this many minutes of a previous one resolving. */
 const REOPEN_COOLDOWN_MIN = 10;
@@ -64,6 +66,7 @@ export class DisputeService {
     @Inject(RoomRealtimeGateway) private readonly realtime: RoomRealtimeGateway,
     @Inject(RateLimitService) private readonly rateLimit: RateLimitService,
     @Inject(AbusePolicyService) private readonly abusePolicy: AbusePolicyService,
+    @Inject(NotificationService) private readonly notifications: NotificationService,
   ) {}
 
   // ---- Opening ----
@@ -201,6 +204,10 @@ export class DisputeService {
         seatCode: seat.code,
         closesAt: created.closesAt.toISOString(),
       });
+      const incumbentUserId = created.incumbentUserId;
+      runInBackground(this.logger, "dispute challenge push", () =>
+        this.notifications.notifySeatChallenged({ userId: incumbentUserId, roomId: input.roomId, seatId: input.seatId, seatCode: seat.code, reason: "dispute" }),
+      );
     }
 
     return { dispute: dto, changes };

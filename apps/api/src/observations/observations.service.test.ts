@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import type { Db } from "@sala/database";
 import { schema } from "@sala/database";
 import { eq } from "drizzle-orm";
@@ -13,6 +13,9 @@ import { QrService } from "../qr/qr.service.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";
 import { RolesService } from "../users/roles.service.js";
+import { NotificationService } from "../notifications/notification.service.js";
+import { PushService } from "../notifications/push.service.js";
+import { flushBackground } from "../common/background.js";
 import { ObservationService } from "./observations.service.js";
 import type { ObservationLimits } from "../security/abuse-policy.service.js";
 
@@ -25,8 +28,10 @@ async function build(db: Db) {
   const studySessions = new StudySessionService(db);
   const qr = new QrService(db);
   const checkIns = new CheckInService(db, roomState, presence, security, studySessions, qr, buildDisputeService(db), new RolesService(db));
-  const observations = new ObservationService(db, roomState, presence, security, abusePolicy, qr, reputation);
-  return { observations, checkIns, qr, reputation };
+  const push = new PushService(db);
+  const send = vi.spyOn(push, "sendToUser").mockResolvedValue(undefined);
+  const observations = new ObservationService(db, roomState, presence, security, abusePolicy, qr, reputation, new NotificationService(db, push, roomState));
+  return { observations, checkIns, qr, reputation, send };
 }
 
 describe("ObservationService", () => {
@@ -35,13 +40,14 @@ describe("ObservationService", () => {
   let checkIns: CheckInService;
   let qr: QrService;
   let reputation: ReputationService;
+  let send: MockInstance<PushService["sendToUser"]>;
   let roomId: string;
   let seatIds: string[];
   let location: { latitude: number; longitude: number; accuracy: number; capturedAt: string };
 
   beforeEach(async () => {
     db = await freshDb();
-    ({ observations, checkIns, qr, reputation } = await build(db));
+    ({ observations, checkIns, qr, reputation, send } = await build(db));
     const room = await getRoom(db);
     roomId = room.id;
     location = { latitude: room.latitude, longitude: room.longitude, accuracy: 10, capturedAt: new Date().toISOString() };
@@ -60,6 +66,26 @@ describe("ObservationService", () => {
     const minutes = (new Date(obs!.expiresAt).getTime() - before) / 60_000;
     expect(minutes).toBeGreaterThan(14.9);
     expect(minutes).toBeLessThanOrEqual(15.01);
+  });
+
+  it("a FREE observation on a checked-in seat pushes the holder once (throttled afterwards)", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "FREE", location });
+    await flushBackground();
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledWith("u1", expect.objectContaining({ title: "Marcaron tu lugar como libre", tag: `seat-challenge-${seatIds[0]}` }));
+
+    await observations.observe({ userId: "u3", roomId, seatId: seatIds[0]!, status: "FREE", location });
+    await flushBackground();
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not push when the observed seat has no check-in or the status is not FREE", async () => {
+    await observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "FREE", location });
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[1]!, location, showIdentity: false });
+    await observations.observe({ userId: "u2", roomId, seatId: seatIds[1]!, status: "OCCUPIED", location });
+    await flushBackground();
+    expect(send).not.toHaveBeenCalled();
   });
 
   it("a single OCCUPIED observation sets the seat OCCUPIED with 20-minute expiry", async () => {

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import type { Db } from "@sala/database";
 import { schema } from "@sala/database";
 import { eq } from "drizzle-orm";
@@ -19,6 +19,9 @@ import { ObservationService } from "../observations/observations.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import type { Auth } from "../auth/auth.instance.js";
 import { DailyResetJob, resetInstantFor } from "../jobs/daily-reset.job.js";
+import { NotificationService } from "../notifications/notification.service.js";
+import { PushService } from "../notifications/push.service.js";
+import { flushBackground } from "../common/background.js";
 import { DisputeService } from "./disputes.service.js";
 
 const mockAuth = { api: { getSession: async () => null } } as unknown as Auth;
@@ -34,11 +37,14 @@ async function build(db: Db) {
   const qr = new QrService(db);
   const rateLimit = new RateLimitService();
   const abusePolicy = new AbusePolicyService(db, new TurnstileService());
-  const disputes = new DisputeService(db, roomState, presence, security, studySessions, reputation, restrictions, gateway, rateLimit, abusePolicy);
+  const push = new PushService(db);
+  const send = vi.spyOn(push, "sendToUser").mockResolvedValue(undefined);
+  const notifications = new NotificationService(db, push, roomState);
+  const disputes = new DisputeService(db, roomState, presence, security, studySessions, reputation, restrictions, gateway, rateLimit, abusePolicy, notifications);
   const checkIns = new CheckInService(db, roomState, presence, security, studySessions, qr, disputes, new RolesService(db));
-  const observations = new ObservationService(db, roomState, presence, security, abusePolicy, qr, reputation);
+  const observations = new ObservationService(db, roomState, presence, security, abusePolicy, qr, reputation, notifications);
   const dailyReset = new DailyResetJob(db, gateway, studySessions);
-  return { disputes, checkIns, observations, reputation, roomState, dailyReset };
+  return { disputes, checkIns, observations, reputation, roomState, dailyReset, send };
 }
 
 describe("DisputeService", () => {
@@ -48,13 +54,14 @@ describe("DisputeService", () => {
   let observations: ObservationService;
   let roomState: RoomStateService;
   let dailyReset: DailyResetJob;
+  let send: MockInstance<PushService["sendToUser"]>;
   let roomId: string;
   let seatIds: string[];
   let location: { latitude: number; longitude: number; accuracy: number; capturedAt: string };
 
   beforeEach(async () => {
     db = await freshDb();
-    ({ disputes: svc, checkIns, observations, roomState, dailyReset } = await build(db));
+    ({ disputes: svc, checkIns, observations, roomState, dailyReset, send } = await build(db));
     const room = await getRoom(db);
     roomId = room.id;
     location = { latitude: room.latitude, longitude: room.longitude, accuracy: 10, capturedAt: new Date().toISOString() };
@@ -75,6 +82,22 @@ describe("DisputeService", () => {
     const [state] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatIds[0]!));
     expect(state?.status).toBe("UNCERTAIN");
     expect(state?.sourceSummary).toBe("DISPUTE");
+  });
+
+  it("pushes the incumbent (only) when a dispute is opened on their seat", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await svc.open({ userId: "u2", roomId, seatId: seatIds[0]!, kind: "CLAIM", location });
+    await flushBackground();
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledWith("u1", expect.objectContaining({ title: "Están reclamando tu lugar", tag: `seat-challenge-${seatIds[0]}` }));
+  });
+
+  it("does not push anyone when a SAVED dispute targets a seat with no check-in", async () => {
+    await observations.observe({ userId: "u3", roomId, seatId: seatIds[0]!, status: "OCCUPIED", location });
+    await svc.open({ userId: "u2", roomId, seatId: seatIds[0]!, kind: "SAVED", location });
+    await flushBackground();
+    expect(send).not.toHaveBeenCalled();
   });
 
   it("rejects opening a dispute on your own seat", async () => {
