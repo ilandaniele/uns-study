@@ -69,7 +69,7 @@ export function PhotoVerifyCard({ checkInId, onChanged }: PhotoVerifyCardProps) 
       <p className="text-sm font-semibold text-main">Verificá tu lugar con una foto</p>
       <p className="text-sm text-muted">
         Sacá una foto desde tu asiento mirando hacia adelante. Mientras esté verificado, nadie puede marcarlo como libre ni abrir
-        una votación por 30 minutos.
+        una votación por 2 horas (o hasta que termine tu tiempo marcado).
       </p>
       {message ? (
         <p role="status" className={`text-sm ${message.tone === "success" ? "text-[var(--seat-free)]" : "text-red-700"}`}>

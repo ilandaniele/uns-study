@@ -46,7 +46,7 @@ export class ObservationsController {
 
     await this.antiAbuse.assertChallengePassed(user.id, body.turnstileToken, ip);
 
-    const { roomId, changes } = await this.observations.observe({
+    const { roomId, changes, dispute } = await this.observations.observe({
       userId: user.id,
       roomId: body.roomId,
       seatId: body.seatId,
@@ -68,6 +68,7 @@ export class ObservationsController {
       verified: change.verified,
       occupiedUntil: change.occupiedUntil ? change.occupiedUntil.toISOString() : null,
     }));
-    return { ok: true, seats };
+    // `dispute`: the vote an "Está libre" report opened (or joined), so the reporter sees it.
+    return { ok: true, seats, dispute };
   }
 }

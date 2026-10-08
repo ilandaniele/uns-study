@@ -50,7 +50,11 @@ export interface UseSeatActionsResult {
   turnstileRequired: boolean;
   clearError: () => void;
   checkIn: (seatId: string, showIdentity: boolean, options?: SeatActionOptions) => Promise<CheckInDto | null>;
-  markFree: (seatId: string, options?: SeatActionOptions) => Promise<boolean>;
+  /**
+   * "Está libre". On a seat someone else holds the API opens (or joins) the timed vote instead:
+   * `dispute` is that vote, so the reporter can see it. Null when the request failed.
+   */
+  markFree: (seatId: string, options?: SeatActionOptions) => Promise<{ dispute: SeatDisputeDto | null } | null>;
   markOccupied: (seatId: string, options?: SeatActionOptions) => Promise<boolean>;
   markSaved: (seatId: string, options?: SeatActionOptions) => Promise<boolean>;
   extend: (durationMinutes?: number) => Promise<boolean>;
@@ -226,7 +230,7 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
         const location = await locate();
         const seat = optimisticSeats([[seatId, status]]);
         const result = await withOptimistic([seat], () =>
-          apiPost<{ ok: true; seats?: SeatStateChangedEvent[] }>("/api/v1/observations", {
+          apiPost<{ ok: true; seats?: SeatStateChangedEvent[]; dispute?: SeatDisputeDto | null }>("/api/v1/observations", {
             roomId: map?.room.id,
             seatId,
             status,
@@ -245,14 +249,20 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
           // re-sync so the optimistic state doesn't linger.
           refetch();
         }
-        return true;
-      }).then((v) => v ?? false),
+        const dispute = result?.dispute ?? null;
+        // "Está libre" opened (or joined) a vote: show it on the seat right away.
+        if (dispute) updateMap((prev) => applyDisputeOpened(prev, dispute));
+        return { dispute };
+      }),
     [locate, map?.room.id, optimisticSeats, refetch, run, updateMap, withOptimistic],
   );
 
   const markFree = useCallback((seatId: string, options?: SeatActionOptions) => observe(seatId, "FREE", options), [observe]);
-  const markOccupied = useCallback((seatId: string, options?: SeatActionOptions) => observe(seatId, "OCCUPIED", options), [observe]);
-  const markSaved = useCallback((seatId: string, options?: SeatActionOptions) => observe(seatId, "SAVED", options), [observe]);
+  const markOccupied = useCallback(
+    (seatId: string, options?: SeatActionOptions) => observe(seatId, "OCCUPIED", options).then((v) => v != null),
+    [observe],
+  );
+  const markSaved = useCallback((seatId: string, options?: SeatActionOptions) => observe(seatId, "SAVED", options).then((v) => v != null), [observe]);
 
   const extend = useCallback(
     (durationMinutes?: number) =>

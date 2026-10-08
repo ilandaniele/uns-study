@@ -49,7 +49,7 @@ export function buildNotificationService(db: Db): NotificationService {
 
 /** A fully-wired `DisputeService` for tests that only need `CheckInService` to compile — its own
  *  dispute-related tests build the graph explicitly instead, to keep instances easy to spy on. */
-export function buildDisputeService(db: Db): DisputeService {
+export function buildDisputeService(db: Db, notifications: NotificationService = buildNotificationService(db)): DisputeService {
   const roomState = new RoomStateService(db);
   const presence = new PresenceService();
   const reputation = new ReputationService(db);
@@ -59,7 +59,7 @@ export function buildDisputeService(db: Db): DisputeService {
   const gateway = new RoomRealtimeGateway(roomState, mockAuth, buildNotificationService(db), new RestrictionService(db)); // no @WebSocketServer() attached — emits are no-ops in tests
   const rateLimit = new RateLimitService();
   const abusePolicy = new AbusePolicyService(db, new TurnstileService());
-  return new DisputeService(db, roomState, presence, security, studySessions, reputation, restrictions, gateway, rateLimit, abusePolicy, buildNotificationService(db));
+  return new DisputeService(db, roomState, presence, security, studySessions, reputation, restrictions, gateway, rateLimit, abusePolicy, notifications);
 }
 
 /** A `PhotoVerificationService` wired with the given (possibly `null`) verifier stand-in. */

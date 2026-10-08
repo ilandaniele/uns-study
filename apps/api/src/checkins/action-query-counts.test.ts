@@ -37,7 +37,7 @@ describe("action query counts", () => {
     const qr = new QrService(db);
     const roomCache = new RoomCache();
     checkIns = new CheckInService(db, roomState, presence, security, new StudySessionService(db), qr, buildDisputeService(db), new RolesService(db), roomCache);
-    observations = new ObservationService(db, roomState, presence, security, abusePolicy, qr, reputation, buildNotificationService(db), roomCache);
+    observations = new ObservationService(db, roomState, presence, security, abusePolicy, qr, reputation, buildNotificationService(db), buildDisputeService(db), roomCache);
     const room = await getRoom(db);
     roomId = room.id;
     location = { latitude: room.latitude, longitude: room.longitude, accuracy: 10, capturedAt: new Date().toISOString() };
@@ -67,8 +67,8 @@ describe("action query counts", () => {
 
     console.info("round trips", JSON.stringify(counts));
     expect(counts.checkIn).toBeLessThanOrEqual(14);
-    expect(counts.extend).toBeLessThanOrEqual(1);
-    expect(counts.observe).toBeLessThanOrEqual(16); // +1: per-user advisory lock guarding the spread-cap check
+    expect(counts.extend).toBeLessThanOrEqual(2); // +1: looks for a vote on the seat that "Sigo acá" answers
+    expect(counts.observe).toBeLessThanOrEqual(17); // +1: per-user advisory lock guarding the spread-cap check; +1: FREE reads the seat's prior state (same parallel batch)
     expect(counts.checkOut).toBeLessThanOrEqual(12);
   });
 

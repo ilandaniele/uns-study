@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { and, eq, gt, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, eq, gt, gte, inArray, lte, ne, sql } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import {
   DISPUTE_MINUTES,
@@ -21,7 +21,7 @@ import { StudySessionService } from "../rankings/study-session.service.js";
 import { ReputationService } from "../reputation/reputation.service.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
-import { ApiErrors } from "../common/api-error.js";
+import { ApiErrors, ApiException } from "../common/api-error.js";
 import { isCheckInVerified } from "../checkins/verification.js";
 import { presenceMessage } from "../checkins/checkins.service.js";
 import { isUniqueViolation } from "../common/pg-errors.js";
@@ -44,6 +44,10 @@ export interface OpenDisputeInput {
   kind: DisputeKind;
   location: LocationInput;
 }
+
+/** Same bucket and numbers `DisputesController` enforces on `POST /disputes`. */
+const DISPUTE_OPEN_LIMIT = 3;
+const DISPUTE_OPEN_WINDOW_SECONDS = 3600;
 
 /**
  * Domain logic for seat disputes: opening a CLAIM/ABSENT/SAVED challenge on a seat, voting,
@@ -79,7 +83,15 @@ export class DisputeService {
     if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!), presence.details);
   }
 
-  async open(input: OpenDisputeInput): Promise<{ dispute: SeatDisputeDto; changes: SeatStateChange[] }> {
+  async open(
+    input: OpenDisputeInput,
+    opts: {
+      /** Spend a `dispute:open:<userId>` slot here, after the cooldown checks (the controller spends it itself). */
+      checkRateLimit?: boolean;
+      /** Which push the incumbent gets: a plain dispute, or a vote opened by an "Está libre" report. */
+      challengeReason?: "dispute" | "marked-free-vote";
+    } = {},
+  ): Promise<{ dispute: SeatDisputeDto; changes: SeatStateChange[] }> {
     const [room] = await this.db.select().from(schema.rooms).where(eq(schema.rooms.id, input.roomId)).limit(1);
     if (!room) throw ApiErrors.roomNotFound();
 
@@ -133,6 +145,11 @@ export class DisputeService {
       .limit(1);
     if (recentSeatLoss) {
       throw ApiErrors.disputeNotAllowed("Esperá unos minutos antes de volver a abrir una disputa en este asiento.");
+    }
+
+    if (opts.checkRateLimit) {
+      const limit = await this.rateLimit.check(`dispute:open:${input.userId}`, DISPUTE_OPEN_LIMIT, DISPUTE_OPEN_WINDOW_SECONDS);
+      if (!limit.allowed) throw ApiErrors.rateLimited();
     }
 
     const now = new Date();
@@ -205,12 +222,61 @@ export class DisputeService {
         closesAt: created.closesAt.toISOString(),
       });
       const incumbentUserId = created.incumbentUserId;
+      const reason = opts.challengeReason ?? "dispute";
       runInBackground(this.logger, "dispute challenge push", () =>
-        this.notifications.notifySeatChallenged({ userId: incumbentUserId, roomId: input.roomId, seatId: input.seatId, seatCode: seat.code, reason: "dispute" }),
+        this.notifications.notifySeatChallenged({ userId: incumbentUserId, roomId: input.roomId, seatId: input.seatId, seatCode: seat.code, reason }),
       );
+    } else if (input.kind === "SAVED") {
+      // Nobody is checked in: whoever marked it "Está guardado" (e.g. its owner, away for a bit)
+      // is the closest thing to a holder — tell them a vote to free it is running.
+      runInBackground(this.logger, "saved challenge push", () => this.notifySavedObservers(input.roomId, input.seatId, seat.code, input.userId, now));
     }
 
     return { dispute: dto, changes };
+  }
+
+  /**
+   * "Está libre" on a seat someone else holds (an active check-in -> ABSENT, or a seat that reads
+   * "guardado" -> SAVED) opens the timed vote instead of leaving two contradicting reports. Same
+   * rules as `POST /disputes` (presence, cooldowns, photo protection, the 3/hour open bucket);
+   * returns null when any of them says no, so the caller falls back to a plain observation.
+   */
+  async openFromFreeObservation(input: OpenDisputeInput): Promise<{ dispute: SeatDisputeDto; changes: SeatStateChange[] } | null> {
+    try {
+      return await this.open(input, { checkRateLimit: true, challengeReason: input.kind === "SAVED" ? "dispute" : "marked-free-vote" });
+    } catch (err) {
+      if (err instanceof ApiException && ["DISPUTE_NOT_ALLOWED", "DISPUTE_ALREADY_OPEN", "RATE_LIMITED"].includes(err.code)) return null;
+      throw err;
+    }
+  }
+
+  /** The seat's OPEN dispute as `viewerId` sees it, or null. */
+  async findOpenForSeat(seatId: string, viewerId: string): Promise<SeatDisputeDto | null> {
+    const [row] = await this.db
+      .select()
+      .from(schema.seatDisputes)
+      .where(and(eq(schema.seatDisputes.seatId, seatId), eq(schema.seatDisputes.status, "OPEN")))
+      .limit(1);
+    if (!row || row.closesAt.getTime() <= Date.now()) return null;
+    return this.rowToDto(row, viewerId);
+  }
+
+  /** Pushes everyone (but `exceptUserId`) whose "Está guardado" report on the seat is still live. */
+  async notifySavedObservers(roomId: string, seatId: string, seatCode: string, exceptUserId: string, now: Date = new Date()): Promise<void> {
+    const savers = await this.db
+      .selectDistinct({ userId: schema.seatObservations.userId })
+      .from(schema.seatObservations)
+      .where(
+        and(
+          eq(schema.seatObservations.seatId, seatId),
+          eq(schema.seatObservations.observedStatus, "SAVED"),
+          gt(schema.seatObservations.expiresAt, now),
+          ne(schema.seatObservations.userId, exceptUserId),
+        ),
+      );
+    for (const { userId } of savers) {
+      await this.notifications.notifySeatChallenged({ userId, roomId, seatId, seatCode, reason: "saved-challenged" });
+    }
   }
 
   // ---- Voting ----
@@ -333,7 +399,7 @@ export class DisputeService {
     // LEFT: the incumbent's own check-in ends and the dispute resolves immediately as
     // RESOLVED_ABSENT (regardless of the current vote tally), same as any other check-in ending.
     const openerRestricted = row.kind === "CLAIM" ? await this.isOpenerRestricted(row.openerUserId) : false;
-    const savedWeight = row.kind === "SAVED" ? await this.reputation.observationWeight(row.openerUserId) : 1;
+    const freeWeight = await this.freeSignalWeight(row);
     if (row.kind === "SAVED") await this.countAsObservation(row.openerUserId);
 
     const resolved = await this.db.transaction(async (tx) => {
@@ -361,7 +427,7 @@ export class DisputeService {
         }
       }
 
-      if (row.kind === "SAVED") await this.applySavedFreeSignal(tx, row, now, savedWeight);
+      if (freeWeight != null) await this.applyFreeSignal(tx, row, now, freeWeight);
 
       return true;
     });
@@ -431,9 +497,48 @@ export class DisputeService {
       .where(and(eq(schema.seatDisputes.checkInId, checkInId), eq(schema.seatDisputes.status, "OPEN")))
       .limit(1);
     if (!row) return;
+    await this.resolveOpenAsAbsent(row, now, "CHECK_IN_ENDED");
+  }
 
+  /**
+   * Someone just checked in ("Estoy acá") on a seat whose OPEN vote has no incumbent (a "guardado"
+   * seat being asked to free up): the question is answered — the seat was free and is now taken —
+   * so it resolves RESOLVED_ABSENT right away instead of showing the new occupant "Dudoso".
+   * Returns the seat changes (empty if there was nothing to resolve).
+   */
+  async resolveForSeatTaken(seatId: string, now: Date = new Date()): Promise<SeatStateChange[]> {
+    const [row] = await this.db
+      .select()
+      .from(schema.seatDisputes)
+      .where(and(eq(schema.seatDisputes.seatId, seatId), eq(schema.seatDisputes.status, "OPEN")))
+      .limit(1);
+    if (!row || row.checkInId != null) return [];
+    return this.resolveOpenAsAbsent(row, now, "SEAT_TAKEN");
+  }
+
+  /**
+   * "Sigo acá" (extend) while the caller's own check-in is being voted on counts as the incumbent
+   * answering STILL_HERE — the same GPS-validated presence the challenge banner's button sends.
+   * Best-effort: the extension itself already succeeded.
+   */
+  async respondStillHereIfChallenged(checkInId: string, userId: string, location: LocationInput): Promise<void> {
+    try {
+      const [row] = await this.db
+        .select({ id: schema.seatDisputes.id })
+        .from(schema.seatDisputes)
+        .where(and(eq(schema.seatDisputes.checkInId, checkInId), eq(schema.seatDisputes.status, "OPEN")))
+        .limit(1);
+      if (!row) return;
+      await this.respond(row.id, userId, "STILL_HERE", location);
+    } catch (err) {
+      this.logger.warn(`Extend could not answer a dispute on check-in ${checkInId}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  /** Resolves one OPEN dispute as RESOLVED_ABSENT regardless of the tally (the incumbent's check-in ended, or the seat got taken). */
+  private async resolveOpenAsAbsent(row: SeatDisputeRow, now: Date, reason: string): Promise<SeatStateChange[]> {
     const openerRestricted = row.kind === "CLAIM" ? await this.isOpenerRestricted(row.openerUserId) : false;
-    const savedWeight = row.kind === "SAVED" ? await this.reputation.observationWeight(row.openerUserId) : 1;
+    const freeWeight = await this.freeSignalWeight(row);
     if (row.kind === "SAVED") await this.countAsObservation(row.openerUserId);
 
     const resolved = await this.db.transaction(async (tx) => {
@@ -446,13 +551,13 @@ export class DisputeService {
         .returning();
       if (claimed.length === 0) return false;
 
-      if (row.kind === "SAVED") await this.applySavedFreeSignal(tx, row, now, savedWeight);
+      if (freeWeight != null) await this.applyFreeSignal(tx, row, now, freeWeight);
 
       return true;
     });
-    if (!resolved) return;
+    if (!resolved) return [];
 
-    await this.finalizeResolution(row, "RESOLVED_ABSENT", now, null, openerRestricted, "CHECK_IN_ENDED");
+    return this.finalizeResolution(row, "RESOLVED_ABSENT", now, null, openerRestricted, reason);
   }
 
   // ---- Internals ----
@@ -472,6 +577,14 @@ export class DisputeService {
     return active.some((r) => r.type === "SUSPENDED" || r.type === "BANNED" || r.type === "RESTRICT_OBSERVATIONS");
   }
 
+  /** The opener's observation weight when a RESOLVED_ABSENT should leave a FREE signal on the seat
+   *  (ABSENT/SAVED: "no está" / "se fue" means the seat is free), or null for a CLAIM — there the
+   *  opener is about to sit down themselves, so the seat must not be advertised to the room as free. */
+  private async freeSignalWeight(row: SeatDisputeRow): Promise<number | null> {
+    if (row.kind === "CLAIM") return null;
+    return this.reputation.observationWeight(row.openerUserId);
+  }
+
   /** Records the SAVED win as consuming the opener's observation budget — it's equivalent to a
    *  FREE observation, so it counts against the same `observation:<userId>` rate-limit bucket
    *  `ObservationsController` uses (regardless of whether it would itself have been allowed). */
@@ -486,7 +599,7 @@ export class DisputeService {
     const [pre] = await this.db.select().from(schema.seatDisputes).where(eq(schema.seatDisputes.id, disputeId)).limit(1);
     if (!pre || pre.status !== "OPEN") return;
     const openerRestricted = pre.kind === "CLAIM" ? await this.isOpenerRestricted(pre.openerUserId) : false;
-    const savedWeight = pre.kind === "SAVED" ? await this.reputation.observationWeight(pre.openerUserId) : 1;
+    const freeWeight = await this.freeSignalWeight(pre);
     if (pre.kind === "SAVED") await this.countAsObservation(pre.openerUserId);
 
     const resolved = await this.db.transaction(async (tx) => {
@@ -510,7 +623,11 @@ export class DisputeService {
       else if (present > absent) finalStatus = "RESOLVED_PRESENT";
       // SAVED never ties: a tie means nobody could confirm it's actually saved, so it stays PRESENT.
       // Same fallback applies when absent > present but didn't clear the STILL_HERE bar above.
-      else finalStatus = pre.kind === "SAVED" ? "RESOLVED_PRESENT" : "TIED";
+      else if (pre.kind === "SAVED") finalStatus = "RESOLVED_PRESENT";
+      // ABSENT ("no está") is answered outright by the incumbent's GPS-validated "Sigo acá": the
+      // seat stays theirs instead of lingering as "Dudoso" until they extend.
+      else if (pre.kind === "ABSENT" && incumbentRespondedPresent) finalStatus = "RESOLVED_PRESENT";
+      else finalStatus = "TIED";
 
       const claimed = await tx
         .update(schema.seatDisputes)
@@ -532,7 +649,11 @@ export class DisputeService {
             if (cancelled.length > 0) await this.studySessions.recordFromCheckIn(tx, checkIn, now);
           }
         }
-        if (pre.kind === "SAVED") await this.applySavedFreeSignal(tx, pre, now, savedWeight);
+        if (freeWeight != null) await this.applyFreeSignal(tx, pre, now, freeWeight);
+      } else {
+        // The room (or the incumbent) said the seat is not free: the "Está libre" reports on it are
+        // overruled, so they can't keep it "Dudoso" against the "guardado"/"ocupado" ones.
+        await this.expireFreeObservations(tx, pre.seatId, now);
       }
 
       return { finalStatus };
@@ -572,7 +693,11 @@ export class DisputeService {
     });
 
     if (row.kind === "SAVED" && finalStatus === "RESOLVED_ABSENT") {
-      await this.db.update(schema.seatCurrentState).set({ sourceSummary: "SAVED" }).where(eq(schema.seatCurrentState.seatId, row.seatId));
+      // Only while it actually reads FREE — a seat someone just checked into keeps its CHECK_IN source.
+      await this.db
+        .update(schema.seatCurrentState)
+        .set({ sourceSummary: "SAVED" })
+        .where(and(eq(schema.seatCurrentState.seatId, row.seatId), eq(schema.seatCurrentState.status, "FREE")));
     }
 
     await this.realtime.broadcastSeatChanges(row.roomId, changes);
@@ -589,14 +714,34 @@ export class DisputeService {
       }
     }
 
+    // The vote (not the incumbent's own checkout/move/"Me fui") took the seat away: tell them.
+    if (finalStatus === "RESOLVED_ABSENT" && !reason && row.incumbentUserId) {
+      const incumbentUserId = row.incumbentUserId;
+      const [seat] = await this.db.select({ code: schema.seats.code }).from(schema.seats).where(eq(schema.seats.id, row.seatId)).limit(1);
+      if (seat) {
+        runInBackground(this.logger, "seat lost push", () =>
+          this.notifications.notifySeatChallenged({ userId: incumbentUserId, roomId: row.roomId, seatId: row.seatId, seatCode: seat.code, reason: "lost" }),
+        );
+      }
+    }
+
     return changes;
   }
 
-  /** SAVED win: expires any active OCCUPIED observations and writes a system FREE signal so the
-   *  seat derives to FREE; `finalizeResolution` then overrides `sourceSummary` to `"SAVED"`.
-   *  `weight` is the opener's current reputation-derived observation confidence weight — this is
-   *  functionally equivalent to them filing a FREE observation. */
-  private async applySavedFreeSignal(tx: Db, row: SeatDisputeRow, now: Date, weight: number): Promise<void> {
+  /** Expires every still-live FREE observation on the seat (a vote just decided it isn't free). */
+  private async expireFreeObservations(tx: Db, seatId: string, now: Date): Promise<void> {
+    await tx
+      .update(schema.seatObservations)
+      .set({ expiresAt: now, updatedAt: now })
+      .where(and(eq(schema.seatObservations.seatId, seatId), eq(schema.seatObservations.observedStatus, "FREE"), gt(schema.seatObservations.expiresAt, now)));
+  }
+
+  /** ABSENT/SAVED win: expires any active OCCUPIED/SAVED observations and writes a system FREE
+   *  signal so the seat derives to FREE once no check-in holds it; for SAVED, `finalizeResolution`
+   *  then overrides `sourceSummary` to `"SAVED"`. `weight` is the opener's current
+   *  reputation-derived observation confidence weight — this is functionally equivalent to them
+   *  filing a FREE observation. */
+  private async applyFreeSignal(tx: Db, row: SeatDisputeRow, now: Date, weight: number): Promise<void> {
     await tx
       .update(schema.seatObservations)
       .set({ expiresAt: now, updatedAt: now })

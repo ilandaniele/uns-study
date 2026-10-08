@@ -293,8 +293,11 @@ export function RoomPageClient({ slug }: { slug: string }) {
   }
 
   async function handleMarkFree(seatId: string) {
-    const ok = await markFree(seatId, { qrToken });
-    if (ok) trackEvent("observation", { roomSlug: slug, seatId, status: "FREE" });
+    const result = await markFree(seatId, { qrToken });
+    if (!result) return;
+    trackEvent("observation", { roomSlug: slug, seatId, status: "FREE" });
+    // The report opened (or joined) a vote on someone else's seat: show it to the reporter.
+    if (result.dispute && result.dispute.seatId === selectedSeat?.id) setSelectedDispute(result.dispute);
   }
 
   async function handleMarkOccupied(seatId: string) {

@@ -214,6 +214,48 @@ describe("NotificationService", () => {
     });
   });
 
+  describe("notifySeatChallenged", () => {
+    const base = () => ({ userId: "not-subscribed", roomId, seatId: seatIds[0]!, seatCode: "M01-S01" });
+
+    it("pushes by default (no preferences row) with the copy for each reason", async () => {
+      await addPushSubscription("not-subscribed");
+      const titles: Record<string, string> = {
+        dispute: "Están reclamando tu lugar",
+        "marked-free-vote": "Marcaron tu lugar como libre",
+        lost: "Perdiste tu lugar",
+      };
+      for (const reason of ["dispute", "marked-free-vote", "lost"] as const) {
+        sendNotification.mockClear();
+        await svc.notifySeatChallenged({ ...base(), reason });
+        expect(sendNotification).toHaveBeenCalledTimes(1);
+        const payload = JSON.parse(sendNotification.mock.calls[0]![1] as string);
+        expect(payload.title).toBe(titles[reason]);
+        expect(payload.tag).toBe(`seat-challenge-${seatIds[0]}`);
+      }
+    });
+
+    it("respects checkinExpiry = false", async () => {
+      await addPushSubscription("not-subscribed");
+      await db.insert(schema.notificationPreferences).values({ userId: "not-subscribed", checkinExpiry: false });
+      await svc.notifySeatChallenged({ ...base(), reason: "marked-free-vote" });
+      expect(sendNotification).not.toHaveBeenCalled();
+    });
+
+    it("throttles bare reports (marked-free / saved-challenged) per seat, never votes", async () => {
+      await addPushSubscription("not-subscribed");
+      await svc.notifySeatChallenged({ ...base(), reason: "marked-free" });
+      await svc.notifySeatChallenged({ ...base(), reason: "saved-challenged" });
+      expect(sendNotification).toHaveBeenCalledTimes(1);
+      await svc.notifySeatChallenged({ ...base(), reason: "marked-free-vote" });
+      expect(sendNotification).toHaveBeenCalledTimes(2);
+    });
+
+    it("is a no-op for a user without a push subscription", async () => {
+      await expect(svc.notifySeatChallenged({ ...base(), reason: "lost" })).resolves.toBeUndefined();
+      expect(sendNotification).not.toHaveBeenCalled();
+    });
+  });
+
   describe("notifyDirectMessage", () => {
     it("pushes the sender's name, a truncated body and the DM route to the recipient only", async () => {
       await addPushSubscription("subscriber");

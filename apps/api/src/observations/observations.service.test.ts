@@ -18,6 +18,7 @@ import { PushService } from "../notifications/push.service.js";
 import { flushBackground } from "../common/background.js";
 import { ObservationService } from "./observations.service.js";
 import type { ObservationLimits } from "../security/abuse-policy.service.js";
+import type { DisputeService } from "../disputes/disputes.service.js";
 
 async function build(db: Db) {
   const roomState = new RoomStateService(db);
@@ -27,11 +28,13 @@ async function build(db: Db) {
   const abusePolicy = new AbusePolicyService(db, new TurnstileService());
   const studySessions = new StudySessionService(db);
   const qr = new QrService(db);
-  const checkIns = new CheckInService(db, roomState, presence, security, studySessions, qr, buildDisputeService(db), new RolesService(db));
   const push = new PushService(db);
   const send = vi.spyOn(push, "sendToUser").mockResolvedValue(undefined);
-  const observations = new ObservationService(db, roomState, presence, security, abusePolicy, qr, reputation, new NotificationService(db, push, roomState));
-  return { observations, checkIns, qr, reputation, send };
+  const notifications = new NotificationService(db, push, roomState);
+  const disputes = buildDisputeService(db, notifications);
+  const checkIns = new CheckInService(db, roomState, presence, security, studySessions, qr, disputes, new RolesService(db));
+  const observations = new ObservationService(db, roomState, presence, security, abusePolicy, qr, reputation, notifications, disputes);
+  return { observations, checkIns, qr, reputation, send, disputes };
 }
 
 describe("ObservationService", () => {
@@ -40,6 +43,7 @@ describe("ObservationService", () => {
   let checkIns: CheckInService;
   let qr: QrService;
   let reputation: ReputationService;
+  let disputes: DisputeService;
   let send: MockInstance<PushService["sendToUser"]>;
   let roomId: string;
   let seatIds: string[];
@@ -47,7 +51,7 @@ describe("ObservationService", () => {
 
   beforeEach(async () => {
     db = await freshDb();
-    ({ observations, checkIns, qr, reputation, send } = await build(db));
+    ({ observations, checkIns, qr, reputation, send, disputes } = await build(db));
     const room = await getRoom(db);
     roomId = room.id;
     location = { latitude: room.latitude, longitude: room.longitude, accuracy: 10, capturedAt: new Date().toISOString() };
@@ -68,16 +72,73 @@ describe("ObservationService", () => {
     expect(minutes).toBeLessThanOrEqual(15.01);
   });
 
-  it("a FREE observation on a checked-in seat pushes the holder once (throttled afterwards)", async () => {
+  it("a FREE observation on a checked-in seat opens an ABSENT vote and pushes the holder once", async () => {
     await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
-    await observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "FREE", location });
+    const first = await observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "FREE", location });
     await flushBackground();
+    expect(first.dispute).toMatchObject({ kind: "ABSENT", status: "OPEN", seatId: seatIds[0] });
+    expect(first.changes.find((c) => c.seatId === seatIds[0])?.status).toBe("UNCERTAIN");
     expect(send).toHaveBeenCalledTimes(1);
-    expect(send).toHaveBeenCalledWith("u1", expect.objectContaining({ title: "Marcaron tu lugar como libre", tag: `seat-challenge-${seatIds[0]}` }));
+    expect(send).toHaveBeenCalledWith(
+      "u1",
+      expect.objectContaining({ title: "Marcaron tu lugar como libre", body: expect.stringContaining("votación"), tag: `seat-challenge-${seatIds[0]}` }),
+    );
 
-    await observations.observe({ userId: "u3", roomId, seatId: seatIds[0]!, status: "FREE", location });
+    // A second reporter joins the running vote: same dispute, no second push.
+    const second = await observations.observe({ userId: "u3", roomId, seatId: seatIds[0]!, status: "FREE", location });
+    await flushBackground();
+    expect(second.dispute?.id).toBe(first.dispute?.id);
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("a FREE report that can't open a vote (seat cooldown) stays an observation and pushes the holder, throttled", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    const { dispute } = await disputes.open({ userId: "u2", roomId, seatId: seatIds[0]!, kind: "CLAIM", location });
+    await disputes.respond(dispute.id, "u1", "STILL_HERE", location);
+    await db.update(schema.seatDisputes).set({ closesAt: new Date(Date.now() - 1000) }).where(eq(schema.seatDisputes.id, dispute.id));
+    await disputes.resolveDue(new Date());
+    await flushBackground();
+    send.mockClear();
+
+    const result = await observations.observe({ userId: "u3", roomId, seatId: seatIds[0]!, status: "FREE", location });
+    await flushBackground();
+    expect(result.dispute).toBeNull();
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledWith("u1", expect.objectContaining({ title: "Marcaron tu lugar como libre", body: expect.not.stringContaining("votación") }));
+
+    await insertUsers(db, ["u4"]);
+    await observations.observe({ userId: "u4", roomId, seatId: seatIds[0]!, status: "FREE", location });
     await flushBackground();
     expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("a FREE report on a seat someone marked \"guardado\" opens a SAVED vote and pushes whoever saved it", async () => {
+    await observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "SAVED", location });
+    const result = await observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "FREE", location });
+    await flushBackground();
+
+    expect(result.dispute).toMatchObject({ kind: "SAVED", status: "OPEN" });
+    const [state] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatIds[0]!));
+    expect(state?.sourceSummary).toBe("DISPUTE");
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledWith("u1", expect.objectContaining({ title: "Quieren liberar un lugar que marcaste como guardado" }));
+  });
+
+  it("FREE replacing the reporter's own \"guardado\" just frees the seat — no vote", async () => {
+    await observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "SAVED", location });
+    const result = await observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "FREE", location });
+    await flushBackground();
+
+    expect(result.dispute).toBeNull();
+    const [state] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatIds[0]!));
+    expect(state?.status).toBe("FREE");
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("FREE on an observation-only OCCUPIED seat stays an observation conflict (UNCERTAIN, no vote)", async () => {
+    await observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "OCCUPIED", location });
+    const result = await observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "FREE", location });
+    expect(result.dispute).toBeNull();
   });
 
   it("does not push when the observed seat has no check-in or the status is not FREE", async () => {
@@ -153,13 +214,16 @@ describe("ObservationService", () => {
     expect(rows.filter((r) => r.expiresAt.getTime() > Date.now())).toHaveLength(1);
   });
 
-  it("an active check-in outranks a FREE observation from someone else", async () => {
-    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
-    await observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "FREE", location });
+  it("photo protection blocks a FREE report for 2 hours from the photo, then a vote can open", async () => {
+    const { checkIn } = await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await db.update(schema.checkIns).set({ verifiedAt: new Date(Date.now() - 119 * 60_000) }).where(eq(schema.checkIns.id, checkIn.id));
+    await expect(observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "FREE", location })).rejects.toMatchObject({
+      code: "SEAT_VERIFIED",
+    });
 
-    const [state] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatIds[0]!));
-    expect(state?.status).toBe("OCCUPIED");
-    expect(state?.sourceSummary).toBe("CHECK_IN");
+    await db.update(schema.checkIns).set({ verifiedAt: new Date(Date.now() - 121 * 60_000) }).where(eq(schema.checkIns.id, checkIn.id));
+    const result = await observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "FREE", location });
+    expect(result.dispute?.kind).toBe("ABSENT");
   });
 
   it("rejects an observation on the seat where the caller has their own active check-in", async () => {

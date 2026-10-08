@@ -203,7 +203,8 @@ export class CheckInService {
         throw ApiErrors.validation("Intentá de nuevo.");
       }
     }
-    const { row: checkInRow, changes, previousRoom } = written;
+    const { row: checkInRow, previousRoom } = written;
+    let { changes } = written;
 
     // Moving away from a seat ends that check-in — resolve any dispute still OPEN against it.
     // A failure here must not turn an otherwise-successful move into a 500.
@@ -212,6 +213,19 @@ export class CheckInService {
         await this.disputes.resolveForEndedCheckIn(previousCheckInId, now);
       } catch (err) {
         this.logger.error(`Failed to resolve dispute for ended check-in ${previousCheckInId} (move)`, err instanceof Error ? err.stack : String(err));
+      }
+    }
+
+    // A vote still running on the seat without an incumbent (a "guardado" seat asked to free up) is
+    // answered by this check-in. Only an open vote keeps the seat from reading OCCUPIED here, so the
+    // common case skips the lookup. Best-effort, like the resolution above.
+    if (changes.find((c) => c.seatId === input.seatId)?.status !== "OCCUPIED") {
+      try {
+        const resolved = await this.disputes.resolveForSeatTaken(input.seatId, now);
+        const resolvedSeats = new Set(resolved.map((c) => c.seatId));
+        changes = [...changes.filter((c) => !resolvedSeats.has(c.seatId)), ...resolved];
+      } catch (err) {
+        this.logger.error(`Failed to resolve dispute for taken seat ${input.seatId}`, err instanceof Error ? err.stack : String(err));
       }
     }
 
@@ -305,6 +319,8 @@ export class CheckInService {
       )
       .returning();
     if (!updated) throw ApiErrors.noActiveCheckIn();
+    // "Sigo acá" while the seat is being voted on answers the vote too.
+    await this.disputes.respondStillHereIfChallenged(updated.id, userId, location);
     return toDto(updated, current.seatCode);
   }
 }

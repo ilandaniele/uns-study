@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { randomInt } from "node:crypto";
 import { and, eq, gt, lt, ne, notExists, sql } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
-import { seatLabel } from "@sala/contracts";
+import { DISPUTE_MINUTES, seatLabel } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { PushService } from "./push.service.js";
@@ -27,6 +27,29 @@ const ADMIN_PRESENT_DELAY_MAX_MS = 5 * 60_000;
 export interface SeatFreedRecipient {
   userId: string;
   seatIds: string[];
+}
+
+export type SeatChallengeReason = "dispute" | "marked-free-vote" | "marked-free" | "saved-challenged" | "lost";
+
+function seatChallengeCopy(reason: SeatChallengeReason, seatCode: string): { title: string; body: string } {
+  switch (reason) {
+    case "dispute":
+      return { title: "Están reclamando tu lugar", body: `Asiento ${seatCode}. Si seguís acá, entrá y tocá "Sigo acá".` };
+    case "marked-free-vote":
+      return {
+        title: "Marcaron tu lugar como libre",
+        body: `Asiento ${seatCode}. Abrieron una votación de ${DISPUTE_MINUTES} minutos: si seguís acá, entrá y tocá "Sigo acá".`,
+      };
+    case "marked-free":
+      return { title: "Marcaron tu lugar como libre", body: `Asiento ${seatCode}. Si seguís acá, entrá y tocá "Sigo acá".` };
+    case "saved-challenged":
+      return {
+        title: "Quieren liberar un lugar que marcaste como guardado",
+        body: `Asiento ${seatCode}. Si todavía lo estás usando, entrá a la sala.`,
+      };
+    case "lost":
+      return { title: "Perdiste tu lugar", body: `Asiento ${seatCode}. La votación decidió que el lugar está libre.` };
+  }
 }
 
 /**
@@ -167,13 +190,18 @@ export class NotificationService {
   }
 
   /**
-   * Push to the checked-in holder of a seat that someone is trying to take (`dispute`) or has
-   * reported as free (`marked-free`), so they can open the room and answer "Sigo acá". Respects the
-   * holder's `checkinExpiry` preference (default on — it only concerns their own seat). Dispute
-   * pushes are not throttled (the dispute flow already limits them); free reports are throttled to
-   * one per holder per seat per 10 minutes.
+   * Push to whoever holds a seat that someone else is challenging, so they can open the room and
+   * answer "Sigo acá":
+   * - `dispute`: a vote was opened on their check-in;
+   * - `marked-free-vote`: an "Está libre" report on their check-in opened a vote;
+   * - `marked-free`: an "Está libre" report that couldn't open a vote (cooldown/limits);
+   * - `saved-challenged`: someone wants to free a seat they marked "Está guardado";
+   * - `lost`: a vote ended their check-in.
+   * Respects the user's `checkinExpiry` preference (default on — it only concerns their own seat).
+   * Vote pushes are not throttled (the dispute flow already limits them); bare reports are
+   * throttled to one per user per seat per 10 minutes.
    */
-  async notifySeatChallenged(input: { userId: string; roomId: string; seatId: string; seatCode: string; reason: "dispute" | "marked-free" }): Promise<void> {
+  async notifySeatChallenged(input: { userId: string; roomId: string; seatId: string; seatCode: string; reason: SeatChallengeReason }): Promise<void> {
     const [prefs] = await this.db
       .select({ checkinExpiry: schema.notificationPreferences.checkinExpiry })
       .from(schema.notificationPreferences)
@@ -181,14 +209,15 @@ export class NotificationService {
       .limit(1);
     if (prefs && !prefs.checkinExpiry) return;
 
-    if (input.reason === "marked-free") {
+    if (input.reason === "marked-free" || input.reason === "saved-challenged") {
       const claimed = await this.claimThrottle([input.userId], `SEAT_CHALLENGE_FREE:${input.seatId}`, SEAT_CHALLENGE_THROTTLE_MIN);
       if (claimed.length === 0) return;
     }
 
+    const { title, body } = seatChallengeCopy(input.reason, input.seatCode);
     await this.push.sendToUser(input.userId, {
-      title: input.reason === "dispute" ? "Están reclamando tu lugar" : "Marcaron tu lugar como libre",
-      body: `Asiento ${input.seatCode}. Si seguís acá, entrá y tocá "Sigo acá".`,
+      title,
+      body,
       url: await this.roomUrl(input.roomId),
       tag: `seat-challenge-${input.seatId}`,
     });

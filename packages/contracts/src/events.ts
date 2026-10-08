@@ -10,8 +10,9 @@ export const SAVED_OBS_MINUTES = 30;
 /** Bounds for the user-chosen "occupy until" window of a check-in (minutes). */
 export const CHECKIN_MIN_MINUTES = 15;
 export const DISPUTE_MINUTES = 5;
-/** How long a photo-verified check-in is protected from disputes/"Está libre" observations. */
-export const VERIFIED_PROTECTION_MINUTES = 30;
+/** How long a photo-verified check-in is protected from disputes/"Está libre" observations —
+ *  counted from the photo and capped by the check-in's own expiry (see `computeVerificationExpiresAt`). */
+export const VERIFIED_PROTECTION_MINUTES = 120;
 
 export const SocketEvents = {
   RoomJoin: "room:join",

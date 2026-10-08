@@ -5,16 +5,18 @@ The API forwards the photo to an external **seat verifier** model. The model
 says which seat the photo was taken from. If the model agrees with the seat the
 user checked in to, that check-in becomes **verified**.
 
-A verified check-in is protected for `VERIFIED_PROTECTION_MINUTES` (30) from
-the time of the photo:
+A verified check-in is protected for `VERIFIED_PROTECTION_MINUTES` (120, i.e. 2
+hours) from the time of the photo, or until the check-in expires if that is
+sooner:
 
 - nobody can open a "Me senté acá", "Esa persona no está" or "Está guardado"
   vote on that seat (`DISPUTE_NOT_ALLOWED`);
 - "Está libre" observations on that seat are rejected (`SEAT_VERIFIED`);
 - the map shows the seat as "Verificado con foto".
 
-There is at most **one photo verification per check-in** (max 30 minutes of
-protection per seating): once a check-in's `verifiedAt` is set, a second photo
+There is at most **one photo verification per check-in** (max 2 hours of
+protection per seating — renewing with "Sigo acá" keeps the check-in alive but
+never extends the protection past 2 hours from the photo): once a check-in's `verifiedAt` is set, a second photo
 for the same check-in is rejected with `ALREADY_VERIFIED`, even after the
 protection window has lapsed. To renew, the user has to check out and check
 back in ("Estoy acá") — that starts a fresh check-in, which can be verified
