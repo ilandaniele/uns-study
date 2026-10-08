@@ -50,11 +50,39 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock, on
           <Avatar userId={authorKey(message)} name={message.author.displayName} url={message.author.avatarUrl} aliasAnimal={message.author.aliasAnimal} size={40} adminBadge={message.author.adminBadge} />
         );
 
+        const separator = showDaySeparator ? (
+          <p className="my-2 text-center text-xs font-semibold text-muted">{formatDaySeparator(message.createdAt)}</p>
+        ) : null;
+
+        // Own messages sit on the right as a bubble, without avatar, badge or name, like most chat apps.
+        if (isOwn) {
+          return (
+            <div key={message.id}>
+              {separator}
+              <div className={`group flex items-start justify-end gap-1.5 ${showHeader ? "mt-2.5" : ""}`}>
+                {!message.deleted ? (
+                  <div className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100">
+                    <MessageMenu
+                      isOwn
+                      onDelete={() => onDelete(message.id)}
+                      onReport={() => router.push(`/reportar/${message.author.userId ?? "message-author"}?context=CHAT&messageId=${message.id}`)}
+                    />
+                  </div>
+                ) : null}
+                <div className="max-w-[80%] rounded-2xl rounded-tr-md bg-primary/15 px-3 py-1.5">
+                  <p className={`whitespace-pre-wrap break-words text-sm ${message.deleted ? "italic text-muted" : "text-main"}`}>
+                    {message.deleted ? "Mensaje eliminado" : message.content}
+                  </p>
+                  <p className="mt-0.5 text-right text-[11px] text-muted">{formatMessageTime(message.createdAt)}</p>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div key={message.id}>
-            {showDaySeparator ? (
-              <p className="my-2 text-center text-xs font-semibold text-muted">{formatDaySeparator(message.createdAt)}</p>
-            ) : null}
+            {separator}
             <div
               className={`group flex gap-2.5 rounded-xl px-2 py-1 hover:bg-[var(--surface-2)] ${showHeader ? "mt-2.5" : ""} ${
                 isOwn ? "bg-primary/5" : ""
