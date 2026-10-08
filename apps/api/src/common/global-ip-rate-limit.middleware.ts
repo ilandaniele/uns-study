@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { ApiErrors } from "./api-error.js";
+import { trimTrailingSlashes } from "./request-path.js";
 
 // Coarse per-IP backstop on every /api/v1 request; the per-user/per-route limits stay the real gate.
 // Counted in memory: the API runs one machine, and a shared backend (Postgres in production) would add
@@ -40,7 +41,7 @@ export class IpWindowCounter {
  */
 export function globalIpRateLimitMiddleware(counter = new IpWindowCounter()) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const path = (req.originalUrl.split("?")[0] ?? "").replace(/\/+$/, "");
+    const path = trimTrailingSlashes(req.originalUrl.split("?")[0] ?? "");
     if (SKIPPED_PATHS.has(path) || SKIPPED_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))) return next();
     const ip = req.ip;
     if (!ip || counter.hit(ip)) return next();

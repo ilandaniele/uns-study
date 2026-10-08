@@ -1,9 +1,10 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger, type OnModuleDestroy } from "@nestjs/common";
 import {
   ConnectedSocket,
   MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
@@ -34,7 +35,7 @@ import type { Auth } from "../auth/auth.instance.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { NotificationService } from "../notifications/notification.service.js";
 import { verifySocketToken, type SocketTokenClaims } from "./socket-token.js";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, inArray } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import { DB } from "../database/database.module.js";
 import { env } from "../env.js";
@@ -58,6 +59,10 @@ const chatPayloadSchema = z.object({ roomId: z.string().uuid() });
 /** Per-socket cap on how many room channels can be joined at once — a socket has no business
  *  watching more than a handful of rooms in this MVP. */
 const MAX_JOINED_ROOMS_PER_SOCKET = 5;
+
+/** How often authenticated sockets are re-checked against the session table, so signing out,
+ *  revoking sessions or resetting the password cuts a socket that is already open. */
+const SESSION_SWEEP_MS = 60_000;
 
 /** Per-socket budget for client->server events (joins/leaves); beyond it the event is ignored. */
 const SOCKET_EVENT_LIMIT = 10;
@@ -109,7 +114,7 @@ export async function resolveSocketUserId(
 @Injectable()
 // Client->server payloads are just room UUIDs; cap well below the 1 MB default.
 @WebSocketGateway({ maxHttpBufferSize: 64 * 1024, cors: { origin: env.webOrigins, credentials: true } })
-export class RoomRealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class RoomRealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy {
   @WebSocketServer()
   server!: Server;
 
@@ -148,6 +153,41 @@ export class RoomRealtimeGateway implements OnGatewayConnection, OnGatewayDiscon
     return rows.length > 0;
   }
 
+  private sessionSweep: NodeJS.Timeout | null = null;
+
+  afterInit(): void {
+    this.sessionSweep = setInterval(() => {
+      void this.disconnectEndedSessions().catch((err: unknown) =>
+        this.logger.warn(`session sweep failed: ${err instanceof Error ? err.message : String(err)}`),
+      );
+    }, SESSION_SWEEP_MS);
+    this.sessionSweep.unref();
+  }
+
+  onModuleDestroy(): void {
+    if (this.sessionSweep) clearInterval(this.sessionSweep);
+  }
+
+  /** Disconnects every authenticated socket whose session is gone: the exact session when the socket
+   *  came in with a socket token, else any live session of that user (cookie handshakes). */
+  private async disconnectEndedSessions(): Promise<void> {
+    if (!this.db || !this.server) return;
+    const sockets = [...this.server.sockets.sockets.values()].filter((s) => typeof s.data.userId === "string");
+    if (sockets.length === 0) return;
+    const userIds = [...new Set(sockets.map((s) => s.data.userId as string))];
+    const live = await this.db
+      .select({ id: schema.session.id, userId: schema.session.userId })
+      .from(schema.session)
+      .where(and(inArray(schema.session.userId, userIds), gt(schema.session.expiresAt, new Date())));
+    const liveSessions = new Set(live.map((r) => r.id));
+    const liveUsers = new Set(live.map((r) => r.userId));
+    for (const socket of sockets) {
+      const sessionId = socket.data.sessionId as string | undefined;
+      const alive = sessionId ? liveSessions.has(sessionId) : liveUsers.has(socket.data.userId as string);
+      if (!alive) socket.disconnect(true);
+    }
+  }
+
   /** Anonymous connections are allowed; joining a room map is opt-in via `room:join`. Authed
    *  sockets are additionally auto-joined to their private `user:{userId}` channel for DMs. */
   async handleConnection(socket: Socket): Promise<void> {
@@ -168,8 +208,14 @@ export class RoomRealtimeGateway implements OnGatewayConnection, OnGatewayDiscon
   }
 
   private async authenticate(socket: Socket): Promise<void> {
-    const userId = await resolveSocketUserId(this.auth, socket.handshake, (claims) => this.isSessionActive(claims));
+    let sessionId: string | undefined;
+    const userId = await resolveSocketUserId(this.auth, socket.handshake, async (claims) => {
+      const active = await this.isSessionActive(claims);
+      if (active) sessionId = claims.sessionId;
+      return active;
+    });
     socket.data.userId = userId;
+    socket.data.sessionId = userId ? sessionId : undefined;
     if (userId) socket.join(userChannel(userId));
   }
 

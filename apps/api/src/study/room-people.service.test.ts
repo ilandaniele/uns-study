@@ -258,6 +258,40 @@ describe("RoomPeopleService", () => {
       expect(entry).toMatchObject({ userId: null, displayName: "Alguien", avatar: { kind: "silhouette" } });
     });
 
+    it("anonymizes occupants blocked either way with the viewer, keeping the seat occupied", async () => {
+      await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: true });
+      await setProfile("u1", { firstName: "Zzyzxa", identityMode: "FIRST_NAME" });
+      await checkIns.checkIn({ userId: "u2", roomId, seatId: seatIds[1]!, location, showIdentity: false });
+      await setProfile("u2", { identityMode: "HIDDEN" });
+      await db.insert(schema.userBlocks).values([
+        { blockerId: "viewer", blockedId: "u1" },
+        { blockerId: "u2", blockedId: "viewer" },
+      ]);
+
+      const occupants = (await people.listOccupants(roomId, "viewer")) as SeatOccupantDto[];
+      expect(occupants).toHaveLength(2);
+      for (const entry of occupants) {
+        expect(entry).toMatchObject({ userId: null, displayName: "Alguien", avatar: { kind: "silhouette" } });
+      }
+      expect(JSON.stringify(occupants)).not.toContain("Zzyzxa");
+
+      // Other viewers still see them as before.
+      const [visible] = ((await people.listOccupants(roomId, "u3")) as SeatOccupantDto[]).filter((o) => o.seatId === seatIds[0]);
+      expect(visible).toMatchObject({ userId: "u1", displayName: "Zzyzxa" });
+    });
+
+    it("hides the name of a blocked observer in 'markedBy'", async () => {
+      await setProfile("u2", { firstName: "Beto", identityMode: "FIRST_NAME" });
+      const minutes = (n: number) => new Date(Date.now() + n * 60_000);
+      await db.insert(schema.seatObservations).values({ userId: "u2", roomId, seatId: seatIds[3]!, observedStatus: "OCCUPIED", observedAt: minutes(-3), expiresAt: minutes(15) });
+      await db.insert(schema.userBlocks).values({ blockerId: "viewer", blockedId: "u2" });
+
+      const marked = (await people.listOccupants(roomId, "viewer")).filter((e): e is SeatMarkedByDto => "markedBy" in e);
+      expect(marked).toHaveLength(1);
+      expect(marked[0]?.markedBy.displayName).toBe("Alguien");
+      expect(JSON.stringify(marked[0])).not.toContain("Beto");
+    });
+
     it("reports 'markedBy' for OCCUPIED-observation seats with nobody checked in", async () => {
       await setProfile("u2", { firstName: "Beto", identityMode: "FIRST_NAME" });
       const minutes = (n: number) => new Date(Date.now() + n * 60_000);

@@ -29,11 +29,7 @@ export class RoomPeopleService {
    * `show_alias_animal_on_map` is off.
    */
   async listPeople(roomId: string, viewerId: string): Promise<RoomPersonDto[]> {
-    const [blockedByMe, blockedMe] = await Promise.all([
-      this.db.select({ id: schema.userBlocks.blockedId }).from(schema.userBlocks).where(eq(schema.userBlocks.blockerId, viewerId)),
-      this.db.select({ id: schema.userBlocks.blockerId }).from(schema.userBlocks).where(eq(schema.userBlocks.blockedId, viewerId)),
-    ]);
-    const excludedIds = [...new Set([...blockedByMe.map((r) => r.id), ...blockedMe.map((r) => r.id)])];
+    const excluded = await this.blockedEitherWay(viewerId);
 
     // Drive from the (small) sets of active check-ins and active study statuses in this room.
     const [checkedIn, studying] = await Promise.all([
@@ -46,7 +42,6 @@ export class RoomPeopleService {
         .from(schema.studyStatus)
         .where(and(eq(schema.studyStatus.roomId, roomId), eq(schema.studyStatus.active, true))),
     ]);
-    const excluded = new Set(excludedIds);
     const candidateIds = [...new Set([...checkedIn, ...studying].map((r) => r.id))].filter((id) => !excluded.has(id));
     if (candidateIds.length === 0) return [];
 
@@ -124,14 +119,25 @@ export class RoomPeopleService {
     return result;
   }
 
+  /** Users `viewerId` blocked or was blocked by. */
+  private async blockedEitherWay(viewerId: string): Promise<Set<string>> {
+    const [blockedByMe, blockedMe] = await Promise.all([
+      this.db.select({ id: schema.userBlocks.blockedId }).from(schema.userBlocks).where(eq(schema.userBlocks.blockerId, viewerId)),
+      this.db.select({ id: schema.userBlocks.blockerId }).from(schema.userBlocks).where(eq(schema.userBlocks.blockedId, viewerId)),
+    ]);
+    return new Set([...blockedByMe.map((r) => r.id), ...blockedMe.map((r) => r.id)]);
+  }
+
   /**
    * One entry per active check-in (`SeatOccupantDto`) plus one per seat that is OCCUPIED only because
    * someone marked it (`SeatMarkedByDto`). Identity follows the profile's identity mode alone:
    * visible -> real display name, photo (if `show_avatar`) or silhouette, `userId` set; otherwise
    * alias + animal (if `show_alias_animal_on_map`) or "Alguien" + silhouette, and `userId` is always
-   * `null` so a hidden user can never be linked to their seat.
+   * `null` so a hidden user can never be linked to their seat. Someone blocked either way with `viewerId`
+   * always shows as an anonymous "Alguien".
    */
-  async listOccupants(roomId: string): Promise<SeatOccupancyDto[]> {
+  async listOccupants(roomId: string, viewerId?: string): Promise<SeatOccupancyDto[]> {
+    const blocked = viewerId ? await this.blockedEitherWay(viewerId) : new Set<string>();
     const rows = await this.db
       .select({
         seatId: schema.checkIns.seatId,
@@ -146,10 +152,11 @@ export class RoomPeopleService {
       .leftJoin(schema.userProfiles, eq(schema.userProfiles.userId, schema.checkIns.userId))
       .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE")));
 
-    const admins = await this.roles.adminIds(rows.filter((r) => r.profile && !needsAlias(r.profile)).map((r) => r.userId));
+    const isVisible = (r: (typeof rows)[number]) => Boolean(r.profile) && !needsAlias(r.profile!) && !blocked.has(r.userId);
+    const admins = await this.roles.adminIds(rows.filter(isVisible).map((r) => r.userId));
     const result: SeatOccupancyDto[] = [];
     for (const r of rows) {
-      if (r.profile && !needsAlias(r.profile)) {
+      if (isVisible(r)) {
         const url = visibleAvatarUrl(r.profile ?? null, r.privacy ?? null);
         result.push({
           seatId: r.seatId,
@@ -163,7 +170,7 @@ export class RoomPeopleService {
       }
 
       // Hidden on the map: never expose the userId, and only the alias animal (if allowed) identifies them.
-      const showAnimal = r.privacy?.showAliasAnimalOnMap ?? true;
+      const showAnimal = (r.privacy?.showAliasAnimalOnMap ?? true) && !blocked.has(r.userId);
       let alias: string | null = null;
       if (r.profile && showAnimal) {
         alias = r.profile.alias && r.profile.aliasAnimal ? r.profile.alias : await this.aliases.ensureAlias(r.userId);
@@ -179,12 +186,12 @@ export class RoomPeopleService {
     }
 
     const checkedInSeats = new Set(rows.map((r) => r.seatId));
-    result.push(...(await this.listMarkedBy(roomId, checkedInSeats)));
+    result.push(...(await this.listMarkedBy(roomId, checkedInSeats, blocked)));
     return result;
   }
 
   /** Seats whose freshest live observation says OCCUPIED or SAVED and that have nobody checked in. */
-  private async listMarkedBy(roomId: string, checkedInSeats: Set<string>): Promise<SeatMarkedByDto[]> {
+  private async listMarkedBy(roomId: string, checkedInSeats: Set<string>, blocked: Set<string>): Promise<SeatMarkedByDto[]> {
     const observations = await this.db
       .select({
         seatId: schema.seatObservations.seatId,
@@ -212,7 +219,11 @@ export class RoomPeopleService {
       kind: o.status === "SAVED" ? "SAVED" : "OCCUPIED",
       markedBy: {
         // An admin bulk-mark never exposes which admin did it.
-        displayName: o.adminOverride ? "Administración" : displayName(profileForDisplay(o.profile, aliasByUser.get(o.userId)), null, o.userName),
+        displayName: o.adminOverride
+          ? "Administración"
+          : blocked.has(o.userId)
+            ? "Alguien"
+            : displayName(profileForDisplay(o.profile, aliasByUser.get(o.userId)), null, o.userName),
         observedAt: o.observedAt.toISOString(),
       },
     }));

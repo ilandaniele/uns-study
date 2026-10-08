@@ -18,7 +18,9 @@ function safeNext(): string | null {
   // ("/%09/evil.com" would resolve to https://evil.com/); the parsed origin is checked as a second guard.
   if (!next || !next.startsWith("/") || /[\u0000-\u001F\\]/.test(next)) return null;
   const url = new URL(next, window.location.origin);
-  if (url.origin !== window.location.origin) return null;
+  // Dot segments normalize away ("/.//evil.com" -> "//evil.com"), and a pathname starting with "//" is a
+  // protocol-relative URL once handed to the router.
+  if (url.origin !== window.location.origin || url.pathname.startsWith("//")) return null;
   return url.pathname + url.search + url.hash;
 }
 

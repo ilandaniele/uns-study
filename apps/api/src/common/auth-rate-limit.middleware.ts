@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import express from "express";
 import type { NextFunction, Request, Response } from "express";
 import { ApiErrors } from "./api-error.js";
+import { trimTrailingSlashes } from "./request-path.js";
 
 /** Minimal slice of `RateLimitService` this middleware needs. */
 export interface AuthRateLimiter {
@@ -54,7 +55,7 @@ export function authRateLimitMiddleware(rateLimit: AuthRateLimiter, { trustReqIp
   const parseJson = express.json({ limit: "16kb" });
 
   const run = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const path = req.path.replace(/\/+$/, "");
+    const path = trimTrailingSlashes(req.path);
 
     try {
       // With PROXY_SHARED_SECRET set, `proxyTrustMiddleware` makes `req.ip` the visitor for proxied
@@ -99,7 +100,7 @@ export function authRateLimitMiddleware(rateLimit: AuthRateLimiter, { trustReqIp
   };
 
   return (req: Request, res: Response, next: NextFunction): void => {
-    const path = req.path.replace(/\/+$/, "");
+    const path = trimTrailingSlashes(req.path);
     if (req.method !== "POST" && req.method !== "PUT" && req.method !== "PATCH") return next();
     // Every body-carrying auth route gets the 16kb cap (oversize -> 413); Better Auth reuses the parsed
     // `req.body`. A malformed body is Better Auth's to reject; the per-IP cap above still applies.

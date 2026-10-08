@@ -20,8 +20,8 @@ export class RoomPeopleController {
   }
 
   @Get(":idOrSlug/occupants")
-  async occupants(@Param("idOrSlug") idOrSlug: string) {
+  async occupants(@Param("idOrSlug") idOrSlug: string, @CurrentUser() user: RequestUser) {
     const room = await this.rooms.findRoomRow(idOrSlug);
-    return this.roomPeople.listOccupants(room.id);
+    return this.roomPeople.listOccupants(room.id, user.id);
   }
 }
