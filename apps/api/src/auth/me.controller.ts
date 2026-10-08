@@ -10,6 +10,7 @@ import { CheckInService } from "../checkins/checkins.service.js";
 import { DB } from "../database/database.module.js";
 import { RolesService } from "../users/roles.service.js";
 import { RestrictionService } from "../users/restriction.service.js";
+import { isAdFree } from "../subscriptions/ad-free.js";
 
 @Controller("me")
 @UseGuards(OptionalAuthGuard)
@@ -59,7 +60,7 @@ export class MeController {
       roles,
       restrictions: activeRestrictions.map((r) => ({ type: r.type, until: r.until ? r.until.toISOString() : null })),
       profileCompleted: Boolean(profile && (profile.firstName || profile.nickname)),
-      adFree: subscription?.status === "authorized",
+      adFree: isAdFree({ subscriptionStatus: subscription?.status, roles }),
       subscriptionsEnabled,
       subscriptionPriceArs,
       canManageAdmins,

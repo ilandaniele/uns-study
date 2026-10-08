@@ -205,7 +205,7 @@ export interface MeDto {
   roles: ("ADMIN" | "MODERATOR")[];
   restrictions: { type: string; until: string | null }[];
   profileCompleted: boolean;
-  /** true only when the caller's user_subscriptions.status === "authorized"; false when anonymous. */
+  /** true when the caller is staff (ADMIN/MODERATOR) or user_subscriptions.status === "authorized"; false when anonymous. */
   adFree: boolean;
   /** Boolean(MP_ACCESS_TOKEN) on the API; same value for anonymous callers. */
   subscriptionsEnabled: boolean;

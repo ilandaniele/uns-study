@@ -163,7 +163,9 @@ export default function PerfilPage() {
 
       <section className="rounded-[14px] border border-app bg-surface p-4">
         <h2 className="mb-2 font-display text-base font-semibold text-main">Anuncios</h2>
-        {adFree ? (
+        {adFree && (me?.roles.length ?? 0) > 0 ? (
+          <p className="text-sm text-muted">Como parte del equipo de la sala, no ves anuncios.</p>
+        ) : adFree ? (
           <div className="flex flex-col items-start gap-3">
             <p className="text-sm text-muted">Tenés Sala de Estudio sin anuncios. Gracias por apoyar la sala.</p>
             <Link
