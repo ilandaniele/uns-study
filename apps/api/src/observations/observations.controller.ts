@@ -35,7 +35,7 @@ export class ObservationsController {
       this.abusePolicy.observationLimits(user.id),
     );
 
-    await this.observations.assertPresence(body.roomId, body.location);
+    const presence = await this.observations.assertPresence(user.id, body.roomId, body.location);
 
     await this.antiAbuse.enforceRateLimit({
       key: `observation:${user.id}`,
@@ -52,6 +52,7 @@ export class ObservationsController {
       seatId: body.seatId,
       status: body.status,
       location: body.location,
+      presence,
       ip,
       qrToken: body.qrToken,
       limits,

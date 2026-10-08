@@ -109,6 +109,11 @@ export interface PresenceDetails {
   allowedM: number;
 }
 
+/** `GET /presence/grant?roomId=`: until when the caller may act in the room without a new fix. */
+export interface PresenceGrantDto {
+  expiresAt: string | null;
+}
+
 export interface PresenceResult {
   valid: boolean;
   reason: PresenceRejectReason | null;
@@ -248,10 +253,17 @@ export const locationInputSchema = z.object({
   sentAt: z.string().datetime().optional(),
 });
 
+/**
+ * Presence-sensitive writes below take an optional `location`: without one the API accepts the
+ * caller's unexpired presence grant for the room (issued by an earlier in-geofence fix, valid
+ * PRESENCE_GRANT_MINUTES) and otherwise answers PRESENCE_REQUIRED, so the client sends a fix.
+ */
+export const PRESENCE_GRANT_MINUTES = 60;
+
 export const checkInRequestSchema = z.object({
   roomId: z.string().uuid(),
   seatId: z.string().uuid(),
-  location: locationInputSchema,
+  location: locationInputSchema.optional(),
   showIdentity: z.boolean().default(false),
   /** How long the user will occupy the seat, in minutes (15..180, default 180). */
   durationMinutes: z.number().int().min(CHECKIN_MIN_MINUTES).max(CHECKIN_MINUTES).default(CHECKIN_MINUTES),
@@ -264,13 +276,13 @@ export const observationRequestSchema = z.object({
   roomId: z.string().uuid(),
   seatId: z.string().uuid(),
   status: z.enum(["FREE", "OCCUPIED", "SAVED"]),
-  location: locationInputSchema,
+  location: locationInputSchema.optional(),
   qrToken: z.string().max(128).nullable().optional(),
   turnstileToken: z.string().max(4096).nullable().optional(),
 });
 
 export const extendRequestSchema = z.object({
-  location: locationInputSchema,
+  location: locationInputSchema.optional(),
   durationMinutes: z.number().int().min(CHECKIN_MIN_MINUTES).max(CHECKIN_MINUTES).default(CHECKIN_MINUTES),
 });
 
@@ -281,30 +293,25 @@ export const checkInPhotoRequestSchema = z.object({
     // before they ever reach the decode/hash/verifier pipeline.
     base64: z.string().min(1).max(2_800_000),
   }),
-  location: locationInputSchema,
+  location: locationInputSchema.optional(),
 });
 
 export const openDisputeSchema = z.object({
   roomId: z.string().uuid(),
   seatId: z.string().uuid(),
   kind: z.enum(["CLAIM", "ABSENT", "SAVED"]),
-  location: locationInputSchema,
+  location: locationInputSchema.optional(),
 });
 
 export const voteDisputeSchema = z.object({
   vote: z.enum(["PRESENT", "ABSENT"]),
-  location: locationInputSchema,
+  location: locationInputSchema.optional(),
 });
 
-export const incumbentRespondSchema = z
-  .object({
-    action: z.enum(["STILL_HERE", "LEFT"]),
-    location: locationInputSchema.optional(),
-  })
-  .refine((v) => v.action !== "STILL_HERE" || v.location != null, {
-    message: "location is required for STILL_HERE",
-    path: ["location"],
-  });
+export const incumbentRespondSchema = z.object({
+  action: z.enum(["STILL_HERE", "LEFT"]),
+  location: locationInputSchema.optional(),
+});
 
 export const testGeofenceSchema = z.object({
   location: locationInputSchema,
@@ -347,6 +354,7 @@ export const createQrCodeSchema = z.object({
 export type ApiErrorCode =
   | "UNAUTHENTICATED"
   | "PRESENCE_REJECTED"
+  | "PRESENCE_REQUIRED"
   | "SEAT_TAKEN"
   | "SEAT_NOT_FOUND"
   | "NO_ACTIVE_CHECKIN"

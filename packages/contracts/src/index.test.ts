@@ -75,8 +75,9 @@ describe("observationRequestSchema", () => {
 });
 
 describe("extendRequestSchema", () => {
-  it("requires location", () => {
-    expect(extendRequestSchema.safeParse({}).success).toBe(false);
+  it("makes location optional (the API falls back to the presence grant) but validates one when sent", () => {
+    expect(extendRequestSchema.safeParse({}).success).toBe(true);
+    expect(extendRequestSchema.safeParse({ location: { ...validLocation, latitude: 200 } }).success).toBe(false);
   });
 
   it("defaults durationMinutes to 180 and bounds it", () => {

@@ -44,3 +44,23 @@ export const studyStatus = pgTable(
       .where(sql`active`),
   ],
 );
+
+/**
+ * Server-side proof that a user's GPS fix passed the room's geofence recently: presence-sensitive
+ * writes from the same user in the same room are accepted without new coordinates until
+ * `expires_at`. Issued only by `PresenceService` on a valid fix; never extended without one.
+ */
+export const presenceGrants = pgTable(
+  "presence_grants",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    grantedAt: timestamp("granted_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.roomId] })],
+);

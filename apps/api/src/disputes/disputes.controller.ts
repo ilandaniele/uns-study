@@ -28,7 +28,7 @@ export class DisputesController {
   ) {
     await this.restrictions.assertNot(user.id, ["RESTRICT_OBSERVATIONS", "SUSPENDED", "BANNED"]);
 
-    await this.disputes.assertPresence(body.roomId, body.location);
+    const presence = await this.disputes.assertPresence(user.id, body.roomId, body.location);
 
     await this.antiAbuse.enforceRateLimit({
       key: `dispute:open:${user.id}`,
@@ -43,6 +43,7 @@ export class DisputesController {
       seatId: body.seatId,
       kind: body.kind,
       location: body.location,
+      presence,
     });
     return dispute;
   }

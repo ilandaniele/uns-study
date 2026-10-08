@@ -1,6 +1,7 @@
-import { Body, Controller, Inject, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Inject, Post, Query, UseGuards } from "@nestjs/common";
 import type { z } from "zod";
-import { presenceValidateSchema, type PresenceResult } from "@sala/contracts";
+import type { Db } from "@sala/database";
+import { presenceValidateSchema, type PresenceGrantDto, type PresenceResult } from "@sala/contracts";
 import { AuthGuard } from "../auth/auth.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";
@@ -8,6 +9,7 @@ import { ZodBodyPipe } from "../common/zod-body.pipe.js";
 import { ApiErrors } from "../common/api-error.js";
 import { RateLimitService } from "../security/rate-limit.service.js";
 import { RoomsService } from "../rooms/rooms.service.js";
+import { DB } from "../database/database.module.js";
 import { PresenceService } from "./presence.service.js";
 
 @Controller("presence")
@@ -17,7 +19,17 @@ export class PresenceController {
     @Inject(RoomsService) private readonly rooms: RoomsService,
     @Inject(PresenceService) private readonly presence: PresenceService,
     @Inject(RateLimitService) private readonly rateLimit: RateLimitService,
+    @Inject(DB) private readonly db: Db,
   ) {}
+
+  /** Until when the caller may act in the room without sending a new fix (see `PresenceService.requirePresence`). */
+  @Get("grant")
+  async grant(@CurrentUser() user: RequestUser, @Query("roomId") roomId?: string): Promise<PresenceGrantDto> {
+    if (!roomId || roomId.length > 100) throw ApiErrors.validation();
+    const room = await this.rooms.findRoomRow(roomId);
+    const expiresAt = await this.presence.grantExpiresAt(this.db, user.id, room.id);
+    return { expiresAt: expiresAt ? expiresAt.toISOString() : null };
+  }
 
   @Post("validate")
   async validate(

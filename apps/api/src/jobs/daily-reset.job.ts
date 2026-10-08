@@ -140,6 +140,11 @@ export class DailyResetJob {
         .delete(schema.seatStateEvents)
         .where(and(eq(schema.seatStateEvents.roomId, roomId), lt(schema.seatStateEvents.createdAt, new Date(now.getTime() - SEAT_STATE_EVENT_RETENTION_MS))));
 
+      // Presence grants issued before the reset don't carry over: the new day starts with a fresh fix.
+      await tx
+        .delete(schema.presenceGrants)
+        .where(and(eq(schema.presenceGrants.roomId, roomId), lt(schema.presenceGrants.grantedAt, resetInstant)));
+
       // Daily reset cancels any dispute still voting — it never resolves as absent/present here.
       const cancelledDisputes = await tx
         .update(schema.seatDisputes)

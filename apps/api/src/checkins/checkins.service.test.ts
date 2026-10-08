@@ -192,6 +192,21 @@ describe("CheckInService", () => {
     expect(sessions).toHaveLength(1);
   });
 
+  it("a check-in's valid fix lets the next presence-sensitive action skip the location", async () => {
+    await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    const extended = await svc.extend("u1", null);
+    expect(extended.status).toBe("ACTIVE");
+    // Moving seats within the grant needs no fix either.
+    const { checkIn } = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[1]!, showIdentity: false });
+    expect(checkIn.seatId).toBe(seatIds[1]);
+  });
+
+  it("an action without location and without a grant answers PRESENCE_REQUIRED", async () => {
+    await expect(svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, showIdentity: false })).rejects.toMatchObject({
+      code: "PRESENCE_REQUIRED",
+    });
+  });
+
   it("extends the check-in 3 hours from now", async () => {
     const { checkIn } = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
     const before = new Date(checkIn.expiresAt).getTime();

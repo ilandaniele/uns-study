@@ -13,7 +13,7 @@ import {
 } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
-import { PresenceService } from "../presence/presence.service.js";
+import { PresenceService, type PresenceGrant } from "../presence/presence.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
 import { RateLimitService } from "../security/rate-limit.service.js";
 import { AbusePolicyService } from "../security/abuse-policy.service.js";
@@ -23,7 +23,6 @@ import { RestrictionService } from "../users/restriction.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { ApiErrors, ApiException } from "../common/api-error.js";
 import { isCheckInVerified } from "../checkins/verification.js";
-import { presenceMessage } from "../checkins/checkins.service.js";
 import { isUniqueViolation } from "../common/pg-errors.js";
 import { runInBackground } from "../common/background.js";
 import { NotificationService } from "../notifications/notification.service.js";
@@ -42,7 +41,10 @@ export interface OpenDisputeInput {
   roomId: string;
   seatId: string;
   kind: DisputeKind;
-  location: LocationInput;
+  /** GPS fix; optional while the user holds an unexpired presence grant for the room. */
+  location?: LocationInput | null;
+  /** Presence already enforced for this request (controller pre-check, or the "Está libre" observation); skips a second check. */
+  presence?: PresenceGrant | null;
 }
 
 /** Same bucket and numbers `DisputesController` enforces on `POST /disputes`. */
@@ -76,11 +78,10 @@ export class DisputeService {
   // ---- Opening ----
 
   /** Checks presence before the controller spends one of the 3/hour dispute slots on a weak GPS fix. */
-  async assertPresence(roomId: string, location: OpenDisputeInput["location"]): Promise<void> {
+  async assertPresence(userId: string, roomId: string, location: OpenDisputeInput["location"]): Promise<PresenceGrant | null> {
     const [room] = await this.db.select().from(schema.rooms).where(eq(schema.rooms.id, roomId)).limit(1);
-    if (!room) return;
-    const presence = this.presence.validate(room, location);
-    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!), presence.details);
+    if (!room) return null; // open() reports the missing room with its usual error.
+    return this.presence.requirePresence(this.db, { userId, room, location });
   }
 
   async open(
@@ -95,8 +96,7 @@ export class DisputeService {
     const [room] = await this.db.select().from(schema.rooms).where(eq(schema.rooms.id, input.roomId)).limit(1);
     if (!room) throw ApiErrors.roomNotFound();
 
-    const presence = this.presence.validate(room, input.location);
-    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!), presence.details);
+    await this.presence.requirePresence(this.db, { userId: input.userId, room, location: input.location, already: input.presence });
 
     const [seat] = await this.db
       .select()
@@ -190,7 +190,7 @@ export class DisputeService {
             status: "OPEN",
             openedAt: now,
             closesAt,
-            locationAccuracyM: input.location.accuracy,
+            locationAccuracyM: input.location?.accuracy ?? null,
           })
           .returning();
         if (!row) throw new Error("Failed to create dispute");
@@ -281,7 +281,7 @@ export class DisputeService {
 
   // ---- Voting ----
 
-  async vote(disputeId: string, userId: string, vote: DisputeVote, location: LocationInput): Promise<SeatDisputeDto> {
+  async vote(disputeId: string, userId: string, vote: DisputeVote, location?: LocationInput | null): Promise<SeatDisputeDto> {
     await this.restrictions.assertNot(userId, ["RESTRICT_OBSERVATIONS", "SUSPENDED", "BANNED"]);
 
     const [row] = await this.db.select().from(schema.seatDisputes).where(eq(schema.seatDisputes.id, disputeId)).limit(1);
@@ -293,8 +293,7 @@ export class DisputeService {
 
     const [room] = await this.db.select().from(schema.rooms).where(eq(schema.rooms.id, row.roomId)).limit(1);
     if (!room) throw ApiErrors.roomNotFound();
-    const presence = this.presence.validate(room, location);
-    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!), presence.details);
+    await this.presence.requirePresence(this.db, { userId, room, location });
 
     const [voterCheckIn] = await this.db
       .select({ id: schema.checkIns.id })
@@ -344,7 +343,9 @@ export class DisputeService {
     disputeId: string,
     userId: string,
     action: "STILL_HERE" | "LEFT",
-    location?: LocationInput,
+    location?: LocationInput | null,
+    /** Presence already enforced for this request (e.g. by the "Sigo acá" extend); skips a second check. */
+    presence?: PresenceGrant | null,
   ): Promise<{ dispute: SeatDisputeDto; changes: SeatStateChange[] }> {
     await this.restrictions.assertNot(userId, ["SUSPENDED", "BANNED"]);
 
@@ -358,11 +359,9 @@ export class DisputeService {
     const now = new Date();
 
     if (action === "STILL_HERE") {
-      if (!location) throw ApiErrors.validation("Ubicación requerida.");
       const [room] = await this.db.select().from(schema.rooms).where(eq(schema.rooms.id, row.roomId)).limit(1);
       if (!room) throw ApiErrors.roomNotFound();
-      const presence = this.presence.validate(room, location);
-      if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!), presence.details);
+      await this.presence.requirePresence(this.db, { userId, room, location, already: presence });
 
       const changed = await this.db.transaction(async (tx) => {
         await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${disputeId}))`);
@@ -521,7 +520,7 @@ export class DisputeService {
    * answering STILL_HERE — the same GPS-validated presence the challenge banner's button sends.
    * Best-effort: the extension itself already succeeded.
    */
-  async respondStillHereIfChallenged(checkInId: string, userId: string, location: LocationInput): Promise<void> {
+  async respondStillHereIfChallenged(checkInId: string, userId: string, presence: PresenceGrant): Promise<void> {
     try {
       const [row] = await this.db
         .select({ id: schema.seatDisputes.id })
@@ -529,7 +528,7 @@ export class DisputeService {
         .where(and(eq(schema.seatDisputes.checkInId, checkInId), eq(schema.seatDisputes.status, "OPEN")))
         .limit(1);
       if (!row) return;
-      await this.respond(row.id, userId, "STILL_HERE", location);
+      await this.respond(row.id, userId, "STILL_HERE", null, presence);
     } catch (err) {
       this.logger.warn(`Extend could not answer a dispute on check-in ${checkInId}: ${err instanceof Error ? err.message : String(err)}`);
     }

@@ -1,12 +1,13 @@
 "use client";
 
 import { checkInRequestSchema, extendRequestSchema, incumbentRespondSchema, observationRequestSchema, openDisputeSchema, voteDisputeSchema } from "@sala/contracts";
-import type { CheckInDto, DisputeKind, DisputeVote, RoomMapDto, SeatDisputeDto, SeatDto, SeatStateChangedEvent } from "@sala/contracts";
+import type { CheckInDto, DisputeKind, DisputeVote, LocationInput, RoomMapDto, SeatDisputeDto, SeatDto, SeatStateChangedEvent } from "@sala/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiDelete, apiPost, ApiRequestError } from "@/lib/api";
 import { describeActionError } from "@/lib/errors";
 import { getFreshLocation } from "@/lib/geolocation";
 import { mutateMe, peekMe, refreshMe } from "@/lib/me-store";
+import { withPresence } from "@/lib/presence-grant";
 import {
   applyDisputeOpened,
   applySeatEvent,
@@ -150,6 +151,15 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
     }
   }, []);
 
+  /**
+   * Sends a presence-sensitive request for `roomId`: without a location while the API's presence
+   * grant for the room is live (no GPS, no browser prompt), otherwise with a fresh fix.
+   */
+  const presenceRequest = useCallback(
+    <T,>(roomId: string | null | undefined, send: (location: LocationInput | undefined) => Promise<T>) => withPresence(roomId, locate, send),
+    [locate],
+  );
+
   /** Shows the given seat statuses immediately; the returned handle settles or undoes exactly those changes. */
   const optimisticSeats = useCallback(
     (changes: [seatId: string, status: SeatDto["status"], occupiedUntil?: string | null][]): Optimistic & { patches: (SeatPatch | null)[] } => {
@@ -194,7 +204,6 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
   const checkIn = useCallback(
     (seatId: string, showIdentity: boolean, options?: SeatActionOptions) =>
       run(async (turnstileToken) => {
-        const location = await locate();
         const target = mapRef.current?.seats.find((seat) => seat.id === seatId);
         const current = peekMe()?.activeCheckIn ?? null;
         const changes: Optimistic[] = [];
@@ -206,38 +215,41 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
           changes.push(optimisticSeats(seatChanges), optimisticMe(optimisticCheckIn));
         }
         const dto = await withOptimistic(changes, () =>
-          apiPost<CheckInDto>("/api/v1/checkins", {
-            roomId: map?.room.id,
-            seatId,
-            location,
-            showIdentity,
-            durationMinutes: options?.durationMinutes,
-            qrToken: options?.qrToken ?? undefined,
-            turnstileToken,
-          }, checkInRequestSchema),
+          presenceRequest(map?.room.id, (location) =>
+            apiPost<CheckInDto>("/api/v1/checkins", {
+              roomId: map?.room.id,
+              seatId,
+              location,
+              showIdentity,
+              durationMinutes: options?.durationMinutes,
+              qrToken: options?.qrToken ?? undefined,
+              turnstileToken,
+            }, checkInRequestSchema),
+          ),
         );
         adoptCheckIn(dto);
         // Identity visibility is the one thing the occupants list can't learn from the seat event alone.
         refetchOccupants();
         return dto;
       }),
-    [adoptCheckIn, locate, map, optimisticMe, optimisticSeats, refetchOccupants, run, withOptimistic],
+    [adoptCheckIn, map, optimisticMe, optimisticSeats, presenceRequest, refetchOccupants, run, withOptimistic],
   );
 
   const observe = useCallback(
     (seatId: string, status: "FREE" | "OCCUPIED" | "SAVED", options?: SeatActionOptions) =>
       run(async (turnstileToken) => {
-        const location = await locate();
         const seat = optimisticSeats([[seatId, status]]);
         const result = await withOptimistic([seat], () =>
-          apiPost<{ ok: true; seats?: SeatStateChangedEvent[]; dispute?: SeatDisputeDto | null }>("/api/v1/observations", {
-            roomId: map?.room.id,
-            seatId,
-            status,
-            location,
-            qrToken: options?.qrToken ?? undefined,
-            turnstileToken,
-          }, observationRequestSchema),
+          presenceRequest(map?.room.id, (location) =>
+            apiPost<{ ok: true; seats?: SeatStateChangedEvent[]; dispute?: SeatDisputeDto | null }>("/api/v1/observations", {
+              roomId: map?.room.id,
+              seatId,
+              status,
+              location,
+              qrToken: options?.qrToken ?? undefined,
+              turnstileToken,
+            }, observationRequestSchema),
+          ),
         );
         const confirmed = result?.seats ?? [];
         if (confirmed.length > 0) {
@@ -254,7 +266,7 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
         if (dispute) updateMap((prev) => applyDisputeOpened(prev, dispute));
         return { dispute };
       }),
-    [locate, map?.room.id, optimisticSeats, refetch, run, updateMap, withOptimistic],
+    [map?.room.id, optimisticSeats, presenceRequest, refetch, run, updateMap, withOptimistic],
   );
 
   const markFree = useCallback((seatId: string, options?: SeatActionOptions) => observe(seatId, "FREE", options), [observe]);
@@ -267,16 +279,18 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
   const extend = useCallback(
     (durationMinutes?: number) =>
       run(async () => {
-        const location = await locate();
         const current = peekMe()?.activeCheckIn ?? null;
         const changes = current ? [optimisticMe(extendCheckIn(current, Date.now(), durationMinutes))] : [];
+        // The API extends in the room of the caller's own check-in, so that's the grant that counts.
         const dto = await withOptimistic(changes, () =>
-          apiPost<CheckInDto>("/api/v1/checkins/current/extend", { location, durationMinutes }, extendRequestSchema),
+          presenceRequest(current?.roomId ?? map?.room.id, (location) =>
+            apiPost<CheckInDto>("/api/v1/checkins/current/extend", { location, durationMinutes }, extendRequestSchema),
+          ),
         );
         adoptCheckIn(dto);
         return true;
       }).then((v) => v ?? false),
-    [adoptCheckIn, locate, optimisticMe, run, withOptimistic],
+    [adoptCheckIn, map?.room.id, optimisticMe, presenceRequest, run, withOptimistic],
   );
 
   const checkOut = useCallback(
@@ -297,33 +311,38 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
   const openDispute = useCallback(
     (seatId: string, kind: DisputeKind) =>
       run(async () => {
-        const location = await locate();
-        const dispute = await apiPost<SeatDisputeDto>("/api/v1/disputes", { roomId: map?.room.id, seatId, kind, location }, openDisputeSchema);
+        const dispute = await presenceRequest(map?.room.id, (location) =>
+          apiPost<SeatDisputeDto>("/api/v1/disputes", { roomId: map?.room.id, seatId, kind, location }, openDisputeSchema),
+        );
         updateMap((prev) => applyDisputeOpened(prev, dispute));
         return dispute;
       }),
-    [locate, map?.room.id, run, updateMap],
+    [map?.room.id, presenceRequest, run, updateMap],
   );
 
   const voteDispute = useCallback(
     (disputeId: string, vote: DisputeVote) =>
       run(async () => {
-        const location = await locate();
-        return apiPost<SeatDisputeDto>(`/api/v1/disputes/${disputeId}/votes`, { vote, location }, voteDisputeSchema);
+        // Votes happen on the room being viewed; a mismatching grant just costs one PRESENCE_REQUIRED retry.
+        return presenceRequest(map?.room.id, (location) =>
+          apiPost<SeatDisputeDto>(`/api/v1/disputes/${disputeId}/votes`, { vote, location }, voteDisputeSchema),
+        );
       }),
-    [locate, run],
+    [map?.room.id, presenceRequest, run],
   );
 
   const respondDispute = useCallback(
     (disputeId: string, action: "STILL_HERE" | "LEFT") =>
       run(async () => {
-        const location = action === "STILL_HERE" ? await locate() : undefined;
-        const dispute = await apiPost<SeatDisputeDto>(`/api/v1/disputes/${disputeId}/respond`, { action, location }, incumbentRespondSchema);
+        const send = (location: LocationInput | undefined) =>
+          apiPost<SeatDisputeDto>(`/api/v1/disputes/${disputeId}/respond`, { action, location }, incumbentRespondSchema);
+        // "Sigo acá" needs presence; "Me fui" doesn't.
+        const dispute = action === "STILL_HERE" ? await presenceRequest(peekMe()?.activeCheckIn?.roomId ?? map?.room.id, send) : await send(undefined);
         // "Me fui" ends my check-in server-side; the seat/dispute socket events cover the map.
         if (action === "LEFT") void refreshMe().catch(() => undefined);
         return dispute;
       }),
-    [locate, run],
+    [map?.room.id, presenceRequest, run],
   );
 
   return {

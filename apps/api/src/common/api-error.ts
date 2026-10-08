@@ -18,6 +18,9 @@ export const ApiErrors = {
   unauthenticated: () => new ApiException("UNAUTHENTICATED", "Iniciá sesión para continuar.", 401),
   presenceRejected: (reason: PresenceRejectReason, message: string, details?: PresenceDetails) =>
     new ApiException("PRESENCE_REJECTED", message, 403, reason, details),
+  /** No fix sent and no unexpired presence grant: the client must send its location. */
+  presenceRequired: () =>
+    new ApiException("PRESENCE_REQUIRED", "Necesitamos tu ubicación para confirmar que estás en la sala.", 428),
   seatTaken: () => new ApiException("SEAT_TAKEN", "El asiento ya está ocupado.", 409),
   seatNotFound: () => new ApiException("SEAT_NOT_FOUND", "Asiento no encontrado.", 404),
   roomNotFound: () => new ApiException("SEAT_NOT_FOUND", "Sala no encontrada.", 404),

@@ -5,13 +5,13 @@ import { schema, type Db } from "@sala/database";
 import type { LocationInput, PhotoMimeType, PhotoVerificationResultDto } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
-import { PresenceService } from "../presence/presence.service.js";
+import { PresenceService, type PresenceGrant } from "../presence/presence.service.js";
 import { ApiErrors } from "../common/api-error.js";
 import { stripImageMetadata } from "../common/image-metadata.js";
 import { env } from "../env.js";
 import { SEAT_PHOTO_VERIFIER } from "../verification/seat-photo-verifier.tokens.js";
 import type { SeatPhotoVerifier } from "../verification/seat-photo-verifier.js";
-import { presenceMessage, toDto } from "./checkins.service.js";
+import { toDto } from "./checkins.service.js";
 import { isUniqueViolation } from "../common/pg-errors.js";
 
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
@@ -20,7 +20,10 @@ export interface VerifyCheckInPhotoInput {
   userId: string;
   checkInId: string;
   image: { mimeType: PhotoMimeType; base64: string };
-  location: LocationInput;
+  /** GPS fix; optional while the user holds an unexpired presence grant for the room. */
+  location?: LocationInput | null;
+  /** Presence already enforced for this request; skips a second check. */
+  presence?: PresenceGrant | null;
 }
 
 /**
@@ -58,8 +61,7 @@ export class PhotoVerificationService {
     // photo only counts for a fresh check-in (i.e. checking out and back in).
     if (row.checkIn.verifiedAt) throw ApiErrors.alreadyVerified();
 
-    const presence = this.presence.validate(row.room, input.location);
-    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!), presence.details);
+    await this.presence.requirePresence(this.db, { userId: input.userId, room: row.room, location: input.location, already: input.presence });
 
     const decoded = decodeAndValidatePhoto(input.image);
     // Metadata (EXIF GPS, device identifiers, etc.) is stripped before anything else touches the

@@ -36,7 +36,7 @@ export class CheckInsController {
   ) {
     await this.restrictions.assertNot(user.id, ["SUSPENDED", "BANNED"]);
 
-    await this.checkIns.assertPresence(body.roomId, body.location);
+    const presence = await this.checkIns.assertPresence(user.id, body.roomId, body.location);
 
     await this.antiAbuse.enforceRateLimit({
       key: `checkin:${user.id}`,
@@ -52,6 +52,7 @@ export class CheckInsController {
       roomId: body.roomId,
       seatId: body.seatId,
       location: body.location,
+      presence,
       showIdentity: body.showIdentity,
       qrToken: body.qrToken,
       durationMinutes: body.durationMinutes,
@@ -87,11 +88,11 @@ export class CheckInsController {
       this.checkIns.getActiveCheckIn(user.id),
     );
     if (!active) throw ApiErrors.noActiveCheckIn();
-    await this.checkIns.assertPresence(active.roomId, body.location);
+    const presence = await this.checkIns.assertPresence(user.id, active.roomId, body.location);
 
     await this.antiAbuse.enforceRateLimit({ key: `extend:${user.id}`, limit: 5, windowSeconds: 60 });
 
-    return this.checkIns.extend(user.id, body.location, active, body.durationMinutes);
+    return this.checkIns.extend(user.id, body.location, active, body.durationMinutes, presence);
   }
 
   @Post(":id/photo")
@@ -107,7 +108,7 @@ export class CheckInsController {
     // check-in — never trust a room the client didn't have to prove it's currently checked into.
     const active = await this.checkIns.getActiveCheckIn(user.id);
     if (!active) throw ApiErrors.noActiveCheckIn();
-    await this.checkIns.assertPresence(active.roomId, body.location);
+    const presence = await this.checkIns.assertPresence(user.id, active.roomId, body.location);
 
     await this.antiAbuse.enforceRateLimit({ key: `checkin-photo:${user.id}`, limit: 6, windowSeconds: 3600 });
 
@@ -120,6 +121,7 @@ export class CheckInsController {
       checkInId: id,
       image: body.image,
       location: body.location,
+      presence,
     });
     if (changes.length) await this.realtime.broadcastSeatChanges(result.checkIn.roomId, changes);
     return result;

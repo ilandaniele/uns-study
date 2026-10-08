@@ -172,6 +172,21 @@ describe("DailyResetJob", () => {
     expect(row?.expiresAt.getTime()).toBe(expiredAt.getTime());
   });
 
+  it("clears presence grants issued before the reset instant but keeps ones from the new day", async () => {
+    const room = await getRoom(db);
+    const after = new Date(resetInstantFor(room, new Date()).getTime() + 60_000);
+    await insertUsers(db, ["u2"]);
+    await db.insert(schema.presenceGrants).values([
+      { userId: "u1", roomId, grantedAt: new Date(after.getTime() - 30 * 60_000), expiresAt: new Date(after.getTime() + 30 * 60_000) },
+      { userId: "u2", roomId, grantedAt: after, expiresAt: new Date(after.getTime() + 60 * 60_000) },
+    ]);
+
+    await job.runReset(roomId, after);
+
+    const users = (await db.select().from(schema.presenceGrants)).map((g) => g.userId);
+    expect(users).toEqual(["u2"]);
+  });
+
   it("deletes seat_state_events older than 90 days but keeps recent ones", async () => {
     const room = await getRoom(db);
     const after = new Date(resetInstantFor(room, new Date()).getTime() + 60_000);

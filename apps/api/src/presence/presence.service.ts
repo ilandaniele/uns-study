@@ -1,6 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import type { LocationInput, PresenceDetails, PresenceRejectReason, PresenceResult } from "@sala/contracts";
+import { and, eq, gt } from "drizzle-orm";
+import { schema, type Db } from "@sala/database";
+import { PRESENCE_GRANT_MINUTES, type LocationInput, type PresenceDetails, type PresenceRejectReason, type PresenceResult } from "@sala/contracts";
 import { env } from "../env.js";
+import { ApiErrors } from "../common/api-error.js";
 
 export interface PresenceRoom {
   latitude: number;
@@ -25,6 +28,25 @@ const MAX_CLOCK_SKEW_S = 15 * 60;
 const FUTURE_TOLERANCE_S = 30;
 /** Cap on the reported accuracy credited on top of the geofence radius (50 m + 50 m = 100 m max). */
 const MAX_ACCURACY_SLACK_M = 50;
+
+/** Proof that presence was enforced for this request; services pass it on so it's checked once. */
+export interface PresenceGrant {
+  roomId: string;
+  expiresAt: Date;
+}
+
+export interface RequirePresenceInput {
+  userId: string;
+  room: PresenceRoom & { id: string };
+  /** The request's GPS fix, if it sent one. Without it only an unexpired grant is accepted. */
+  location?: LocationInput | null;
+  /** Presence already enforced earlier in this request; reused (no re-check) when it's for this room. */
+  already?: PresenceGrant | null;
+  /** Message for a rejected fix; defaults to {@link presenceMessage}. */
+  rejectMessage?: string;
+  /** Validation overrides (tests); `now` also dates the grant. */
+  options?: PresenceValidateOptions;
+}
 
 @Injectable()
 export class PresenceService {
@@ -122,5 +144,66 @@ export class PresenceService {
     }
 
     return { valid: true, reason: null, expiresAt: new Date(now.getTime() + maxAgeS * 1000).toISOString() };
+  }
+
+  /**
+   * Enforces presence for a presence-sensitive write. A fix is validated against the geofence and,
+   * when it passes, (re)issues the user's grant for this room for PRESENCE_GRANT_MINUTES; a request
+   * without a fix is accepted only on an unexpired grant for the same user and room (a grant is
+   * never extended without a new fix). Throws PRESENCE_REJECTED / PRESENCE_REQUIRED otherwise.
+   * Takes `db` per call, like RoomCache, so this service stays constructible without one.
+   */
+  async requirePresence(db: Db, input: RequirePresenceInput): Promise<PresenceGrant> {
+    if (input.already && input.already.roomId === input.room.id) return input.already;
+    const now = input.options?.now ?? new Date();
+    if (input.location) {
+      const result = this.validate(input.room, input.location, input.options);
+      if (!result.valid) {
+        throw ApiErrors.presenceRejected(result.reason!, input.rejectMessage ?? presenceMessage(result.reason!), result.details);
+      }
+      return this.grant(db, input.userId, input.room.id, now);
+    }
+
+    const expiresAt = await this.grantExpiresAt(db, input.userId, input.room.id, now);
+    if (!expiresAt) throw ApiErrors.presenceRequired();
+    return { roomId: input.room.id, expiresAt };
+  }
+
+  /** Records that `userId` proved presence in `roomId` at `now`; only call after a valid fix. */
+  async grant(db: Db, userId: string, roomId: string, now: Date = new Date()): Promise<PresenceGrant> {
+    const expiresAt = new Date(now.getTime() + PRESENCE_GRANT_MINUTES * 60_000);
+    await db
+      .insert(schema.presenceGrants)
+      .values({ userId, roomId, grantedAt: now, expiresAt })
+      .onConflictDoUpdate({
+        target: [schema.presenceGrants.userId, schema.presenceGrants.roomId],
+        set: { grantedAt: now, expiresAt },
+      });
+    return { roomId, expiresAt };
+  }
+
+  /** When the caller's grant for `roomId` runs out, or null without an unexpired one. */
+  async grantExpiresAt(db: Db, userId: string, roomId: string, now: Date = new Date()): Promise<Date | null> {
+    const [row] = await db
+      .select({ expiresAt: schema.presenceGrants.expiresAt })
+      .from(schema.presenceGrants)
+      .where(and(eq(schema.presenceGrants.userId, userId), eq(schema.presenceGrants.roomId, roomId), gt(schema.presenceGrants.expiresAt, now)))
+      .limit(1);
+    return row?.expiresAt ?? null;
+  }
+}
+
+export function presenceMessage(reason: string): string {
+  switch (reason) {
+    case "OUTSIDE_GEOFENCE":
+      return "Tenés que estar dentro de la sala para hacer esto.";
+    case "STALE_LOCATION":
+      return "Tu ubicación está desactualizada, volvé a intentarlo.";
+    case "POOR_ACCURACY":
+      return "La precisión del GPS es muy baja, intentá de nuevo.";
+    case "ROOM_NOT_FOUND":
+      return "Sala no encontrada.";
+    default:
+      return "No pudimos validar tu ubicación.";
   }
 }

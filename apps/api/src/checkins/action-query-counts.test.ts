@@ -66,9 +66,10 @@ describe("action query counts", () => {
     counts.checkOut = outMeasure.queries;
 
     console.info("round trips", JSON.stringify(counts));
-    expect(counts.checkIn).toBeLessThanOrEqual(14);
-    expect(counts.extend).toBeLessThanOrEqual(2); // +1: looks for a vote on the seat that "Sigo acá" answers
-    expect(counts.observe).toBeLessThanOrEqual(17); // +1: per-user advisory lock guarding the spread-cap check; +1: FREE reads the seat's prior state (same parallel batch)
+    // checkIn/extend/observe: +1 each for the presence grant (upserted on a valid fix, read without one).
+    expect(counts.checkIn).toBeLessThanOrEqual(15);
+    expect(counts.extend).toBeLessThanOrEqual(3); // +1: looks for a vote on the seat that "Sigo acá" answers
+    expect(counts.observe).toBeLessThanOrEqual(18); // +1: per-user advisory lock guarding the spread-cap check; +1: FREE reads the seat's prior state (same parallel batch)
     expect(counts.checkOut).toBeLessThanOrEqual(12);
   });
 

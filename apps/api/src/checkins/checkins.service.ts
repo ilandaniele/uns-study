@@ -4,7 +4,7 @@ import { schema, type Db } from "@sala/database";
 import { CHECKIN_MINUTES, type CheckInDto, type LocationInput } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
-import { PresenceService } from "../presence/presence.service.js";
+import { PresenceService, type PresenceGrant } from "../presence/presence.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
 import { QrService } from "../qr/qr.service.js";
@@ -23,7 +23,10 @@ export interface CreateCheckInInput {
   userId: string;
   roomId: string;
   seatId: string;
-  location: LocationInput;
+  /** GPS fix; optional while the user holds an unexpired presence grant for the room. */
+  location?: LocationInput | null;
+  /** Presence already enforced for this request (by `assertPresence`); skips a second check. */
+  presence?: PresenceGrant | null;
   showIdentity: boolean;
   /** Optional QR token scanned at the table; invalid/missing tokens are silently ignored. */
   qrToken?: string | null;
@@ -60,11 +63,13 @@ export class CheckInService {
     return toDto(row.checkIn, row.seatCode);
   }
 
-  /** Cheap presence pre-check so a rejected fix never eats into the caller's rate-limit budget. */
-  async assertPresence(roomId: string, location: LocationInput): Promise<void> {
+  /**
+   * Cheap presence pre-check so a rejected fix never eats into the caller's rate-limit budget.
+   * Returns the grant so the controller can hand it to the write and presence is checked once.
+   */
+  async assertPresence(userId: string, roomId: string, location?: LocationInput | null): Promise<PresenceGrant> {
     const room = await this.roomCache.getRoom(this.db, roomId);
-    const result = this.presence.validate(room, location);
-    if (!result.valid) throw ApiErrors.presenceRejected(result.reason!, presenceMessage(result.reason!), result.details);
+    return this.presence.requirePresence(this.db, { userId, room, location });
   }
 
   /** Creates (or moves) the caller's active check-in. Returns the changed seats for realtime
@@ -76,8 +81,7 @@ export class CheckInService {
     // Room + seat come from the in-memory cache (invalidated by geofence/seed writes).
     const room = await this.roomCache.getRoom(this.db, input.roomId);
 
-    const presence = this.presence.validate(room, input.location);
-    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!), presence.details);
+    await this.presence.requirePresence(this.db, { userId: input.userId, room, location: input.location, already: input.presence });
 
     const seat = await this.roomCache.getActiveSeat(this.db, input.roomId, input.seatId);
     if (!seat) throw ApiErrors.seatNotFound();
@@ -119,7 +123,13 @@ export class CheckInService {
           // Re-checking into the same seat just refreshes the window.
           const [refreshed] = await tx
             .update(schema.checkIns)
-            .set({ expiresAt, expiryReminderSentAt: null, updatedAt: now, showIdentity: input.showIdentity, locationAccuracyM: input.location.accuracy })
+            .set({
+              expiresAt,
+              expiryReminderSentAt: null,
+              updatedAt: now,
+              showIdentity: input.showIdentity,
+              ...(input.location ? { locationAccuracyM: input.location.accuracy } : {}),
+            })
             .where(eq(schema.checkIns.id, existing.id))
             .returning();
           if (!refreshed) throw new Error("Check-in vanished during refresh");
@@ -145,7 +155,7 @@ export class CheckInService {
               status: "ACTIVE",
               showIdentity: input.showIdentity,
               presenceVerified: true,
-              locationAccuracyM: input.location.accuracy,
+              locationAccuracyM: input.location?.accuracy ?? null,
               startedAt: now,
               expiresAt,
             })
@@ -292,14 +302,19 @@ export class CheckInService {
    * Extends the caller's active check-in. Pass `active` (from a `getActiveCheckIn` the caller just
    * did) to skip re-reading it; the conditional UPDATE below still guards against it having ended.
    */
-  async extend(userId: string, location: LocationInput, active?: CheckInDto, durationMinutes: number = CHECKIN_MINUTES): Promise<CheckInDto> {
+  async extend(
+    userId: string,
+    location: LocationInput | null | undefined,
+    active?: CheckInDto,
+    durationMinutes: number = CHECKIN_MINUTES,
+    presence?: PresenceGrant | null,
+  ): Promise<CheckInDto> {
     const now = new Date();
     const current = active ?? (await this.getActiveCheckIn(userId));
     if (!current) throw ApiErrors.noActiveCheckIn();
 
     const room = await this.roomCache.getRoom(this.db, current.roomId);
-    const presence = this.presence.validate(room, location);
-    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, presenceMessage(presence.reason!), presence.details);
+    const grant = await this.presence.requirePresence(this.db, { userId, room, location, already: presence });
 
     const expiresAt = new Date(now.getTime() + durationMinutes * 60_000);
     // Conditional on still being ACTIVE (and unexpired) at write time: the expiration sweep may
@@ -308,7 +323,7 @@ export class CheckInService {
     // caller, so a stale `active` can never extend someone else's check-in.
     const [updated] = await this.db
       .update(schema.checkIns)
-      .set({ expiresAt, expiryReminderSentAt: null, updatedAt: now, locationAccuracyM: location.accuracy })
+      .set({ expiresAt, expiryReminderSentAt: null, updatedAt: now, ...(location ? { locationAccuracyM: location.accuracy } : {}) })
       .where(
         and(
           eq(schema.checkIns.id, current.id),
@@ -320,7 +335,7 @@ export class CheckInService {
       .returning();
     if (!updated) throw ApiErrors.noActiveCheckIn();
     // "Sigo acá" while the seat is being voted on answers the vote too.
-    await this.disputes.respondStillHereIfChallenged(updated.id, userId, location);
+    await this.disputes.respondStillHereIfChallenged(updated.id, userId, grant);
     return toDto(updated, current.seatCode);
   }
 }
@@ -352,17 +367,5 @@ function uniqueViolationConstraint(err: unknown): string | undefined {
   return undefined;
 }
 
-export function presenceMessage(reason: string): string {
-  switch (reason) {
-    case "OUTSIDE_GEOFENCE":
-      return "Tenés que estar dentro de la sala para hacer esto.";
-    case "STALE_LOCATION":
-      return "Tu ubicación está desactualizada, volvé a intentarlo.";
-    case "POOR_ACCURACY":
-      return "La precisión del GPS es muy baja, intentá de nuevo.";
-    case "ROOM_NOT_FOUND":
-      return "Sala no encontrada.";
-    default:
-      return "No pudimos validar tu ubicación.";
-  }
-}
+// Moved to the presence module; re-exported for existing importers.
+export { presenceMessage } from "../presence/presence.service.js";

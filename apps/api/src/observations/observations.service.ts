@@ -4,7 +4,7 @@ import { schema, type Db } from "@sala/database";
 import { FREE_OBS_MINUTES, OCCUPIED_OBS_MINUTES, SAVED_OBS_MINUTES, type LocationInput, type SeatDisputeDto } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
-import { PresenceService } from "../presence/presence.service.js";
+import { PresenceService, type PresenceGrant } from "../presence/presence.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
 import { AbusePolicyService, type ObservationLimits } from "../security/abuse-policy.service.js";
 import { QrService } from "../qr/qr.service.js";
@@ -25,7 +25,10 @@ export interface CreateObservationInput {
   roomId: string;
   seatId: string;
   status: "FREE" | "OCCUPIED" | "SAVED";
-  location: LocationInput;
+  /** GPS fix; optional while the user holds an unexpired presence grant for the room. */
+  location?: LocationInput | null;
+  /** Presence already enforced for this request (by `assertPresence`); skips a second check. */
+  presence?: PresenceGrant | null;
   ip?: string | null;
   /** Optional QR token scanned at the table; invalid/missing tokens are silently ignored. */
   qrToken?: string | null;
@@ -54,11 +57,10 @@ export class ObservationService {
    * Validates presence before the caller spends a rate-limit slot, so a weak GPS fix that the
    * user retries doesn't lock them out with "Demasiadas acciones seguidas".
    */
-  async assertPresence(roomId: string, location: CreateObservationInput["location"]): Promise<void> {
+  async assertPresence(userId: string, roomId: string, location: CreateObservationInput["location"]): Promise<PresenceGrant | null> {
     const room = await this.roomCache.findRoom(this.db, roomId);
-    if (!room) return; // observe() reports the missing room with its usual error.
-    const presence = this.presence.validate(room, location);
-    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, "No pudimos validar tu ubicación.", presence.details);
+    if (!room) return null; // observe() reports the missing room with its usual error.
+    return this.presence.requirePresence(this.db, { userId, room, location, rejectMessage: "No pudimos validar tu ubicación." });
   }
 
   /**
@@ -69,8 +71,13 @@ export class ObservationService {
   async observe(input: CreateObservationInput): Promise<{ roomId: string; changes: SeatStateChange[]; dispute: SeatDisputeDto | null }> {
     const room = await this.roomCache.getRoom(this.db, input.roomId);
 
-    const presence = this.presence.validate(room, input.location);
-    if (!presence.valid) throw ApiErrors.presenceRejected(presence.reason!, "No pudimos validar tu ubicación.", presence.details);
+    const presence = await this.presence.requirePresence(this.db, {
+      userId: input.userId,
+      room,
+      location: input.location,
+      already: input.presence,
+      rejectMessage: "No pudimos validar tu ubicación.",
+    });
 
     const seat = await this.roomCache.getActiveSeat(this.db, input.roomId, input.seatId);
     if (!seat) throw ApiErrors.seatNotFound();
@@ -200,6 +207,8 @@ export class ObservationService {
           seatId: input.seatId,
           kind,
           location: input.location,
+          // Presence was enforced above for this same request: the vote doesn't check it again.
+          presence,
         });
         if (opened) {
           // The vote's recompute ran after this observation's: its state is the current one.
