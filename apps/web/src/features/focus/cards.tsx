@@ -54,7 +54,7 @@ export function PresetChips() {
 
 // ---------- Sound ----------
 
-const AMBIENTS: Ambient[] = ["off", "white", "pink", "brown"];
+const AMBIENTS: Ambient[] = ["off", "rain", "brown", "ocean", "fire"];
 
 export function SoundCard() {
   const { ambient, volume, chime } = useFocus();

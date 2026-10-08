@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import type { Ambient } from "./focus-audio";
+import { normalizeAmbient, type Ambient } from "./focus-audio";
 import {
   DEFAULT_SETTINGS,
   applySettings,
@@ -88,7 +88,7 @@ function parse(raw: string | null): FocusData {
           .slice(0, MAX_TASKS)
           .map((x) => ({ id: x.id, text: x.text.slice(0, 120), done: !!x.done, pomodoros: Math.max(0, Number(x.pomodoros) || 0) }))
       : [];
-    const ambient: Ambient = j.ambient === "white" || j.ambient === "pink" || j.ambient === "brown" ? j.ambient : "off";
+    const ambient: Ambient = normalizeAmbient(j.ambient);
     return {
       settings,
       timer,
