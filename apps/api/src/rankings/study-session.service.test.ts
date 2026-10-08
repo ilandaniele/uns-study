@@ -3,7 +3,7 @@ import type { Db } from "@sala/database";
 import { schema } from "@sala/database";
 import { eq } from "drizzle-orm";
 import { freshDb, getRoom, insertUsers } from "../test-utils.js";
-import { StudySessionService, verifiedMinutesFor, type CheckInForSession } from "./study-session.service.js";
+import { StudySessionService, minutesByLocalDay, verifiedMinutesFor, type CheckInForSession } from "./study-session.service.js";
 
 describe("StudySessionService", () => {
   let db: Db;
@@ -68,6 +68,62 @@ describe("StudySessionService", () => {
 
     const rows = await db.select().from(schema.studySessions).where(eq(schema.studySessions.checkInId, ci.id));
     expect(rows).toHaveLength(1);
+  });
+
+  it("stores the start's local date (room timezone), even when the stay ends the next day", async () => {
+    // 2026-01-06T01:00Z is still 2026-01-05 22:00 in Buenos Aires.
+    const ci = checkIn({ id: "66666666-6666-6666-6666-666666666666", startedAt: new Date("2026-01-06T01:00:00Z"), expiresAt: new Date("2026-01-06T07:00:00Z") });
+    await db.transaction((tx) => svc.recordFromCheckIn(tx, ci, new Date("2026-01-06T07:00:00Z")));
+
+    const [row] = await db.select().from(schema.studySessions).where(eq(schema.studySessions.checkInId, ci.id));
+    expect(row).toMatchObject({ verifiedMinutes: 360, localDate: "2026-01-05" });
+  });
+
+  it("records a MANUAL session with no check-in", async () => {
+    const id = await db.transaction((tx) => svc.recordManual(tx, { userId: "u1", roomId, startedAt: new Date("2026-01-05T12:00:00Z"), minutes: 90 }));
+
+    const [row] = await db.select().from(schema.studySessions).where(eq(schema.studySessions.id, id));
+    expect(row).toMatchObject({ source: "MANUAL", checkInId: null, verifiedMinutes: 90, localDate: "2026-01-05" });
+    expect(row?.endedAt.toISOString()).toBe("2026-01-05T13:30:00.000Z");
+  });
+});
+
+describe("minutesByLocalDay", () => {
+  const BA = "America/Argentina/Buenos_Aires";
+
+  it("keeps a same-day stay whole", () => {
+    expect(minutesByLocalDay(new Date("2026-01-05T12:00:00Z"), 300, BA)).toEqual([{ day: "2026-01-05", minutes: 300 }]);
+  });
+
+  it("splits a 22:00-04:00 local stay at local midnight", () => {
+    expect(minutesByLocalDay(new Date("2026-01-06T01:00:00Z"), 360, BA)).toEqual([
+      { day: "2026-01-05", minutes: 120 },
+      { day: "2026-01-06", minutes: 240 },
+    ]);
+  });
+
+  it("splits at the room's own midnight, not UTC's", () => {
+    // 22:00Z-04:00Z: in UTC that's 120 + 240, but in Buenos Aires it's all 19:00-01:00 local -> 300 + 60.
+    expect(minutesByLocalDay(new Date("2026-01-05T22:00:00Z"), 360, "UTC")).toEqual([
+      { day: "2026-01-05", minutes: 120 },
+      { day: "2026-01-06", minutes: 240 },
+    ]);
+    expect(minutesByLocalDay(new Date("2026-01-05T22:00:00Z"), 360, BA)).toEqual([
+      { day: "2026-01-05", minutes: 300 },
+      { day: "2026-01-06", minutes: 60 },
+    ]);
+  });
+
+  it("always sums to the input, even for an off-minute start right before midnight", () => {
+    const parts = minutesByLocalDay(new Date("2026-01-06T02:59:30Z"), 2, BA); // 23:59:30 local
+    expect(parts).toEqual([
+      { day: "2026-01-05", minutes: 1 },
+      { day: "2026-01-06", minutes: 1 },
+    ]);
+  });
+
+  it("returns nothing for zero minutes", () => {
+    expect(minutesByLocalDay(new Date("2026-01-05T12:00:00Z"), 0, BA)).toEqual([]);
   });
 });
 

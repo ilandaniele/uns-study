@@ -2,7 +2,7 @@ import { boolean, date, index, integer, pgEnum, pgTable, real, text, timestamp, 
 import { rooms } from "./rooms.js";
 import { user } from "./auth.js";
 
-export const studySessionSourceEnum = pgEnum("study_session_source", ["CHECK_IN"]);
+export const studySessionSourceEnum = pgEnum("study_session_source", ["CHECK_IN", "MANUAL"]);
 
 export const studySessions = pgTable(
   "study_sessions",

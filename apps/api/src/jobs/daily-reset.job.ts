@@ -116,15 +116,13 @@ export class DailyResetJob {
       // Only touch check-ins/observations that actually predate this reset instant — a tick can
       // run a little late (the cron fires every minute, not exactly at 04:00), and anything
       // started/observed after the reset instant belongs to the *new* day and must survive it.
+      // One conditional update that returns exactly the rows it closed: a check-in a concurrent
+      // checkout/sweep already ended isn't returned, so it's never recorded a second time here.
       const activeCheckIns = await tx
-        .select()
-        .from(schema.checkIns)
-        .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE"), lt(schema.checkIns.startedAt, resetInstant)));
-
-      await tx
         .update(schema.checkIns)
         .set({ status: "EXPIRED", endedAt: now, updatedAt: now })
-        .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE"), lt(schema.checkIns.startedAt, resetInstant)));
+        .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE"), lt(schema.checkIns.startedAt, resetInstant)))
+        .returning();
 
       for (const checkIn of activeCheckIns) {
         await this.studySessions.recordFromCheckIn(tx, checkIn, now);

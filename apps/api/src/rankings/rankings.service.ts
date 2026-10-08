@@ -1,11 +1,11 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, gt, gte, inArray, lt, lte, sql, type SQL } from "drizzle-orm";
+import { and, eq, gte, inArray, lt, lte, sql, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { fromZonedTime } from "date-fns-tz";
 import { schema, type Db } from "@sala/database";
 import type { RankingCategory, RankingDto, RankingEntryDto, RankingPeriod } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
-import { verifiedMinutesFor } from "./study-session.service.js";
+import { minutesByLocalDay, verifiedMinutesFor } from "./study-session.service.js";
 import { localDateOf } from "../common/dates.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { displayName, needsAlias, showsAdminBadge, shownAliasAnimal, visibleAvatarUrl } from "../users/display-name.js";
@@ -220,20 +220,9 @@ export class RankingsService {
   private async studyTimeValues(room: { id: string; timezone: string }, period: RankingPeriod, now: Date): Promise<Map<string, number>> {
     const today = localDateOf(now, room.timezone);
     const { start, end } = periodLocalBounds(period, today);
+    const perUserDay = await this.studyMinutesByUserDay(room, start, end, now);
 
-    const conditions = [eq(schema.studySessions.roomId, room.id)];
-    if (start) conditions.push(gte(schema.studySessions.localDate, start));
-    if (end) conditions.push(lte(schema.studySessions.localDate, end));
-
-    const rows = await this.db
-      .select({ userId: schema.studySessions.userId, localDate: schema.studySessions.localDate, minutes: schema.studySessions.verifiedMinutes })
-      .from(schema.studySessions)
-      .where(and(...conditions));
-    // Still-ACTIVE check-ins (e.g. renewed with "Sigo acá") have no session row yet: count them live.
-    const live = (await this.activeLiveMinutes(room, now)).filter((r) => (!start || r.day >= start) && (!end || r.day <= end));
-
-    // Cap per (user, local day) after merging live minutes, then sum the capped days per user.
-    const perUserDay = groupByUserDay([...rows.map((r) => ({ userId: r.userId, day: r.localDate, value: r.minutes })), ...live]);
+    // Cap per (user, local day) after merging every source, then sum the capped days per user.
     const values = new Map<string, number>();
     for (const [userId, byDay] of perUserDay) {
       let total = 0;
@@ -243,29 +232,70 @@ export class RankingsService {
     return values;
   }
 
-  /** Live verified minutes of each ACTIVE (unexpired) check-in in the room, keyed by its start's local day. */
-  private async activeLiveMinutes(room: { id: string; timezone: string }, now: Date): Promise<{ userId: string; day: string; value: number }[]> {
+  /**
+   * Uncapped study minutes per user per local day within `[start, end]` (inclusive, `null` = unbounded):
+   * closed `study_sessions` plus still-ACTIVE check-ins counted live up to `now`. Every stay is split
+   * at local midnight, so a 22:00-04:00 session credits both days.
+   */
+  private async studyMinutesByUserDay(
+    room: { id: string; timezone: string },
+    start: string | null,
+    end: string | null,
+    now: Date,
+  ): Promise<Map<string, Map<string, number>>> {
+    // A session is at most MAX_VERIFIED_MINUTES (12h) long, so it spans at most its start day and the
+    // next one: sessions that started the day before `start` can still spill into the range.
+    const conditions = [eq(schema.studySessions.roomId, room.id)];
+    if (start) conditions.push(gte(schema.studySessions.localDate, addDaysToLocal(start, -1)));
+    if (end) conditions.push(lte(schema.studySessions.localDate, end));
+    const sessions = await this.db
+      .select({
+        userId: schema.studySessions.userId,
+        checkInId: schema.studySessions.checkInId,
+        startedAt: schema.studySessions.startedAt,
+        minutes: schema.studySessions.verifiedMinutes,
+      })
+      .from(schema.studySessions)
+      .where(and(...conditions));
+
+    // A check-in only leaves ACTIVE in the same transaction that writes its session row, but skip
+    // any live check-in that already has one anyway so the two can never count twice.
+    const recorded = new Set(sessions.map((s) => s.checkInId).filter((id): id is string => id !== null));
+    const live = (await this.activeLiveMinutes(room, now)).filter((c) => !recorded.has(c.checkInId));
+
+    const parts: { userId: string; day: string; value: number }[] = [];
+    for (const stay of [...sessions, ...live]) {
+      for (const part of minutesByLocalDay(stay.startedAt, stay.minutes, room.timezone)) {
+        if ((!start || part.day >= start) && (!end || part.day <= end)) parts.push({ userId: stay.userId, day: part.day, value: part.minutes });
+      }
+    }
+    return groupByUserDay(parts);
+  }
+
+  /**
+   * Live verified minutes of each ACTIVE check-in in the room. Includes ones past `expiresAt` that the
+   * expiration sweep hasn't closed yet (`verifiedMinutesFor` clamps them to their expiry), so their
+   * minutes don't vanish from the ranking between expiry and the sweep.
+   */
+  private async activeLiveMinutes(
+    room: { id: string; timezone: string },
+    now: Date,
+  ): Promise<{ checkInId: string; userId: string; startedAt: Date; minutes: number }[]> {
     const active = await this.db
-      .select({ userId: schema.checkIns.userId, startedAt: schema.checkIns.startedAt, expiresAt: schema.checkIns.expiresAt })
+      .select({ id: schema.checkIns.id, userId: schema.checkIns.userId, startedAt: schema.checkIns.startedAt, expiresAt: schema.checkIns.expiresAt })
       .from(schema.checkIns)
-      .where(and(eq(schema.checkIns.roomId, room.id), eq(schema.checkIns.status, "ACTIVE"), gt(schema.checkIns.expiresAt, now)));
+      .where(and(eq(schema.checkIns.roomId, room.id), eq(schema.checkIns.status, "ACTIVE")));
     return active.map((c) => ({
+      checkInId: c.id,
       userId: c.userId,
-      day: localDateOf(c.startedAt, room.timezone),
-      value: verifiedMinutesFor(c.startedAt, c.expiresAt, now),
+      startedAt: c.startedAt,
+      minutes: verifiedMinutesFor(c.startedAt, c.expiresAt, now),
     }));
   }
 
   private async streakValues(room: { id: string; timezone: string }, now: Date): Promise<Map<string, number>> {
     const today = localDateOf(now, room.timezone);
-    const rows = await this.db
-      .select({ userId: schema.studySessions.userId, localDate: schema.studySessions.localDate, minutes: schema.studySessions.verifiedMinutes })
-      .from(schema.studySessions)
-      .where(and(eq(schema.studySessions.roomId, room.id), gte(schema.studySessions.localDate, addDaysToLocal(today, -STREAK_LOOKBACK_DAYS))));
-
-    const cutoff = addDaysToLocal(today, -STREAK_LOOKBACK_DAYS);
-    const live = (await this.activeLiveMinutes(room, now)).filter((r) => r.day >= cutoff);
-    const perUserDay = groupByUserDay([...rows.map((r) => ({ userId: r.userId, day: r.localDate, value: r.minutes })), ...live]);
+    const perUserDay = await this.studyMinutesByUserDay(room, addDaysToLocal(today, -STREAK_LOOKBACK_DAYS), null, now);
 
     const values = new Map<string, number>();
     for (const [userId, byDay] of perUserDay) {

@@ -88,6 +88,18 @@ export const moderationActionSchema = z.object({
   reportId: z.string().uuid().optional(),
 });
 
+/** Admin credit of study time a user really did but that wasn't recorded. Exactly one of `endedAt` / `minutes`. */
+export const manualStudySessionSchema = z
+  .object({
+    userId: z.string().min(1),
+    roomId: z.string().uuid().optional(),
+    startedAt: z.string().datetime(),
+    endedAt: z.string().datetime().optional(),
+    minutes: z.number().int().min(1).max(720).optional(),
+    reason: z.string().trim().min(1).max(500),
+  })
+  .refine((v) => (v.endedAt === undefined) !== (v.minutes === undefined), { message: "Indicá endedAt o minutes (uno solo)." });
+
 export const reportStatusSchema = z.object({
   status: z.enum(["OPEN", "UNDER_REVIEW", "RESOLVED", "DISMISSED"]),
 });

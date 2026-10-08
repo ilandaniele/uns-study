@@ -351,8 +351,13 @@ export class DisputeService {
       if (row.checkInId) {
         const [checkIn] = await tx.select().from(schema.checkIns).where(eq(schema.checkIns.id, row.checkInId)).limit(1);
         if (checkIn && checkIn.status === "ACTIVE") {
-          await tx.update(schema.checkIns).set({ status: "CANCELLED", endedAt: now, updatedAt: now }).where(eq(schema.checkIns.id, checkIn.id));
-          await this.studySessions.recordFromCheckIn(tx, checkIn, now);
+          // Conditional on still being ACTIVE: a concurrent checkout/sweep may have closed (and recorded) it already.
+          const cancelled = await tx
+            .update(schema.checkIns)
+            .set({ status: "CANCELLED", endedAt: now, updatedAt: now })
+            .where(and(eq(schema.checkIns.id, checkIn.id), eq(schema.checkIns.status, "ACTIVE")))
+            .returning({ id: schema.checkIns.id });
+          if (cancelled.length > 0) await this.studySessions.recordFromCheckIn(tx, checkIn, now);
         }
       }
 
@@ -518,8 +523,13 @@ export class DisputeService {
         if (pre.checkInId) {
           const [checkIn] = await tx.select().from(schema.checkIns).where(eq(schema.checkIns.id, pre.checkInId)).limit(1);
           if (checkIn && checkIn.status === "ACTIVE") {
-            await tx.update(schema.checkIns).set({ status: "CANCELLED", endedAt: now, updatedAt: now }).where(eq(schema.checkIns.id, checkIn.id));
-            await this.studySessions.recordFromCheckIn(tx, checkIn, now);
+            // Conditional on still being ACTIVE: a concurrent checkout/sweep may have closed (and recorded) it already.
+            const cancelled = await tx
+              .update(schema.checkIns)
+              .set({ status: "CANCELLED", endedAt: now, updatedAt: now })
+              .where(and(eq(schema.checkIns.id, checkIn.id), eq(schema.checkIns.status, "ACTIVE")))
+              .returning({ id: schema.checkIns.id });
+            if (cancelled.length > 0) await this.studySessions.recordFromCheckIn(tx, checkIn, now);
           }
         }
         if (pre.kind === "SAVED") await this.applySavedFreeSignal(tx, pre, now, savedWeight);

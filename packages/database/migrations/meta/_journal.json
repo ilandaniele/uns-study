@@ -183,6 +183,13 @@
       "when": 1791386130223,
       "tag": "0025_socket_io_attachments",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791499243362,
+      "tag": "0026_study_session_manual_source",
+      "breakpoints": true
     }
   ]
 }

@@ -264,4 +264,68 @@ describe("RankingsService", () => {
     expect(ranking.entries.map((e) => e.value)).toEqual([770, 100]);
     expect(ranking.me).toMatchObject({ rank: 2, value: 100 });
   });
+
+  async function insertSessionAt(userId: string, startedAt: Date, minutes: number, localDate: string, id: string): Promise<void> {
+    await db.insert(schema.studySessions).values({
+      id,
+      userId,
+      roomId,
+      checkInId: id,
+      startedAt,
+      endedAt: new Date(startedAt.getTime() + minutes * 60_000),
+      verifiedMinutes: minutes,
+      localDate,
+      source: "CHECK_IN",
+    });
+  }
+
+  it("credits the post-midnight part of yesterday's session to today, and only that part", async () => {
+    await insertUsers(db, ["m1"]);
+    await makeVisible("m1");
+    // 2026-01-14 22:00 -> 2026-01-15 04:00 local: 120 min yesterday, 240 today.
+    await insertSessionAt("m1", new Date("2026-01-15T01:00:00Z"), 360, "2026-01-14", "f1111111-1111-1111-1111-111111111111");
+
+    expect((await svc.getRankings(roomSlug, "today", "study_time", null, TODAY)).entries[0]?.value).toBe(240);
+    expect((await svc.getRankings(roomSlug, "week", "study_time", null, TODAY)).entries[0]?.value).toBe(360);
+    expect((await svc.getRankings(roomSlug, "all", "streak", null, TODAY)).entries[0]?.value).toBe(2);
+  });
+
+  it("a session spilling from Sunday night into Monday counts only its Monday part this week", async () => {
+    await insertUsers(db, ["m2"]);
+    await makeVisible("m2");
+    // Sunday 2026-01-11 23:00 local -> Monday 01:00 local; this week is Mon 01-12 .. Sun 01-18.
+    await insertSessionAt("m2", new Date("2026-01-12T02:00:00Z"), 120, "2026-01-11", "f2222222-2222-2222-2222-222222222222");
+
+    expect((await svc.getRankings(roomSlug, "week", "study_time", null, TODAY)).entries[0]?.value).toBe(60);
+    expect((await svc.getRankings(roomSlug, "all", "study_time", null, TODAY)).entries[0]?.value).toBe(120);
+  });
+
+  it("caps each local day at 720 after the midnight split", async () => {
+    await insertUsers(db, ["m3"]);
+    await makeVisible("m3");
+    // 600 min on the 15th from a daytime session, plus a night session that adds 240 to the 15th.
+    await insertSessionAt("m3", new Date("2026-01-15T12:00:00Z"), 600, "2026-01-15", "f3333333-3333-3333-3333-333333333333");
+    await insertSessionAt("m3", new Date("2026-01-15T01:00:00Z"), 360, "2026-01-14", "f4444444-4444-4444-4444-444444444444");
+
+    expect((await svc.getRankings(roomSlug, "today", "study_time", null, TODAY)).entries[0]?.value).toBe(720); // 600 + 240 capped
+    expect((await svc.getRankings(roomSlug, "all", "study_time", null, TODAY)).entries[0]?.value).toBe(840); // 120 + 720
+  });
+
+  it("splits days in the room's timezone", async () => {
+    await db.update(schema.rooms).set({ timezone: "UTC" }).where(eq(schema.rooms.id, roomId));
+    await insertUsers(db, ["m4"]);
+    await makeVisible("m4");
+    // 2026-01-14T22:00Z -> 2026-01-15T04:00Z: in UTC that is 120 on the 14th and 240 on the 15th.
+    await insertSessionAt("m4", new Date("2026-01-14T22:00:00Z"), 360, "2026-01-14", "f5555555-5555-5555-5555-555555555555");
+
+    expect((await svc.getRankings(roomSlug, "today", "study_time", null, TODAY)).entries[0]?.value).toBe(240);
+  });
+
+  it("counts an ACTIVE check-in past its expiry (not yet swept) up to the expiry", async () => {
+    await insertUsers(db, ["m5"]);
+    await makeVisible("m5");
+    await insertActiveCheckIn("m5", new Date("2026-01-15T11:00:00Z"), new Date("2026-01-15T14:00:00Z"));
+
+    expect((await svc.getRankings(roomSlug, "today", "study_time", null, TODAY)).entries[0]?.value).toBe(180);
+  });
 });
