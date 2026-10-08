@@ -1,8 +1,9 @@
 "use client";
 
-import { moderationActionSchema, type AdminUserDto, type ModerationActionType } from "@sala/contracts";
+import { manualStudySessionSchema, moderationActionSchema, type AdminUserDto, type ModerationActionType } from "@sala/contracts";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { apiDelete, apiFetch, apiPost, apiPut } from "@/lib/api";
+import { buenosAiresLocalToIso } from "./manual-study-session";
 import { useMe } from "@/lib/me-store";
 
 const ACTIONS: { type: ModerationActionType; label: string }[] = [
@@ -22,6 +23,11 @@ export function UserDetail({ userId }: { userId: string }) {
   const [until, setUntil] = useState("");
   const [saving, setSaving] = useState(false);
   const [togglingAdmin, setTogglingAdmin] = useState(false);
+  const [studyStart, setStudyStart] = useState("");
+  const [studyMinutes, setStudyMinutes] = useState("");
+  const [studyReason, setStudyReason] = useState("");
+  const [studySaving, setStudySaving] = useState(false);
+  const [studyResult, setStudyResult] = useState<{ ok: boolean; text: string } | null>(null);
   const { me } = useMe();
 
   const load = useCallback(async () => {
@@ -55,6 +61,29 @@ export function UserDetail({ userId }: { userId: string }) {
       setError("No pudimos aplicar la acción.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function submitStudySession(e: FormEvent) {
+    e.preventDefault();
+    const startedAt = buenosAiresLocalToIso(studyStart);
+    if (!startedAt) return;
+    setStudySaving(true);
+    setStudyResult(null);
+    try {
+      const created = await apiPost<{ minutes: number }>(
+        "/api/v1/admin/study-sessions",
+        { userId, startedAt, minutes: Number(studyMinutes), reason: studyReason.trim() },
+        manualStudySessionSchema,
+      );
+      setStudyResult({ ok: true, text: `Se sumaron ${created.minutes} min` });
+      setStudyStart("");
+      setStudyMinutes("");
+      setStudyReason("");
+    } catch (err) {
+      setStudyResult({ ok: false, text: err instanceof Error ? err.message : "No pudimos sumar las horas." });
+    } finally {
+      setStudySaving(false);
     }
   }
 
@@ -199,6 +228,59 @@ export function UserDetail({ userId }: { userId: string }) {
           Aplicar
         </button>
       </form>
+
+      {me?.roles.includes("ADMIN") ? (
+        <form onSubmit={(e) => void submitStudySession(e)} className="flex flex-col gap-3 rounded-[14px] border border-app bg-surface p-4">
+          <p className="text-sm font-semibold text-main">Sumar horas de estudio</p>
+
+          <label className="flex flex-col gap-1 text-xs text-muted">
+            Inicio (hora de Buenos Aires)
+            <input
+              type="datetime-local"
+              value={studyStart}
+              onChange={(e) => setStudyStart(e.target.value)}
+              className="rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1 text-xs text-muted">
+            Minutos (1 a 720)
+            <input
+              type="number"
+              min={1}
+              max={720}
+              step={1}
+              value={studyMinutes}
+              onChange={(e) => setStudyMinutes(e.target.value)}
+              className="rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1 text-xs text-muted">
+            Motivo
+            <input
+              type="text"
+              value={studyReason}
+              onChange={(e) => setStudyReason(e.target.value)}
+              placeholder="Motivo"
+              maxLength={500}
+              className="rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
+            />
+          </label>
+
+          {studyResult ? (
+            <p className={`text-sm ${studyResult.ok ? "text-main" : "text-[var(--seat-occupied)]"}`}>{studyResult.text}</p>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={studySaving || !studyStart || !studyMinutes || !studyReason.trim()}
+            className="w-fit rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            Sumar
+          </button>
+        </form>
+      ) : null}
     </div>
   );
 }
