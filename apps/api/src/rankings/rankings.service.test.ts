@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "@sala/database";
 import { schema } from "@sala/database";
+import { eq } from "drizzle-orm";
 import { freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
@@ -60,6 +61,43 @@ describe("RankingsService", () => {
 
     const all = await svc.getRankings(roomSlug, "all", "study_time", null, TODAY);
     expect(all.entries[0]?.value).toBe(820); // 720 (capped today) + 100 (other day)
+  });
+
+  async function insertActiveCheckIn(userId: string, startedAt: Date, expiresAt: Date): Promise<string> {
+    const [row] = await db.insert(schema.checkIns).values({ userId, roomId, seatId, status: "ACTIVE", startedAt, expiresAt }).returning({ id: schema.checkIns.id });
+    return row!.id;
+  }
+
+  it("counts an ACTIVE renewed check-in toward today's study_time and streak", async () => {
+    await insertUsers(db, ["u1"]);
+    await makeVisible("u1");
+    // Started 5h before TODAY (same local day), renewed so it expires after TODAY.
+    await insertActiveCheckIn("u1", new Date("2026-01-15T10:00:00Z"), new Date("2026-01-15T16:00:00Z"));
+
+    const today = await svc.getRankings(roomSlug, "today", "study_time", null, TODAY);
+    expect(today.entries[0]?.value).toBe(300);
+    const streak = await svc.getRankings(roomSlug, "all", "streak", null, TODAY);
+    expect(streak.entries[0]?.value).toBe(1);
+  });
+
+  it("doesn't double-count once it closes into study_sessions", async () => {
+    await insertUsers(db, ["u1"]);
+    await makeVisible("u1");
+    const id = await insertActiveCheckIn("u1", new Date("2026-01-15T10:00:00Z"), new Date("2026-01-15T16:00:00Z"));
+    await db.update(schema.checkIns).set({ status: "COMPLETED", endedAt: TODAY }).where(eq(schema.checkIns.id, id));
+    await db.insert(schema.studySessions).values({
+      userId: "u1",
+      roomId,
+      checkInId: id,
+      startedAt: new Date("2026-01-15T10:00:00Z"),
+      endedAt: TODAY,
+      verifiedMinutes: 300,
+      localDate: "2026-01-15",
+      source: "CHECK_IN",
+    });
+
+    const today = await svc.getRankings(roomSlug, "today", "study_time", null, TODAY);
+    expect(today.entries[0]?.value).toBe(300);
   });
 
   it("computes a current streak and breaks it on a gap", async () => {

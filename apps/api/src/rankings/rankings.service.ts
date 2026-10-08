@@ -1,10 +1,11 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, gte, inArray, lt, lte, sql, type SQL } from "drizzle-orm";
+import { and, eq, gt, gte, inArray, lt, lte, sql, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { fromZonedTime } from "date-fns-tz";
 import { schema, type Db } from "@sala/database";
 import type { RankingCategory, RankingDto, RankingEntryDto, RankingPeriod } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
+import { verifiedMinutesFor } from "./study-session.service.js";
 import { localDateOf } from "../common/dates.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { displayName, needsAlias, showsAdminBadge, shownAliasAnimal, visibleAvatarUrl } from "../users/display-name.js";
@@ -224,22 +225,35 @@ export class RankingsService {
     if (start) conditions.push(gte(schema.studySessions.localDate, start));
     if (end) conditions.push(lte(schema.studySessions.localDate, end));
 
-    // Cap per (user, local day) in SQL, then sum the capped days per user.
-    const perDay = this.db
-      .select({
-        userId: schema.studySessions.userId,
-        capped: sql<number>`LEAST(sum(${schema.studySessions.verifiedMinutes}), ${STUDY_TIME_DAILY_CAP_MIN})`.as("capped"),
-      })
-      .from(schema.studySessions)
-      .where(and(...conditions))
-      .groupBy(schema.studySessions.userId, schema.studySessions.localDate)
-      .as("per_day");
     const rows = await this.db
-      .select({ userId: perDay.userId, total: sql<string>`sum(${perDay.capped})` })
-      .from(perDay)
-      .groupBy(perDay.userId);
+      .select({ userId: schema.studySessions.userId, localDate: schema.studySessions.localDate, minutes: schema.studySessions.verifiedMinutes })
+      .from(schema.studySessions)
+      .where(and(...conditions));
+    // Still-ACTIVE check-ins (e.g. renewed with "Sigo acá") have no session row yet: count them live.
+    const live = (await this.activeLiveMinutes(room, now)).filter((r) => (!start || r.day >= start) && (!end || r.day <= end));
 
-    return new Map(rows.map((r) => [r.userId, Number(r.total)]));
+    // Cap per (user, local day) after merging live minutes, then sum the capped days per user.
+    const perUserDay = groupByUserDay([...rows.map((r) => ({ userId: r.userId, day: r.localDate, value: r.minutes })), ...live]);
+    const values = new Map<string, number>();
+    for (const [userId, byDay] of perUserDay) {
+      let total = 0;
+      for (const minutes of byDay.values()) total += Math.min(minutes, STUDY_TIME_DAILY_CAP_MIN);
+      values.set(userId, total);
+    }
+    return values;
+  }
+
+  /** Live verified minutes of each ACTIVE (unexpired) check-in in the room, keyed by its start's local day. */
+  private async activeLiveMinutes(room: { id: string; timezone: string }, now: Date): Promise<{ userId: string; day: string; value: number }[]> {
+    const active = await this.db
+      .select({ userId: schema.checkIns.userId, startedAt: schema.checkIns.startedAt, expiresAt: schema.checkIns.expiresAt })
+      .from(schema.checkIns)
+      .where(and(eq(schema.checkIns.roomId, room.id), eq(schema.checkIns.status, "ACTIVE"), gt(schema.checkIns.expiresAt, now)));
+    return active.map((c) => ({
+      userId: c.userId,
+      day: localDateOf(c.startedAt, room.timezone),
+      value: verifiedMinutesFor(c.startedAt, c.expiresAt, now),
+    }));
   }
 
   private async streakValues(room: { id: string; timezone: string }, now: Date): Promise<Map<string, number>> {
@@ -249,7 +263,9 @@ export class RankingsService {
       .from(schema.studySessions)
       .where(and(eq(schema.studySessions.roomId, room.id), gte(schema.studySessions.localDate, addDaysToLocal(today, -STREAK_LOOKBACK_DAYS))));
 
-    const perUserDay = groupByUserDay(rows.map((r) => ({ userId: r.userId, day: r.localDate, value: r.minutes })));
+    const cutoff = addDaysToLocal(today, -STREAK_LOOKBACK_DAYS);
+    const live = (await this.activeLiveMinutes(room, now)).filter((r) => r.day >= cutoff);
+    const perUserDay = groupByUserDay([...rows.map((r) => ({ userId: r.userId, day: r.localDate, value: r.minutes })), ...live]);
 
     const values = new Map<string, number>();
     for (const [userId, byDay] of perUserDay) {
