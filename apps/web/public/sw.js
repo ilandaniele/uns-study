@@ -6,7 +6,7 @@
 // a fetch handler the browser loads everything straight from the network (and its own HTTP cache).
 // On activation it deletes every cache earlier versions created, so visitors still controlled by an
 // old worker recover on their next navigation without clearing site data.
-const SW_VERSION = "v7";
+const SW_VERSION = "v8";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -39,6 +39,15 @@ function toSameOriginPath(rawUrl) {
   }
 }
 
+async function hasFocusedWindow() {
+  try {
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    return windows.some((client) => client.visibilityState === "visible" && client.focused);
+  } catch {
+    return false;
+  }
+}
+
 // Web Push (see apps/api/src/notifications). Payload is always our own JSON
 // `{ title, body, url, tag }` — the API never sends anything else through this channel.
 self.addEventListener("push", (event) => {
@@ -51,12 +60,21 @@ self.addEventListener("push", (event) => {
   }
   const { title, body, url, tag } = payload;
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      tag, // same tag replaces any earlier notification of the same kind instead of stacking
-      icon: "/icons/icon-192.png",
-      data: { url: toSameOriginPath(url) },
-    }),
+    (async () => {
+      // A message already arrives in-app over the socket: don't also buzz while the user is looking at the app.
+      if (typeof tag === "string" && tag.startsWith("dm-") && (await hasFocusedWindow())) return;
+      try {
+        await self.navigator.setAppBadge?.();
+      } catch {
+        // Badging is optional.
+      }
+      await self.registration.showNotification(title, {
+        body,
+        tag, // same tag replaces any earlier notification of the same kind instead of stacking
+        icon: "/icons/icon-192.png",
+        data: { url: toSameOriginPath(url) },
+      });
+    })(),
   );
 });
 

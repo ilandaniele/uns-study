@@ -158,6 +158,14 @@ export class DmService {
     return this.otherUserId(conversation, userId);
   }
 
+  /** The name `userId` is shown under to other users (identity mode or alias), never their email. */
+  async publicDisplayName(userId: string): Promise<string> {
+    const [profile] = await this.db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, userId));
+    if (!profile) return displayName(null, null, "Usuario");
+    const withAlias = await this.aliases.withAlias(profile);
+    return displayName(withAlias, null, "Usuario");
+  }
+
   private async toConversationDto(conversation: ConversationRow, viewerId: string): Promise<ConversationDto> {
     const [dto] = await this.buildDtos([conversation], viewerId);
     if (!dto) throw new Error("Failed to build conversation DTO");

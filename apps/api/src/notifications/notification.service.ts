@@ -14,6 +14,8 @@ const SEAT_FREED_THROTTLE_MIN = 10;
 const ADMIN_PRESENT_THROTTLE_MIN = 60;
 /** At most this many pushes are sent concurrently per notification batch. */
 const SEND_CONCURRENCY = 10;
+/** Direct/group message push bodies are cut to this many characters. */
+const DM_PUSH_BODY_MAX = 120;
 /** The room-wide "admin present" banner/push fires this long after the check-in, at minimum... */
 const ADMIN_PRESENT_DELAY_MIN_MS = 2 * 60_000;
 /** ...and at most this long — a random delay in between so the timing can't be correlated back to
@@ -144,6 +146,22 @@ export class NotificationService {
         tag: "admin-present",
       }),
     );
+  }
+
+  /**
+   * Push for a new private/group message. Push-only — the in-app delivery is the realtime emit the
+   * caller already did. `senderDisplayName` must be the recipient-facing name (alias or chosen
+   * identity), never an email. The tag is per conversation so a burst collapses into one notification.
+   */
+  async notifyDirectMessage(input: { recipientId: string; senderDisplayName: string; conversationId: string; content: string; url?: string }): Promise<void> {
+    const content = input.content.trim();
+    const body = content.length > DM_PUSH_BODY_MAX ? `${content.slice(0, DM_PUSH_BODY_MAX - 1).trimEnd()}…` : content;
+    await this.push.sendToUser(input.recipientId, {
+      title: input.senderDisplayName.trim() || "Nuevo mensaje privado",
+      body,
+      url: input.url ?? `/chat/dm/${input.conversationId}`,
+      tag: `dm-${input.conversationId}`,
+    });
   }
 
   /** Users subscribed to `preferenceKey` who don't currently hold an active check-in in `roomId`. */

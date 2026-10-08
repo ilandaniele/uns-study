@@ -80,6 +80,15 @@ function useIsPhone(): boolean {
   );
 }
 
+/** Mirrors the unread total on the installed app's icon (Badging API; silently absent elsewhere). */
+function useAppBadge(total: number): void {
+  useEffect(() => {
+    const nav = navigator as Navigator & { setAppBadge?: (count?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+    const update = total > 0 ? nav.setAppBadge?.(total) : nav.clearAppBadge?.();
+    update?.catch(() => {});
+  }, [total]);
+}
+
 function directionClass(state: ChatWidgetState): string {
   return state.direction === "forward" ? "chat-view-forward" : state.direction === "back" ? "chat-view-back" : "";
 }
@@ -275,6 +284,7 @@ function SignedInLauncher({ userId }: { userId: string }) {
   const roomUnread = reading ? 0 : countUnread(messages, lastSeenAt, userId);
   const privateUnread = sumDmUnread(conversations, viewingConversationId) + sumGroupUnread(groups, viewingGroupId);
   const totalUnread = roomUnread + privateUnread;
+  useAppBadge(totalUnread);
 
   async function openDmWith(otherUserId: string) {
     if (pendingRef.current) return;

@@ -10,6 +10,7 @@ import type { DmService } from "../dm/dm.service.js";
 import type { ProfilesService } from "../profiles/profiles.service.js";
 import type { QrService } from "../qr/qr.service.js";
 import type { StudyService } from "../study/study.service.js";
+import type { NotificationService } from "../notifications/notification.service.js";
 import type { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 
 const user = { id: "u1", name: "u1", email: "u1@example.test", image: null };
@@ -23,7 +24,7 @@ async function exhaust(limit: number, call: () => Promise<unknown>) {
 describe("rate limits on previously unrated writes", () => {
   it("POST /conversations: 10/h per user", async () => {
     const dm = stub<DmService>({ getOrCreateConversation: async () => ({}) });
-    const c = new DmController(dm, new RateLimitService(), stub<RoomRealtimeGateway>({}));
+    const c = new DmController(dm, new RateLimitService(), stub<RoomRealtimeGateway>({}), stub<NotificationService>({}));
     await exhaust(10, () => c.create(user, { userId: "u2" }));
   });
 

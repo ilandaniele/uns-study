@@ -213,4 +213,28 @@ describe("NotificationService", () => {
       expect(emitBanner).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("notifyDirectMessage", () => {
+    it("pushes the sender's name, a truncated body and the DM route to the recipient only", async () => {
+      await addPushSubscription("subscriber");
+      await addPushSubscription("not-subscribed", "https://fcm.googleapis.com/fcm/send/other");
+
+      await svc.notifyDirectMessage({ recipientId: "subscriber", senderDisplayName: "Zorro Veloz", conversationId: "conv-1", content: "x".repeat(300) });
+
+      expect(sendNotification).toHaveBeenCalledTimes(1);
+      const [subscription, raw] = sendNotification.mock.calls[0]! as unknown as [{ endpoint: string }, string];
+      expect(subscription.endpoint).toContain("subscriber");
+      const payload = JSON.parse(raw);
+      expect(payload.title).toBe("Zorro Veloz");
+      expect(payload.body.length).toBeLessThanOrEqual(120);
+      expect(payload.url).toBe("/chat/dm/conv-1");
+      expect(payload.tag).toBe("dm-conv-1");
+    });
+
+    it("falls back to a generic title when the sender name is empty", async () => {
+      await addPushSubscription("subscriber");
+      await svc.notifyDirectMessage({ recipientId: "subscriber", senderDisplayName: " ", conversationId: "c", content: "hola" });
+      expect(JSON.parse(sendNotification.mock.calls[0]![1] as string).title).toBe("Nuevo mensaje privado");
+    });
+  });
 });

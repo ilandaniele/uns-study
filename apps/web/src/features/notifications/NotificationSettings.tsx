@@ -119,7 +119,7 @@ export function NotificationSettings() {
           <p className="text-xs font-medium text-emerald-700">Notificaciones activadas en este dispositivo.</p>
         ) : (
           <div className="flex flex-col gap-2">
-            <p className="text-xs text-muted">Activá los avisos anteriores en este dispositivo (además de en la app).</p>
+            <p className="text-xs text-muted">Activá los avisos anteriores y los de mensajes privados en este dispositivo (además de en la app).</p>
             <button
               type="button"
               onClick={() => void handleEnableDevice()}

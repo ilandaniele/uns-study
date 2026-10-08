@@ -7,6 +7,7 @@ import { Avatar } from "@/components/Avatar";
 import { prefetchHandlers } from "@/lib/prefetch";
 import { mergeChatRows, type ChatRow } from "./chat-rows";
 import { formatMessageTime } from "./grouping";
+import { EnableChatPushCta } from "./EnableChatPushCta";
 import { UnreadBadge } from "./UnreadBadge";
 
 export interface ConversationListProps {
@@ -114,6 +115,7 @@ export function ConversationList({
   return (
     <ul className={listClass}>
       {pinned}
+      <EnableChatPushCta />
       {widget && status ? (
         <li className={`p-6 text-center text-sm ${statusClass}`}>{status}</li>
       ) : null}

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Inject, Param, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Inject, Logger, Param, Post, Query, UseGuards } from "@nestjs/common";
 import type { z } from "zod";
 import { addGroupMembersSchema, createGroupSchema, groupSendSchema } from "@sala/contracts";
 import { AuthGuard } from "../auth/auth.guard.js";
@@ -6,6 +6,8 @@ import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";
 import { ZodBodyPipe } from "../common/zod-body.pipe.js";
 import { ApiErrors } from "../common/api-error.js";
+import { runInBackground } from "../common/background.js";
+import { NotificationService } from "../notifications/notification.service.js";
 import { UuidParamPipe } from "../common/uuid-param.pipe.js";
 import { RateLimitService } from "../security/rate-limit.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
@@ -14,10 +16,13 @@ import { GroupsService } from "./groups.service.js";
 @Controller("groups")
 @UseGuards(AuthGuard)
 export class GroupsController {
+  private readonly logger = new Logger(GroupsController.name);
+
   constructor(
     @Inject(GroupsService) private readonly groups: GroupsService,
     @Inject(RateLimitService) private readonly rateLimit: RateLimitService,
     @Inject(RoomRealtimeGateway) private readonly realtime: RoomRealtimeGateway,
+    @Inject(NotificationService) private readonly notifications: NotificationService,
   ) {}
 
   private async limit(key: string, max: number, windowSec: number): Promise<void> {
@@ -92,6 +97,24 @@ export class GroupsController {
 
     const { message, memberIds } = await this.groups.sendMessage(id, user.id, body.content);
     this.realtime.emitGroupMessage(memberIds, message);
+    if (message.content) {
+      const content = message.content;
+      runInBackground(this.logger, "group message push", async () => {
+        await Promise.all(
+          memberIds
+            .filter((memberId) => memberId !== user.id)
+            .map((recipientId) =>
+              this.notifications.notifyDirectMessage({
+                recipientId,
+                senderDisplayName: message.senderName,
+                conversationId: `group-${id}`,
+                content,
+                url: "/chat",
+              }),
+            ),
+        );
+      });
+    }
     return message;
   }
 
