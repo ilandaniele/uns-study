@@ -5,8 +5,13 @@ export const GAM_INTERSTITIAL_UNIT = process.env.NEXT_PUBLIC_GAM_INTERSTITIAL_UN
 export const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT || "";
 export const ADSENSE_SLOT_RAIL = process.env.NEXT_PUBLIC_ADSENSE_SLOT_RAIL || "";
 
-/** Minimum gap between two app-open interstitials. */
-export const APP_OPEN_CAP_MS = 30 * 60_000;
+/**
+ * Minimum gap between two app-open interstitials. Every open shows one (like Moovit); the short
+ * gap only stops a reload or a double trigger from stacking two ads back to back.
+ */
+export const APP_OPEN_CAP_MS = 60_000;
+/** Time in the background after which coming back to the app counts as a new open. */
+export const APP_OPEN_BACKGROUND_MS = 60_000;
 /** Minimum gap between two pre-check-in overlays. */
 export const PRE_CHECKIN_CAP_MS = 20 * 60_000;
 /** Seconds the house overlay's close button stays hidden. */

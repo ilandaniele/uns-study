@@ -2,14 +2,16 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { APP_OPEN_BACKGROUND_MS } from "./ad-config";
 import { openHouseInterstitial } from "./ad-overlay-store";
 import { markShown, shouldShowAppOpen } from "./ad-policy";
 import { getAdProvider } from "./ad-provider";
 import { useAdFree } from "./useAdFree";
 
 /**
- * Opens the app-open ad on the first client mount and whenever the tab returns to the
- * foreground, when the policy allows. Renders nothing itself.
+ * Opens the app-open ad on every app open, when the policy allows: the first client mount, and a
+ * return to the foreground after at least `APP_OPEN_BACKGROUND_MS` away (a quick app switch is
+ * not a new open). Renders nothing itself.
  */
 export function AppOpenInterstitial() {
   const { hideAds } = useAdFree();
@@ -53,8 +55,15 @@ export function AppOpenInterstitial() {
       openHouseInterstitial("app_open");
     }
 
+    let hiddenAt: number | null = null;
     function onVisibility() {
-      if (document.visibilityState === "visible") maybeShow();
+      if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now();
+        return;
+      }
+      const away = hiddenAt === null ? 0 : Date.now() - hiddenAt;
+      hiddenAt = null;
+      if (away >= APP_OPEN_BACKGROUND_MS) maybeShow();
     }
 
     maybeShow();

@@ -37,7 +37,7 @@ describe("shouldShowAppOpen", () => {
     expect(shouldShowAppOpen({ ...base, isMobile: false, now: T0 + 1, storage })).toBe(false);
   });
 
-  it("respects the 30 minute cap", () => {
+  it("shows again on the next open once the short anti-stacking gap has passed", () => {
     const storage = fakeStorage();
     shouldShowAppOpen({ ...base, now: T0, storage });
     markShown("app_open", T0 + 10, storage);
