@@ -8,6 +8,9 @@ describe("isAllowedPushEndpoint", () => {
     expect(isAllowedPushEndpoint("https://web.push.apple.com/abc")).toBe(true);
     expect(isAllowedPushEndpoint("https://some-shard.push.apple.com/abc")).toBe(true);
     expect(isAllowedPushEndpoint("https://wns2-abc.notify.windows.com/w/abc")).toBe(true);
+    expect(isAllowedPushEndpoint("https://jmt17.google.com/fcm/send/abc")).toBe(true);
+    expect(isAllowedPushEndpoint("https://android.googleapis.com/gcm/send/abc")).toBe(true);
+    expect(isAllowedPushEndpoint("https://push.services.mozilla.com.evil.example.com/x")).toBe(false);
   });
 
   it("rejects http (non-https) endpoints even on an otherwise-allowed host", () => {

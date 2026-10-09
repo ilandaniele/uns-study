@@ -6,7 +6,7 @@
 // a fetch handler the browser loads everything straight from the network (and its own HTTP cache).
 // On activation it deletes every cache earlier versions created, so visitors still controlled by an
 // old worker recover on their next navigation without clearing site data.
-const SW_VERSION = "v8";
+const SW_VERSION = "v9";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -86,8 +86,14 @@ self.addEventListener("notificationclick", (event) => {
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
       for (const client of clients) {
         if ("focus" in client) {
-          if (client.navigate) await client.navigate(targetUrl);
-          return client.focus();
+          // `navigate` rejects on a tab this worker doesn't control (e.g. opened before it
+          // activated); focusing it and opening the target in a new tab is the fallback.
+          try {
+            if (client.navigate) await client.navigate(targetUrl);
+            return client.focus();
+          } catch {
+            return self.clients.openWindow(targetUrl);
+          }
         }
       }
       return self.clients.openWindow(targetUrl);

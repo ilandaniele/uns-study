@@ -3,8 +3,14 @@
  * it's ever stored or, later, POSTed to by `PushService`. Exact hosts for services with a single
  * fixed origin; suffix matches for services that shard across many subdomains.
  */
-const ALLOWED_EXACT_HOSTS = new Set(["fcm.googleapis.com", "updates.push.services.mozilla.com", "web.push.apple.com"]);
-const ALLOWED_HOST_SUFFIXES = [".push.apple.com", ".notify.windows.com"];
+const ALLOWED_EXACT_HOSTS = new Set([
+  "fcm.googleapis.com",
+  "android.googleapis.com", // legacy GCM endpoints some Chromium builds still hand out
+  "jmt17.google.com", // Chrome's FCM endpoint on some installs
+  "updates.push.services.mozilla.com",
+  "web.push.apple.com",
+]);
+const ALLOWED_HOST_SUFFIXES = [".push.apple.com", ".notify.windows.com", ".push.services.mozilla.com"];
 
 export function isAllowedPushEndpoint(rawUrl: string): boolean {
   let url: URL;

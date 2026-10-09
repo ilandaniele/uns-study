@@ -53,7 +53,9 @@ export class PushService {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
         JSON.stringify(payload),
-        { timeout: 5000, TTL: 600 },
+        // `high` urgency: Android delivers normal-priority FCM messages only in Doze maintenance
+        // windows, often after the 10-minute TTL has expired. Every push we send is time-sensitive.
+        { timeout: 5000, TTL: 600, urgency: "high" },
       );
       await this.db
         .update(schema.pushSubscriptions)

@@ -33,9 +33,9 @@ describe("PushService", () => {
     await db.insert(schema.pushSubscriptions).values({ userId: "u1", endpoint: "https://fcm.googleapis.com/fcm/send/abc", p256dh: "p", auth: "a" });
   });
 
-  it("passes a timeout and TTL to web-push", async () => {
+  it("passes a timeout, TTL and high urgency to web-push", async () => {
     await svc.sendToUser("u1", { title: "t", body: "b", url: "/", tag: "tag" });
-    expect(sendNotification).toHaveBeenCalledWith(expect.anything(), expect.any(String), { timeout: 5000, TTL: 600 });
+    expect(sendNotification).toHaveBeenCalledWith(expect.anything(), expect.any(String), { timeout: 5000, TTL: 600, urgency: "high" });
   });
 
   it("deletes the subscription immediately on a 410 (gone)", async () => {
