@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSession } from "@/lib/auth-client";
-import { enablePushNotifications, getPushSupportState } from "@/lib/push";
+import { enablePushNotificationsDetailed, getPushSupportState, pushFailureMessage } from "@/lib/push";
 import { isPromptRoute, readSnooze, shouldShowPushPrompt, SNOOZE_FAILED_MS, SNOOZE_LATER_MS, writeSnooze } from "./push-prompt";
 
 const SHOW_DELAY_MS = 4000;
@@ -76,16 +76,14 @@ export function PushPermissionPrompt() {
   async function handleEnable() {
     setBusy(true);
     try {
-      if (await enablePushNotifications()) {
+      const result = await enablePushNotificationsDetailed();
+      if (result.ok) {
         setEligible(false);
         setMessage("Listo, notificaciones activadas.");
       } else {
         snooze(SNOOZE_FAILED_MS);
-        setMessage("No se activaron. Podés hacerlo desde tu perfil (/perfil).");
+        setMessage(`${pushFailureMessage(result)} También podés activarlas desde tu perfil.`);
       }
-    } catch {
-      snooze(SNOOZE_FAILED_MS);
-      setMessage("No pudimos activarlas. Probá desde tu perfil (/perfil).");
     } finally {
       setBusy(false);
     }

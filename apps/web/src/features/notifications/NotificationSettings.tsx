@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import { useNotificationPreferences } from "./useNotificationPreferences";
-import { disablePushNotifications, enablePushNotifications, getPushSupportState, isIos, isStandalone } from "@/lib/push";
+import {
+  disablePushNotifications,
+  enablePushNotificationsDetailed,
+  getPushSupportState,
+  isIos,
+  isStandalone,
+  pushFailureMessage,
+} from "@/lib/push";
 
 /** Toggle switch matching `PrivacyToggles`'s look. */
 function Switch({ checked, disabled, label, onChange }: { checked: boolean; disabled: boolean; label: string; onChange: (next: boolean) => void }) {
@@ -33,16 +40,19 @@ function Switch({ checked, disabled, label, onChange }: { checked: boolean; disa
 export function NotificationSettings() {
   const { preferences, loading, saving, update } = useNotificationPreferences();
   const [deviceState, setDeviceState] = useState<"idle" | "enabling" | "enabled" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const support = getPushSupportState();
   const showIosHint = isIos() && !isStandalone();
 
   async function handleEnableDevice() {
     setDeviceState("enabling");
-    try {
-      const ok = await enablePushNotifications();
-      setDeviceState(ok ? "enabled" : "error");
-    } catch {
+    setErrorMessage(null);
+    const result = await enablePushNotificationsDetailed();
+    if (result.ok) {
+      setDeviceState("enabled");
+    } else {
+      setErrorMessage(pushFailureMessage(result));
       setDeviceState("error");
     }
   }
@@ -128,7 +138,11 @@ export function NotificationSettings() {
             >
               {deviceState === "enabling" ? "Activando…" : "Activar notificaciones en este dispositivo"}
             </button>
-            {deviceState === "error" ? <p className="text-xs text-red-600">No pudimos activar las notificaciones. Intentá de nuevo.</p> : null}
+            {deviceState === "error" && errorMessage ? (
+              <p role="status" className="text-xs text-red-600">
+                {errorMessage}
+              </p>
+            ) : null}
           </div>
         )}
         {deviceState === "enabled" ? (

@@ -17,11 +17,12 @@ export function EnableSeatFreedCta() {
   if (message) return <p role="status" className="self-start text-sm text-muted">{message}</p>;
 
   async function handleEnable() {
-    await update({ seatFreed: true });
+    // Push first, while the click's user activation still allows the permission prompt.
     let pushed = false;
     if (getPushSupportState() === "available") {
-      pushed = await enablePushNotifications().catch(() => false);
+      pushed = await enablePushNotifications();
     }
+    await update({ seatFreed: true });
     setMessage(
       pushed
         ? "Listo, te avisamos cuando se libere un lugar."

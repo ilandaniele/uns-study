@@ -41,36 +41,126 @@ export function getPushSupportState(): PushSupportState {
   return "available";
 }
 
+export type PushEnableFailure =
+  | "unsupported"
+  | "permission-denied"
+  | "permission-dismissed"
+  | "no-service-worker"
+  | "push-service"
+  | "server";
+
+export type PushEnableResult = { ok: true } | { ok: false; reason: PushEnableFailure; detail?: string };
+
+const SERVICE_WORKER_TIMEOUT_MS = 10_000;
+
+/** Whether two VAPID keys (raw bytes) are the same key. */
+export function sameKey(a: ArrayBuffer | null | undefined, b: Uint8Array): boolean {
+  if (!a) return false;
+  const bytes = new Uint8Array(a);
+  if (bytes.length !== b.length) return false;
+  return bytes.every((byte, i) => byte === b[i]);
+}
+
+/** The service worker registration, registering `/sw.js` if the page never did (the regular
+ *  registration only runs after hydration and only in production). Gives up after a timeout
+ *  instead of hanging on `serviceWorker.ready` forever. */
+async function serviceWorkerRegistration(): Promise<ServiceWorkerRegistration | null> {
+  try {
+    const existing = await navigator.serviceWorker.getRegistration();
+    if (!existing) await navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" });
+  } catch {
+    return null;
+  }
+  const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), SERVICE_WORKER_TIMEOUT_MS));
+  return Promise.race([navigator.serviceWorker.ready, timeout]);
+}
+
+function errorName(error: unknown): string {
+  return error instanceof Error ? error.name || error.message : String(error);
+}
+
 /**
  * Requests notification permission (if not already granted), subscribes via the browser's
  * `PushManager` using the API's VAPID public key, and registers the subscription server-side.
- * Returns `true` on success, `false` if permission was denied or push isn't supported.
+ * Never throws: every failure comes back as a reason the UI can explain.
  */
-export async function enablePushNotifications(): Promise<boolean> {
-  if (getPushSupportState() !== "available" && Notification.permission !== "granted") return false;
+export async function enablePushNotificationsDetailed(): Promise<PushEnableResult> {
+  const support = getPushSupportState();
+  if (support === "unsupported" || support === "ios-needs-install") return { ok: false, reason: "unsupported" };
 
-  const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
-  if (permission !== "granted") return false;
+  // Ask first, while the click's user activation is still fresh.
+  let permission: NotificationPermission;
+  try {
+    permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+  } catch (error) {
+    return { ok: false, reason: "permission-dismissed", detail: errorName(error) };
+  }
+  if (permission === "denied") return { ok: false, reason: "permission-denied" };
+  if (permission !== "granted") return { ok: false, reason: "permission-dismissed" };
 
-  const registration = await navigator.serviceWorker.ready;
-  const { publicKey } = await apiFetch<{ publicKey: string }>("/api/v1/notifications/vapid-public-key");
-  if (!publicKey) return false;
+  const registration = await serviceWorkerRegistration();
+  if (!registration) return { ok: false, reason: "no-service-worker" };
 
-  const subscription =
-    (await registration.pushManager.getSubscription()) ??
-    (await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: base64UrlToUint8Array(publicKey) as BufferSource,
-    }));
+  let publicKey: string;
+  try {
+    ({ publicKey } = await apiFetch<{ publicKey: string }>("/api/v1/notifications/vapid-public-key"));
+  } catch (error) {
+    return { ok: false, reason: "server", detail: errorName(error) };
+  }
+  if (!publicKey) return { ok: false, reason: "server", detail: "no-vapid-key" };
+  const applicationServerKey = base64UrlToUint8Array(publicKey);
+
+  let subscription: PushSubscription;
+  try {
+    let existing = await registration.pushManager.getSubscription();
+    // A subscription made with an older VAPID key can't receive our pushes; replace it.
+    if (existing && !sameKey(existing.options?.applicationServerKey, applicationServerKey)) {
+      await existing.unsubscribe().catch(() => false);
+      existing = null;
+    }
+    subscription =
+      existing ?? (await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: applicationServerKey as BufferSource }));
+  } catch (error) {
+    return { ok: false, reason: "push-service", detail: errorName(error) };
+  }
 
   const json = subscription.toJSON();
-  if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return false;
+  if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return { ok: false, reason: "push-service", detail: "no-keys" };
 
-  await apiPost("/api/v1/notifications/push-subscriptions", {
-    endpoint: json.endpoint,
-    keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
-  }, pushSubscriptionSchema);
-  return true;
+  try {
+    await apiPost(
+      "/api/v1/notifications/push-subscriptions",
+      { endpoint: json.endpoint, keys: { p256dh: json.keys.p256dh, auth: json.keys.auth } },
+      pushSubscriptionSchema,
+    );
+  } catch (error) {
+    return { ok: false, reason: "server", detail: errorName(error) };
+  }
+  return { ok: true };
+}
+
+/** Boolean form for callers that only need success/failure. */
+export async function enablePushNotifications(): Promise<boolean> {
+  return (await enablePushNotificationsDetailed()).ok;
+}
+
+/** User-facing Spanish explanation for a failed activation, with what to do next. */
+export function pushFailureMessage(result: Exclude<PushEnableResult, { ok: true }>): string {
+  const code = result.detail ? ` (código: ${result.detail})` : "";
+  switch (result.reason) {
+    case "unsupported":
+      return "Este navegador no soporta notificaciones. Abrí saladeestudio.com.ar en Chrome o instalá la app.";
+    case "permission-denied":
+      return "Las notificaciones están bloqueadas para este sitio. Tocá el candado al lado de la dirección › Permisos › Notificaciones › Permitir, y probá de nuevo.";
+    case "permission-dismissed":
+      return `No se dio el permiso. Si no apareció el cartel, tocá el candado al lado de la dirección › Permisos › Notificaciones › Permitir, y probá de nuevo.${code}`;
+    case "no-service-worker":
+      return "La app no terminó de cargar. Recargá la página y probá de nuevo.";
+    case "push-service":
+      return `Tu navegador no pudo conectarse al servicio de notificaciones. Abrí saladeestudio.com.ar directo en Chrome (no desde otra app como WhatsApp o Instagram) o instalá la app, y probá de nuevo.${code}`;
+    case "server":
+      return `No pudimos guardar el aviso en el servidor. Probá de nuevo en un rato.${code}`;
+  }
 }
 
 /** Unsubscribes this device from push and tells the API to forget it. Safe to call even if the

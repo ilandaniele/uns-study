@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { enablePushNotifications, getPushSupportState } from "@/lib/push";
+import { enablePushNotificationsDetailed, getPushSupportState, pushFailureMessage } from "@/lib/push";
 
 /** List row offering to turn on push for new private/group messages. Renders nothing unless push is
  *  possible on this device and it isn't subscribed yet. Must sit inside a `<ul>`. */
 export function EnableChatPushCta() {
   const [needed, setNeeded] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
 
   useEffect(() => {
     if (getPushSupportState() !== "available") return;
@@ -28,12 +28,11 @@ export function EnableChatPushCta() {
 
   async function handleEnable() {
     setBusy(true);
-    setFailed(false);
+    setFailed(null);
     try {
-      if (await enablePushNotifications()) setNeeded(false);
-      else setFailed(true);
-    } catch {
-      setFailed(true);
+      const result = await enablePushNotificationsDetailed();
+      if (result.ok) setNeeded(false);
+      else setFailed(pushFailureMessage(result));
     } finally {
       setBusy(false);
     }
@@ -50,7 +49,7 @@ export function EnableChatPushCta() {
       >
         {busy ? "Activando…" : "Activar notificaciones"}
       </button>
-      {failed ? <p role="status" className="text-xs text-red-600">No pudimos activarlas. Revisá los permisos del navegador.</p> : null}
+      {failed ? <p role="status" className="text-xs text-red-600">{failed}</p> : null}
     </li>
   );
 }
