@@ -17,7 +17,7 @@ type FakeClient = {
 
 function loadWorker(clients: FakeClient[] = []) {
   const listeners: Record<string, (event: unknown) => void> = {};
-  const showNotification = vi.fn(async () => {});
+  const showNotification = vi.fn(async (_title: string, _options: unknown) => {});
   const openWindow = vi.fn(async () => null);
   const self = {
     location: { origin: ORIGIN },
