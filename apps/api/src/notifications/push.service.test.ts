@@ -72,4 +72,11 @@ describe("PushService", () => {
     const [row] = await db.select().from(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.userId, "u1"));
     expect(row?.failureCount).toBe(0);
   });
+
+  it("logs one summary line per send with counts only, never the endpoint", async () => {
+    const log = vi.spyOn((svc as unknown as { logger: { log: (m: string) => void } }).logger, "log").mockImplementation(() => undefined);
+    await svc.sendToUser("u1", { title: "t", body: "b", url: "/", tag: "dm-1" });
+    expect(log).toHaveBeenCalledWith('Push "dm-1" to user u1: 1 device(s), 1 accepted, 0 gone, 0 failed');
+    expect(log.mock.calls.flat().join(" ")).not.toContain("fcm.googleapis.com");
+  });
 });

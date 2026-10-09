@@ -12,6 +12,8 @@ const SEND_CONCURRENCY = 10;
  *  clean 404/410 — those delete immediately) failures, since it's evidently never going to work. */
 const MAX_CONSECUTIVE_FAILURES = 3;
 
+type PushOutcome = "delivered" | "gone" | "failed";
+
 export interface PushPayload {
   title: string;
   body: string;
@@ -45,10 +47,16 @@ export class PushService {
   async sendToUser(userId: string, payload: PushPayload): Promise<void> {
     if (!this.ensureConfigured()) return;
     const subs = await this.db.select().from(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.userId, userId));
-    await mapWithConcurrency(subs, SEND_CONCURRENCY, (sub) => this.sendOne(sub, payload));
+    const outcomes = await mapWithConcurrency(subs, SEND_CONCURRENCY, (sub) => this.sendOne(sub, payload));
+    // One line per send so a "the notification never arrived" report can be checked against what
+    // the push service accepted. Counts only: never the endpoint or keys.
+    const count = (o: PushOutcome) => outcomes.filter((x) => x === o).length;
+    this.logger.log(
+      `Push "${payload.tag}" to user ${userId}: ${subs.length} device(s), ${count("delivered")} accepted, ${count("gone")} gone, ${count("failed")} failed`,
+    );
   }
 
-  private async sendOne(sub: typeof schema.pushSubscriptions.$inferSelect, payload: PushPayload): Promise<void> {
+  private async sendOne(sub: typeof schema.pushSubscriptions.$inferSelect, payload: PushPayload): Promise<PushOutcome> {
     try {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
@@ -61,11 +69,12 @@ export class PushService {
         .update(schema.pushSubscriptions)
         .set({ lastSuccessAt: new Date(), failureCount: 0 })
         .where(eq(schema.pushSubscriptions.id, sub.id));
+      return "delivered";
     } catch (err) {
       const statusCode = (err as { statusCode?: number }).statusCode;
       if (statusCode === 404 || statusCode === 410) {
         await this.db.delete(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.id, sub.id));
-        return;
+        return "gone";
       }
       this.logger.error(`Push delivery failed for subscription ${sub.id} (status ${statusCode ?? "unknown"})`);
 
@@ -80,6 +89,7 @@ export class PushService {
       if (row && row.failureCount >= MAX_CONSECUTIVE_FAILURES) {
         await this.db.delete(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.id, sub.id));
       }
+      return "failed";
     }
   }
 }
