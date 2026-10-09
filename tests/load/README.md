@@ -31,6 +31,16 @@ pnpm load:peak     # 300 VUs, 15 min: 08:00 exam-season rush
 ```
 
 Run from the repo root (results are written relative to the working directory).
+
+Use a real PostgreSQL (`DATABASE_URL`) for stress, spike and peak. PGlite is in-process and single-connection:
+around 300 VUs its queries fail with `stack depth limit exceeded` and the API stops answering while still holding
+the port. smoke and load are fine on PGlite. A throwaway local cluster needs no credentials:
+
+```bash
+initdb -D ./pgdata -U loadtest --auth=trust && pg_ctl -D ./pgdata -o "-p 5499 -c listen_addresses=localhost" start
+createdb -h localhost -p 5499 -U loadtest sala_load
+DATABASE_URL=postgres://loadtest@localhost:5499/sala_load BOOT_MIGRATE_SEED=true pnpm --filter @sala/api dev
+```
 Install k6: <https://grafana.com/docs/k6/latest/set-up/install-k6/>. The HTML report and summary helpers are
 fetched from `raw.githubusercontent.com` / `jslib.k6.io` at start, so a network connection is required.
 
