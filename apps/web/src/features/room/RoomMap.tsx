@@ -1,7 +1,8 @@
 "use client";
 
 import type { RoomMapDto, SeatAvatarDto, SeatDto } from "@sala/contracts";
-import { memo, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
+import { photoSkinFor, type PhotoSkin } from "./photo-skin";
 import { Seat, type SeatFacing } from "./Seat";
 import { StudyTable } from "./StudyTable";
 import { WallBar } from "./WallBar";
@@ -33,7 +34,9 @@ const SIDE_WINDOW_LENGTH = 220;
 const SIDE_WINDOW_Y = [130, 400, 670, 940, 1210];
 
 export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlightTableCode = null, avatarBySeatId, adminBadgeSeatIds, onlyFree = false, favoriteSeatId = null }: RoomMapProps) {
-  const { width, height } = map.viewBox;
+  // Photo of the real room when one matches this layout; the drawn room otherwise.
+  const skin = useMemo(() => photoSkinFor(map), [map]);
+  const { width, height } = skin?.viewBox ?? map.viewBox;
   // Per-seat facing + table label/type only depend on the layout, not on live seat status.
   const seatMeta = useMemo(() => {
     const tableById = new Map(map.tables.map((table) => [table.id, table]));
@@ -45,7 +48,16 @@ export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, on
       }),
     );
   }, [map.seats, map.tables]);
-  const selectedSeat = selectedSeatId ? map.seats.find((seat) => seat.id === selectedSeatId) ?? null : null;
+  // Over the photo, each marker sits on its real chair; the layout coordinates stay canonical for everything else.
+  const displaySeats = useMemo(
+    () => (skin ? map.seats.map((seat) => ({ ...seat, ...skin.seats.get(seat.code)!, rotation: 0 })) : map.seats),
+    [map.seats, skin],
+  );
+  const handleSelect = useCallback(
+    (shown: SeatDto) => onSelectSeat(map.seats.find((seat) => seat.id === shown.id) ?? shown),
+    [map.seats, onSelectSeat],
+  );
+  const selectedSeat = selectedSeatId ? displaySeats.find((seat) => seat.id === selectedSeatId) ?? null : null;
 
   return (
     <svg
@@ -54,17 +66,23 @@ export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, on
       role="group"
       aria-label={`Mapa de ${map.room.name}`}
     >
-      <StaticRoomBackdrop width={width} height={height} />
-
-      {map.tables.map((table) =>
-        table.type === "WALL_BAR" ? (
-          <WallBar key={table.id} table={table} />
-        ) : (
-          <StudyTable key={table.id} table={table} highlighted={highlightTableCode !== null && table.code === highlightTableCode} />
-        ),
+      <SharedDefs />
+      {skin ? (
+        <PhotoBackdrop skin={skin} tables={map.tables} highlightTableCode={highlightTableCode} />
+      ) : (
+        <>
+          <StaticRoomBackdrop width={width} height={height} />
+          {map.tables.map((table) =>
+            table.type === "WALL_BAR" ? (
+              <WallBar key={table.id} table={table} />
+            ) : (
+              <StudyTable key={table.id} table={table} highlighted={highlightTableCode !== null && table.code === highlightTableCode} />
+            ),
+          )}
+        </>
       )}
 
-      {map.seats.map((seat) => {
+      {displaySeats.map((seat) => {
         const meta = seatMeta.get(seat.id)!;
         return (
           <Seat
@@ -75,18 +93,23 @@ export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, on
             facing={meta.facing}
             isMySeat={seat.id === mySeatId}
             isSelected={seat.id === selectedSeatId}
-            onSelect={onSelectSeat}
+            onSelect={handleSelect}
             avatar={avatarBySeatId?.get(seat.id) ?? null}
             adminBadge={adminBadgeSeatIds?.has(seat.id) ?? false}
             dimmed={onlyFree && seat.status !== "FREE" && seat.id !== mySeatId && seat.id !== selectedSeatId}
             isFavorite={seat.id === favoriteSeatId}
+            photo={skin !== null}
           />
         );
       })}
 
-      {/* Photo-style vignette on top of everything, then a dark-mode dimmer — the room stays warm, just dimmed. */}
-      <rect x={0} y={0} width={width} height={height} fill="url(#room-vignette)" pointerEvents="none" aria-hidden="true" />
-      <rect x={0} y={0} width={width} height={height} fill="black" style={{ opacity: "var(--room-dark-overlay)" }} pointerEvents="none" aria-hidden="true" />
+      {/* Drawn room only: photo-style vignette, then a dark-mode dimmer (the photo has its own night version). */}
+      {skin ? null : (
+        <>
+          <rect x={0} y={0} width={width} height={height} fill="url(#room-vignette)" pointerEvents="none" aria-hidden="true" />
+          <rect x={0} y={0} width={width} height={height} fill="black" style={{ opacity: "var(--room-dark-overlay)" }} pointerEvents="none" aria-hidden="true" />
+        </>
+      )}
 
       {/* Selected seat: dim the rest of the room and ring the seat, so it stays findable while the detail sheet is open. */}
       {selectedSeat ? (
@@ -106,7 +129,55 @@ export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, on
   );
 });
 
-/** Floor, walls, windows, entrance and shared defs: nothing here depends on live seat state. */
+/** Seat gradients used by every seat, in both the drawn and the photo room. */
+const SharedDefs = memo(function SharedDefs() {
+  return (
+    <defs>
+        {/* Halo behind FREE seats; its opacity is animated in CSS (see .seat-glow-free). */}
+        <radialGradient id="seat-glow">
+          <stop offset="40%" stopColor="var(--seat-free)" stopOpacity={0.45} />
+          <stop offset="100%" stopColor="var(--seat-free)" stopOpacity={0} />
+        </radialGradient>
+        {SEAT_GRADIENT_KEYS.map((key) => (
+          <radialGradient key={key} id={`seat-sphere-${key}`} cx="35%" cy="28%" r="75%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity={0.4} />
+            <stop offset="55%" stopColor={`var(--seat-${key})`} />
+            <stop offset="100%" stopColor={`var(--seat-${key})`} stopOpacity={0.88} />
+          </radialGradient>
+        ))}
+    </defs>
+  );
+});
+
+/**
+ * The real room photographed from above: the day photo in the light theme, the night photo in the
+ * dark theme. Tables are painted in the photo, so only a nickname (over the painted "Mesa N") and
+ * the QR highlight are drawn on top.
+ */
+const PhotoBackdrop = memo(function PhotoBackdrop({ skin, tables, highlightTableCode }: { skin: PhotoSkin; tables: RoomMapDto["tables"]; highlightTableCode: string | null }) {
+  const { width, height } = skin.viewBox;
+  return (
+    <>
+      <image href={skin.dayHref} x={0} y={0} width={width} height={height} preserveAspectRatio="xMidYMid slice" className="dark:hidden" aria-hidden="true" />
+      <image href={skin.nightHref} x={0} y={0} width={width} height={height} preserveAspectRatio="xMidYMid slice" className="hidden dark:inline" aria-hidden="true" />
+      {tables.map((table) => {
+        const rect = skin.tables.get(table.code);
+        if (!rect) return null;
+        const highlighted = highlightTableCode !== null && table.code === highlightTableCode;
+        return (
+          <g key={table.id} aria-hidden="true" pointerEvents="none">
+            {highlighted ? (
+              <rect x={rect.x - 8} y={rect.y - 8} width={rect.width + 16} height={rect.height + 16} rx={14} fill="none" stroke="var(--primary)" strokeWidth={6} />
+            ) : null}
+            {table.nickname ? <RoomLabelPill x={rect.x + rect.width / 2} y={rect.y + rect.height / 2} text={table.nickname} /> : null}
+          </g>
+        );
+      })}
+    </>
+  );
+});
+
+/** Floor, walls, windows, entrance and drawn-room defs: nothing here depends on live seat state. */
 const StaticRoomBackdrop = memo(function StaticRoomBackdrop({ width, height }: { width: number; height: number }) {
   return (
     <>
@@ -168,18 +239,6 @@ const StaticRoomBackdrop = memo(function StaticRoomBackdrop({ width, height }: {
         <filter id="table-shadow" x="-20%" y="-20%" width="140%" height="140%">
           <feDropShadow dx="0" dy="3" stdDeviation="4" floodOpacity="0.15" />
         </filter>
-        {/* Halo behind FREE seats; its opacity is animated in CSS (see .seat-glow-free). */}
-        <radialGradient id="seat-glow">
-          <stop offset="40%" stopColor="var(--seat-free)" stopOpacity={0.45} />
-          <stop offset="100%" stopColor="var(--seat-free)" stopOpacity={0} />
-        </radialGradient>
-        {SEAT_GRADIENT_KEYS.map((key) => (
-          <radialGradient key={key} id={`seat-sphere-${key}`} cx="35%" cy="28%" r="75%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity={0.4} />
-            <stop offset="55%" stopColor={`var(--seat-${key})`} />
-            <stop offset="100%" stopColor={`var(--seat-${key})`} stopOpacity={0.88} />
-          </radialGradient>
-        ))}
       </defs>
 
       {/* Floor */}

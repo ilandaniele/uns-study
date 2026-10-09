@@ -549,7 +549,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
       <section className="order-2 flex flex-col gap-3 lg:order-2">
         <div
           onPointerDownCapture={preloadSeatDetail}
-          className="relative h-[70dvh] w-full overflow-hidden rounded-2xl border border-app bg-surface md:h-[80dvh] lg:mx-auto lg:aspect-[5/8] lg:h-[82dvh] lg:w-auto lg:max-w-full"
+          className="relative h-[70dvh] w-full overflow-hidden rounded-2xl border border-app bg-surface md:h-[80dvh] lg:mx-auto lg:aspect-[2/3] lg:h-[82dvh] lg:w-auto lg:max-w-full"
         >
           {isDesktop || !mounted ? (
             <div className="flex h-full w-full items-center justify-center">{roomMap}</div>

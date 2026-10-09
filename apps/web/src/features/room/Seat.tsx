@@ -56,9 +56,11 @@ export interface SeatProps {
   dimmed?: boolean;
   /** The viewer's favorite seat — gets a small star badge. */
   isFavorite?: boolean;
+  /** Drawn over a photo of the room: the real chair is already there, so skip the drawn backrest. */
+  photo?: boolean;
 }
 
-export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, isMySeat, isSelected, onSelect, avatar = null, adminBadge = false, dimmed = false, isFavorite = false }: SeatProps) {
+export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, isMySeat, isSelected, onSelect, avatar = null, adminBadge = false, dimmed = false, isFavorite = false, photo = false }: SeatProps) {
   const badge = seatAvatarRender(avatar, seat.status === "OCCUPIED" || isMySeat);
   const showPhoto = badge !== null;
   const clipId = `seat-photo-${seat.id}`;
@@ -104,7 +106,7 @@ export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, is
         {/* Contact shadow, cast toward the tabletop the chair is tucked under. */}
         <ellipse cx={0} cy={shadowCy} rx={SEAT_R * 0.85} ry={SEAT_R * 0.35} fill="rgb(0 0 0 / 0.22)" />
         {/* Backrest bar on the side away from the table (stools at wall bars have none). */}
-        {tableType === "WALL_BAR" ? null : (
+        {tableType === "WALL_BAR" || photo ? null : (
           <rect x={-RING_R + 2} y={facing === "up" ? -RING_R - 8 : RING_R} width={(RING_R - 2) * 2} height={8} rx={4} fill="var(--seat-backrest)" />
         )}
         {/* Wooden chair frame, seen from directly above, peeking out around the cushion. */}

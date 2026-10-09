@@ -15,7 +15,7 @@ export function RoomSkeleton() {
         <div className="h-16 animate-pulse rounded-2xl bg-[var(--surface-2)]" />
       </section>
       <section className="order-2 flex flex-col gap-3 lg:order-2">
-        <div className="relative h-[70dvh] w-full overflow-hidden rounded-3xl border border-app bg-surface shadow-sm md:h-[80dvh] lg:mx-auto lg:aspect-[5/8] lg:h-[82dvh] lg:w-auto lg:max-w-full">
+        <div className="relative h-[70dvh] w-full overflow-hidden rounded-3xl border border-app bg-surface shadow-sm md:h-[80dvh] lg:mx-auto lg:aspect-[2/3] lg:h-[82dvh] lg:w-auto lg:max-w-full">
           <div className="h-full w-full animate-pulse bg-[var(--surface-2)]" />
         </div>
       </section>
