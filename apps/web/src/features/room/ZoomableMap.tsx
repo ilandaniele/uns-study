@@ -1,12 +1,16 @@
 "use client";
 
 import { MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon, ArrowsCounterClockwiseIcon } from "@phosphor-icons/react/dist/ssr";
-import { useRef, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { TransformComponent, TransformWrapper, type ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
 
 /** Pinch/pan wrapper plus zoom buttons for touch screens. Loaded only on mobile via `next/dynamic`. */
 export default function ZoomableMap({ children }: { children: ReactNode }) {
   const zoomRef = useRef<ReactZoomPanPinchRef>(null);
+  // One-finger panning only while zoomed in. At 1x there is nothing to pan, and an enabled pan handler
+  // swallows every vertical swipe that starts on the map (preventDefault on touchmove) and focuses
+  // the wrapper, so the page couldn't be scrolled past the map and jumped on touch. Pinch still zooms.
+  const [zoomed, setZoomed] = useState(false);
   return (
     <>
       {/* No double-tap zoom, pan inertia or snap-back animation: tapping a seat must never move the map. Pinch, drag and the buttons still zoom/pan.
@@ -19,9 +23,10 @@ export default function ZoomableMap({ children }: { children: ReactNode }) {
         initialScale={1}
         limitToBounds
         doubleClick={{ disabled: true }}
-        panning={{ velocityDisabled: true }}
+        panning={{ disabled: !zoomed, velocityDisabled: true }}
         autoAlignment={{ disabled: true, sizeX: 0, sizeY: 0 }}
         velocityAnimation={{ disabled: true }}
+        onTransform={(_ref, state) => setZoomed(state.scale > 1.01)}
       >
         <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }} contentStyle={{ width: "100%", height: "100%" }}>
           {children}
