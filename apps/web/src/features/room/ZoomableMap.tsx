@@ -9,7 +9,9 @@ export default function ZoomableMap({ children }: { children: ReactNode }) {
   const zoomRef = useRef<ReactZoomPanPinchRef>(null);
   return (
     <>
-      {/* No double-tap zoom, pan inertia or snap-back animation: tapping a seat must never move the map. Pinch, drag and the buttons still zoom/pan. */}
+      {/* No double-tap zoom, pan inertia or snap-back animation: tapping a seat must never move the map. Pinch, drag and the buttons still zoom/pan.
+          autoAlignment sizeX/sizeY default to 100, which lets a drag push the map 100 px past its edges even with
+          alignment disabled, and nothing snaps it back. Zero keeps every drag inside the map's bounds. */}
       <TransformWrapper
         ref={zoomRef}
         minScale={1}
@@ -18,7 +20,7 @@ export default function ZoomableMap({ children }: { children: ReactNode }) {
         limitToBounds
         doubleClick={{ disabled: true }}
         panning={{ velocityDisabled: true }}
-        autoAlignment={{ disabled: true }}
+        autoAlignment={{ disabled: true, sizeX: 0, sizeY: 0 }}
         velocityAnimation={{ disabled: true }}
       >
         <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }} contentStyle={{ width: "100%", height: "100%" }}>
