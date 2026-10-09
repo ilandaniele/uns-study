@@ -51,7 +51,7 @@ fetched from `raw.githubusercontent.com` / `jslib.k6.io` at start, so a network 
 | `BASE_URL` | `http://localhost:4000` | API origin (guarded) |
 | `ORIGIN` | `http://localhost:3000` | `Origin` header on writes (CSRF check, must be in the API's `WEB_ORIGIN`) |
 | `ALLOW_REMOTE` | unset | `1` to allow a non-local, non-production host |
-| `ROOM_SLUG` / `ROOM_LAT` / `ROOM_LNG` | `principal` / `-38.70138372483678` / `-62.270139753196005` | Room + geofence centre (seed: `packages/database/src/seed.ts`; recalibrated DBs need overrides) |
+| `ROOM_SLUG` / `ROOM_LAT` / `ROOM_LNG` | `principal` / `-38.7018942` / `-62.2702852` | Room + geofence centre (seed: `packages/database/src/seed.ts`; recalibrated DBs need overrides) |
 | `USERS` | per scenario (60 / 300 / 80 / 150) | Test accounts created in `setup()`; extra VUs are anonymous (read-only) |
 | `MAX_VUS` (stress), `PEAK_VUS` (spike) | 400 / 500 | Upper bound of the ramp |
 | `SOAK_HOLD` | `2h` | Soak plateau length |

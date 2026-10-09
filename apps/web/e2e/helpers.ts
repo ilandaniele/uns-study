@@ -5,7 +5,7 @@ export const API_URL = "http://localhost:4000";
 export const ROOM_SLUG = "principal";
 
 /** Coordinates of the seeded room (see packages/database/src/seed.ts INITIAL_ROOM). */
-export const IN_GEOFENCE_LOCATION = { latitude: -38.70138372483678, longitude: -62.270139753196005, accuracy: 20 };
+export const IN_GEOFENCE_LOCATION = { latitude: -38.7018942, longitude: -62.2702852, accuracy: 20 };
 
 function randomEmail(): string {
   return `e2e-${randomBytes(6).toString("hex")}@example.test`;

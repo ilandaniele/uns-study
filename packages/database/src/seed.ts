@@ -17,8 +17,8 @@ export const INITIAL_ROOM = {
   name: "Sala principal",
   description: null as string | null,
   // Sala de estudio, Bahía Blanca (confirmed by the project owner).
-  latitude: -38.70138372483678,
-  longitude: -62.270139753196005,
+  latitude: -38.7018942,
+  longitude: -62.2702852,
   geofenceRadiusM: 50,
   timezone: "America/Argentina/Buenos_Aires",
   dailyResetTime: "04:00",

@@ -1,11 +1,11 @@
 import exec from 'k6/execution';
 
 // Room identity + geofence centre. Defaults are the seeded room (packages/database/src/seed.ts:15-25:
-// slug "principal", lat -38.70138372483678, lng -62.270139753196005, geofenceRadiusM 50). Admins can
+// slug "principal", lat -38.7018942, lng -62.2702852, geofenceRadiusM 50). Admins can
 // recalibrate the geofence in a live DB, so all three are overridable.
 export const ROOM_SLUG = __ENV.ROOM_SLUG || 'principal';
-export const ROOM_LAT = parseFloat(__ENV.ROOM_LAT || '-38.70138372483678');
-export const ROOM_LNG = parseFloat(__ENV.ROOM_LNG || '-62.270139753196005');
+export const ROOM_LAT = parseFloat(__ENV.ROOM_LAT || '-38.7018942');
+export const ROOM_LNG = parseFloat(__ENV.ROOM_LNG || '-62.2702852');
 
 export function rand(min, max) {
   return min + Math.random() * (max - min);

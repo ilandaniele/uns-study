@@ -69,7 +69,7 @@ describe("PresenceService", () => {
 
 describe("PresenceService accuracy tolerance", () => {
   const svc = new PresenceService();
-  const center = { latitude: -38.70138372483678, longitude: -62.270139753196005, geofenceRadiusM: 50 };
+  const center = { latitude: -38.7018942, longitude: -62.2702852, geofenceRadiusM: 50 };
   // ~0.0009 degrees of latitude is ~100 m.
   const at = (dLat: number, accuracy: number) => ({
     latitude: center.latitude + dLat,
@@ -91,7 +91,7 @@ describe("PresenceService accuracy tolerance", () => {
 
 describe("PresenceService clock skew", () => {
   const svc = new PresenceService();
-  const room = { latitude: -38.70138372483678, longitude: -62.270139753196005, geofenceRadiusM: 50 };
+  const room = { latitude: -38.7018942, longitude: -62.2702852, geofenceRadiusM: 50 };
   const opts = { isProduction: true, devBypass: false, maxAgeS: 120, maxAccuracyM: 150 };
 
   it("accepts a fresh fix from a phone whose clock runs 3 minutes fast", () => {
