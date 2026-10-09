@@ -40,7 +40,7 @@ jobs:
     timeout-minutes: 200
     services:
       postgres:
-        image: postgres:16
+        image: public.ecr.aws/docker/library/postgres:16 # AWS mirror of the official image; Docker Hub pulls time out on runners
         env:
           POSTGRES_USER: loadtest
           POSTGRES_PASSWORD: loadtest
