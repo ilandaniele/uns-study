@@ -148,8 +148,9 @@ export async function enablePushNotifications(): Promise<boolean> {
 export function pushFailureMessage(result: Exclude<PushEnableResult, { ok: true }>): string {
   const message = baseFailureMessage(result);
   // An app installed from the old address opens saladeestudio.com.ar as an outside page, where
-  // Android can't grant notifications; Chrome itself can also have notifications off in Android.
-  if (isAndroid() && (result.reason === "permission-dismissed" || result.reason === "push-service")) {
+  // Android can't grant notifications and reports them as blocked; Chrome itself can also have
+  // notifications off in Android, which the page also sees as blocked.
+  if (isAndroid() && (result.reason === "permission-denied" || result.reason === "permission-dismissed" || result.reason === "push-service")) {
     return `${message} En Android: si instalaste la app antes del cambio de dirección, desinstalala y volvé a instalarla desde saladeestudio.com.ar en Chrome. Revisá también que Chrome tenga las notificaciones permitidas en Ajustes › Apps › Chrome › Notificaciones.`;
   }
   return message;

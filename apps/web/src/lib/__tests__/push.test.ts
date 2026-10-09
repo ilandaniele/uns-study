@@ -149,6 +149,7 @@ describe("enablePushNotificationsDetailed", () => {
   it("adds the reinstall hint on Android", () => {
     vi.stubGlobal("navigator", { userAgent: "Mozilla/5.0 (Linux; Android 14) Chrome/130" });
     expect(pushFailureMessage({ ok: false, reason: "push-service" })).toContain("volvé a instalarla");
+    expect(pushFailureMessage({ ok: false, reason: "permission-denied" })).toContain("Ajustes › Apps › Chrome › Notificaciones");
     expect(pushFailureMessage({ ok: false, reason: "server" })).not.toContain("volvé a instalarla");
   });
 });
