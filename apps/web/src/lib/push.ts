@@ -151,7 +151,7 @@ export function pushFailureMessage(result: Exclude<PushEnableResult, { ok: true 
   // Android can't grant notifications and reports them as blocked; Chrome itself can also have
   // notifications off in Android, which the page also sees as blocked.
   if (isAndroid() && (result.reason === "permission-denied" || result.reason === "permission-dismissed" || result.reason === "push-service")) {
-    return `${message} En Android: si instalaste la app antes del cambio de dirección, desinstalala y volvé a instalarla desde saladeestudio.com.ar en Chrome. Revisá también que Chrome tenga las notificaciones permitidas en Ajustes › Apps › Chrome › Notificaciones.`;
+    return `${message} En Android: si instalaste la app antes del cambio de dirección, desinstalala y volvé a instalarla desde saladeestudio.com.ar en Chrome. Si arriba ves una barra con una X y la dirección, estás en esa app vieja: reinstalarla es la única forma, aunque tengas todo permitido. Revisá también que Chrome y la app Sala de Estudio tengan las notificaciones permitidas en Ajustes › Apps › Chrome › Notificaciones y en Ajustes › Apps › Sala de Estudio › Notificaciones.`;
   }
   return message;
 }
