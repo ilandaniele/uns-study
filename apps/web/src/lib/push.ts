@@ -146,6 +146,20 @@ export async function enablePushNotifications(): Promise<boolean> {
 
 /** User-facing Spanish explanation for a failed activation, with what to do next. */
 export function pushFailureMessage(result: Exclude<PushEnableResult, { ok: true }>): string {
+  const message = baseFailureMessage(result);
+  // An app installed from the old address opens saladeestudio.com.ar as an outside page, where
+  // Android can't grant notifications; Chrome itself can also have notifications off in Android.
+  if (isAndroid() && (result.reason === "permission-dismissed" || result.reason === "push-service")) {
+    return `${message} En Android: si instalaste la app antes del cambio de dirección, desinstalala y volvé a instalarla desde saladeestudio.com.ar en Chrome. Revisá también que Chrome tenga las notificaciones permitidas en Ajustes › Apps › Chrome › Notificaciones.`;
+  }
+  return message;
+}
+
+function isAndroid(): boolean {
+  return typeof navigator !== "undefined" && /android/i.test(navigator.userAgent);
+}
+
+function baseFailureMessage(result: Exclude<PushEnableResult, { ok: true }>): string {
   const code = result.detail ? ` (código: ${result.detail})` : "";
   switch (result.reason) {
     case "unsupported":
