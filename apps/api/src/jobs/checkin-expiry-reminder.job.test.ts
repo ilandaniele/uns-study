@@ -39,7 +39,7 @@ describe("CheckInExpiryReminderJob", () => {
     const gateway = new RoomRealtimeGateway(roomState, mockAuth, buildNotificationService(db), new RestrictionService(db));
     const push = new PushService(db);
     emit = vi.spyOn(gateway, "emitCheckInExpiring");
-    send = vi.spyOn(push, "sendToUser").mockResolvedValue(undefined);
+    send = vi.spyOn(push, "sendToUser").mockResolvedValue(null);
     job = new CheckInExpiryReminderJob(db, gateway, push);
 
     const room = await getRoom(db);

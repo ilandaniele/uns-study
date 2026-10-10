@@ -178,6 +178,33 @@ function baseFailureMessage(result: Exclude<PushEnableResult, { ok: true }>): st
   }
 }
 
+export interface TestPushResult {
+  devices: number;
+  accepted: number;
+  gone: number;
+  failed: number;
+  unconfigured?: boolean;
+}
+
+/** Asks the API to send a test notification to every device the signed-in user has subscribed. */
+export function sendTestPush(): Promise<TestPushResult> {
+  return apiPost<TestPushResult>("/api/v1/notifications/push-subscriptions/test");
+}
+
+/** Text shown after a test send, from the per-device counts the API returned. */
+export function testPushMessage(result: TestPushResult): { ok: boolean; text: string } {
+  if (result.unconfigured) return { ok: false, text: "Las notificaciones no están configuradas en el servidor." };
+  if (result.devices === 0) return { ok: false, text: "No hay ningún dispositivo activado. Tocá “Activar notificaciones en este dispositivo” y probá de nuevo." };
+  if (result.accepted === 0) {
+    return { ok: false, text: "No se pudo enviar. Desactivá y volvé a activar las notificaciones en este dispositivo, y probá de nuevo." };
+  }
+  const where = result.accepted === 1 ? "1 dispositivo" : `${result.accepted} dispositivos`;
+  return {
+    ok: true,
+    text: `Enviada a ${where}. Si no te aparece en unos segundos, revisá que el celular permita notificaciones de esta app y que no esté en modo No molestar.`,
+  };
+}
+
 /** Unsubscribes this device from push and tells the API to forget it. Safe to call even if the
  *  device was never subscribed. */
 export async function disablePushNotifications(): Promise<void> {

@@ -38,7 +38,7 @@ async function build(db: Db) {
   const rateLimit = new RateLimitService();
   const abusePolicy = new AbusePolicyService(db, new TurnstileService());
   const push = new PushService(db);
-  const send = vi.spyOn(push, "sendToUser").mockResolvedValue(undefined);
+  const send = vi.spyOn(push, "sendToUser").mockResolvedValue(null);
   const notifications = new NotificationService(db, push, roomState);
   const disputes = new DisputeService(db, roomState, presence, security, studySessions, reputation, restrictions, gateway, rateLimit, abusePolicy, notifications);
   const checkIns = new CheckInService(db, roomState, presence, security, studySessions, qr, disputes, new RolesService(db));

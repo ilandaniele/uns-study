@@ -38,6 +38,12 @@ describe("PushService", () => {
     expect(sendNotification).toHaveBeenCalledWith(expect.anything(), expect.any(String), { timeout: 5000, TTL: 600, urgency: "high" });
   });
 
+  it("returns per-device counts for the send", async () => {
+    expect(await svc.sendToUser("u1", { title: "t", body: "b", url: "/", tag: "tag" })).toEqual({ devices: 1, accepted: 1, gone: 0, failed: 0 });
+    sendNotification.mockRejectedValueOnce(Object.assign(new Error("gone"), { statusCode: 410 }));
+    expect(await svc.sendToUser("u1", { title: "t", body: "b", url: "/", tag: "tag" })).toEqual({ devices: 1, accepted: 0, gone: 1, failed: 0 });
+  });
+
   it("deletes the subscription immediately on a 410 (gone)", async () => {
     sendNotification.mockRejectedValueOnce(Object.assign(new Error("gone"), { statusCode: 410 }));
     await svc.sendToUser("u1", { title: "t", body: "b", url: "/", tag: "tag" });

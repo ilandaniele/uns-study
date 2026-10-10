@@ -23,6 +23,14 @@ export interface PushPayload {
   tag: string;
 }
 
+/** Per-device result counts of one `sendToUser` call. */
+export interface PushSendSummary {
+  devices: number;
+  accepted: number;
+  gone: number;
+  failed: number;
+}
+
 /**
  * Thin wrapper around `web-push` for sending to every device a user has subscribed. Never logs a
  * subscription's `endpoint`/`p256dh`/`auth`. A subscription the push service reports gone (404/410
@@ -44,16 +52,18 @@ export class PushService {
   }
 
   /** Sends `payload` to every subscription on record for `userId`, best-effort per device. */
-  async sendToUser(userId: string, payload: PushPayload): Promise<void> {
-    if (!this.ensureConfigured()) return;
+  async sendToUser(userId: string, payload: PushPayload): Promise<PushSendSummary | null> {
+    if (!this.ensureConfigured()) return null;
     const subs = await this.db.select().from(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.userId, userId));
     const outcomes = await mapWithConcurrency(subs, SEND_CONCURRENCY, (sub) => this.sendOne(sub, payload));
     // One line per send so a "the notification never arrived" report can be checked against what
     // the push service accepted. Counts only: never the endpoint or keys.
     const count = (o: PushOutcome) => outcomes.filter((x) => x === o).length;
+    const summary = { devices: subs.length, accepted: count("delivered"), gone: count("gone"), failed: count("failed") };
     this.logger.log(
-      `Push "${payload.tag}" to user ${userId}: ${subs.length} device(s), ${count("delivered")} accepted, ${count("gone")} gone, ${count("failed")} failed`,
+      `Push "${payload.tag}" to user ${userId}: ${summary.devices} device(s), ${summary.accepted} accepted, ${summary.gone} gone, ${summary.failed} failed`,
     );
+    return summary;
   }
 
   private async sendOne(sub: typeof schema.pushSubscriptions.$inferSelect, payload: PushPayload): Promise<PushOutcome> {

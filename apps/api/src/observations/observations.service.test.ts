@@ -29,7 +29,7 @@ async function build(db: Db) {
   const studySessions = new StudySessionService(db);
   const qr = new QrService(db);
   const push = new PushService(db);
-  const send = vi.spyOn(push, "sendToUser").mockResolvedValue(undefined);
+  const send = vi.spyOn(push, "sendToUser").mockResolvedValue(null);
   const notifications = new NotificationService(db, push, roomState);
   const disputes = buildDisputeService(db, notifications);
   const checkIns = new CheckInService(db, roomState, presence, security, studySessions, qr, disputes, new RolesService(db));

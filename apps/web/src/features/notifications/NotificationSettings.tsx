@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useNotificationPreferences } from "./useNotificationPreferences";
 import {
   disablePushNotifications,
+  sendTestPush,
+  testPushMessage,
   enablePushNotificationsDetailed,
   getPushSupportState,
   isIos,
@@ -41,6 +43,8 @@ export function NotificationSettings() {
   const { preferences, loading, saving, update } = useNotificationPreferences();
   const [deviceState, setDeviceState] = useState<"idle" | "enabling" | "enabled" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [testState, setTestState] = useState<"idle" | "sending" | "done">("idle");
+  const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
 
   const support = getPushSupportState();
   const showIosHint = isIos() && !isStandalone();
@@ -60,6 +64,17 @@ export function NotificationSettings() {
   async function handleDisableDevice() {
     await disablePushNotifications();
     setDeviceState("idle");
+  }
+
+  async function handleTestPush() {
+    setTestState("sending");
+    setTestResult(null);
+    try {
+      setTestResult(testPushMessage(await sendTestPush()));
+    } catch {
+      setTestResult({ ok: false, text: "No se pudo enviar la prueba. Esperá unos minutos y probá de nuevo." });
+    }
+    setTestState("done");
   }
 
   if (loading || !preferences) {
@@ -149,6 +164,23 @@ export function NotificationSettings() {
           <button type="button" onClick={() => void handleDisableDevice()} className="mt-2 text-xs font-semibold text-muted hover:underline">
             Desactivar en este dispositivo
           </button>
+        ) : null}
+        {support === "available" ? (
+          <div className="mt-3 flex flex-col gap-1 border-t border-app pt-3">
+            <button
+              type="button"
+              onClick={() => void handleTestPush()}
+              disabled={testState === "sending"}
+              className="self-start text-xs font-semibold text-primary hover:underline disabled:opacity-50"
+            >
+              {testState === "sending" ? "Enviando…" : "Enviar notificación de prueba"}
+            </button>
+            {testResult ? (
+              <p role="status" className={`text-xs ${testResult.ok ? "text-emerald-700" : "text-red-600"}`}>
+                {testResult.text}
+              </p>
+            ) : null}
+          </div>
         ) : null}
       </div>
     </div>
