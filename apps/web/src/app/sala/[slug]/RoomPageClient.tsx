@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { markHowToSeen, shouldShowHowToOnFirstVisit } from "@/features/help/how-to-seen";
 import { showPreCheckInAd } from "@/features/ads/ads";
 import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
 import { ActiveCheckInBanner } from "@/features/room/ActiveCheckInBanner";
@@ -248,7 +249,23 @@ export function RoomPageClient({ slug }: { slug: string }) {
   );
 
   const openHowTo = useCallback(() => setShowHowTo(true), []);
-  const closeHowTo = useCallback(() => setShowHowTo(false), []);
+  const closeHowTo = useCallback(() => {
+    setShowHowTo(false);
+    markHowToSeen();
+  }, []);
+
+  // First visit on this browser (signed in or not): open the guide once, after the app-open ad closes.
+  const howToAutoChecked = useRef(false);
+  useEffect(() => {
+    if (adOverlayOpen || howToAutoChecked.current || !shouldShowHowToOnFirstVisit()) return;
+    // Short delay so the map paints first and the guide reads as a welcome, not a blocker.
+    // The ref is set inside the timer so a cancelled run (ad opening, Strict Mode) can retry.
+    const timer = window.setTimeout(() => {
+      howToAutoChecked.current = true;
+      setShowHowTo(true);
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [adOverlayOpen]);
 
   // Target seat for a pending "Ya tenés otro lugar marcado" confirmation — set from either the
   // seat detail's "Estoy acá" or the dispute-won banner's "Estoy acá" (D3: both go through the
