@@ -12,7 +12,7 @@ function fakeStorage(): StorageLike & { data: Map<string, string> } {
 }
 
 const T0 = 1_700_000_000_000;
-const base = { pathname: "/sala/principal", isMobile: true };
+const base = { pathname: "/sala/principal" };
 
 describe("shouldShowAppOpen", () => {
   it("skips the first ever visit and records it", () => {
@@ -29,12 +29,6 @@ describe("shouldShowAppOpen", () => {
       expect(shouldShowAppOpen({ ...base, pathname, now: T0 + 1, storage })).toBe(false);
     }
     expect(shouldShowAppOpen({ ...base, pathname: "/administrar", now: T0 + 1, storage })).toBe(true);
-  });
-
-  it("skips desktop", () => {
-    const storage = fakeStorage();
-    shouldShowAppOpen({ ...base, now: T0, storage });
-    expect(shouldShowAppOpen({ ...base, isMobile: false, now: T0 + 1, storage })).toBe(false);
   });
 
   it("shows again on the next open once the short anti-stacking gap has passed", () => {

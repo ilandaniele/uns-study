@@ -10,6 +10,9 @@ import { closeHouseInterstitial, useHouseInterstitial } from "./ad-overlay-store
 import { HouseAd } from "./HouseAd";
 import { RewardedAdButton } from "./RewardedAdButton";
 
+const RING_R = 14;
+const RING_C = 2 * Math.PI * RING_R;
+
 /**
  * Our own interstitial; it only ever wraps house ads (GAM formats draw Google's own UI).
  * It sits on top of the screen but never gates anything: the check-in runs underneath.
@@ -32,7 +35,7 @@ function Overlay({ placement }: { placement: NonNullable<ReturnType<typeof useHo
   }, [placement]);
   const { closing, requestClose } = useExitTransition(close);
 
-  // One frame after mount so the bar animates from empty (transform only, hidden under reduced motion).
+  // One frame after mount so the countdown ring fills from empty (hidden under reduced motion).
   useEffect(() => {
     const id = window.requestAnimationFrame(() => setFilling(true));
     return () => window.cancelAnimationFrame(id);
@@ -52,9 +55,9 @@ function Overlay({ placement }: { placement: NonNullable<ReturnType<typeof useHo
   useFocusTrap(panelRef, { onEscape: canClose ? requestClose : undefined });
 
   return (
+    // Like Moovit's app-open ad: the backdrop never closes it, only the X once the countdown ends.
     <div
-      className={`${closing ? "backdrop-exit" : "backdrop-enter"} fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center sm:p-4`}
-      onClick={canClose ? requestClose : undefined}
+      className={`${closing ? "backdrop-exit" : "backdrop-enter"} fixed inset-0 z-[70] flex items-stretch justify-center bg-black/60 sm:items-center sm:p-6`}
     >
       <div
         ref={panelRef}
@@ -62,10 +65,9 @@ function Overlay({ placement }: { placement: NonNullable<ReturnType<typeof useHo
         aria-modal="true"
         aria-labelledby="house-ad-label"
         tabIndex={-1}
-        className={`${closing ? "dialog-exit" : "dialog-enter"} w-full max-w-sm rounded-t-[22px] border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl outline-none sm:rounded-[12px]`}
-        onClick={(e) => e.stopPropagation()}
+        className={`${closing ? "dialog-exit" : "dialog-enter"} flex h-full w-full flex-col bg-surface px-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-[calc(env(safe-area-inset-top)+0.75rem)] outline-none sm:h-auto sm:max-w-md sm:rounded-[16px] sm:border sm:border-app sm:pb-6 sm:pt-4 sm:shadow-xl`}
       >
-        <div className="mb-4 flex min-h-11 items-center justify-between gap-3">
+        <div className="flex min-h-11 items-center justify-between gap-3">
           <span id="house-ad-label" className="label-caps text-muted">
             Publicidad
           </span>
@@ -74,28 +76,44 @@ function Overlay({ placement }: { placement: NonNullable<ReturnType<typeof useHo
               type="button"
               onClick={requestClose}
               aria-label="Cerrar anuncio"
-              className="-mr-2 grid h-11 w-11 place-items-center rounded-[10px] text-main hover:bg-[var(--surface-2)]"
+              className="-mr-2 grid h-11 w-11 place-items-center rounded-full text-main hover:bg-[var(--surface-2)]"
             >
               <XIcon size={20} weight="bold" aria-hidden="true" />
             </button>
           ) : (
-            <span aria-live="off" className="text-xs font-semibold tabular-nums text-muted">
-              Podés cerrar en {remaining}…
+            <span
+              role="timer"
+              aria-label={`Podés cerrar el anuncio en ${remaining} segundos`}
+              className="relative -mr-2 grid h-11 w-11 place-items-center"
+            >
+              <svg aria-hidden="true" viewBox="0 0 32 32" className="absolute inset-[6px] -rotate-90">
+                <circle cx="16" cy="16" r={RING_R} fill="none" strokeWidth="2.5" className="stroke-[var(--surface-2)]" />
+                <circle
+                  cx="16"
+                  cy="16"
+                  r={RING_R}
+                  fill="none"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  className="stroke-[var(--primary)] motion-reduce:hidden"
+                  strokeDasharray={RING_C}
+                  style={{
+                    strokeDashoffset: filling ? 0 : RING_C,
+                    transition: `stroke-dashoffset ${CLOSE_COUNTDOWN_S}s linear`,
+                  }}
+                />
+              </svg>
+              <span aria-hidden="true" className="text-xs font-bold tabular-nums text-main">
+                {remaining}
+              </span>
             </span>
           )}
         </div>
-        <HouseAd variant="interstitial" onNavigate={close} />
-        <div className="mt-3 empty:hidden">
-          <RewardedAdButton />
-        </div>
-        <div aria-hidden="true" className="mt-4 h-[3px] overflow-hidden rounded-full bg-[var(--surface-2)] motion-reduce:hidden">
-          <div
-            className="h-full origin-left bg-primary"
-            style={{
-              transform: filling ? "scaleX(1)" : "scaleX(0)",
-              transition: `transform ${CLOSE_COUNTDOWN_S}s linear`,
-            }}
-          />
+        <div className="flex flex-1 flex-col justify-center py-6 sm:py-4">
+          <HouseAd variant="interstitial" onNavigate={close} />
+          <div className="mt-3 empty:hidden">
+            <RewardedAdButton />
+          </div>
         </div>
       </div>
     </div>

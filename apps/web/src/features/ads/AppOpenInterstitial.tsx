@@ -30,8 +30,7 @@ export function AppOpenInterstitial() {
       try {
         const now = Date.now();
         const storage = window.localStorage;
-        const isMobile = window.matchMedia("(max-width: 1023px)").matches;
-        if (!shouldShowAppOpen({ pathname: pathnameRef.current, now, storage, isMobile })) return;
+        if (!shouldShowAppOpen({ pathname: pathnameRef.current, now, storage })) return;
 
         const provider = getAdProvider("interstitial");
         if (provider.id === "gam") {

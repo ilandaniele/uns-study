@@ -65,22 +65,20 @@ export function markShown(kind: "app_open" | "pre_checkin", now: number, storage
 
 /**
  * The app-open ad never greets a first-time visitor: the first call only records `firstSeenAt`.
- * It is also mobile-only, skips excluded routes, and honours both the cap and the reward snooze.
+ * It runs on mobile and desktop alike, skips excluded routes, and honours both the cap and the reward snooze.
  */
 export function shouldShowAppOpen(args: {
   pathname: string | null | undefined;
   now: number;
   storage: StorageLike;
-  isMobile: boolean;
 }): boolean {
-  const { pathname, now, storage, isMobile } = args;
+  const { pathname, now, storage } = args;
   if (!storageUsable(storage)) return false;
   if (readNumber(storage, FIRST_SEEN_KEY) === null) {
     writeNumber(storage, FIRST_SEEN_KEY, now);
     return false;
   }
   if (isExcludedPath(pathname)) return false;
-  if (!isMobile) return false;
   if (isSnoozed(now, storage)) return false;
   const last = readNumber(storage, KEY_APP_OPEN);
   if (last !== null && now - last < APP_OPEN_CAP_MS) return false;
