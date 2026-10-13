@@ -114,7 +114,7 @@ Notas:
   - Jobs a Cron Triggers y alarms. web-push a una librería con Web Crypto. Rate limits a binding o DO. Hay que migrar los datos y armar un CI nuevo con wrangler.
 - **Esfuerzo**: **25 a 40 días**.
 - **Riesgo**: muy alto. Se pierden las garantías de concurrencia que hoy da Postgres, D1 tiene un solo escritor lejos de Argentina y no hay transacciones interactivas.
-- **No recomendado.**
+- **No recomendado** en la primera versión de este relevamiento. **Revisado en la sección 6**: con un Durable Object por sala la concurrencia no se pierde y la opción pasa a ser viable.
 
 ### B. Web en Workers + API en Containers + Postgres (Hyperdrive o conexión directa)
 
@@ -156,6 +156,76 @@ Notas:
 3. **Reevaluar B solo si** Cloudflare publica placement por región para Containers con cobertura en Sudamérica, o si Fly se vuelve un problema de confiabilidad. Antes de B, testear `pg_advisory_xact_lock` y las transacciones bajo Hyperdrive o con conexión directa.
 4. **Descartar A** mientras las reglas de concurrencia dependan de índices únicos parciales, transacciones interactivas y locks de Postgres.
 
+## 6. Revisión: mover todo a Cloudflare, base incluida
+
+Contexto nuevo: perder los datos actuales no es problema y el tiempo de trabajo no importa. La única condición es **no romper funcionalidad**. Con eso la respuesta cambia: **sí se puede**.
+
+### 6.1 Corrección de la conclusión anterior
+
+La sección 4.A decía que se perdían las garantías de concurrencia. Eso vale para "D1 solo", no para el diseño correcto:
+
+- Un **Durable Object (DO) por sala** procesa los pedidos de esa sala **de a uno** (single-threaded, con input/output gates) y guarda su estado en su propio SQLite con `transactionSync()`. Todo check-in, observación, disputa y nombre de mesa de esa sala queda serializado. Es una garantía **más fuerte** que los advisory locks y `FOR UPDATE` de hoy, que hay que acordarse de tomar en cada lugar.
+- SQLite soporta índices únicos parciales (`WHERE status = 'ACTIVE'`), índices por expresión (`lower(alias)`), CHECK, `ON CONFLICT ... DO UPDATE ... WHERE` y `RETURNING`. Las 5 restricciones únicas parciales se portan tal cual.
+- Hoy hay **una sola sala** (`principal`). "Un check-in activo por usuario" se resuelve adentro del DO de la sala. Si en el futuro hay más salas, se agrega un DO por usuario como árbitro (reserva, después confirma o compensa).
+- Los jobs de 15 y 30 segundos (disputas, expiración, emails) pasan a **alarms del DO**, con precisión de milisegundos. En vez de barrer cada 30 s, cada check-in o disputa programa su propia alarma.
+- Socket.IO se reemplaza por los **WebSockets del mismo DO** (Hibernation API, hasta 32.768 sockets por objeto). La sala ya es el hub, así que desaparece el adapter de LISTEN/NOTIFY.
+
+### 6.2 Arquitectura propuesta (opción D)
+
+| Pieza | Hoy | En Cloudflare |
+|---|---|---|
+| Web | Next.js en Fly | Next.js con `@opennextjs/cloudflare` en Workers. El soporte de `proxy.ts` (runtime Node) entró el 2026-08-25 como experimental (PR #1309). |
+| API HTTP | NestJS + Express | Worker con Hono. Se reusa la lógica de negocio; se reescriben controllers, guards, pipes y la inyección de dependencias. |
+| Estado de sala | Postgres + advisory locks | `RoomDO`: asientos, check-ins, observaciones, disputas, nombres de mesa, estado calculado, alarms y WebSockets. `SeatStateCalculator` queda igual (es puro). |
+| Datos globales | Postgres | **D1**: usuarios y sesiones (Better Auth con `drizzleAdapter`, provider `sqlite`), perfiles, alias, grupos, DMs, rankings, push, emails, suscripciones, moderación y anuncios. Las escrituras de leer-decidir-escribir pasan a sentencias condicionales o a `batch()`. Los grupos con tope de miembros y el webhook de Mercado Pago se serializan con un DO chico. |
+| Realtime | Socket.IO | WebSockets del `RoomDO` (sala y chat) y un `UserDO` para eventos personales (DMs, resultado de disputas, "Sigo acá"). En la web cambia solo `apps/web/src/lib/socket.ts`: una fachada mantiene `on/emit` y los ~15 hooks no se tocan. |
+| Jobs | `@nestjs/schedule` | Reset diario: Cron Trigger `0 7 * * *` (04:00 ART, los cron son UTC). Expiración, recordatorio y disputas: alarms. Emails: Cloudflare Queues o un DO. Barrido de adjuntos: cron horario. |
+| Push | `web-push` (Node) | `@pushforge/builder` (Web Crypto, sin dependencias). |
+| Rate limits | Postgres | Binding de Rate Limiting o contador en DO. |
+| Archivos | R2 vía S3 SDK | Binding nativo de R2. |
+| Verifier | Fly | Worker (fetch a Gemini/Claude); los archivos que hoy lee con `fs` pasan a assets embebidos. |
+| Tests | PGlite | `@cloudflare/vitest-pool-workers` (Miniflare con D1 y DO reales en local). |
+
+### 6.3 El costo real: latencia
+
+- **Ni D1 ni los Durable Objects corren en Sudamérica.** D1 no tiene región `sam`. Para DO el hint `sam` existe, pero la doc aclara que hoy no se crean ahí: caen en el este de EE.UU. (ENAM).
+- Cada acción que escribe ("Estoy acá", "Está libre", votar) haría Argentina, Virginia, Argentina: unos **130 a 170 ms** de ida y vuelta, contra 30 a 40 ms hoy a São Paulo. Un toque tardaría ~0,2 s en vez de ~0,05 s. Se nota poco, pero es peor que hoy.
+- La carga del mapa puede seguir rápida: el DO publica la foto del estado y el Worker la sirve con ETag desde el PoP de Buenos Aires.
+- Si Cloudflare habilita DO en Sudamérica, el DO **no se mueve solo**: hay que crear uno nuevo y copiar el estado.
+
+### 6.4 Alternativa con la base cerca (opción E)
+
+Si la latencia de la opción D molesta:
+
+- **PlanetScale Postgres** se puede crear y pagar **desde Cloudflare** desde el 2026-06-18, y PlanetScale tiene región São Paulo (`aws-sa-east-1`). Falta confirmar que esa región se pueda elegir desde el flujo de Cloudflare.
+- La API actual (NestJS + Socket.IO casi sin cambios) puede correr en **Cloudflare Containers con placement `SAM`**, que ahora figura en la doc. Falta confirmar capacidad real en SAM y medir el arranque en frío; habría que dejarla siempre prendida.
+- Cambios: los advisory locks pasan a `SELECT ... FOR UPDATE` sobre la fila del asiento o la disputa (si se usa Hyperdrive, que no soporta advisory locks ni LISTEN/NOTIFY). Con una sola instancia, LISTEN/NOTIFY no hace falta.
+- Ventaja: se conservan schema, migraciones y los 97 tests con PGlite. Desventaja: la base corre en AWS (aunque la factura Cloudflare) y Containers sale más caro que Fly.
+
+### 6.5 Comparación
+
+| | D: todo nativo Cloudflare | E: Containers SAM + PlanetScale São Paulo |
+|---|---|---|
+| ¿Todo facturado por Cloudflare? | Sí | Sí |
+| ¿La base corre en Cloudflare? | Sí (D1 + DO) | No (PlanetScale en AWS) |
+| Latencia de escritura desde Argentina | ~150 ms | ~30–40 ms |
+| Concurrencia | Más fuerte (sala serializada) | Igual que hoy |
+| Reescritura | Grande: API a Hono, schema a SQLite, realtime, jobs, tests | Chica: locks, deploy, conexión |
+| Riesgo de romper funcionalidad | Medio (se baja portando primero los tests de colisión, expiración y reset) | Bajo |
+| Costo mensual aprox. | USD 5–10 | USD 15–30 (Container siempre prendido + PlanetScale; precio sin confirmar) |
+
+### 6.6 Recomendación
+
+1. **Se puede mover todo a Cloudflare sin perder funcionalidad.** El camino "todo adentro de Cloudflare" es la opción D.
+2. Antes de reescribir, hacer una **prueba de concepto de 1 a 2 días**: un `RoomDO` mínimo con WebSocket y un check-in, desplegado en `*.workers.dev`. Medir desde Bahía Blanca el tiempo de un toque y de un broadcast. Si se siente bien, seguir con D; si no, ir por E.
+3. Orden para D, sin apagar Fly hasta el final:
+   1. Portar los tests de dominio (geofence, cálculo de estado, colisión de check-in, cambio de lugar, expiración, reset diario) a `vitest-pool-workers`.
+   2. `RoomDO` con estado, alarms y WebSockets; fachada de socket en la web.
+   3. D1 con Better Auth y los módulos globales; API en Hono.
+   4. Push, emails, pagos, R2 y verifier.
+   5. Web en OpenNext.
+   6. Cambio de DNS, con Fly como respaldo durante una semana.
+
 ## Fuentes
 
 - OpenNext Cloudflare (versiones y features soportadas): https://opennext.js.org/cloudflare
@@ -172,4 +242,12 @@ Notas:
 - Cron Triggers: https://developers.cloudflare.com/workers/configuration/cron-triggers/
 - Rate Limiting binding: https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/
 - Better Auth en Workers (`nodejs_compat`): https://www.better-auth.com/docs/integrations/hono
+- DO, ubicación y hint `sam`: https://developers.cloudflare.com/durable-objects/reference/data-location/
+- DO, SQLite storage y `transactionSync`: https://developers.cloudflare.com/durable-objects/api/sqlite-storage-api/
+- DO, alarms: https://developers.cloudflare.com/durable-objects/api/alarms/
+- DO, límites: https://developers.cloudflare.com/durable-objects/platform/limits/
+- D1, ubicación: https://developers.cloudflare.com/d1/configuration/data-location/
+- PlanetScale facturado por Cloudflare: https://developers.cloudflare.com/changelog/
+- Containers, placement: https://developers.cloudflare.com/containers/
+- OpenNext, soporte de Node middleware: https://github.com/opennextjs/opennextjs-cloudflare/pull/1309
 - Web Push compatible con Workers: https://github.com/draphy/pushforge y https://github.com/ryoppippi/web-push-neo
