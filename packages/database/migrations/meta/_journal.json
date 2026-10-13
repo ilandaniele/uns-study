@@ -204,6 +204,13 @@
       "when": 1791581446156,
       "tag": "0028_room_principal_location",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1791915214484,
+      "tag": "0029_room_daily_visitors",
+      "breakpoints": true
     }
   ]
 }

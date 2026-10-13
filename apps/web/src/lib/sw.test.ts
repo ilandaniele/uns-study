@@ -54,6 +54,7 @@ describe("sw.js push", () => {
       body: "b",
       tag: "t1",
       icon: "/icons/icon-192.png",
+      badge: "/icons/badge-96.png",
       data: { url: "/mensajes?x=1" },
     });
   });

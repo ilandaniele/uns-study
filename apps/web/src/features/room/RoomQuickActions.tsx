@@ -37,14 +37,15 @@ export function RoomQuickActions({ map, onlyFree, onToggleOnlyFree, favoriteSeat
   }
 
   async function share() {
-    const text = roomShareText(map.room.name, map.summary);
     const url = window.location.href.split("?")[0]!;
+    const text = roomShareText(map.summary, url);
     try {
+      // The link is part of the text, so apps that get both `text` and `url` don't show it twice.
       if (navigator.share) {
-        await navigator.share({ title: map.room.name, text, url });
+        await navigator.share({ title: map.room.name, text });
         return;
       }
-      await navigator.clipboard.writeText(`${text} ${url}`);
+      await navigator.clipboard.writeText(text);
       flash("Copiado. Pegalo donde quieras.");
     } catch (error) {
       if ((error as DOMException)?.name !== "AbortError") flash("No se pudo compartir. Copiá el link desde la barra de direcciones.");
@@ -94,7 +95,7 @@ export function RoomQuickActions({ map, onlyFree, onToggleOnlyFree, favoriteSeat
           className={`${chip} border-app bg-surface text-main hover:border-[var(--border-strong)] ${favoriteSeat ? "" : "col-span-2"}`}
         >
           <ShareNetworkIcon aria-hidden="true" size={16} weight="bold" />
-          Compartir estado
+          Compartir estado de la sala
         </button>
       </div>
       {notice ? (

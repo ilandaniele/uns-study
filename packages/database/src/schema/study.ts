@@ -1,4 +1,4 @@
-import { boolean, date, index, integer, pgEnum, pgTable, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, date, index, integer, pgEnum, pgTable, primaryKey, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { rooms } from "./rooms.js";
 import { user } from "./auth.js";
 
@@ -63,4 +63,22 @@ export const roomDailyStats = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [uniqueIndex("uq_room_daily_stats_room_day").on(table.roomId, table.day)],
+);
+
+/**
+ * Distinct room visitors per local day, for the "N personas consultaron la sala hoy" line. One row
+ * per `(room, local day, visitor_hash)`; `visitor_hash` is a salted sha256 of the user id or IP —
+ * never the raw value. Rows older than a week are purged by the daily reset job.
+ */
+export const roomDailyVisitors = pgTable(
+  "room_daily_visitors",
+  {
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    localDate: date("local_date", { mode: "string" }).notNull(),
+    visitorHash: text("visitor_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.roomId, table.localDate, table.visitorHash] })],
 );

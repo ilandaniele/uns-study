@@ -15,6 +15,7 @@ import { RolesService } from "../users/roles.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import type { Auth } from "../auth/auth.instance.js";
+import { localDateOf } from "../common/dates.js";
 import { DailyResetJob, resetInstantFor } from "./daily-reset.job.js";
 
 const mockAuth = { api: { getSession: async () => null } } as unknown as Auth;
@@ -77,6 +78,18 @@ describe("DailyResetJob", () => {
 
     const events = await db.select().from(schema.seatStateEvents);
     expect(events.length).toBeGreaterThan(0); // events are kept, not deleted
+  });
+
+  it("purges visitor hashes older than a week but keeps recent ones", async () => {
+    const room = await getRoom(db);
+    const after = new Date(resetInstantFor(room, new Date()).getTime() + 60_000);
+    await db.insert(schema.roomDailyVisitors).values([
+      { roomId, localDate: "2000-01-01", visitorHash: "old" },
+      { roomId, localDate: localDateOf(after, room.timezone), visitorHash: "today" },
+    ]);
+    expect(await job.runReset(roomId, after)).toBe(true);
+    const rows = await db.select().from(schema.roomDailyVisitors);
+    expect(rows.map((r) => r.visitorHash)).toEqual(["today"]);
   });
 
   it("snapshots the ending day into room_daily_stats before clearing state, once per day", async () => {

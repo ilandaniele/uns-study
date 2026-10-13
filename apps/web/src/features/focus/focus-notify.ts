@@ -27,7 +27,7 @@ export async function showFocusNotification(title: string, body: string): Promis
     tag: "pomodoro",
     renotify: true,
     icon: "/icons/icon-192.png",
-    badge: "/icons/icon-192.png",
+    badge: "/icons/badge-96.png",
     vibrate: [180, 80, 180],
     data: { url: "/foco" },
   };

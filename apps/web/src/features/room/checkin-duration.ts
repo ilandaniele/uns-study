@@ -21,6 +21,12 @@ export function clampCheckInMinutes(minutes: number): number {
  * already passed today), clamped to 15..180. `null` when the text isn't a valid time.
  */
 export function minutesUntilClockTime(value: string, now: Date = new Date()): number | null {
+  const raw = rawMinutesUntilClockTime(value, now);
+  return raw === null ? null : clampCheckInMinutes(raw);
+}
+
+/** Like `minutesUntilClockTime` but unclamped, so callers can tell the user the time is out of range. */
+export function rawMinutesUntilClockTime(value: string, now: Date = new Date()): number | null {
   const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
   if (!match) return null;
   const hours = Number(match[1]);
@@ -30,7 +36,7 @@ export function minutesUntilClockTime(value: string, now: Date = new Date()): nu
   target.setHours(hours, mins, 0, 0);
   let diffMs = target.getTime() - now.getTime();
   if (diffMs < 0) diffMs += 24 * 60 * 60_000;
-  return clampCheckInMinutes(diffMs / 60_000);
+  return diffMs / 60_000;
 }
 
 /** "HH:MM" for the `<input type="time">` value of `now + minutes`. */

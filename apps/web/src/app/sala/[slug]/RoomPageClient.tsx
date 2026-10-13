@@ -16,6 +16,8 @@ import { Hero } from "@/features/room/Hero";
 import { RoomInfoPanel } from "@/features/room/RoomInfoPanel";
 import { RoomMap } from "@/features/room/RoomMap";
 import { RoomQuickActions } from "@/features/room/RoomQuickActions";
+import { RoomSocialProof, UpdatedAgo } from "@/features/room/RoomSocialProof";
+import { useRoomTodayStats } from "@/features/room/useRoomTodayStats";
 import { useFavoriteSeat } from "@/features/room/useFavoriteSeat";
 import { RightPanelEmptyState } from "@/features/room/RightPanelEmptyState";
 import { SummaryCounters } from "@/features/room/SummaryCounters";
@@ -216,6 +218,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
   }, [actionError, clearChallenge, clearDisputeWon]);
 
   const signedIn = !!me?.user;
+  const todayStats = useRoomTodayStats(slug, signedIn);
   const handleSelectSeat = useCallback(
     (seat: SeatDto) => {
       setSelectedSeatId((current) => (current === seat.id ? null : seat.id));
@@ -296,19 +299,24 @@ export function RoomPageClient({ slug }: { slug: string }) {
     const result = await markFree(seatId, { qrToken });
     if (!result) return;
     trackEvent("observation", { roomSlug: slug, seatId, status: "FREE" });
+    todayStats.bumpContribution();
     // The report opened (or joined) a vote on someone else's seat: show it to the reporter.
     if (result.dispute && result.dispute.seatId === selectedSeat?.id) setSelectedDispute(result.dispute);
   }
 
   async function handleMarkOccupied(seatId: string) {
     const ok = await markOccupied(seatId, { qrToken });
-    if (ok) trackEvent("observation", { roomSlug: slug, seatId, status: "OCCUPIED" });
+    if (ok) {
+      trackEvent("observation", { roomSlug: slug, seatId, status: "OCCUPIED" });
+      todayStats.bumpContribution();
+    }
   }
 
   async function handleMarkSaved(seatId: string) {
     const ok = await markSaved(seatId, { qrToken });
     if (ok) {
       trackEvent("observation", { roomSlug: slug, seatId, status: "SAVED" });
+      todayStats.bumpContribution();
       setSavedPromptSeatId(seatId);
     }
   }
@@ -382,14 +390,17 @@ export function RoomPageClient({ slug }: { slug: string }) {
 
   const favoriteSeat = (favoriteSeatId ? seatById.get(favoriteSeatId) : null) ?? null;
   const quickActions = (
-    <RoomQuickActions
-      map={map}
-      onlyFree={onlyFree}
-      onToggleOnlyFree={() => setOnlyFree((value) => !value)}
-      favoriteSeat={favoriteSeat}
-      favoriteTable={favoriteSeat ? tableById.get(favoriteSeat.tableId) ?? null : null}
-      onSelectSeat={openSeat}
-    />
+    <>
+      <RoomQuickActions
+        map={map}
+        onlyFree={onlyFree}
+        onToggleOnlyFree={() => setOnlyFree((value) => !value)}
+        favoriteSeat={favoriteSeat}
+        favoriteTable={favoriteSeat ? tableById.get(favoriteSeat.tableId) ?? null : null}
+        onSelectSeat={openSeat}
+      />
+      <RoomSocialProof visitorsToday={todayStats.visitorsToday} myContributionsToday={todayStats.myContributionsToday} />
+    </>
   );
 
   const detail = selectedSeat ? (
@@ -437,7 +448,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
 
   return (
     <main
-      className={`mx-auto flex max-w-7xl flex-col gap-4 p-4 lg:grid ${detail && !isLargeDesktop ? "pb-[62dvh]" : ""} lg:grid-cols-[320px_1fr_340px] lg:items-start`}
+      className={`mx-auto flex max-w-7xl flex-col gap-4 p-4 lg:grid ${detail && !isLargeDesktop ? "pb-[62dvh]" : ""} lg:grid-cols-[320px_minmax(0,1fr)_340px] lg:items-start`}
     >
       {error ? (
         <div className="order-0 flex items-center justify-between gap-3 rounded-xl border border-app bg-surface px-3 py-2 text-sm text-muted lg:col-span-3">
@@ -522,6 +533,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
                     className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-[var(--seat-free)]" : "bg-[var(--seat-unknown)]"}`}
                   />
                   {connected ? "En vivo" : "Reconectando…"} · {todayLabel()}
+                  <UpdatedAgo seats={map.seats} />
                   <span className="sr-only" aria-live="polite">
                     {connected ? "" : "Reconectando, el mapa puede estar desactualizado"}
                   </span>
@@ -546,10 +558,10 @@ export function RoomPageClient({ slug }: { slug: string }) {
         <AnnouncementsBanner roomSlug={slug} socket={socket} />
       </section>
 
-      <section className="order-2 flex flex-col gap-3 lg:order-2">
+      <section className="order-2 flex min-w-0 flex-col gap-3 lg:order-2">
         <div
           onPointerDownCapture={preloadSeatDetail}
-          className="relative h-[70dvh] w-full overflow-hidden rounded-2xl border border-app bg-surface md:h-[80dvh] lg:mx-auto lg:aspect-[2/3] lg:h-[82dvh] lg:w-auto lg:max-w-full"
+          className="relative h-[70dvh] w-full overflow-hidden rounded-2xl border border-app bg-surface md:h-[80dvh] lg:mx-auto lg:aspect-[1090/1536] lg:h-[82dvh] lg:w-auto lg:max-w-full"
         >
           {isDesktop || !mounted ? (
             <div className="flex h-full w-full items-center justify-center">{roomMap}</div>

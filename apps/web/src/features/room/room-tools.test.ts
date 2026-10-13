@@ -50,7 +50,15 @@ describe("pickFreeSeat", () => {
 describe("roomShareText", () => {
   it("pluralizes the free count", () => {
     const summary = { roomId: "r", free: 1, occupied: 0, saved: 0, uncertain: 0, unknown: 107, total: 108 };
-    expect(roomShareText("Sala principal", summary)).toBe("Sala principal: 1 lugar libre de 108 ahora mismo.");
-    expect(roomShareText("Sala principal", { ...summary, free: 12 })).toBe("Sala principal: 12 lugares libres de 108 ahora mismo.");
+    const url = "https://example.test/sala/principal";
+    expect(roomShareText(summary, url)).toBe("Hay 1 lugar libre ahora en la sala de estudio. Miralo en vivo: https://example.test/sala/principal");
+    expect(roomShareText({ ...summary, free: 27 }, url)).toBe("Hay 27 lugares libres ahora en la sala de estudio. Miralo en vivo: https://example.test/sala/principal");
+  });
+
+  it("says the room is full when nothing is free", () => {
+    const summary = { roomId: "r", free: 0, occupied: 108, saved: 0, uncertain: 0, unknown: 0, total: 108 };
+    expect(roomShareText(summary, "https://example.test/sala/principal")).toBe(
+      "La sala está llena ahora mismo. Miralo en vivo: https://example.test/sala/principal",
+    );
   });
 });

@@ -10,6 +10,7 @@ import { localDateOf } from "../common/dates.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
 
 const SEAT_STATE_EVENT_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
+const VISITOR_RETENTION_DAYS = 7;
 
 /** Computes the UTC instant of `room`'s next-or-most-recent daily reset (`daily_reset_time`, local tz) at/around `now`. */
 export function resetInstantFor(room: { timezone: string; dailyResetTime: string }, now: Date): Date {
@@ -139,6 +140,16 @@ export class DailyResetJob {
       await tx
         .delete(schema.seatStateEvents)
         .where(and(eq(schema.seatStateEvents.roomId, roomId), lt(schema.seatStateEvents.createdAt, new Date(now.getTime() - SEAT_STATE_EVENT_RETENTION_MS))));
+
+      // Visitor hashes only matter for "today"; keep a week for debugging and drop the rest.
+      await tx
+        .delete(schema.roomDailyVisitors)
+        .where(
+          and(
+            eq(schema.roomDailyVisitors.roomId, roomId),
+            lt(schema.roomDailyVisitors.localDate, localDateOf(new Date(now.getTime() - VISITOR_RETENTION_DAYS * 24 * 60 * 60 * 1000), room.timezone)),
+          ),
+        );
 
       // Presence grants issued before the reset don't carry over: the new day starts with a fresh fix.
       await tx

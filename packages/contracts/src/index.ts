@@ -34,6 +34,14 @@ export interface RoomSummary {
   unknown: number;
 }
 
+/** `GET /rooms/:idOrSlug/stats/today`: social-proof counters for the room's current local day. */
+export interface RoomTodayStatsDto {
+  /** Distinct visitors (signed in or not) who opened the room today. */
+  visitorsToday: number;
+  /** The caller's own observations today; `null` for anonymous callers. */
+  myContributionsToday: number | null;
+}
+
 export interface RoomDto {
   id: string;
   slug: string;

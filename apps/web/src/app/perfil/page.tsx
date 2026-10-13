@@ -198,6 +198,13 @@ export default function PerfilPage() {
         <AppearancePreview profile={profile} privacy={privacy} />
       </section>
 
+      <section className="rounded-[14px] border border-app bg-surface p-4">
+        <h2 className="mb-2 font-display text-base font-semibold text-main">Ayuda</h2>
+        <Link href="/como-usar" className="text-sm font-semibold text-primary underline underline-offset-2">
+          Cómo usar la app
+        </Link>
+      </section>
+
       <section className="rounded-[14px] border border-red-200 bg-red-50 p-4">
         <h2 className="mb-2 font-display text-base font-semibold text-red-800">Zona de peligro</h2>
         <button

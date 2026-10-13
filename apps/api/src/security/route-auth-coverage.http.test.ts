@@ -35,6 +35,8 @@ const PUBLIC_ROUTES: Record<string, string> = {
   "GET /api/v1/rooms": "public room list",
   "GET /api/v1/rooms/:idOrSlug": "public room data",
   "GET /api/v1/rooms/:idOrSlug/map": "public seat map and state",
+  "POST /api/v1/rooms/:idOrSlug/visits": "anonymous visit counter; stores only a salted hash, rate limited",
+  "GET /api/v1/rooms/:idOrSlug/stats/today": "public visitor count, own contribution count only when signed in",
   "GET /api/v1/rooms/:idOrSlug/announcements": "public banner copy",
   "GET /api/v1/rooms/:idOrSlug/rankings": "public rankings, own row only when signed in",
   "GET /api/v1/rooms/:idOrSlug/disputes": "public read-only dispute list (optional auth)",

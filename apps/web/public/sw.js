@@ -6,7 +6,7 @@
 // a fetch handler the browser loads everything straight from the network (and its own HTTP cache).
 // On activation it deletes every cache earlier versions created, so visitors still controlled by an
 // old worker recover on their next navigation without clearing site data.
-const SW_VERSION = "v9";
+const SW_VERSION = "v10";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -72,6 +72,7 @@ self.addEventListener("push", (event) => {
         body,
         tag, // same tag replaces any earlier notification of the same kind instead of stacking
         icon: "/icons/icon-192.png",
+        badge: "/icons/badge-96.png",
         data: { url: toSameOriginPath(url) },
       });
     })(),

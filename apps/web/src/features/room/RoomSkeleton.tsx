@@ -7,15 +7,15 @@ export function RoomSkeleton() {
     <main
       aria-busy="true"
       aria-label="Cargando sala"
-      className="mx-auto flex max-w-7xl flex-col gap-4 p-4 lg:grid lg:grid-cols-[320px_1fr_340px] lg:items-start"
+      className="mx-auto flex max-w-7xl flex-col gap-4 p-4 lg:grid lg:grid-cols-[320px_minmax(0,1fr)_340px] lg:items-start"
     >
       <section className="order-1 flex flex-col gap-4 lg:order-1">
         <div className="h-16 animate-pulse rounded-2xl bg-[var(--surface-2)]" />
         <div className="h-28 animate-pulse rounded-2xl bg-[var(--surface-2)]" />
         <div className="h-16 animate-pulse rounded-2xl bg-[var(--surface-2)]" />
       </section>
-      <section className="order-2 flex flex-col gap-3 lg:order-2">
-        <div className="relative h-[70dvh] w-full overflow-hidden rounded-3xl border border-app bg-surface shadow-sm md:h-[80dvh] lg:mx-auto lg:aspect-[2/3] lg:h-[82dvh] lg:w-auto lg:max-w-full">
+      <section className="order-2 flex min-w-0 flex-col gap-3 lg:order-2">
+        <div className="relative h-[70dvh] w-full overflow-hidden rounded-3xl border border-app bg-surface shadow-sm md:h-[80dvh] lg:mx-auto lg:aspect-[1090/1536] lg:h-[82dvh] lg:w-auto lg:max-w-full">
           <div className="h-full w-full animate-pulse bg-[var(--surface-2)]" />
         </div>
       </section>

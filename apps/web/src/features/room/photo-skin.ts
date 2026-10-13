@@ -16,7 +16,8 @@ export interface PhotoSkin {
   tables: ReadonlyMap<string, { x: number; y: number; width: number; height: number }>;
 }
 
-// Measured on the 1024x1536 photos. Rows go from the back wall (Mesa 6 / 12) to the entrance
+// Measured on the 1090x1536 photos (the strip right of x=994 was rebuilt so the right wall shows).
+// Rows go from the back wall (Mesa 6 / 12) to the entrance
 // (Mesa 1 / 7): top edge of the tabletop, bottom edge, and the x of the four chairs on each side.
 const MAIN_ROWS: Array<{ left: number; right: number; top: number; bottom: number; leftXs: number[]; rightXs: number[] }> = [
   { left: 6, right: 12, top: 195, bottom: 282, leftXs: [217, 288, 359, 430], rightXs: [663, 736, 808, 882] },
@@ -60,7 +61,7 @@ function buildPrincipal(): PhotoSkin {
     list.forEach((pos, i) => seats.set(`${code}-S0${i + 1}`, pos));
   }
   return {
-    viewBox: { width: 1024, height: 1536 },
+    viewBox: { width: 1090, height: 1536 },
     dayHref: "/room/principal-dia.webp",
     nightHref: "/room/principal-noche.webp",
     seats,

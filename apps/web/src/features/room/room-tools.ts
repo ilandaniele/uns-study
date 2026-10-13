@@ -22,8 +22,9 @@ export function pickFreeSeat(map: Pick<RoomMapDto, "seats">, favoriteSeatId: str
   )[0]!;
 }
 
-/** Text for "Compartir": a one-line room snapshot plus the link. */
-export function roomShareText(roomName: string, summary: RoomMapDto["summary"]): string {
-  const free = summary.free === 1 ? "1 lugar libre" : `${summary.free} lugares libres`;
-  return `${roomName}: ${free} de ${summary.total} ahora mismo.`;
+/** Text for "Compartir estado de la sala": how many seats are free right now, plus the live link. */
+export function roomShareText(summary: RoomMapDto["summary"], url: string): string {
+  const headline =
+    summary.free <= 0 ? "La sala está llena ahora mismo." : summary.free === 1 ? "Hay 1 lugar libre ahora en la sala de estudio." : `Hay ${summary.free} lugares libres ahora en la sala de estudio.`;
+  return `${headline} Miralo en vivo: ${url}`;
 }

@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Hero } from "./Hero";
 import { PeopleList } from "@/features/people/PeopleList";
+import { UpdatedAgo } from "./RoomSocialProof";
 import { SummaryCounters } from "./SummaryCounters";
 import { roomCapacityBreakdown, todayLabel } from "./format";
 
@@ -32,6 +33,7 @@ export function RoomInfoPanel({ map, people, connected, onOpenHowTo, quickAction
             className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-[var(--seat-free)]" : "bg-[var(--seat-unknown)]"}`}
           />
           {connected ? "En vivo" : "Reconectando…"} · {todayLabel()}
+          <UpdatedAgo seats={map.seats} />
           <span className="sr-only" aria-live="polite">
             {connected ? "" : "Reconectando, el mapa puede estar desactualizado"}
           </span>

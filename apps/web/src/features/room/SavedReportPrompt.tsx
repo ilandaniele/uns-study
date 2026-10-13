@@ -3,7 +3,7 @@
 import type { SeatDto, SeatOccupantDto } from "@sala/contracts";
 import { FlagIcon, HandPalmIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
-import { disputeOptionsFor } from "./format";
+import { canReportLeft } from "./format";
 
 export interface SavedReportPromptProps {
   seat: SeatDto;
@@ -22,7 +22,7 @@ export interface SavedReportPromptProps {
  * it, or skip. Reporting only exists for an identified occupant; anonymous holds can still be voted.
  */
 export function SavedReportPrompt({ seat, roomId, occupant, seatLabel, pending, onAskToFree, onDismiss }: SavedReportPromptProps) {
-  const canAskToFree = seat.dispute === null && disputeOptionsFor(seat).some((option) => option.kind === "SAVED");
+  const canAskToFree = canReportLeft(seat);
   const reportHref = occupant?.userId
     ? `/reportar/${occupant.userId}?context=PROFILE&roomId=${encodeURIComponent(roomId)}&reason=SEAT_TROLLING&description=${encodeURIComponent(
         `Guarda el lugar ${seatLabel} sin estar sentado.`,
@@ -36,9 +36,9 @@ export function SavedReportPrompt({ seat, roomId, occupant, seatLabel, pending, 
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-main">Marcaste este lugar como guardado.</p>
+          <p className="text-sm font-semibold text-main">Listo, avisamos que está guardado.</p>
           <p className="mt-0.5 text-xs text-muted">
-            {reportHref ? "¿Querés reportar a la persona o pedir que se libere?" : "¿Querés pedir que se libere?"}
+            {reportHref ? "¿Querés pedir que lo liberen o reportar a la persona?" : "¿Querés pedir que lo liberen?"}
           </p>
         </div>
         <button
@@ -68,11 +68,11 @@ export function SavedReportPrompt({ seat, roomId, occupant, seatLabel, pending, 
             className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-app bg-surface px-3 py-2 text-sm font-semibold text-main hover:border-[var(--border-strong)] disabled:opacity-50"
           >
             <HandPalmIcon aria-hidden="true" size={16} weight="bold" />
-            Votar para liberarlo
+            Pedir que lo liberen
           </button>
         ) : null}
         <button type="button" onClick={onDismiss} className="min-h-10 rounded-lg px-3 py-2 text-sm font-semibold text-muted hover:text-main">
-          No, gracias
+          Solo reportar
         </button>
       </div>
     </section>

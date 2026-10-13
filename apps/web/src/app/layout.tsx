@@ -21,7 +21,10 @@ export const metadata: Metadata = {
   description: "Disponibilidad de lugares en la sala de estudio en tiempo real.",
   manifest: "/manifest.webmanifest",
   metadataBase: new URL(SITE_URL),
-  icons: { icon: "/icons/icon-192.png", apple: "/icons/icon-192.png" },
+  icons: {
+    icon: [{ url: "/favicon.ico", sizes: "any" }, { url: "/icons/icon-192.png", type: "image/png" }],
+    apple: "/icons/apple-touch-icon.png",
+  },
   openGraph: {
     type: "website",
     siteName: "Sala de Estudio",

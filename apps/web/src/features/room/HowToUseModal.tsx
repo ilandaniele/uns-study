@@ -1,33 +1,11 @@
 "use client";
 
-import { CheckCircleIcon, HandPointingIcon, MapPinIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
-import type { ReactNode } from "react";
+import { XIcon } from "@phosphor-icons/react/dist/ssr";
+import Link from "next/link";
 import { useRef } from "react";
+import { HOW_TO_STEPS } from "@/features/help/how-to-steps";
 import { useExitTransition } from "@/lib/useExitTransition";
 import { useFocusTrap } from "@/lib/useFocusTrap";
-
-const STEPS: { icon: ReactNode; title: string; body: string }[] = [
-  {
-    icon: <HandPointingIcon aria-hidden="true" size={20} weight="bold" />,
-    title: "Tocá un lugar",
-    body: "Elegí cualquier lugar del mapa para ver su estado.",
-  },
-  {
-    icon: <MapPinIcon aria-hidden="true" size={20} weight="bold" />,
-    title: "Estoy acá",
-    body: "Marcalo cuando te sientes. Elegís hasta qué hora (máximo 3 h) y te pedimos la ubicación para confirmar que estás en la sala. Antes de que venza te avisamos para que marques «Sigo acá».",
-  },
-  {
-    icon: <CheckCircleIcon aria-hidden="true" size={20} weight="bold" />,
-    title: "Está libre / ocupado / guardado",
-    body: "Si ves un lugar que no es tuyo, contá cómo está para ayudar al resto.",
-  },
-  {
-    icon: <CheckCircleIcon aria-hidden="true" size={20} weight="bold" />,
-    title: "¿Algo no cuadra?",
-    body: "Si un lugar figura mal, abrí una votación rápida y la gente de la sala decide.",
-  },
-];
 
 /** "Ver cómo usar la app" — a short, static walkthrough opened from the left panel. */
 export function HowToUseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -64,10 +42,10 @@ export function HowToUseModal({ open, onClose }: { open: boolean; onClose: () =>
           </button>
         </div>
         <ol className="mt-4 flex flex-col gap-3">
-          {STEPS.map((step, i) => (
+          {HOW_TO_STEPS.map((step, i) => (
             <li key={step.title} className="flex items-start gap-3">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                {step.icon}
+                <step.icon aria-hidden="true" size={20} weight="bold" />
               </span>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-main">
@@ -78,10 +56,13 @@ export function HowToUseModal({ open, onClose }: { open: boolean; onClose: () =>
             </li>
           ))}
         </ol>
+        <Link href="/como-usar" className="mt-4 block text-center text-sm font-semibold text-primary underline underline-offset-2">
+          Ver guía completa
+        </Link>
         <button
           type="button"
           onClick={requestClose}
-          className="mt-5 min-h-11 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark"
+          className="mt-3 min-h-11 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark"
         >
           Entendido
         </button>
