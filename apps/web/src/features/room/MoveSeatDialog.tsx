@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRightIcon } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRightIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import { useRef } from "react";
 import { useExitTransition } from "@/lib/useExitTransition";
 import { useFocusTrap } from "@/lib/useFocusTrap";
@@ -31,12 +31,22 @@ export function MoveSeatDialog({ fromLabel, toLabel, pending, onConfirm, onCance
         role="dialog"
         aria-modal="true"
         aria-labelledby="move-seat-title"
-        className={`${closing ? "dialog-exit" : "dialog-enter"} w-full max-w-sm rounded-t-sheet border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl sm:rounded-float`}
+        className={`${closing ? "dialog-exit" : "dialog-enter"} max-h-[calc(100dvh-1.5rem)] w-full max-w-sm overflow-y-auto overscroll-contain rounded-t-sheet border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl sm:rounded-float`}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="move-seat-title" className="t-title">
-          Ya tenés otro lugar marcado
-        </h2>
+        <div className="flex items-start justify-between gap-3">
+          <h2 id="move-seat-title" className="t-title">
+            Ya tenés otro lugar marcado
+          </h2>
+          <button
+            type="button"
+            onClick={requestClose}
+            aria-label="Cerrar"
+            className="-mr-2 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-control text-muted hover:bg-[var(--surface-2)] hover:text-main"
+          >
+            <XIcon aria-hidden="true" size={18} />
+          </button>
+        </div>
         <p className="mt-1 text-sm text-muted">Para sentarte acá, liberamos tu lugar anterior.</p>
         <div className="mt-4 flex items-center gap-2 rounded-control bg-surface-2 p-3 text-sm">
           <span className="min-w-0 flex-1 truncate text-muted line-through">{fromLabel}</span>

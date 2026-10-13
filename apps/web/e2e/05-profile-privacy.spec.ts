@@ -25,7 +25,7 @@ test("profile identity + privacy: hidden (alias) by default, then visible by nam
     await pageA.goto("/perfil");
     await pageA.getByRole("textbox", { name: "Apodo" }).fill(NICKNAME);
     await pageA.getByRole("button", { name: "Guardar" }).click();
-    await expect(pageA.getByText("Guardado.")).toBeVisible();
+    await expect(pageA.getByText("Guardado.", { exact: true })).toBeVisible();
 
     await pageA.goto(`/sala/${ROOM_SLUG}`);
     await seatLocator(pageA, SEAT.table, SEAT.seatNumber).click();
@@ -39,12 +39,12 @@ test("profile identity + privacy: hidden (alias) by default, then visible by nam
     await pageA.goto("/perfil");
     await pageA.getByRole("combobox", { name: "¿Cómo te ven otras personas?" }).selectOption("NICKNAME");
     await pageA.getByRole("button", { name: "Guardar" }).click();
-    await expect(pageA.getByText("Guardado.")).toBeVisible();
+    await expect(pageA.getByText("Guardado.", { exact: true })).toBeVisible();
     const identityRes = await contextA.request.patch(`${API_URL}/api/v1/checkins/current/identity`, {
       headers: { Origin: "http://localhost:3000" },
       data: { showIdentity: true },
     });
-    expect(identityRes.ok()).toBe(true);
+    expect(identityRes.ok(), await identityRes.text()).toBe(true);
 
     // B reloads /personas and now sees A by nickname.
     await pageB.reload();

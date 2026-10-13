@@ -14,6 +14,8 @@ test("mobile viewport smoke: room map, bottom sheet, check-in, and bottom nav ac
 
   try {
     await signUpNewUser(context);
+    // The donation prompt waits until the visitor has checked in once; mark that so it shows on this visit.
+    await context.addInitScript(() => window.localStorage.setItem("sala.firstCheckInAt", String(Date.now())));
 
     await page.goto(`/sala/${ROOM_SLUG}`);
     // "Total: N lugares" is desktop-only (RoomInfoPanel); the compact mobile header still has the counters.

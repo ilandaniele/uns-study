@@ -57,7 +57,7 @@ test("switching to FIRST_NAME shows the name in chat instead of the alias", asyn
     await pageA.getByRole("textbox", { name: "Nombre" }).fill("Ada");
     await pageA.getByRole("combobox", { name: "¿Cómo te ven otras personas?" }).selectOption("FIRST_NAME");
     await pageA.getByRole("button", { name: "Guardar" }).click();
-    await expect(pageA.getByText("Guardado.")).toBeVisible();
+    await expect(pageA.getByText("Guardado.", { exact: true })).toBeVisible();
 
     // B reloads and now sees "Ada" next to the same message (displayName is computed live, not snapshotted).
     await pageB.reload();

@@ -18,6 +18,8 @@ test("opening an 'Esa persona no está' vote challenges the occupant, who answer
     await seatLocator(pageA, SEAT.table, SEAT.seatNumber).click();
     await pageA.getByRole("button", { name: "Estoy acá" }).click();
     await expect(pageA.getByRole("button", { name: "Me voy" })).toBeVisible();
+    // Close the seat detail so its own "Sigo acá" (extend) doesn't compete with the challenge banner's.
+    await pageA.getByRole("button", { name: "Cerrar", exact: true }).click();
 
     // B sees the seat occupied and opens an ABSENT vote.
     const pageB = await contextB.newPage();

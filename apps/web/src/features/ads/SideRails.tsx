@@ -1,7 +1,8 @@
 "use client";
 
+import { XIcon } from "@phosphor-icons/react/dist/ssr";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { AdSlot } from "@/components/AdSlot";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { ADSENSE_CLIENT, ADSENSE_SLOT_RAIL, RAIL_MIN_VIEWPORT_PX, isAdSenseContentPath, isExcludedPath } from "./ad-config";
@@ -13,6 +14,8 @@ export function SideRails() {
   const { hideAds } = useAdFree();
   const pathname = usePathname();
   const wide = useMediaQuery(`(min-width: ${RAIL_MIN_VIEWPORT_PX}px)`);
+  // Closing a rail hides it until the next page load.
+  const [closed, setClosed] = useState({ left: false, right: false });
 
   if (hideAds || !wide || isExcludedPath(pathname)) return null;
 
@@ -22,24 +25,38 @@ export function SideRails() {
 
   return (
     <>
-      <Rail side="left" label="Publicidad">
-        {content}
-      </Rail>
-      <Rail side="right" label="Publicidad">
-        {content}
-      </Rail>
+      {closed.left ? null : (
+        <Rail side="left" label="Publicidad" onClose={() => setClosed((c) => ({ ...c, left: true }))}>
+          {content}
+        </Rail>
+      )}
+      {closed.right ? null : (
+        <Rail side="right" label="Publicidad" onClose={() => setClosed((c) => ({ ...c, right: true }))}>
+          {content}
+        </Rail>
+      )}
     </>
   );
 }
 
-function Rail({ side, label, children }: { side: "left" | "right"; label: string; children: ReactNode }) {
+function Rail({ side, label, onClose, children }: { side: "left" | "right"; label: string; onClose: () => void; children: ReactNode }) {
   return (
     <aside
       aria-label={label}
       className={`fixed top-[calc(50%+28px)] z-20 w-40 -translate-y-1/2 ${side === "left" ? "left-4" : "right-4"}`}
       style={{ height: "min(600px, calc(100dvh - 6rem))" }}
     >
-      <span className="label-caps mb-1 block !text-[10px] text-faint">Publicidad</span>
+      <div className="mb-1 flex h-5 items-center justify-between">
+        <span className="label-caps !text-[10px] text-faint">Publicidad</span>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Cerrar anuncio"
+          className="-mr-1 grid h-6 w-6 place-items-center rounded-full text-muted hover:bg-[var(--surface-2)] hover:text-main"
+        >
+          <XIcon size={14} weight="bold" aria-hidden="true" />
+        </button>
+      </div>
       <div className="h-[calc(100%-1.25rem)] overflow-hidden">{children}</div>
     </aside>
   );

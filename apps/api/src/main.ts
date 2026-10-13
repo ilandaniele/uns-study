@@ -78,7 +78,8 @@ async function bootstrap() {
   }
   httpAdapter.use(proxyTrustMiddleware(env.proxySharedSecret));
   // Coarse per-IP cap (300/min) over every /api/v1 route; health and the MP webhook are skipped.
-  httpAdapter.use("/api/v1", globalIpRateLimitMiddleware());
+  // Off under E2E hooks (never in production): the whole Playwright suite shares one localhost IP.
+  if (!env.e2eTestHooks) httpAdapter.use("/api/v1", globalIpRateLimitMiddleware());
   httpAdapter.use(cors({ origin: env.webOrigins, credentials: true }));
   // Security headers for a JSON/image/Socket.IO API (no HTML). The browser only sees avatars
   // through the web app's same-origin `/api/v1` proxy, so CORP stays same-site. Helmet also drops

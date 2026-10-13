@@ -31,7 +31,7 @@ export default function RecuperarPage() {
   }
 
   return (
-    <main className="flex min-h-[calc(100dvh-57px)] flex-col items-center justify-center bg-app px-4 py-10">
+    <main className="flex min-h-[calc(100dvh-65px)] flex-col items-center justify-center bg-app px-4 py-10">
       <div className="w-full max-w-sm p-6">
         <h1 className="text-center font-display text-2xl font-extrabold leading-snug text-main">Recuperá tu contraseña</h1>
 

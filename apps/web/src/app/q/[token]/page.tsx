@@ -38,12 +38,12 @@ export default function QrRedirectPage() {
 
   if (error) {
     return (
-      <main className="flex min-h-[calc(100dvh-57px)] items-center justify-center p-6 text-center text-red-600">{error}</main>
+      <main className="flex min-h-[calc(100dvh-65px)] items-center justify-center p-6 text-center text-red-600">{error}</main>
     );
   }
 
   return (
-    <main className="flex min-h-[calc(100dvh-57px)] flex-col items-center justify-center gap-3 p-6 text-center text-muted">
+    <main className="flex min-h-[calc(100dvh-65px)] flex-col items-center justify-center gap-3 p-6 text-center text-muted">
       <span
         aria-hidden
         className="h-8 w-8 animate-spin rounded-full border-2 border-app border-t-primary"

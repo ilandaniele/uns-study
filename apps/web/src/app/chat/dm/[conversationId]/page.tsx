@@ -33,7 +33,7 @@ function DmThreadScreen({ conversationId, currentUserId }: { conversationId: str
   const conversation = conversations.find((c) => c.id === conversationId) ?? null;
 
   return (
-    <main className="mx-auto flex h-[calc(100dvh_-_57px_-_56px_-_env(safe-area-inset-bottom))] max-w-2xl flex-col lg:h-[calc(100dvh_-_57px)]">
+    <main className="mx-auto flex h-[calc(100dvh_-_65px_-_66px_-_env(safe-area-inset-bottom))] max-w-2xl flex-col lg:h-[calc(100dvh_-_65px)]">
       <DmThread conversationId={conversationId} currentUserId={currentUserId} conversation={conversation} variant="page" />
     </main>
   );

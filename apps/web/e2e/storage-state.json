@@ -1,0 +1,18 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://localhost:3000",
+      "localStorage": [
+        {
+          "name": "sala:how-to-seen:v1",
+          "value": "1"
+        },
+        {
+          "name": "sala.ads.snoozedUntil",
+          "value": "32503680000000"
+        }
+      ]
+    }
+  ]
+}

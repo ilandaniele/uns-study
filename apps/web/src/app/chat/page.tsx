@@ -37,7 +37,7 @@ function ChatRoom({ currentUserId }: { currentUserId: string }) {
 
   return (
     <div className="mx-auto flex w-full max-w-5xl gap-6 lg:px-4">
-      <main className="flex h-[calc(100dvh_-_57px_-_56px_-_env(safe-area-inset-bottom))] min-w-0 flex-1 flex-col lg:h-[calc(100dvh_-_57px)]">
+      <main className="flex h-[calc(100dvh_-_65px_-_66px_-_env(safe-area-inset-bottom))] min-w-0 flex-1 flex-col lg:h-[calc(100dvh_-_65px)]">
         <RoomChatPanel currentUserId={currentUserId} />
       </main>
       <aside className="hidden w-80 shrink-0 pt-4 lg:block">

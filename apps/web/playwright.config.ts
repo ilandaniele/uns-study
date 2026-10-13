@@ -15,6 +15,8 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:3000",
     trace: "retain-on-failure",
+    // Marks the "Cómo usar la app" guide as seen and snoozes house ads, so neither overlay covers the map.
+    storageState: "e2e/storage-state.json",
   },
   projects: [
     {

@@ -18,6 +18,8 @@ export interface ActiveCheckInBannerProps {
   onCheckOut: () => void;
   refetch: () => void;
   locating?: boolean;
+  /** Hide the calm "Tenés marcado" bar (the urgent "¿Seguís acá?" banner still shows), e.g. while the seat detail beside the map already offers "Me voy". */
+  hideBar?: boolean;
 }
 
 /**
@@ -25,7 +27,7 @@ export interface ActiveCheckInBannerProps {
  * otherwise the always-visible "Tenés marcado" bar. Ticking here (not in the page) keeps the map
  * from re-rendering every 30 s.
  */
-export function ActiveCheckInBanner({ activeCheckIn, seatLabel, pending, onShow, onExtend, onCheckOut, refetch, locating }: ActiveCheckInBannerProps) {
+export function ActiveCheckInBanner({ activeCheckIn, seatLabel, pending, onShow, onExtend, onCheckOut, refetch, locating, hideBar }: ActiveCheckInBannerProps) {
   const now = useNow(30_000);
   const expiryStatus = checkInExpiryStatus(activeCheckIn.expiresAt, now);
   const locallyExpired = !expiryStatus;
@@ -50,11 +52,12 @@ export function ActiveCheckInBanner({ activeCheckIn, seatLabel, pending, onShow,
 
   if (expiryStatus && (expiryStatus.shouldPromptExtend || expiringAlert)) {
     return (
-      <div className="order-0 sticky top-[57px] z-50 lg:static lg:z-auto lg:col-span-full">
+      <div className="order-0 sticky top-[65px] z-50 lg:static lg:z-auto lg:col-span-full">
         <ExtendBanner minutesLeft={expiryStatus.minutesLeft} pending={pending} onExtend={onExtend} onCheckOut={onCheckOut} locating={locating} />
       </div>
     );
   }
+  if (hideBar) return null;
   return (
     <div className="order-0 lg:col-span-full">
       <MyCheckInBar seatLabel={seatLabel} expiresAt={activeCheckIn.expiresAt} pending={pending} onShow={onShow} onRelease={onCheckOut} />

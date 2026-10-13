@@ -510,7 +510,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
         </div>
       ) : null}
       {challenge ? (
-        <div className="order-0 sticky top-[57px] z-50 lg:static lg:z-auto lg:col-span-full">
+        <div className="order-0 sticky top-[65px] z-50 lg:static lg:z-auto lg:col-span-full">
           <DisputeChallengeBanner
             seatLabel={seatDisplayLabel(challengeTable, challengeSeat?.code ?? "", challengeSeat?.seatNumber ?? 0)}
             closesAt={challenge.closesAt}
@@ -540,6 +540,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
           onCheckOut={() => void checkOut()}
           refetch={refetch}
           locating={locating}
+          hideBar={selectedSeatId === activeCheckIn.seatId}
         />
       ) : null}
 
@@ -630,7 +631,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
       ) : null}
 
       {isLargeDesktop ? (
-        <aside className="order-4 flex flex-col gap-4 lg:order-3 lg:col-start-2 lg:sticky lg:top-[73px] lg:max-h-[calc(100dvh-89px)] lg:overflow-y-auto lg:border-l lg:border-app lg:pl-8">
+        <aside className="order-4 flex flex-col gap-4 lg:order-3 lg:col-start-2 lg:sticky lg:top-[81px] lg:max-h-[calc(100dvh-97px)] lg:overflow-y-auto lg:border-l lg:border-app lg:pl-8">
           <RoomInfoPanel
             map={map}
             people={people}

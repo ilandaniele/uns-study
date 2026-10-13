@@ -244,8 +244,9 @@ export function DonatePrompt({ blocked }: { blocked: boolean }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="donate-prompt-title"
+        // Scrolls on short screens (Safari with its toolbars) so the alias and "Ahora no" stay reachable.
         onClick={(e) => e.stopPropagation()}
-        className={`${closing ? "sheet-exit" : "sheet-enter"} flex w-full flex-col gap-3 rounded-t-sheet border-t border-app bg-surface px-5 pb-safe pt-3 shadow-[0_-8px_24px_rgba(0,0,0,0.18)]`}
+        className={`${closing ? "sheet-exit" : "sheet-enter"} flex max-h-[calc(100dvh-1.5rem)] w-full flex-col gap-3 overflow-y-auto overscroll-contain rounded-t-sheet border-t border-app bg-surface px-5 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-3 shadow-[0_-8px_24px_rgba(0,0,0,0.18)]`}
       >
         <span aria-hidden="true" className="mx-auto h-1.5 w-11 rounded-full bg-[var(--border-strong)]" />
         <div className="flex items-start gap-3">
@@ -270,7 +271,7 @@ export function DonatePrompt({ blocked }: { blocked: boolean }) {
         <button
           type="button"
           onClick={close}
-          className="mb-3 min-h-12 w-full rounded-control bg-[var(--surface-2)] px-4 text-sm font-semibold text-main"
+          className="min-h-12 w-full shrink-0 rounded-control bg-[var(--surface-2)] px-4 text-sm font-semibold text-main"
         >
           Ahora no
         </button>
