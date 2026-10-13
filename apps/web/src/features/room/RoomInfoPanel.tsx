@@ -3,7 +3,7 @@
 import type { RoomMapDto, RoomPersonDto } from "@sala/contracts";
 import { QuestionIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Hero } from "./Hero";
 import { PeopleList } from "@/features/people/PeopleList";
 import { UpdatedAgo } from "./RoomSocialProof";
@@ -19,10 +19,24 @@ export interface RoomInfoPanelProps {
   quickActions?: ReactNode;
   /** Seat detail or empty state, rendered right after the counters. */
   detailSlot?: ReactNode;
+  /** Identifies what `detailSlot` shows (e.g. the selected seat id); a change cross-fades the slot. */
+  detailKey?: string;
 }
 
 /** Desktop (lg+) left column: room header, honest headline, counters, capacity breakdown and the "who's here" preview. */
-export function RoomInfoPanel({ map, people, connected, onOpenHowTo, quickActions, detailSlot }: RoomInfoPanelProps) {
+export function RoomInfoPanel({ map, people, connected, onOpenHowTo, quickActions, detailSlot, detailKey }: RoomInfoPanelProps) {
+  const detailRef = useRef<HTMLDivElement>(null);
+  const lastDetailKey = useRef(detailKey);
+  useEffect(() => {
+    if (lastDetailKey.current === detailKey) return;
+    lastDetailKey.current = detailKey;
+    const el = detailRef.current;
+    if (!el || typeof el.animate !== "function" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    el.animate([{ opacity: 0, transform: "translateY(4px)" }, { opacity: 1, transform: "none" }], {
+      duration: 180,
+      easing: "cubic-bezier(0.23, 1, 0.32, 1)",
+    });
+  }, [detailKey]);
   const breakdown = roomCapacityBreakdown(map);
 
   return (
@@ -44,7 +58,11 @@ export function RoomInfoPanel({ map, people, connected, onOpenHowTo, quickAction
 
       <Hero summary={map.summary} seats={map.seats} />
       <SummaryCounters summary={map.summary} />
-      {detailSlot ? <div className="border-t border-app pt-4">{detailSlot}</div> : null}
+      {detailSlot ? (
+        <div ref={detailRef} className="border-t border-app pt-4">
+          {detailSlot}
+        </div>
+      ) : null}
       {quickActions ? <div className="flex flex-col gap-4 border-t border-app pt-4">{quickActions}</div> : null}
 
       <div className="border-t border-app pt-4">

@@ -637,6 +637,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
             connected={connected}
             onOpenHowTo={openHowTo}
             quickActions={quickActions}
+            detailKey={selectedSeat?.id ?? "empty"}
             detailSlot={detail ?? <RightPanelEmptyState hasActiveCheckIn={activeCheckIn != null} />}
           />
           {notices}
