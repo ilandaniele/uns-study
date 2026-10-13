@@ -70,7 +70,7 @@ export function StudyModeControl({ roomId, initialStatus }: StudyModeControlProp
             onChange={(e) => setSubject(e.target.value)}
             maxLength={80}
             placeholder="¿Qué estás estudiando? (opcional)"
-            className="w-full rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
+            className="w-full rounded-control border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
           />
           <input
             value={message}
@@ -78,7 +78,7 @@ export function StudyModeControl({ roomId, initialStatus }: StudyModeControlProp
             onChange={(e) => setMessage(e.target.value)}
             maxLength={140}
             placeholder="Mensaje corto (opcional)"
-            className="w-full rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
+            className="w-full rounded-control border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
           />
           <label className="flex items-center gap-2 text-sm text-main">
             <input type="checkbox" checked={lookingForGroup} onChange={(e) => setLookingForGroup(e.target.checked)} className="h-4 w-4 accent-primary" />
@@ -95,7 +95,7 @@ export function StudyModeControl({ roomId, initialStatus }: StudyModeControlProp
             type="button"
             onClick={() => void stop()}
             disabled={pending}
-            className="min-h-11 rounded-lg border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-50"
+            className="min-h-11 rounded-control border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-surface-2 disabled:opacity-50"
           >
             Desactivar Modo Estudio
           </button>
@@ -104,7 +104,7 @@ export function StudyModeControl({ roomId, initialStatus }: StudyModeControlProp
             type="button"
             onClick={() => void start()}
             disabled={pending}
-            className="min-h-11 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+            className="min-h-11 rounded-control bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
           >
             Activar Modo Estudio
           </button>

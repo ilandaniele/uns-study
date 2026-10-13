@@ -103,7 +103,7 @@ export function EmailCampaignComposer() {
 
   if (enabled === false) {
     return (
-      <p className="rounded-[14px] border border-app bg-surface p-4 text-sm text-muted">
+      <p className="border-t border-app pt-4 text-sm text-muted">
         El envío de mails no está configurado todavía. Cuando se cargue la clave de Resend y el remitente, vas a poder armar y enviar campañas desde acá.
       </p>
     );
@@ -111,7 +111,7 @@ export function EmailCampaignComposer() {
 
   return (
     <div className="flex flex-col gap-4">
-      <form onSubmit={(e) => void saveDraft(e)} className="flex flex-col gap-3 rounded-[14px] border border-app bg-surface p-4">
+      <form onSubmit={(e) => void saveDraft(e)} className="flex flex-col gap-3 border-t border-app pt-4">
         <p className="text-sm font-semibold text-main">{editingId ? "Editar borrador" : "Nueva campaña"}</p>
         <label className="flex flex-col gap-1 text-xs text-muted">
           Plantilla
@@ -166,7 +166,7 @@ export function EmailCampaignComposer() {
 
       {error ? <p className="text-sm text-[var(--seat-occupied)]">{error}</p> : null}
 
-      <div className="flex flex-col divide-y divide-[var(--border)] rounded-[14px] border border-app bg-surface">
+      <div className="flex flex-col divide-y divide-[var(--border)] border-y border-app">
         {campaigns.map((c) => (
           <div key={c.id} className="flex flex-col gap-1 px-4 py-3 text-sm">
             <div className="flex items-center justify-between gap-2">

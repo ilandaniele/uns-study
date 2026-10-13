@@ -28,7 +28,7 @@ export function IdentityHelp({ variant = "inline", defaultOpen = false }: { vari
     : "Tu foto no se muestra en el chat";
 
   return (
-    <section className={sidebar ? "rounded-2xl border border-app bg-surface" : "mx-3 mt-2 rounded-2xl border border-app bg-surface"}>
+    <section className={sidebar ? "border-y border-app" : "mx-3 mt-2 rounded-control border border-app bg-surface"}>
       {sidebar ? (
         <div className="flex items-center gap-2 px-3 py-2.5">
           <UserCircleIcon size={20} className="text-primary" aria-hidden="true" />

@@ -19,15 +19,13 @@ export default function HowToUsePage() {
   return (
     <main className="mx-auto max-w-prose space-y-4 px-4 py-8 text-sm leading-relaxed text-main">
       <BackButton fallbackHref="/" />
-      <h1 className="font-display text-2xl font-semibold text-main">Cómo usar Sala de Estudio</h1>
+      <h1 className="t-heading">Cómo usar Sala de Estudio</h1>
       <p className="text-muted">Mirá qué lugares están libres antes de ir, y ayudá a mantener el mapa al día.</p>
 
-      <ol className="flex flex-col gap-3">
+      <ol className="flex flex-col divide-y divide-[var(--border)] border-y border-app">
         {HOW_TO_STEPS.map((step, i) => (
-          <li key={step.title} className="flex items-start gap-3 rounded-[14px] border border-app bg-surface p-4">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <step.icon aria-hidden="true" size={20} weight="bold" />
-            </span>
+          <li key={step.title} className="flex items-start gap-3 py-4">
+            <step.icon aria-hidden="true" size={20} weight="bold" className="mt-0.5 shrink-0 text-muted" />
             <div className="min-w-0">
               <h2 className="text-base font-semibold text-main">
                 {i + 1}. {step.title}
@@ -50,7 +48,7 @@ export default function HowToUsePage() {
 
       <Link
         href="/"
-        className="mt-4 flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark"
+        className="mt-4 flex min-h-11 w-full items-center justify-center rounded-control bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark"
       >
         Ir a la sala
       </Link>

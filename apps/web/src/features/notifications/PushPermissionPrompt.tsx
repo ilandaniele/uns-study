@@ -91,7 +91,7 @@ export function PushPermissionPrompt() {
 
   if (message) {
     return (
-      <p role="status" className={`${POSITION} rounded-[12px] border border-app bg-surface px-4 py-3 text-sm text-main shadow-lg`}>
+      <p role="status" className={`${POSITION} rounded-float border border-app bg-surface px-4 py-3 text-sm text-main shadow-lg`}>
         {message}
       </p>
     );
@@ -103,7 +103,7 @@ export function PushPermissionPrompt() {
       role="dialog"
       aria-labelledby="push-prompt-title"
       aria-describedby="push-prompt-body"
-      className={`${POSITION} flex flex-col gap-3 rounded-[12px] border border-app bg-surface p-4 shadow-lg`}
+      className={`${POSITION} flex flex-col gap-3 rounded-float border border-app bg-surface p-4 shadow-lg`}
     >
       <div className="flex flex-col gap-1">
         <h2 id="push-prompt-title" className="text-sm font-semibold text-main">¿Activamos las notificaciones?</h2>
@@ -116,7 +116,7 @@ export function PushPermissionPrompt() {
           type="button"
           onClick={() => void handleEnable()}
           disabled={busy}
-          className="rounded-lg bg-primary min-h-11 px-3.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50 lg:min-h-9 lg:text-xs"
+          className="rounded-control bg-primary min-h-11 px-3.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50 lg:min-h-9 lg:text-xs"
         >
           {busy ? "Activando…" : "Activar"}
         </button>
@@ -124,7 +124,7 @@ export function PushPermissionPrompt() {
           type="button"
           onClick={() => snooze(SNOOZE_LATER_MS)}
           disabled={busy}
-          className="rounded-lg border border-app bg-surface min-h-11 px-3.5 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-50 lg:min-h-9 lg:text-xs"
+          className="rounded-control border border-app bg-surface min-h-11 px-3.5 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-50 lg:min-h-9 lg:text-xs"
         >
           Ahora no
         </button>

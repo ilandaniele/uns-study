@@ -44,7 +44,7 @@ export function RewardedAdButton() {
         type="button"
         onClick={() => void handleClick()}
         disabled={state.kind === "loading"}
-        className="min-h-11 rounded-[10px] border border-app bg-surface px-4 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-60"
+        className="min-h-11 rounded-control border border-app bg-surface px-4 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-60"
       >
         {state.kind === "loading" ? "Cargando anuncio…" : "Mirá un anuncio y sacá los anuncios por 3 horas"}
       </button>

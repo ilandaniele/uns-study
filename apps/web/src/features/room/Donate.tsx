@@ -51,11 +51,11 @@ function AliasTicket() {
       type="button"
       onClick={() => void copy()}
       aria-label={copied ? "Alias copiado" : `Copiar alias ${DONATION_ALIAS}`}
-      className="group flex w-full items-center gap-3 rounded-xl border border-dashed border-[var(--border-strong)] bg-surface px-3 py-2.5 text-left transition-transform active:scale-[0.98]"
+      className="group flex w-full items-center gap-3 rounded-control border border-dashed border-[var(--border-strong)] bg-surface-2 px-3 py-2.5 text-left transition-transform active:scale-[0.98]"
     >
       <span className="min-w-0 flex-1">
-        <span className="label-caps block truncate text-muted">Alias {DONATION_BANK}</span>
-        <span className="mt-0.5 block truncate font-mono text-[15px] font-semibold text-main">{DONATION_ALIAS}</span>
+        <span className="t-label block truncate">Alias {DONATION_BANK}</span>
+        <span className="t-data mt-0.5 block truncate text-[15px] font-semibold text-main">{DONATION_ALIAS}</span>
       </span>
       <span
         aria-hidden="true"
@@ -98,7 +98,7 @@ function MercadoPagoAmounts() {
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="label-caps text-muted">Donar con Mercado Pago</span>
+      <span className="t-label">Donar con Mercado Pago</span>
       <div className="grid grid-cols-2 gap-2">
         {DONATION_AMOUNTS_ARS.map((amount) => (
           <button
@@ -107,7 +107,7 @@ function MercadoPagoAmounts() {
             onClick={() => void donate(amount)}
             disabled={busy != null}
             aria-busy={busy === amount}
-            className="min-h-11 rounded-xl bg-primary px-3 font-mono text-[15px] font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-60"
+            className="min-h-11 rounded-control bg-primary px-3 font-mono text-[15px] font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-60"
           >
             {busy === amount ? "Abriendo…" : formatArs(amount)}
           </button>
@@ -120,7 +120,7 @@ function MercadoPagoAmounts() {
           if (customValid) void donate(customAmount);
         }}
       >
-        <label className="flex min-h-11 min-w-0 flex-1 items-center gap-1 rounded-xl border border-app bg-surface px-3 focus-within:border-primary">
+        <label className="flex min-h-11 min-w-0 flex-1 items-center gap-1 rounded-control border border-app bg-surface px-3 focus-within:border-primary">
           <span aria-hidden="true" className="font-mono text-muted">$</span>
           <span className="sr-only">Otro monto en pesos</span>
           <input
@@ -136,7 +136,7 @@ function MercadoPagoAmounts() {
         <button
           type="submit"
           disabled={!customValid || busy != null}
-          className="min-h-11 shrink-0 rounded-xl bg-primary px-4 text-sm font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-50"
+          className="min-h-11 shrink-0 rounded-control bg-primary px-4 text-sm font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-50"
         >
           {busy != null && busy === customAmount ? "Abriendo…" : "Donar"}
         </button>
@@ -162,7 +162,7 @@ function DonateBody() {
         La app es gratis. Si te sirve, cualquier aporte ayuda a pagar el servidor para que siga andando y no se caiga.
       </p>
       <MercadoPagoAmounts />
-      <span className="label-caps text-muted">O por transferencia</span>
+      <span className="t-label">O por transferencia</span>
       <AliasTicket />
     </>
   );
@@ -171,8 +171,8 @@ function DonateBody() {
 /** Inline card: left panel on desktop, below the people list on mobile. */
 export function DonateCard() {
   return (
-    <section aria-labelledby="donate-card-title" className="flex flex-col gap-3 rounded-2xl border border-app bg-[var(--surface-2)] p-4">
-      <h2 id="donate-card-title" className="flex items-center gap-2 font-display text-base font-extrabold uppercase tracking-[0.01em] text-main">
+    <section aria-labelledby="donate-card-title" className="flex flex-col gap-3 border-t border-app pt-4">
+      <h2 id="donate-card-title" className="t-title flex items-center gap-2">
         <HeartIcon aria-hidden="true" size={18} weight="fill" className="text-primary" />
         ¿Querés donar?
       </h2>
@@ -245,13 +245,11 @@ export function DonatePrompt({ blocked }: { blocked: boolean }) {
         aria-modal="true"
         aria-labelledby="donate-prompt-title"
         onClick={(e) => e.stopPropagation()}
-        className={`${closing ? "sheet-exit" : "sheet-enter"} flex w-full flex-col gap-3 rounded-t-[22px] border-t border-app bg-surface px-5 pb-safe pt-3 shadow-[0_-10px_40px_rgba(0,0,0,0.22)]`}
+        className={`${closing ? "sheet-exit" : "sheet-enter"} flex w-full flex-col gap-3 rounded-t-sheet border-t border-app bg-surface px-5 pb-safe pt-3 shadow-[0_-8px_24px_rgba(0,0,0,0.18)]`}
       >
         <span aria-hidden="true" className="mx-auto h-1.5 w-11 rounded-full bg-[var(--border-strong)]" />
         <div className="flex items-start gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <HeartIcon aria-hidden="true" size={22} weight="fill" />
-          </span>
+          <HeartIcon aria-hidden="true" size={20} weight="fill" className="mt-1 shrink-0 text-muted" />
           <div className="min-w-0 flex-1">
             <h2 id="donate-prompt-title" className="font-display text-xl font-extrabold uppercase leading-tight text-main">
               ¿Querés donar?
@@ -272,7 +270,7 @@ export function DonatePrompt({ blocked }: { blocked: boolean }) {
         <button
           type="button"
           onClick={close}
-          className="mb-3 min-h-12 w-full rounded-2xl bg-[var(--surface-2)] px-4 text-sm font-semibold text-main"
+          className="mb-3 min-h-12 w-full rounded-control bg-[var(--surface-2)] px-4 text-sm font-semibold text-main"
         >
           Ahora no
         </button>

@@ -158,7 +158,7 @@ export function NotifyCard() {
             type="button"
             onClick={enable}
             disabled={state === null}
-            className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-app bg-surface font-semibold text-main transition-[transform,background-color] duration-150 hover:bg-[var(--surface-2)] active:scale-[0.97] disabled:opacity-50"
+            className="flex min-h-12 items-center justify-center gap-2 rounded-control border border-app bg-surface font-semibold text-main transition-[transform,background-color] duration-150 hover:bg-[var(--surface-2)] active:scale-[0.97] disabled:opacity-50"
           >
             <BellIcon size={18} aria-hidden="true" />
             Activar avisos
@@ -228,13 +228,13 @@ export function StatsCard() {
             const label = d.date.toLocaleDateString("es-AR", { weekday: "long" });
             return (
               <li key={d.key} className="flex h-full flex-col items-center justify-end gap-1" aria-label={`${label}: ${d.minutes} min`}>
-                <div className="relative w-full flex-1 overflow-hidden rounded-[4px] bg-[var(--surface-2)]">
+                <div className="relative w-full flex-1 overflow-hidden rounded-control bg-[var(--surface-2)]">
                   <div
                     className={`focus-ease absolute inset-0 origin-bottom transition-transform duration-300 ${isToday ? "bg-primary" : "bg-[color-mix(in_srgb,var(--primary)_45%,var(--surface-2))]"}`}
                     style={{ transform: `scaleY(${d.minutes / max})` }}
                   />
                 </div>
-                <span aria-hidden="true" className={`text-[10px] font-semibold uppercase ${isToday ? "text-main" : "text-muted"}`}>
+                <span aria-hidden="true" className={`text-[11px] font-semibold uppercase ${isToday ? "text-main" : "text-muted"}`}>
                   {d.date.toLocaleDateString("es-AR", { weekday: "narrow" })}
                 </span>
               </li>
@@ -264,7 +264,7 @@ export function TasksCard() {
       title="Tareas"
       action={
         done > 0 ? (
-          <button type="button" onClick={() => focusActions.clearDone()} className="min-h-8 rounded-md px-2 text-xs font-semibold text-muted hover:bg-[var(--surface-2)] hover:text-main">
+          <button type="button" onClick={() => focusActions.clearDone()} className="min-h-8 rounded-control px-2 text-xs font-semibold text-muted hover:bg-[var(--surface-2)] hover:text-main">
             Borrar hechas ({done})
           </button>
         ) : null
@@ -311,7 +311,7 @@ export function TasksCard() {
                   className="flex h-11 w-11 shrink-0 items-center justify-center"
                 >
                   <span
-                    className={`flex h-5 w-5 items-center justify-center rounded-[5px] border transition-colors duration-150 ${
+                    className={`flex h-5 w-5 items-center justify-center rounded-xs border transition-colors duration-150 ${
                       t.done ? "border-transparent bg-primary text-white" : "border-[var(--border-strong)]"
                     }`}
                   >
@@ -327,7 +327,7 @@ export function TasksCard() {
                   className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left"
                 >
                   <span className={`min-w-0 flex-1 truncate text-sm ${t.done ? "text-muted line-through" : "text-main"} ${current ? "font-semibold" : ""}`}>{t.text}</span>
-                  {current ? <span className="label-caps shrink-0 text-primary">Ahora</span> : null}
+                  {current ? <span className="t-label shrink-0 text-primary">Ahora</span> : null}
                   {t.pomodoros > 0 ? (
                     <span className="flex shrink-0 items-center gap-0.5 font-mono text-xs text-muted" aria-label={`${t.pomodoros} bloques`}>
                       <TimerIcon size={12} aria-hidden="true" />

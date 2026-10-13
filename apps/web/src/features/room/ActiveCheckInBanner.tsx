@@ -50,13 +50,13 @@ export function ActiveCheckInBanner({ activeCheckIn, seatLabel, pending, onShow,
 
   if (expiryStatus && (expiryStatus.shouldPromptExtend || expiringAlert)) {
     return (
-      <div className="order-0 sticky top-[57px] z-50 lg:static lg:z-auto lg:col-span-3">
+      <div className="order-0 sticky top-[57px] z-50 lg:static lg:z-auto lg:col-span-full">
         <ExtendBanner minutesLeft={expiryStatus.minutesLeft} pending={pending} onExtend={onExtend} onCheckOut={onCheckOut} locating={locating} />
       </div>
     );
   }
   return (
-    <div className="order-0 lg:col-span-3">
+    <div className="order-0 lg:col-span-full">
       <MyCheckInBar seatLabel={seatLabel} expiresAt={activeCheckIn.expiresAt} pending={pending} onShow={onShow} onRelease={onCheckOut} />
     </div>
   );

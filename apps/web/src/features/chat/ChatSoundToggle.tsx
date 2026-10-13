@@ -25,7 +25,7 @@ export function ChatSoundToggle({ className = "" }: { className?: string }) {
       aria-pressed={!enabled}
       aria-label={label}
       title={enabled ? "Silenciar mensajes privados" : "Activar sonido de mensajes privados"}
-      className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-[10px] text-muted transition-transform hover:bg-[var(--surface-2)] active:scale-[0.96] ${className}`}
+      className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-control text-muted transition-transform hover:bg-[var(--surface-2)] active:scale-[0.96] ${className}`}
     >
       {enabled ? <SpeakerHighIcon size={18} aria-hidden /> : <SpeakerSlashIcon size={18} aria-hidden />}
     </button>

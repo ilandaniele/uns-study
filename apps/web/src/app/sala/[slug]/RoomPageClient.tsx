@@ -463,12 +463,20 @@ export function RoomPageClient({ slug }: { slug: string }) {
     />
   ) : null;
 
+  const notices = (
+    <>
+      {isAdmin ? <MarkAllOccupiedCard roomSlug={slug} seats={map.seats} onDone={handleChanged} /> : null}
+      {map.summary.free === 0 ? <EnableSeatFreedCta /> : null}
+      <AnnouncementsBanner roomSlug={slug} socket={socket} />
+    </>
+  );
+
   return (
     <main
-      className={`mx-auto flex max-w-7xl flex-col gap-4 p-4 lg:grid ${detail && !isLargeDesktop ? "pb-[62dvh]" : ""} lg:grid-cols-[320px_minmax(0,1fr)_340px] lg:items-start`}
+      className={`mx-auto flex max-w-7xl flex-col gap-4 p-4 lg:grid ${detail && !isLargeDesktop ? "pb-[62dvh]" : ""} lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-x-8`}
     >
       {error ? (
-        <div className="order-0 flex items-center justify-between gap-3 rounded-xl border border-app bg-surface px-3 py-2 text-sm text-muted lg:col-span-3">
+        <div className="order-0 flex items-center justify-between gap-3 rounded-xl border border-app bg-surface px-3 py-2 text-sm text-muted lg:col-span-full">
           <span>
             {typeof navigator !== "undefined" && navigator.onLine === false
               ? "Sin conexión, reintentando…"
@@ -487,22 +495,22 @@ export function RoomPageClient({ slug }: { slug: string }) {
           no seat selected; SeatDetail shows its own copy of these when a seat is open, so hide the
           page-level one then to avoid showing the same error/challenge twice. */}
       {!selectedSeat && actionError ? (
-        <p role="alert" className="order-0 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 lg:col-span-3">
+        <p role="alert" className="order-0 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 lg:col-span-full">
           {actionError}
         </p>
       ) : null}
       {!selectedSeat && turnstileRequired ? (
-        <div className="order-0 lg:col-span-3">
+        <div className="order-0 lg:col-span-full">
           <TurnstileChallenge onToken={submitTurnstileToken} />
         </div>
       ) : null}
       {adminBanner ? (
-        <div className="order-0 lg:col-span-3">
+        <div className="order-0 lg:col-span-full">
           <AdminPresentBanner onDismiss={dismissAdminBanner} />
         </div>
       ) : null}
       {challenge ? (
-        <div className="order-0 sticky top-[57px] z-50 lg:static lg:z-auto lg:col-span-3">
+        <div className="order-0 sticky top-[57px] z-50 lg:static lg:z-auto lg:col-span-full">
           <DisputeChallengeBanner
             seatLabel={seatDisplayLabel(challengeTable, challengeSeat?.code ?? "", challengeSeat?.seatNumber ?? 0)}
             closesAt={challenge.closesAt}
@@ -513,7 +521,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
         </div>
       ) : null}
       {disputeWon ? (
-        <div className="order-0 lg:col-span-3">
+        <div className="order-0 lg:col-span-full">
           <DisputeWonBanner
             seatLabel={seatDisplayLabel(wonTable, wonSeat?.code ?? disputeWon.seatCode, wonSeat?.seatNumber ?? 0)}
             pending={pending}
@@ -535,65 +543,75 @@ export function RoomPageClient({ slug }: { slug: string }) {
         />
       ) : null}
 
-      {/* Desktop (lg+) gets the full left info panel; mobile/tablet gets a compact header + counters above the map. */}
-      <section className="order-1 flex flex-col gap-4 lg:order-1">
-        {isLargeDesktop ? (
-          <RoomInfoPanel map={map} people={people} connected={connected} onOpenHowTo={openHowTo} quickActions={quickActions} />
-        ) : (
-          <>
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <h1 className="font-display text-[26px] font-extrabold uppercase leading-none tracking-[0.01em] text-main">{map.room.name}</h1>
-                <p className="mt-2 flex items-center gap-1.5 text-sm text-muted">
-                  <span
-                    aria-hidden="true"
-                    className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-[var(--seat-free)]" : "bg-[var(--seat-unknown)]"}`}
-                  />
-                  {connected ? "En vivo" : "Reconectando…"} · {todayLabel()}
-                  <UpdatedAgo seats={map.seats} />
-                  <span className="sr-only" aria-live="polite">
-                    {connected ? "" : "Reconectando, el mapa puede estar desactualizado"}
-                  </span>
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={openHowTo}
-                aria-label="Cómo usar la app"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-[var(--surface-2)]"
-              >
-                <QuestionIcon size={20} />
-              </button>
+      {/* Mobile/tablet: compact header + counters above the map. Desktop (lg+) gets the info rail instead. */}
+      {!isLargeDesktop ? (
+        <section className="order-1 flex flex-col gap-4">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h1 className="t-heading">{map.room.name}</h1>
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-muted">
+                <span
+                  aria-hidden="true"
+                  className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-[var(--seat-free)]" : "bg-[var(--seat-unknown)]"}`}
+                />
+                {connected ? "En vivo" : "Reconectando…"} · {todayLabel()}
+                <UpdatedAgo seats={map.seats} />
+                <span className="sr-only" aria-live="polite">
+                  {connected ? "" : "Reconectando, el mapa puede estar desactualizado"}
+                </span>
+              </p>
             </div>
-            <Hero summary={map.summary} seats={map.seats} />
-            <SummaryCounters summary={map.summary} />
-            {quickActions}
-          </>
-        )}
-        {isAdmin ? <MarkAllOccupiedCard roomSlug={slug} seats={map.seats} onDone={handleChanged} /> : null}
-        {map.summary.free === 0 ? <EnableSeatFreedCta /> : null}
-        <AnnouncementsBanner roomSlug={slug} socket={socket} />
-      </section>
+            <button
+              type="button"
+              onClick={openHowTo}
+              aria-label="Cómo usar la app"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-control text-muted hover:bg-[var(--surface-2)]"
+            >
+              <QuestionIcon size={20} />
+            </button>
+          </div>
+          <Hero summary={map.summary} seats={map.seats} />
+          {quickActions}
+          {notices}
+          <SummaryCounters summary={map.summary} />
+        </section>
+      ) : null}
 
-      <section className="order-2 flex min-w-0 flex-col gap-3 lg:order-2">
-        <div
-          onPointerDownCapture={preloadSeatDetail}
-          className="relative h-[70dvh] w-full overflow-hidden rounded-2xl border border-app bg-surface md:h-[80dvh] lg:mx-auto lg:aspect-[1090/1536] lg:h-[82dvh] lg:w-auto lg:max-w-full"
-        >
-          {isDesktop || !mounted ? (
-            <div className="flex h-full w-full items-center justify-center">{roomMap}</div>
-          ) : (
-            <ZoomableMap>{roomMap}</ZoomableMap>
-          )}
+      <section className="order-2 flex min-w-0 flex-col gap-3 lg:order-2 lg:col-start-1">
+        <div className="lg:mx-auto lg:w-fit lg:max-w-full">
+          <div
+            onPointerDownCapture={preloadSeatDetail}
+            className="relative h-[70dvh] w-full overflow-hidden rounded-control border border-app bg-surface md:h-[80dvh] lg:mx-auto lg:aspect-[1090/1536] lg:h-[82dvh] lg:w-auto lg:max-w-full"
+          >
+            {isDesktop || !mounted ? (
+              <div className="flex h-full w-full items-center justify-center">{roomMap}</div>
+            ) : (
+              <ZoomableMap>{roomMap}</ZoomableMap>
+            )}
+          </div>
+          {/* Title block under the drawing: lg only, decorative (the h1 and live status live in the rail). */}
+          <div
+            aria-hidden="true"
+            className="t-caption hidden text-muted lg:mt-2 lg:flex lg:w-full lg:items-center lg:justify-between lg:border-t lg:border-app lg:pt-2"
+          >
+            <span className="t-label">{map.room.name}</span>
+            <span className="t-data flex items-center gap-1.5">
+              <span
+                className={`inline-block h-1.5 w-1.5 rounded-full ${connected ? "bg-[var(--seat-free)]" : "bg-[var(--seat-unknown)]"}`}
+              />
+              {connected ? "En vivo" : "Reconectando…"}
+              <UpdatedAgo seats={map.seats} />
+            </span>
+          </div>
         </div>
       </section>
 
       {/* Mobile/tablet: people list below the map (desktop shows it in RoomInfoPanel instead). */}
       {!isLargeDesktop ? (
         <section className="order-3">
-          <div className="rounded-2xl border border-app bg-surface p-3">
+          <div className="border-t border-app pt-4">
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-main">Personas en la sala ({people.length})</h2>
+              <h2 className="t-title text-base">Personas en la sala ({people.length})</h2>
               <Link href="/personas" className="text-xs font-semibold text-primary hover:underline">
                 Ver todas
               </Link>
@@ -612,12 +630,18 @@ export function RoomPageClient({ slug }: { slug: string }) {
       ) : null}
 
       {isLargeDesktop ? (
-        <div className="order-4 flex flex-col gap-4 lg:order-3">
-          <section className="rounded-2xl border border-app bg-surface">
-            {detail ?? <RightPanelEmptyState hasActiveCheckIn={activeCheckIn != null} />}
-          </section>
+        <aside className="order-4 flex flex-col gap-4 lg:order-3 lg:col-start-2 lg:sticky lg:top-[73px] lg:max-h-[calc(100dvh-89px)] lg:overflow-y-auto lg:border-l lg:border-app lg:pl-8">
+          <RoomInfoPanel
+            map={map}
+            people={people}
+            connected={connected}
+            onOpenHowTo={openHowTo}
+            quickActions={quickActions}
+            detailSlot={detail ?? <RightPanelEmptyState hasActiveCheckIn={activeCheckIn != null} />}
+          />
+          {notices}
           <DonateCard />
-        </div>
+        </aside>
       ) : detail ? (
         <SeatSheet expanded={sheetExpanded} onExpandedChange={setSheetExpanded} onClose={closeDetail}>
           {detail}

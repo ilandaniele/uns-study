@@ -43,7 +43,7 @@ export function LiveRoomPanel({ roomSlug }: { roomSlug: string }) {
   return (
     <div className="flex flex-col gap-3">
       <MarkAllOccupiedCard roomSlug={roomSlug} seats={live.map.seats} onDone={() => setReloads((n) => n + 1)} />
-      <div className="flex flex-col gap-2 rounded-[14px] border border-app bg-surface p-4">
+      <div className="flex flex-col gap-2 border-t border-app pt-4">
         <h2 className="text-sm font-semibold text-main">
           Ocupantes activos ({live.occupants.length} / {live.map.summary.total})
         </h2>

@@ -17,7 +17,7 @@ const ITEMS = [
 export function AdminNav() {
   const pathname = usePathname();
   return (
-    <nav className="qr-print-hide flex flex-wrap gap-1 rounded-2xl border border-app bg-[var(--surface-2)] p-1 text-sm font-medium">
+    <nav className="qr-print-hide flex flex-wrap gap-1 rounded-control border border-app bg-[var(--surface-2)] p-1 text-sm font-medium">
       {ITEMS.map((item) => {
         const active = item.href === "/admin" ? pathname === item.href : pathname?.startsWith(item.href);
         return (

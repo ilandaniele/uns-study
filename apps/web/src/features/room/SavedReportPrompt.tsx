@@ -32,7 +32,7 @@ export function SavedReportPrompt({ seat, roomId, occupant, seatLabel, pending, 
   return (
     <section
       aria-label="Lugar marcado como guardado"
-      className="rounded-xl border border-[var(--seat-saved)] bg-[var(--surface-2)] p-3"
+      className="rounded-control border border-[var(--seat-saved)] p-3"
     >
       <div className="flex items-start justify-between gap-2">
         <div>
@@ -45,7 +45,7 @@ export function SavedReportPrompt({ seat, roomId, occupant, seatLabel, pending, 
           type="button"
           onClick={onDismiss}
           aria-label="Cerrar aviso"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-[var(--surface)] hover:text-main"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control text-muted hover:bg-[var(--surface)] hover:text-main"
         >
           <XIcon aria-hidden="true" size={16} />
         </button>
@@ -54,7 +54,7 @@ export function SavedReportPrompt({ seat, roomId, occupant, seatLabel, pending, 
         {reportHref ? (
           <Link
             href={reportHref}
-            className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--seat-occupied)] px-3 py-2 text-sm font-semibold text-white hover:opacity-90"
+            className="flex min-h-11 items-center justify-center gap-2 rounded-control bg-[var(--seat-occupied)] px-3 py-2 text-sm font-semibold text-white hover:opacity-90"
           >
             <FlagIcon aria-hidden="true" size={16} weight="bold" />
             Reportar a {occupant?.displayName ?? "la persona"}
@@ -65,13 +65,13 @@ export function SavedReportPrompt({ seat, roomId, occupant, seatLabel, pending, 
             type="button"
             onClick={onAskToFree}
             disabled={pending}
-            className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-app bg-surface px-3 py-2 text-sm font-semibold text-main hover:border-[var(--border-strong)] disabled:opacity-50"
+            className="flex min-h-11 items-center justify-center gap-2 rounded-control border border-app bg-surface px-3 py-2 text-sm font-semibold text-main hover:border-[var(--border-strong)] disabled:opacity-50"
           >
             <HandPalmIcon aria-hidden="true" size={16} weight="bold" />
             Pedir que lo liberen
           </button>
         ) : null}
-        <button type="button" onClick={onDismiss} className="min-h-10 rounded-lg px-3 py-2 text-sm font-semibold text-muted hover:text-main">
+        <button type="button" onClick={onDismiss} className="min-h-10 rounded-control px-3 py-2 text-sm font-semibold text-muted hover:text-main">
           Solo reportar
         </button>
       </div>

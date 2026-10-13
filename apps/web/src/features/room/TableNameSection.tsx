@@ -60,7 +60,7 @@ export function TableNameSection({ tableId, loggedIn }: TableNameSectionProps) {
       {data.proposals.length > 0 ? (
         <ul className="mt-2 flex flex-col gap-1.5">
           {data.proposals.map((proposal) => (
-            <li key={proposal.id} className="flex items-center justify-between gap-2 rounded-lg bg-[var(--surface-2)] px-2.5 py-1.5 text-sm">
+            <li key={proposal.id} className="flex items-center justify-between gap-2 rounded-control bg-surface-2 px-2.5 py-1.5 text-sm">
               <span className="min-w-0 truncate">
                 {proposal.name}
                 {proposal.mine ? <span className="ml-1.5 text-xs text-muted">(propuesto por vos)</span> : null}
@@ -70,7 +70,7 @@ export function TableNameSection({ tableId, loggedIn }: TableNameSectionProps) {
                 disabled={!loggedIn || pending}
                 onClick={() => handleVoteToggle(proposal.id, proposal.myVote)}
                 aria-pressed={proposal.myVote}
-                className="flex shrink-0 items-center gap-1 rounded-md border border-app px-2 py-1 text-xs font-semibold disabled:opacity-50"
+                className="flex shrink-0 items-center gap-1 rounded-control border border-app px-2 py-1 text-xs font-semibold disabled:opacity-50"
                 style={proposal.myVote ? { color: "var(--primary)", borderColor: "var(--primary)" } : undefined}
               >
                 <ThumbsUpIcon aria-hidden="true" size={14} weight={proposal.myVote ? "fill" : "regular"} />
@@ -92,12 +92,12 @@ export function TableNameSection({ tableId, loggedIn }: TableNameSectionProps) {
             placeholder="Proponé un nombre"
             aria-label="Nombre propuesto para la mesa"
             maxLength={24}
-            className="min-w-0 flex-1 rounded-lg border border-app bg-transparent px-2.5 py-1.5 text-sm"
+            className="min-w-0 flex-1 rounded-control border border-app bg-transparent px-2.5 py-1.5 text-sm"
           />
           <button
             type="submit"
             disabled={pending || name.trim().length < 2}
-            className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+            className="shrink-0 rounded-control bg-primary px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
           >
             Proponer
           </button>

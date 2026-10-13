@@ -32,7 +32,7 @@ export default function RecuperarPage() {
 
   return (
     <main className="flex min-h-[calc(100dvh-57px)] flex-col items-center justify-center bg-app px-4 py-10">
-      <div className="w-full max-w-sm rounded-2xl border border-app bg-surface p-6 shadow-sm">
+      <div className="w-full max-w-sm p-6">
         <h1 className="text-center font-display text-2xl font-extrabold leading-snug text-main">Recuperá tu contraseña</h1>
 
         {sent ? (
@@ -51,7 +51,7 @@ export default function RecuperarPage() {
               autoComplete="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
+              className="w-full rounded-control border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
             />
 
             {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
@@ -59,7 +59,7 @@ export default function RecuperarPage() {
             <button
               type="submit"
               disabled={pending}
-              className="min-h-11 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+              className="min-h-11 rounded-control bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
             >
               {pending ? "Enviando…" : "Enviar link"}
             </button>

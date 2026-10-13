@@ -29,7 +29,7 @@ export function MessageOccupantButton({ userId }: { userId: string }) {
         type="button"
         onClick={handleClick}
         disabled={busy}
-        className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-app px-3 text-sm font-medium text-main hover:bg-[var(--surface-2)] disabled:opacity-60"
+        className="inline-flex min-h-9 items-center gap-1.5 rounded-control border border-app px-3 text-sm font-medium text-main hover:bg-[var(--surface-2)] disabled:opacity-60"
       >
         <ChatCircleIcon size={16} />
         {busy ? "Abriendo…" : "Mandar mensaje"}

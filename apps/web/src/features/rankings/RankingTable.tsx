@@ -1,5 +1,4 @@
 import type { RankingDto, RankingEntryDto, RankingPeriod } from "@sala/contracts";
-import { TrophyIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { AdminBadge } from "@/components/AdminBadge";
@@ -20,7 +19,7 @@ export function RankingTable({ ranking }: { ranking: RankingDto }) {
     <div className="flex flex-col gap-4">
       <Podium entries={podium} format={format} />
       {rest.length > 0 ? (
-        <ol className="flex flex-col divide-y divide-[var(--border)] overflow-hidden rounded-2xl border border-app bg-surface">
+        <ol className="flex flex-col divide-y divide-[var(--border)] border-y border-app">
           {rest.map((entry) => (
             <RankingRow key={entry.userId ?? `anon-${entry.rank}`} entry={entry} value={format(entry.value)} highlighted={entry.isMe} />
           ))}
@@ -29,7 +28,7 @@ export function RankingTable({ ranking }: { ranking: RankingDto }) {
       {!meInList && ranking.me ? (
         <div className="sticky bottom-[calc(136px+env(safe-area-inset-bottom))] lg:bottom-[88px]">
           <p className="mb-1.5 px-1 text-xs font-medium text-muted">Tu posición</p>
-          <ol className="overflow-hidden rounded-2xl border border-app bg-surface">
+          <ol className="border-y border-app bg-surface">
             <RankingRow entry={ranking.me} value={format(ranking.me.value)} highlighted />
           </ol>
         </div>
@@ -43,14 +42,14 @@ function Podium({ entries, format }: { entries: RankingEntryDto[]; format: (valu
   const byRank = (rank: number) => entries.find((entry) => entry.rank === rank) ?? null;
   const slots = [byRank(2), byRank(1), byRank(3)];
   return (
-    <ol className="grid grid-cols-3 items-end gap-2">
+    <ol className="grid grid-cols-3 items-end divide-x divide-[var(--border)] border-t border-app">
       {slots.map((entry, index) =>
         entry ? (
           <li
             key={entry.userId ?? `anon-${entry.rank}`}
-            className={`flex min-w-0 flex-col items-center gap-2 rounded-2xl border bg-gradient-to-b px-2 pb-3 text-center shadow-sm ${
-              entry.rank === 1 ? "from-[var(--surface-2)] to-surface pt-7" : "from-[var(--surface-2)]/60 to-surface pt-3"
-            } ${entry.isMe ? "border-[var(--primary)] bg-primary/10" : "border-app"}`}
+            className={`flex min-w-0 flex-col items-center gap-2 px-2 pb-3 text-center ${
+              entry.rank === 1 ? "pt-7" : "pt-3"
+            } ${entry.isMe ? "bg-primary/10" : ""}`}
           >
             <PodiumAvatarLink userId={entry.userId}>
               <Avatar
@@ -139,15 +138,12 @@ function RankingRow({ entry, value, highlighted }: { entry: RankingEntryDto; val
 
 function EmptyRanking({ period }: { period: RankingPeriod }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-app px-6 py-12 text-center">
-      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--surface-2)] text-muted">
-        <TrophyIcon size={28} aria-hidden="true" />
-      </span>
+    <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
       <div>
-        <p className="font-display text-base font-semibold text-main">{emptyRankingMessage(period)}</p>
+        <p className="t-title text-base">{emptyRankingMessage(period)}</p>
         <p className="mt-1 text-sm text-muted">Marcá “Estoy acá” en tu lugar y empezás a sumar.</p>
       </div>
-      <Link href="/" className="mt-1 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98]">
+      <Link href="/" className="mt-1 rounded-control bg-primary px-4 py-2 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98]">
         Ir a la sala
       </Link>
     </div>
@@ -159,16 +155,16 @@ export function RankingSkeleton() {
     <div className="flex flex-col gap-4" aria-busy="true" aria-label="Cargando ranking">
       <div className="grid grid-cols-3 items-end gap-2">
         {[120, 144, 120].map((height, index) => (
-          <div key={index} className="animate-pulse rounded-2xl bg-[var(--surface-2)]" style={{ height }} />
+          <div key={index} className="animate-pulse rounded-control bg-[var(--surface-2)]" style={{ height }} />
         ))}
       </div>
-      <div className="flex flex-col divide-y divide-[var(--border)] overflow-hidden rounded-2xl border border-app bg-surface">
+      <div className="flex flex-col divide-y divide-[var(--border)] border-y border-app">
         {[0, 1, 2, 3, 4].map((row) => (
           <div key={row} className="flex animate-pulse items-center gap-3 px-4 py-3">
-            <div className="h-4 w-5 rounded bg-[var(--surface-2)]" />
+            <div className="h-4 w-5 rounded-control bg-[var(--surface-2)]" />
             <div className="h-10 w-10 rounded-full bg-[var(--surface-2)]" />
-            <div className="h-3 flex-1 rounded bg-[var(--surface-2)]" />
-            <div className="h-3 w-12 rounded bg-[var(--surface-2)]" />
+            <div className="h-3 flex-1 rounded-control bg-[var(--surface-2)]" />
+            <div className="h-3 w-12 rounded-control bg-[var(--surface-2)]" />
           </div>
         ))}
       </div>

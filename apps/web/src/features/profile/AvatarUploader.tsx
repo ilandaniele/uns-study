@@ -107,7 +107,7 @@ export function AvatarUploader({ avatarUrl, displayName, googleImage, showAvatar
             type="button"
             disabled={busy}
             onClick={() => fileInputRef.current?.click()}
-            className="min-h-11 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+            className="min-h-11 rounded-control bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
           >
             Subir foto
           </button>
@@ -116,7 +116,7 @@ export function AvatarUploader({ avatarUrl, displayName, googleImage, showAvatar
               type="button"
               disabled={busy}
               onClick={() => void handleUseGoogle()}
-              className="min-h-11 rounded-lg border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-50"
+              className="min-h-11 rounded-control border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-surface-2 disabled:opacity-50"
             >
               Usar mi foto de Google
             </button>
@@ -126,7 +126,7 @@ export function AvatarUploader({ avatarUrl, displayName, googleImage, showAvatar
               type="button"
               disabled={busy}
               onClick={() => void handleRemove()}
-              className="min-h-11 rounded-lg border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-50"
+              className="min-h-11 rounded-control border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-surface-2 disabled:opacity-50"
             >
               Quitar
             </button>
@@ -137,7 +137,7 @@ export function AvatarUploader({ avatarUrl, displayName, googleImage, showAvatar
       {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
 
       {!showAvatar ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-[var(--surface-2)] px-3 py-2 text-sm text-muted">
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-control bg-surface-2 px-3 py-2 text-sm text-muted">
           <span>Tu foto no se muestra: activá &ldquo;Mostrar foto de perfil&rdquo; más abajo.</span>
           <button type="button" onClick={onEnableShowAvatar} className="relative font-semibold text-primary underline-offset-2 hover:underline before:absolute before:-inset-x-2 before:-inset-y-3 before:content-['']">
             Activar ahora
@@ -167,7 +167,7 @@ function AvatarPreview({ avatarUrl, name }: { avatarUrl: string | null; name: st
     );
   }
   return (
-    <span className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] font-display text-2xl font-semibold text-main">
+    <span className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full bg-surface-2 font-display text-2xl font-semibold text-main">
       {name.trim().charAt(0).toUpperCase() || "?"}
     </span>
   );

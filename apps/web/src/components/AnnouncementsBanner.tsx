@@ -67,7 +67,7 @@ export function AnnouncementsBanner({ roomSlug, socket }: AnnouncementsBannerPro
       {announcements.map((announcement) => (
         <div
           key={announcement.id}
-          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          className="rounded-control border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
         >
           <p className="font-semibold">{announcement.title}</p>
           <p className="whitespace-pre-wrap">{announcement.body}</p>

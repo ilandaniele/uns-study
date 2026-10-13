@@ -51,7 +51,7 @@ export function PeopleList({ people, limit, emptyLabel = "Nadie está mostrándo
             </p>
           </div>
           {person.studyStatus?.lookingForGroup ? (
-            <span className="shrink-0 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">Busca grupo</span>
+            <span className="shrink-0 rounded-control bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">Busca grupo</span>
           ) : null}
         </li>
       ))}

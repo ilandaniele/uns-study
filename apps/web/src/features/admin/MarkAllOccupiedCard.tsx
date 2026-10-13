@@ -62,7 +62,7 @@ export function MarkAllOccupiedCard({ roomSlug, seats, onDone }: MarkAllOccupied
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-app bg-surface p-3">
+    <div className="flex flex-col gap-2 border-t border-app pt-3">
       <h2 className="text-sm font-semibold text-main">Administración</h2>
       <div className="flex flex-wrap gap-2">
         <button
@@ -72,7 +72,7 @@ export function MarkAllOccupiedCard({ roomSlug, seats, onDone }: MarkAllOccupied
             setConfirming(true);
           }}
           disabled={pending || count === 0}
-          className="min-h-10 rounded-xl bg-primary px-3 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-60"
+          className="min-h-10 rounded-control bg-primary px-3 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-60"
         >
           Todos los lugares ocupados
         </button>
@@ -80,7 +80,7 @@ export function MarkAllOccupiedCard({ roomSlug, seats, onDone }: MarkAllOccupied
           type="button"
           onClick={() => void run<{ count: number }>("mark-all-occupied/undo", undefined, (r) => `Deshicimos la marca en ${r.count} lugares`)}
           disabled={pending}
-          className="min-h-10 rounded-xl border border-app px-3 text-sm font-medium text-main hover:bg-[var(--surface-2)] disabled:opacity-60"
+          className="min-h-10 rounded-control border border-app px-3 text-sm font-medium text-main hover:bg-[var(--surface-2)] disabled:opacity-60"
         >
           Deshacer
         </button>
@@ -99,10 +99,10 @@ export function MarkAllOccupiedCard({ roomSlug, seats, onDone }: MarkAllOccupied
             aria-modal="true"
             aria-labelledby="mark-all-title"
             tabIndex={-1}
-            className={`${closing ? "dialog-exit" : "dialog-enter"} w-full max-w-sm rounded-t-2xl border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl sm:rounded-2xl`}
+            className={`${closing ? "dialog-exit" : "dialog-enter"} w-full max-w-sm rounded-t-sheet border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl sm:rounded-float`}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="mark-all-title" className="font-display text-lg font-semibold text-main">
+            <h2 id="mark-all-title" className="t-title">
               Todos los lugares ocupados
             </h2>
             <p className="mt-1 text-sm text-muted">
@@ -111,7 +111,7 @@ export function MarkAllOccupiedCard({ roomSlug, seats, onDone }: MarkAllOccupied
                 aria-label="Duración"
                 value={minutes}
                 onChange={(e) => setMinutes(Number(e.target.value))}
-                className="rounded-lg border border-app bg-surface px-1.5 py-0.5 text-main"
+                className="rounded-control border border-app bg-surface px-1.5 py-0.5 text-main"
               >
                 {MARK_ALL_OCCUPIED_DURATIONS.map((m) => (
                   <option key={m} value={m}>
@@ -131,14 +131,14 @@ export function MarkAllOccupiedCard({ roomSlug, seats, onDone }: MarkAllOccupied
                 type="button"
                 onClick={() => void run<{ count: number }>("mark-all-occupied", { minutes }, (r) => markedToastMessage(r.count))}
                 disabled={pending}
-                className="min-h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-60"
+                className="min-h-11 rounded-control bg-primary px-4 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-60"
               >
                 Marcar como ocupados
               </button>
               <button
                 type="button"
                 onClick={requestClose}
-                className="min-h-11 rounded-xl border border-app px-4 text-sm font-medium text-main hover:bg-[var(--surface-2)]"
+                className="min-h-11 rounded-control border border-app px-4 text-sm font-medium text-main hover:bg-[var(--surface-2)]"
               >
                 Cancelar
               </button>

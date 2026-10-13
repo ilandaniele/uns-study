@@ -99,13 +99,13 @@ export default function PublicProfilePage() {
   return (
     <main className="mx-auto max-w-lg p-4">
       <BackButton fallbackHref="/personas" />
-      <div className="rounded-[14px] border border-app bg-surface p-5">
+      <div className="border-t border-app pt-5">
         <div className="flex items-center gap-4">
           <WithAdminBadge show={profile.adminBadge} size={64}>
             <PersonAvatar name={profile.displayName} avatarUrl={profile.avatarUrl} />
           </WithAdminBadge>
           <div className="min-w-0">
-            <h1 className="truncate font-display text-xl font-semibold text-main">{profile.displayName}</h1>
+            <h1 className="truncate t-title text-xl">{profile.displayName}</h1>
             {profile.career || profile.currentSubject ? (
               <div className="mt-1 flex flex-wrap gap-1.5">
                 {profile.career ? <Chip>{profile.career}</Chip> : null}
@@ -174,7 +174,7 @@ export default function PublicProfilePage() {
 
 function Chip({ children }: { children: string }) {
   return (
-    <span className="rounded-md border border-app px-2 py-0.5 text-xs font-medium text-muted">{children}</span>
+    <span className="rounded-control border border-app px-2 py-0.5 text-xs font-medium text-muted">{children}</span>
   );
 }
 

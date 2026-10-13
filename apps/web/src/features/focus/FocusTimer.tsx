@@ -16,7 +16,7 @@ function PhaseTabs({ compact }: { compact?: boolean }) {
     <div role="tablist" aria-label="Fase" className="relative grid w-full max-w-sm grid-cols-3 rounded-lg bg-[var(--surface-2)] p-1">
       <span
         aria-hidden="true"
-        className="focus-ease focus-ease-move absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-md bg-surface shadow-sm transition-transform duration-[240ms]"
+        className="focus-ease focus-ease-move absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-control bg-surface transition-transform duration-[240ms]"
         style={{ transform: `translateX(${index * 100}%)` }}
       />
       {PHASES.map((p) => (
@@ -26,7 +26,7 @@ function PhaseTabs({ compact }: { compact?: boolean }) {
           role="tab"
           aria-selected={timer.phase === p}
           onClick={() => focusActions.selectPhase(p)}
-          className={`relative z-10 rounded-md px-2 font-semibold transition-colors ${compact ? "min-h-8 text-xs" : "min-h-10 text-sm"} ${
+          className={`relative z-10 rounded-control px-2 font-semibold transition-colors ${compact ? "min-h-8 text-xs" : "min-h-10 text-sm"} ${
             timer.phase === p ? "text-main" : "text-muted hover:text-main"
           }`}
         >
@@ -79,7 +79,7 @@ function RoundPips() {
           return (
             <span
               key={i}
-              className={`h-2.5 w-2.5 rounded-[3px] border transition-colors duration-300 ${
+              className={`h-2.5 w-2.5 rounded-xs border transition-colors duration-300 ${
                 done ? "border-transparent bg-primary" : now ? "border-[var(--primary)] bg-transparent" : "border-[var(--border-strong)] bg-transparent"
               }`}
             />
@@ -116,7 +116,7 @@ export function TimerControls({ compact }: { compact?: boolean }) {
           focusActions.toggle();
         }}
         aria-keyshortcuts="Space"
-        className={`flex items-center justify-center gap-2 rounded-2xl bg-primary font-semibold text-white transition-[transform,background-color] duration-150 ease-out hover:bg-primary-dark active:scale-[0.97] ${
+        className={`flex items-center justify-center gap-2 rounded-control bg-primary font-semibold text-white transition-[transform,background-color] duration-150 ease-out hover:bg-primary-dark active:scale-[0.97] ${
           compact ? "h-10 min-w-28 px-4 text-sm" : "h-14 min-w-44 px-6 text-base"
         }`}
       >
@@ -188,7 +188,7 @@ function MiniClock() {
   const now = useNow(250).getTime();
   return (
     <div className="flex flex-col items-center gap-1">
-      <span className="label-caps text-muted">{timer.status === "paused" ? "En pausa" : PHASE_LABEL[timer.phase]}</span>
+      <span className="t-label">{timer.status === "paused" ? "En pausa" : PHASE_LABEL[timer.phase]}</span>
       <span className="font-mono text-[clamp(2.5rem,24vw,4.5rem)] font-semibold leading-none tracking-[-0.04em] text-main">
         {formatClock(remainingMs(timer, now))}
       </span>

@@ -69,7 +69,7 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock, on
                     />
                   </div>
                 ) : null}
-                <div className="max-w-[80%] rounded-2xl rounded-tr-md bg-primary/15 px-3 py-1.5">
+                <div className="max-w-[80%] rounded-float rounded-tr-xs bg-primary/15 px-3 py-1.5">
                   <p className={`whitespace-pre-wrap break-words text-sm ${message.deleted ? "italic text-muted" : "text-main"}`}>
                     {message.deleted ? "Mensaje eliminado" : message.content}
                   </p>

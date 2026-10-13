@@ -68,7 +68,7 @@ export function UnsubscribeClient() {
         type="button"
         onClick={() => void unsubscribe()}
         disabled={busy}
-        className="min-h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-white disabled:opacity-60"
+        className="min-h-11 rounded-control bg-primary px-5 text-sm font-semibold text-white disabled:opacity-60"
       >
         Dejar de recibir novedades por mail
       </button>

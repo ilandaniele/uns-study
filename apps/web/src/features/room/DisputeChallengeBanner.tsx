@@ -24,7 +24,7 @@ export function DisputeChallengeBanner({ seatLabel, closesAt, pending, onStillHe
   }, []);
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between"
+    <div className="flex flex-col gap-2 rounded-control border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between"
     >
       <p className="font-medium">
         {/* Only the static sentence is announced; the per-second countdown must not re-trigger the live region. */}
@@ -36,7 +36,7 @@ export function DisputeChallengeBanner({ seatLabel, closesAt, pending, onStillHe
           type="button"
           onClick={onStillHere}
           disabled={pending}
-          className="rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+          className="rounded-control bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
         >
           Sigo acá
         </button>
@@ -44,7 +44,7 @@ export function DisputeChallengeBanner({ seatLabel, closesAt, pending, onStillHe
           type="button"
           onClick={onLeft}
           disabled={pending}
-          className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-sm font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+          className="rounded-control border border-amber-300 bg-white px-3 py-1.5 text-sm font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
         >
           Me fui
         </button>

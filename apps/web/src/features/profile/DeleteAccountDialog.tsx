@@ -28,9 +28,9 @@ export function DeleteAccountDialog({ pending, onConfirm, onCancel }: DeleteAcco
         role="dialog"
         aria-modal="true"
         aria-labelledby="delete-title"
-        className={`${closing ? "dialog-exit" : "dialog-enter"} w-full max-w-sm rounded-[14px] border border-red-200 bg-surface p-5 shadow-xl`}
+        className={`${closing ? "dialog-exit" : "dialog-enter"} w-full max-w-sm rounded-float border border-red-200 bg-surface p-5 shadow-xl`}
       >
-        <h2 id="delete-title" className="font-display text-lg font-semibold text-main">Eliminar cuenta</h2>
+        <h2 id="delete-title" className="t-title">Eliminar cuenta</h2>
         <p className="mt-2 text-sm text-muted">
           Esta acción es permanente: se borran tu perfil, tus mensajes y tu historial. Escribí{" "}
           <strong>{CONFIRM_WORD}</strong> para confirmar.
@@ -41,17 +41,17 @@ export function DeleteAccountDialog({ pending, onConfirm, onCancel }: DeleteAcco
           autoFocus
           onChange={(e) => setValue(e.target.value)}
           placeholder={CONFIRM_WORD}
-          className="mt-3 w-full rounded-lg border border-app bg-surface px-3 py-2 text-base uppercase text-main sm:text-sm"
+          className="mt-3 w-full rounded-control border border-app bg-surface px-3 py-2 text-base uppercase text-main sm:text-sm"
         />
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={requestClose} className="min-h-11 rounded-lg border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-[var(--surface-2)]">
+          <button type="button" onClick={requestClose} className="min-h-11 rounded-control border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-surface-2">
             Cancelar
           </button>
           <button
             type="button"
             onClick={onConfirm}
             disabled={!canConfirm}
-            className="min-h-11 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+            className="min-h-11 rounded-control bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
           >
             Eliminar cuenta
           </button>

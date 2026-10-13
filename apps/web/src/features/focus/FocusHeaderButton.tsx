@@ -31,7 +31,7 @@ export function FocusHeaderButton() {
         href="/foco"
         aria-label="Pomodoro"
         title="Pomodoro"
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-app text-main hover:bg-[var(--surface-2)]"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-control border border-app text-main hover:bg-[var(--surface-2)]"
       >
         <TimerIcon aria-hidden="true" size={20} />
       </Link>
@@ -44,7 +44,7 @@ export function FocusHeaderButton() {
     <Link
       href="/foco"
       aria-label={`Pomodoro: ${paused ? "en pausa" : PHASE_LABEL[timer.phase]}`}
-      className={`flex h-11 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-main hover:bg-[var(--surface-2)] ${
+      className={`flex h-11 shrink-0 items-center gap-1.5 rounded-control border px-2.5 text-main hover:bg-[var(--surface-2)] ${
         isBreak || paused ? "border-app" : "border-[color-mix(in_srgb,var(--primary)_45%,var(--border))]"
       }`}
     >

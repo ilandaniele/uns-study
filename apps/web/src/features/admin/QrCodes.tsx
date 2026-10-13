@@ -74,7 +74,7 @@ export function QrCodes({ roomSlug }: { roomSlug: string }) {
 
   return (
     <div className="qr-print-page flex flex-col gap-4">
-      <div className="qr-print-hide flex gap-2 rounded-[14px] border border-app bg-surface p-4">
+      <div className="qr-print-hide flex gap-2 border-t border-app pt-4">
         <input
           value={tableCode}
           aria-label="Código de mesa"
@@ -90,7 +90,7 @@ export function QrCodes({ roomSlug }: { roomSlug: string }) {
       {error ? <p className="qr-print-hide text-sm text-[var(--seat-occupied)]">{error}</p> : null}
 
       {items.length === 0 ? (
-        <p className="qr-print-hide rounded-[14px] border border-app bg-surface px-4 py-6 text-center text-sm text-muted">
+        <p className="qr-print-hide border-y border-app px-4 py-6 text-center text-sm text-muted">
           Todavía no hay códigos QR generados. Generá el primero arriba.
         </p>
       ) : (
@@ -98,7 +98,7 @@ export function QrCodes({ roomSlug }: { roomSlug: string }) {
           {items.map((item) => (
             <div
               key={item.id}
-              className="qr-print-card flex min-w-0 flex-col items-center gap-2 rounded-[14px] border border-app bg-surface p-4"
+              className="qr-print-card flex min-w-0 flex-col items-center gap-2 border-t border-app pt-4"
             >
               {svgs[item.id] ? (
                 // Trusted output of the `qrcode` library, not user input.

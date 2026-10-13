@@ -65,7 +65,7 @@ export function PhotoVerifyCard({ checkInId, onChanged }: PhotoVerifyCardProps) 
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-app bg-surface p-3">
+    <div className="flex flex-col gap-2 border-t border-app pt-3">
       <p className="text-sm font-semibold text-main">Verificá tu lugar con una foto</p>
       <p className="text-sm text-muted">
         Sacá una foto desde tu asiento mirando hacia adelante. Mientras esté verificado, nadie puede marcarlo como libre ni abrir
@@ -91,7 +91,7 @@ export function PhotoVerifyCard({ checkInId, onChanged }: PhotoVerifyCardProps) 
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={pending}
-        className="flex min-h-11 items-center justify-center gap-2 rounded-xl border-2 border-[var(--primary)] bg-transparent px-4 py-2.5 text-sm font-semibold text-[var(--primary)] disabled:opacity-50"
+        className="flex min-h-11 items-center justify-center gap-2 rounded-control border-2 border-[var(--primary)] bg-transparent px-4 py-2.5 text-sm font-semibold text-[var(--primary)] disabled:opacity-50"
       >
         <CameraIcon aria-hidden="true" size={18} weight="bold" />
         {pending ? "Verificando…" : "Sacar foto"}

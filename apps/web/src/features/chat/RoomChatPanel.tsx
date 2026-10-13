@@ -90,7 +90,7 @@ export function RoomChatPanel({ currentUserId, variant = "page", headerEnd, titl
           <div className="min-w-0">
           <Heading
             id={titleId}
-            className={`font-display font-extrabold uppercase leading-none tracking-[0.01em] text-main ${widget ? "text-[17px]" : "text-[22px]"}`}
+            className="t-title"
           >
             <span aria-hidden="true">#</span> Sala de Estudio
           </Heading>

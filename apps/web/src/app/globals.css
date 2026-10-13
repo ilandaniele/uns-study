@@ -14,13 +14,31 @@
   --color-primary: #0f6e7e;
   --color-primary-dark: #0a5562;
 
-  /* One radius scale for the whole app: tight, signage-like corners instead of soft pills.
-     Controls 6–8px, cards/sheets 10–12px. `rounded-full` stays for avatars and dots. */
-  --radius-md: 5px;
-  --radius-lg: 6px;
-  --radius-xl: 8px;
-  --radius-2xl: 10px;
-  --radius-3xl: 12px;
+  /* radius: 4 controls + map frame, 8 floating, 12 sheet tops */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
+  --radius-2xl: 8px;
+  --radius-3xl: 8px;
+  --radius-control: 4px; /* rounded-control */
+  --radius-float: 8px; /* rounded-float */
+  --radius-sheet: 12px; /* rounded-t-sheet */
+
+  /* type scale 11 / 13 / 15 (16 inputs) / 18 / 22 / 28 */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.4;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.5;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.3;
+  --text-xl: 1.375rem;
+  --text-xl--line-height: 1.1;
+  --text-2xl: 1.75rem;
+  --text-2xl--line-height: 1.05;
 
   --font-sans: var(--font-display), ui-sans-serif, system-ui, sans-serif;
 
@@ -30,6 +48,14 @@
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --default-transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@theme inline {
+  --color-surface: var(--surface); /* fixes bg-surface/95 in Header/BottomNav */
+  --color-surface-2: var(--surface-2);
+  --color-faint: var(--text-faint);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
 }
 
 :root {
@@ -171,14 +197,61 @@ body {
   letter-spacing: -0.01em;
 }
 
-/* Signage caps: small expanded uppercase labels (eyebrows, board labels, nav). */
-.label-caps {
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
-  font-stretch: 112%;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+/* Type roles. Heading/display: expanded uppercase for place names and screen headings only. */
+@layer components {
+  .t-heading {
+    font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+    font-stretch: 118%;
+    font-size: 1.375rem; /* 22 */
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+  .t-display {
+    font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+    font-stretch: 118%;
+    font-size: 1.75rem; /* 28 */
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+  /* Section titles inside a screen: sentence case, normal width. */
+  .t-title {
+    font-size: 1.125rem; /* 18 */
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+  /* Small caps label; .label-caps is kept as an alias. */
+  .t-label,
+  .label-caps {
+    font-size: 0.6875rem; /* 11 */
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-stretch: 100%;
+    color: var(--text-muted);
+  }
+  /* Numbers, times, codes. */
+  .t-data {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .t-caption {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+  .rule-t {
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+  }
 }
 
 .tabular {

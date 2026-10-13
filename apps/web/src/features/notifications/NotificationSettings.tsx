@@ -24,7 +24,7 @@ function Switch({ checked, disabled, label, onChange }: { checked: boolean; disa
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full border border-app transition-colors before:absolute before:-inset-y-2.5 before:-inset-x-1 before:content-[''] disabled:opacity-40 ${
-        checked ? "bg-primary" : "bg-[var(--surface-2)]"
+        checked ? "bg-primary" : "bg-surface-2"
       }`}
     >
       <span
@@ -129,7 +129,7 @@ export function NotificationSettings() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-app bg-[var(--surface-2)] p-3">
+      <div className="rounded-control border border-app bg-surface-2 p-3">
         {support === "unsupported" ? (
           <p className="text-xs text-muted">Este navegador no soporta notificaciones push.</p>
         ) : support === "ios-needs-install" || showIosHint ? (
@@ -149,7 +149,7 @@ export function NotificationSettings() {
               type="button"
               onClick={() => void handleEnableDevice()}
               disabled={deviceState === "enabling"}
-              className="self-start rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+              className="self-start rounded-control bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
             >
               {deviceState === "enabling" ? "Activando…" : "Activar notificaciones en este dispositivo"}
             </button>

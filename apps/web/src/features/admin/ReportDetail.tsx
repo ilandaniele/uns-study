@@ -58,7 +58,7 @@ export function ReportDetail({ reportId }: { reportId: string }) {
 
   return (
     <div className="grid gap-4 md:grid-cols-[1fr_320px]">
-      <div className="flex flex-col gap-4 rounded-[14px] border border-app bg-surface p-4">
+      <div className="flex flex-col gap-4 border-t border-app pt-4">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <h2 className="font-display text-lg font-semibold text-main">{REPORT_REASON_LABELS[report.reason]}</h2>
@@ -77,7 +77,7 @@ export function ReportDetail({ reportId }: { reportId: string }) {
       </div>
 
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2 rounded-[14px] border border-app bg-surface p-4">
+        <div className="flex flex-col gap-2 border-t border-app pt-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Evidencia</p>
           {report.attachments.length > 0 ? (
             report.attachments.map((attachment) => (
@@ -96,7 +96,7 @@ export function ReportDetail({ reportId }: { reportId: string }) {
           )}
         </div>
 
-        <div className="flex flex-col gap-2 rounded-[14px] border border-app bg-surface p-4">
+        <div className="flex flex-col gap-2 border-t border-app pt-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">
             Estado: {REPORT_STATUS_LABELS[report.status] ?? report.status}
           </p>

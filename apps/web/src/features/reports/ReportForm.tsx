@@ -108,8 +108,8 @@ export function ReportForm({ reportedUserId, context, contextMessageId, roomId, 
 
   if (result) {
     return (
-      <div className="flex flex-col gap-2 rounded-[14px] border border-app bg-surface p-6 text-center">
-        <p className="font-display font-semibold text-main">Reporte enviado.</p>
+      <div className="flex flex-col gap-2 border-y border-app py-6 text-center">
+        <p className="t-title">Reporte enviado.</p>
         <p className="text-sm text-muted">Gracias por avisarnos. El equipo de moderación lo va a revisar.</p>
         {result.warning ? <p className="text-sm text-[var(--seat-uncertain)]">{result.warning}</p> : null}
       </div>
@@ -117,15 +117,15 @@ export function ReportForm({ reportedUserId, context, contextMessageId, roomId, 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-[14px] border border-app bg-surface p-6">
-      <h1 className="font-display text-lg font-semibold text-main">Reportar usuario</h1>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 border-t border-app pt-6">
+      <h1 className="t-title">Reportar usuario</h1>
 
       <label className="flex flex-col gap-1 text-sm font-semibold text-main">
         Motivo
         <select
           value={reason}
           onChange={(event) => setReason(event.target.value as ReportReason)}
-          className="rounded-lg border border-app bg-surface px-3 py-2 text-base font-normal text-main sm:text-sm"
+          className="rounded-control border border-app bg-surface px-3 py-2 text-base font-normal text-main sm:text-sm"
         >
           {REPORT_REASONS.map((r) => (
             <option key={r} value={r}>
@@ -143,7 +143,7 @@ export function ReportForm({ reportedUserId, context, contextMessageId, roomId, 
           maxLength={DESCRIPTION_MAX_LENGTH}
           rows={4}
           placeholder="Contanos qué pasó (opcional)"
-          className="resize-none rounded-lg border border-app bg-surface px-3 py-2 text-base font-normal text-main sm:text-sm"
+          className="resize-none rounded-control border border-app bg-surface px-3 py-2 text-base font-normal text-main sm:text-sm"
         />
         <span className="text-right text-xs font-normal text-muted">
           {description.length}/{DESCRIPTION_MAX_LENGTH}
@@ -155,7 +155,7 @@ export function ReportForm({ reportedUserId, context, contextMessageId, roomId, 
         {previewUrl ? (
           <div className="relative w-fit">
             {/* eslint-disable-next-line @next/next/no-img-element -- local object-URL preview of the picked file, not a build-time asset */}
-            <img src={previewUrl} alt="" className="h-28 w-28 rounded-xl border border-app object-cover" />
+            <img src={previewUrl} alt="" className="h-28 w-28 rounded-control border border-app object-cover" />
             <button
               type="button"
               onClick={handleRemoveFile}
@@ -166,7 +166,7 @@ export function ReportForm({ reportedUserId, context, contextMessageId, roomId, 
             </button>
           </div>
         ) : (
-          <label className="flex h-28 w-28 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-app text-muted hover:bg-[var(--surface-2)]">
+          <label className="flex h-28 w-28 cursor-pointer flex-col items-center justify-center gap-1 rounded-control border-2 border-dashed border-app text-muted hover:bg-surface-2">
             <PlusIcon aria-hidden="true" size={20} />
             <span className="text-xs font-normal">Agregar foto</span>
             <input
@@ -185,7 +185,7 @@ export function ReportForm({ reportedUserId, context, contextMessageId, roomId, 
       <p className="text-xs text-muted">La evidencia sólo será visible para moderación.</p>
 
       {error ? (
-        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p role="alert" className="rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
         </p>
       ) : null}
@@ -193,7 +193,7 @@ export function ReportForm({ reportedUserId, context, contextMessageId, roomId, 
       <button
         type="submit"
         disabled={pending}
-        className="min-h-11 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+        className="min-h-11 rounded-control bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
       >
         {pending ? "Enviando…" : "Enviar reporte"}
       </button>

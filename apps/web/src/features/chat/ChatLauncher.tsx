@@ -215,7 +215,7 @@ function AnonLauncher({ sessionPending }: { sessionPending: boolean }) {
       <div className="border-b border-app px-4 py-3">
         <h2
           id={`${baseId}-room`}
-          className="font-display text-[17px] font-extrabold uppercase leading-none tracking-[0.01em] text-main"
+          className="t-title"
         >
           <span aria-hidden="true">#</span> Sala de Estudio
         </h2>
@@ -228,7 +228,7 @@ function AnonLauncher({ sessionPending }: { sessionPending: boolean }) {
             <p className="max-w-[28ch] text-sm text-muted">Iniciá sesión para hablar con la gente que está en la sala.</p>
             <Link
               href={`/login?next=${encodeURIComponent(pathname)}`}
-              className="inline-flex min-h-11 items-center rounded-lg bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-dark"
+              className="inline-flex min-h-11 items-center rounded-control bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-dark"
             >
               Iniciar sesión
             </Link>
@@ -352,7 +352,7 @@ function SignedInLauncher({ userId }: { userId: string }) {
           <div className="flex items-center gap-1 border-b border-app bg-surface py-2.5 pl-4 pr-2">
             <h2
               id={listId}
-              className="min-w-0 flex-1 font-display text-[17px] font-extrabold uppercase leading-none tracking-[0.01em] text-main"
+              className="min-w-0 flex-1 t-title"
             >
               Chats
             </h2>
@@ -483,7 +483,7 @@ function ChatShell({
           tabIndex={-1}
           hidden={!showCard}
           data-state={state}
-          className="chat-card fixed inset-x-3 bottom-[calc(140px+env(safe-area-inset-bottom))] z-50 flex h-[min(600px,calc(100dvh-209px-env(safe-area-inset-bottom)))] min-h-0 origin-[calc(100%-32px)_calc(100%+40px)] flex-col overflow-hidden rounded-[12px] border border-app bg-surface shadow-lg outline-none sm:left-auto sm:right-4 sm:w-[380px] sm:origin-[calc(100%-28px)_calc(100%+40px)] lg:right-6 lg:bottom-[92px] lg:h-[min(640px,calc(100dvh-161px))]"
+          className="chat-card fixed inset-x-3 bottom-[calc(140px+env(safe-area-inset-bottom))] z-50 flex h-[min(600px,calc(100dvh-209px-env(safe-area-inset-bottom)))] min-h-0 origin-[calc(100%-32px)_calc(100%+40px)] flex-col overflow-hidden rounded-float border border-app bg-surface shadow-lg outline-none sm:left-auto sm:right-4 sm:w-[380px] sm:origin-[calc(100%-28px)_calc(100%+40px)] lg:right-6 lg:bottom-[92px] lg:h-[min(640px,calc(100dvh-161px))]"
         >
           {children}
         </div>

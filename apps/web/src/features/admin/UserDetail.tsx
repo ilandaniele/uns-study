@@ -107,7 +107,7 @@ export function UserDetail({ userId }: { userId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-[14px] border border-app bg-surface p-4">
+      <div className="border-t border-app pt-4">
         <h2 className="font-display text-lg font-semibold text-main">{user.name}</h2>
         <p className="text-sm text-muted">{user.email ?? "sin email"}</p>
         <p className="font-mono text-xs text-muted">Miembro desde {new Date(user.createdAt).toLocaleDateString("es-AR")}</p>
@@ -181,7 +181,7 @@ export function UserDetail({ userId }: { userId: string }) {
         ) : null}
       </div>
 
-      <form onSubmit={(e) => void submitAction(e)} className="flex flex-col gap-3 rounded-[14px] border border-app bg-surface p-4">
+      <form onSubmit={(e) => void submitAction(e)} className="flex flex-col gap-3 border-t border-app pt-4">
         <p className="text-sm font-semibold text-main">Aplicar acción de moderación</p>
 
         <label className="flex flex-col gap-1 text-xs text-muted">
@@ -230,7 +230,7 @@ export function UserDetail({ userId }: { userId: string }) {
       </form>
 
       {me?.roles.includes("ADMIN") ? (
-        <form onSubmit={(e) => void submitStudySession(e)} className="flex flex-col gap-3 rounded-[14px] border border-app bg-surface p-4">
+        <form onSubmit={(e) => void submitStudySession(e)} className="flex flex-col gap-3 border-t border-app pt-4">
           <p className="text-sm font-semibold text-main">Sumar horas de estudio</p>
 
           <label className="flex flex-col gap-1 text-xs text-muted">

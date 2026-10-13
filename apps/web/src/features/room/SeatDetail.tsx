@@ -162,7 +162,7 @@ export function SeatDetail({
   const extras = (
     <>
       <div className="border-t border-app pt-3">
-        <h3 className="label-caps text-muted">Información</h3>
+        <h3 className="t-label">Información</h3>
         <ul className="mt-2 flex flex-col gap-2 text-sm text-muted">
           <li className="flex items-center gap-2">
             <TableIcon aria-hidden="true" size={18} />
@@ -190,7 +190,7 @@ export function SeatDetail({
   return (
     <div className={`flex h-full flex-col ${compact ? "gap-3 px-4 pb-4 pt-0" : "gap-4 p-4"}`}>
       <div className="flex items-center gap-2">
-        <p className="label-caps min-w-0 flex-1 truncate text-muted" title={tableLine}>
+        <p className="min-w-0 flex-1 truncate text-xs text-muted" title={tableLine}>
           {tableLine}
         </p>
         <div className="-my-2 -mr-2 flex shrink-0 items-center">
@@ -201,7 +201,7 @@ export function SeatDetail({
               aria-label={isFavorite ? "Quitar de favoritos" : "Guardar como lugar favorito"}
               aria-pressed={isFavorite}
               title={isFavorite ? "Tu lugar favorito" : "Marcar como favorito"}
-              className="flex h-11 w-11 items-center justify-center rounded-lg text-muted hover:bg-[var(--surface-2)] hover:text-main"
+              className="flex h-11 w-11 items-center justify-center rounded-control text-muted hover:bg-surface-2 hover:text-main"
             >
               <StarIcon aria-hidden="true" size={20} weight={isFavorite ? "fill" : "regular"} style={isFavorite ? { color: "var(--seat-saved)" } : undefined} />
             </button>
@@ -210,18 +210,18 @@ export function SeatDetail({
             type="button"
             onClick={onClose}
             aria-label="Cerrar"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-[var(--surface-2)] hover:text-main"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-control text-muted hover:bg-surface-2 hover:text-main"
           >
             <XIcon aria-hidden="true" size={20} weight="regular" />
           </button>
         </div>
       </div>
       <div className="-mt-1 flex items-center gap-3">
-        <div className="shrink-0 rounded-xl bg-[var(--surface-2)] p-1.5">
+        <div className="shrink-0 rounded-control border border-app p-1.5">
           <TableLocator table={table} seats={tableSeats} selectedSeatId={seat.id} mySeatId={mySeatId} onSelectSeat={onSelectSeat} />
         </div>
         <div className="@container min-w-0 flex-1">
-          <h2 className="font-display text-[clamp(18px,15cqi,26px)] font-extrabold uppercase leading-none text-main">
+          <h2 className="t-heading text-[clamp(18px,15cqi,26px)]">
             <span className="sr-only">{label}</span>
             <span aria-hidden="true">
               {unit} {seat.seatNumber}
@@ -232,9 +232,9 @@ export function SeatDetail({
       </div>
 
       {showOccupant || showMarkedBy || showOccupiedUntil || (facts && !peek) ? (
-        <div className="-mt-1 flex flex-col gap-1 rounded-lg bg-[var(--surface-2)] px-3 py-2 text-sm text-muted">
+        <div className="-mt-1 flex flex-col divide-y divide-[var(--border)] text-sm text-muted">
           {showOccupant && occupant ? (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 py-2">
               {occupant.userId ? (
                 <Link href={`/u/${occupant.userId}`} aria-hidden="true" tabIndex={-1} className="shrink-0 rounded-full">
                   <OccupantAvatar avatar={occupant.avatar} size={32} adminBadge={occupant.adminBadge} />
@@ -255,14 +255,14 @@ export function SeatDetail({
               {occupant.userId && me?.user && me.user.id !== occupant.userId ? <MessageOccupantButton userId={occupant.userId} /> : null}
             </div>
           ) : null}
-          {showMarkedBy && markedBy ? <p>{markedByLabel(markedBy.displayName, markedBy.observedAt, now, markedBy.kind)}</p> : null}
-          {showOccupiedUntil && seat.occupiedUntil ? <p>Ocupado hasta las {clockLabel(seat.occupiedUntil)}</p> : null}
-          {facts && !peek ? <p className="text-[13px]">{facts}</p> : null}
+          {showMarkedBy && markedBy ? <p className="py-2">{markedByLabel(markedBy.displayName, markedBy.observedAt, now, markedBy.kind)}</p> : null}
+          {showOccupiedUntil && seat.occupiedUntil ? <p className="py-2">Ocupado hasta las {clockLabel(seat.occupiedUntil)}</p> : null}
+          {facts && !peek ? <p className="py-2 text-[13px]">{facts}</p> : null}
         </div>
       ) : null}
 
       {actionError ? (
-        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p role="alert" className="rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">
           {actionError}
         </p>
       ) : null}
@@ -287,7 +287,7 @@ export function SeatDetail({
 
       <div className="flex flex-col gap-2">
         {!me?.user ? (
-          <div className="rounded-xl border border-app bg-[var(--surface-2)] p-3">
+          <div className="border-t border-app pt-3">
             <p className="flex items-center gap-2 text-sm font-semibold text-main">
               <EyeIcon aria-hidden="true" size={18} weight="bold" />
               Ingresá para marcar lugares
@@ -297,7 +297,7 @@ export function SeatDetail({
             </p>
             <Link
               href={`/login?next=${encodeURIComponent(`${pathname}?seat=${seat.id}`)}`}
-              className="mt-3 flex min-h-11 w-full items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark"
+              className="mt-3 flex min-h-11 w-full items-center justify-center rounded-control bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark"
             >
               Ingresar
             </Link>
@@ -312,7 +312,7 @@ export function SeatDetail({
             </QuietDangerButton>
             {isPhotoVerified && myCheckIn?.verificationExpiresAt ? (
               <p
-                className="inline-flex w-fit items-center gap-1.5 rounded-md border border-app px-2.5 py-1 text-xs font-semibold"
+                className="inline-flex w-fit items-center gap-1.5 rounded-control border border-app px-2.5 py-1 text-xs font-semibold"
                 style={{ color: "var(--primary)" }}
               >
                 <ShieldCheckIcon aria-hidden="true" size={14} weight="fill" />
@@ -346,7 +346,7 @@ export function SeatDetail({
                     onClick={() => setShowPicker((value) => !value)}
                     aria-expanded={showPicker}
                     aria-label={`Duración: ${durationLabel(durationMinutes)}. Cambiar`}
-                    className="flex min-h-[52px] shrink-0 items-center gap-1 rounded-2xl bg-[var(--surface-2)] px-3.5 text-sm font-bold tabular-nums text-main transition-transform duration-150 ease-out active:scale-[0.97]"
+                    className="flex min-h-[52px] shrink-0 items-center gap-1 rounded-control bg-surface-2 px-3.5 text-sm font-bold tabular-nums text-main transition-transform duration-150 ease-out active:scale-[0.97]"
                   >
                     {durationLabel(durationMinutes)}
                     <CaretDownIcon aria-hidden="true" size={14} weight="bold" className={`transition-transform ${showPicker ? "rotate-180" : ""}`} />
@@ -368,7 +368,7 @@ export function SeatDetail({
                 {locationHint}
               </>
             )}
-            <p className="label-caps mt-1 text-muted">¿Cómo ves este lugar?</p>
+            <p className="t-label mt-1">¿Cómo ves este lugar?</p>
             <div className="grid grid-cols-3 gap-2">
               <ObservationChip tone="free" onClick={run("free", onMarkFree)} disabled={pending}>
                 {searching("free") ? "Buscando…" : "Está libre"}
@@ -385,7 +385,7 @@ export function SeatDetail({
                 type="button"
                 onClick={() => onOpenDispute("SAVED")}
                 disabled={pending}
-                className="min-h-11 rounded-xl border border-app px-3 text-sm font-semibold text-main transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-50"
+                className="min-h-11 rounded-control border border-app px-3 text-sm font-semibold text-main transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-50"
               >
                 Se fue hace más de 30 min
               </button>
@@ -411,7 +411,7 @@ export function SeatDetail({
             type="button"
             onClick={() => onExpandedChange?.(!expanded)}
             aria-expanded={expanded}
-            className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl text-[13px] font-semibold text-muted active:bg-[var(--surface-2)]"
+            className="flex min-h-10 items-center justify-center gap-1.5 rounded-control text-[13px] font-semibold text-muted active:bg-surface-2"
           >
             {expanded ? "Ver menos" : "Ver más de la mesa"}
             <CaretDownIcon aria-hidden="true" size={14} weight="bold" className={`transition-transform ${expanded ? "" : "rotate-180"}`} />

@@ -47,7 +47,7 @@ export function BottomNav() {
             {/* Active tab: a short petrol bar on the top edge, like a tab plate. */}
             <span
               aria-hidden="true"
-              className={`absolute inset-x-1/2 top-0 h-[3px] -translate-x-1/2 rounded-b-sm bg-primary w-8 origin-center transition-transform duration-150 ${active ? "scale-x-100" : "scale-x-0"}`}
+              className={`absolute inset-x-1/2 top-0 h-[3px] -translate-x-1/2 rounded-none bg-primary w-8 origin-center transition-transform duration-150 ${active ? "scale-x-100" : "scale-x-0"}`}
             />
             <span aria-hidden="true" className={active ? "text-primary" : undefined}>
               {item.icon}

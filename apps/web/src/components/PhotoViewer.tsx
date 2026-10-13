@@ -43,7 +43,7 @@ export function PhotoViewer({ src, alt, onClose }: { src: string; alt: string; o
         type="button"
         onClick={requestClose}
         aria-label="Cerrar foto"
-        className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-[10px] text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+        className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-control text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
       >
         <XIcon aria-hidden="true" size={24} weight="bold" />
       </button>
@@ -52,7 +52,7 @@ export function PhotoViewer({ src, alt, onClose }: { src: string; alt: string; o
         src={src}
         alt={alt}
         onClick={(e) => e.stopPropagation()}
-        className={`${closing ? "photo-exit" : "photo-enter"} max-h-[calc(100dvh-96px)] max-w-[calc(100vw-32px)] rounded-[12px] object-contain`}
+        className={`${closing ? "photo-exit" : "photo-enter"} max-h-[calc(100dvh-96px)] max-w-[calc(100vw-32px)] rounded-float object-contain`}
       />
     </div>
   );

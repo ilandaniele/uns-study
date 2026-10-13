@@ -20,7 +20,7 @@ export default function ChatPage() {
         <p className="text-muted">Iniciá sesión para usar el chat.</p>
         <Link
           href="/login"
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark"
+          className="rounded-control bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark"
         >
           Iniciar sesión
         </Link>

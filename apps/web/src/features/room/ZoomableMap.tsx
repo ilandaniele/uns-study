@@ -33,7 +33,7 @@ export default function ZoomableMap({ children }: { children: ReactNode }) {
         </TransformComponent>
       </TransformWrapper>
       {/* Mid-left, over the empty floor by the windows, so the controls never cover a seat. */}
-      <div className="absolute left-2 top-1/2 flex -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-app bg-surface shadow-md">
+      <div className="absolute left-2 top-1/2 flex -translate-y-1/2 flex-col overflow-hidden rounded-float border border-app bg-surface shadow-md">
         <button
           type="button"
           onClick={() => zoomRef.current?.zoomIn(0.5, 200)}

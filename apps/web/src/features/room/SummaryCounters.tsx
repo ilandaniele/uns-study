@@ -17,15 +17,15 @@ const TILES: { key: keyof RoomSummary; label: string; color: string; glyph: stri
 export function SummaryCounters({ summary }: { summary: RoomSummary }) {
   const total = TILES.reduce((acc, tile) => acc + (summary[tile.key] as number), 0);
   return (
-    <div className="overflow-hidden rounded-xl border border-app bg-surface">
+    <div className="overflow-hidden border-y border-app">
       <dl className="grid grid-cols-5 divide-x divide-[var(--border)]">
         {TILES.map((tile) => (
-          <div key={tile.key} className="flex flex-col-reverse items-center px-1 pb-2.5 pt-2.5">
-            <dt className="mt-1.5 text-[11px] font-semibold leading-tight text-muted">{tile.label}</dt>
-            <dd className="font-mono text-[22px] font-semibold leading-none text-main sm:text-2xl">{summary[tile.key] as number}</dd>
+          <div key={tile.key} className="grid grid-cols-[auto_1fr] items-center gap-x-1.5 gap-y-0.5 px-2 py-1.5">
+            <dt className="col-span-2 row-start-2 text-[11px] font-semibold leading-tight text-muted">{tile.label}</dt>
+            <dd className="t-data col-start-2 row-start-1 text-lg font-semibold leading-none text-main">{summary[tile.key] as number}</dd>
             <span
               aria-hidden="true"
-              className="mb-1.5 grid h-4 w-4 place-items-center rounded-[3px] text-[10px] font-bold leading-none"
+              className="col-start-1 row-start-1 grid h-4 w-4 place-items-center rounded-xs text-[10px] font-bold leading-none"
               style={{ backgroundColor: tile.color, color: tile.glyphColor }}
             >
               {tile.glyph}
@@ -34,7 +34,7 @@ export function SummaryCounters({ summary }: { summary: RoomSummary }) {
         ))}
       </dl>
       {total > 0 ? (
-        <div aria-hidden="true" className="relative h-1.5 w-full overflow-hidden bg-[var(--surface-2)]">
+        <div aria-hidden="true" className="relative h-1 w-full overflow-hidden bg-[var(--surface-2)]">
           {/* Stacked bar drawn as layers scaled to each status's cumulative share, so changes
               animate on transform only. Earlier statuses paint on top of later ones. */}
           {TILES.map((tile, index) => {

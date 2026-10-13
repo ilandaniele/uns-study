@@ -21,7 +21,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-4 p-4">
-      <h1 className="qr-print-hide font-display text-[22px] font-extrabold uppercase leading-none tracking-[0.01em] text-main">Administración</h1>
+      <h1 className="qr-print-hide t-heading">Administración</h1>
       <AdminNav />
       {children}
     </main>

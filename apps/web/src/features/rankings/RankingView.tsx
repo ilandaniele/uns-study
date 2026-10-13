@@ -20,7 +20,7 @@ export function RankingView({ roomSlug }: { roomSlug: string }) {
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pb-24 pt-6 md:pb-10">
       <header>
-        <h1 className="font-display text-[22px] font-extrabold uppercase leading-none tracking-[0.01em] text-main">Ranking</h1>
+        <h1 className="t-heading">Ranking</h1>
         <p className="mt-1 text-sm text-muted">{CATEGORY_DESCRIPTIONS[category]}</p>
       </header>
       <div className="flex flex-col gap-2.5">
@@ -30,7 +30,7 @@ export function RankingView({ roomSlug }: { roomSlug: string }) {
       {loading && !ranking ? (
         <RankingSkeleton />
       ) : error ? (
-        <p className="rounded-2xl border border-app bg-surface p-4 text-sm text-red-600 dark:text-red-400">{error}</p>
+        <p className="border-y border-app py-4 text-sm text-red-600 dark:text-red-400">{error}</p>
       ) : ranking ? (
         <div className={`transition-opacity ${loading ? "opacity-60" : ""}`}>
           <RankingTable ranking={ranking} />

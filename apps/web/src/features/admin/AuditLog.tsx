@@ -28,14 +28,14 @@ export function AuditLog() {
 
   if (page.items.length === 0) {
     return (
-      <p className="rounded-[14px] border border-app bg-surface px-4 py-6 text-center text-sm text-muted">
+      <p className="border-y border-app px-4 py-6 text-center text-sm text-muted">
         No hay eventos registrados todavía.
       </p>
     );
   }
 
   return (
-    <ol className="flex flex-col gap-3 rounded-[14px] border border-app bg-surface p-4">
+    <ol className="flex flex-col gap-3 border-t border-app pt-4">
       {page.items.map((entry) => (
         <li key={entry.id} className="relative border-l border-app pl-3 before:absolute before:-left-[5px] before:top-1.5 before:h-2 before:w-2 before:rounded-full before:bg-[var(--text-faint)]">
           <p className="text-sm font-medium text-main">{entry.action}</p>

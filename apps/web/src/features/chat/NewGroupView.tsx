@@ -87,7 +87,7 @@ export function NewGroupView({ onBack, onCreated, headerEnd, titleId }: NewGroup
         </button>
         <h2
           id={titleId}
-          className="min-w-0 flex-1 font-display text-[17px] font-extrabold uppercase leading-none tracking-[0.01em] text-main"
+          className="min-w-0 flex-1 t-title"
         >
           Nuevo grupo
         </h2>

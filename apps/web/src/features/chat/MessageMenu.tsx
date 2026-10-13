@@ -29,7 +29,7 @@ export function MessageMenu({ isOwn, onDelete, onReport, onBlock }: MessageMenuP
       {open ? (
         <>
           <button type="button" aria-hidden className="fixed inset-0 z-10 cursor-default" onClick={() => setOpen(false)} tabIndex={-1} />
-          <div className="menu-enter origin-bottom-right absolute bottom-full right-0 z-20 mb-1 w-40 overflow-hidden rounded-xl border border-app bg-surface text-sm shadow-lg">
+          <div className="menu-enter origin-bottom-right absolute bottom-full right-0 z-20 mb-1 w-40 overflow-hidden rounded-float border border-app bg-surface text-sm shadow-lg">
             {isOwn ? (
               <MenuItem
                 label="Eliminar"

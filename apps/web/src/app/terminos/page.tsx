@@ -7,7 +7,7 @@ export default function TermsPage() {
   return (
     <main className="mx-auto max-w-prose space-y-4 px-4 py-8 text-sm leading-relaxed text-main">
       <BackButton fallbackHref="/" />
-      <h1 className="font-display text-2xl font-semibold text-main">Términos de uso</h1>
+      <h1 className="t-heading">Términos de uso</h1>
       <ul className="list-disc space-y-2 pl-5">
         <li>La información de ocupación es colaborativa y aproximada. No es una reserva ni garantiza que un lugar esté libre.</li>
         <li>&quot;Estoy acá&quot; significa que estás sentado en ese lugar ahora. No se pueden guardar lugares para otras personas.</li>

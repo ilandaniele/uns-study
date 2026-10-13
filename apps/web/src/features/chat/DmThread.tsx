@@ -74,7 +74,7 @@ export function DmThread({ conversationId, currentUserId, conversation, variant 
             </Link>
           ) : null}
           <div className="min-w-0">
-            <Heading id={titleId} className={`truncate font-display font-semibold text-main ${widget ? "text-base" : "text-lg"}`}>
+            <Heading id={titleId} className={`truncate t-title ${widget ? "text-base" : "text-lg"}`}>
               {otherUserId ? (
                 <Link href={`/u/${otherUserId}`} className="hover:underline">
                   {conversation?.otherUser.displayName ?? "Conversación"}
@@ -137,14 +137,14 @@ export function DmThread({ conversationId, currentUserId, conversation, variant 
                 ) : null}
                 <div className={`flex ${isOwn ? "justify-end" : "justify-start"} ${showHeader ? "mt-2" : ""}`}>
                   <div
-                    className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${
+                    className={`max-w-[75%] rounded-float px-3 py-2 text-sm ${
                       isOwn ? "bg-primary/10 text-main" : "bg-[var(--surface-2)] text-main"
                     }`}
                   >
                     <p className={`whitespace-pre-wrap break-words ${message.deleted ? "italic opacity-70" : ""}`}>
                       {message.deleted ? "Mensaje eliminado" : message.content}
                     </p>
-                    <p className="mt-1 text-right font-mono text-[10px] text-muted">{formatMessageTime(message.createdAt)}</p>
+                    <p className="mt-1 text-right font-mono text-[11px] text-muted">{formatMessageTime(message.createdAt)}</p>
                   </div>
                 </div>
               </div>

@@ -17,7 +17,7 @@ export function ExtendBanner({ minutesLeft, pending, onExtend, onCheckOut, locat
   return (
     <div
       role="status"
-      className="flex flex-col gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between"
+      className="flex flex-col gap-2 rounded-control border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between"
     >
       <p className="font-medium">¿Seguís acá? Tu lugar se libera en {minutesLeft} min.</p>
       <div className="flex gap-2">
@@ -25,7 +25,7 @@ export function ExtendBanner({ minutesLeft, pending, onExtend, onCheckOut, locat
           type="button"
           onClick={onExtend}
           disabled={pending}
-          className="rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+          className="rounded-control bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
         >
           {locating ? "Buscando tu ubicación…" : "Sigo acá"}
         </button>
@@ -33,7 +33,7 @@ export function ExtendBanner({ minutesLeft, pending, onExtend, onCheckOut, locat
           type="button"
           onClick={onCheckOut}
           disabled={pending}
-          className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-sm font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+          className="rounded-control border border-amber-300 bg-white px-3 py-1.5 text-sm font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
         >
           Me voy
         </button>

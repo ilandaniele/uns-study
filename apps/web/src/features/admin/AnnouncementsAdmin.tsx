@@ -56,7 +56,7 @@ export function AnnouncementsAdmin() {
 
   return (
     <div className="flex flex-col gap-4">
-      <form onSubmit={(e) => void create(e)} className="flex flex-col gap-3 rounded-[14px] border border-app bg-surface p-4">
+      <form onSubmit={(e) => void create(e)} className="flex flex-col gap-3 border-t border-app pt-4">
         <p className="text-sm font-semibold text-main">Nuevo anuncio</p>
         <label className="flex flex-col gap-1 text-xs text-muted">
           Título
@@ -89,7 +89,7 @@ export function AnnouncementsAdmin() {
 
       {error ? <p className="text-sm text-[var(--seat-occupied)]">{error}</p> : null}
 
-      <div className="flex flex-col divide-y divide-[var(--border)] rounded-[14px] border border-app bg-surface">
+      <div className="flex flex-col divide-y divide-[var(--border)] border-y border-app">
         {items.map((item) => (
           <div key={item.id} className="flex flex-col gap-1 px-4 py-3 text-sm">
             <div className="flex items-center justify-between gap-2">

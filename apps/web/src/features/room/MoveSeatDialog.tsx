@@ -31,14 +31,14 @@ export function MoveSeatDialog({ fromLabel, toLabel, pending, onConfirm, onCance
         role="dialog"
         aria-modal="true"
         aria-labelledby="move-seat-title"
-        className={`${closing ? "dialog-exit" : "dialog-enter"} w-full max-w-sm rounded-t-2xl border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl sm:rounded-2xl`}
+        className={`${closing ? "dialog-exit" : "dialog-enter"} w-full max-w-sm rounded-t-sheet border border-app bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl sm:rounded-float`}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="move-seat-title" className="font-display text-lg font-semibold text-main">
+        <h2 id="move-seat-title" className="t-title">
           Ya tenés otro lugar marcado
         </h2>
         <p className="mt-1 text-sm text-muted">Para sentarte acá, liberamos tu lugar anterior.</p>
-        <div className="mt-4 flex items-center gap-2 rounded-xl bg-[var(--surface-2)] p-3 text-sm">
+        <div className="mt-4 flex items-center gap-2 rounded-control bg-surface-2 p-3 text-sm">
           <span className="min-w-0 flex-1 truncate text-muted line-through">{fromLabel}</span>
           <ArrowRightIcon size={16} aria-hidden="true" className="shrink-0 text-muted" />
           <span className="min-w-0 flex-1 truncate font-semibold text-main">{toLabel}</span>
@@ -49,7 +49,7 @@ export function MoveSeatDialog({ fromLabel, toLabel, pending, onConfirm, onCance
             type="button"
             onClick={onConfirm}
             disabled={pending}
-            className="min-h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-60"
+            className="min-h-11 rounded-control bg-primary px-4 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-60"
           >
             Sí, cambiarme de lugar
           </button>
@@ -57,7 +57,7 @@ export function MoveSeatDialog({ fromLabel, toLabel, pending, onConfirm, onCance
             ref={cancelRef}
             type="button"
             onClick={requestClose}
-            className="min-h-11 rounded-xl border border-app px-4 text-sm font-medium text-main hover:bg-[var(--surface-2)]"
+            className="min-h-11 rounded-control border border-app px-4 text-sm font-medium text-main hover:bg-[var(--surface-2)]"
           >
             Cancelar
           </button>

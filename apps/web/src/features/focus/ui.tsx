@@ -3,9 +3,9 @@ import { useState, type ReactNode } from "react";
 
 export function Card({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <section className="rounded-3xl border border-app bg-surface p-4">
+    <section className="border-t border-app pt-4">
       <div className="mb-3 flex min-h-6 items-center justify-between gap-2">
-        <h2 className="label-caps text-muted">{title}</h2>
+        <h2 className="t-label">{title}</h2>
         {action}
       </div>
       {children}

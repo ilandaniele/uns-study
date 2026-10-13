@@ -48,7 +48,7 @@ export function TurnstileChallenge({ onToken }: TurnstileChallengeProps) {
   }, [scriptReady, onToken]);
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+    <div className="rounded-control border border-slate-200 bg-slate-50 p-4">
       <p className="text-sm font-medium text-slate-800">Confirmá que sos una persona para continuar.</p>
       {SITE_KEY ? (
         <>

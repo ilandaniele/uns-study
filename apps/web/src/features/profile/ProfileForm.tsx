@@ -113,7 +113,7 @@ export function ProfileForm({ profile, privacy, saving, onSave }: ProfileFormPro
         <p className="mt-1 text-xs text-muted">{identityModeHint(identityMode)}</p>
       </Field>
 
-      <div className="flex items-center gap-3 rounded-lg border border-app bg-[var(--surface-2)] p-3">
+      <div className="flex items-center gap-3 rounded-control border border-app bg-surface-2 p-3">
         <OccupantAvatar avatar={preview.avatar} size={48} adminBadge={preview.adminBadge} />
         {identityMode === "HIDDEN" ? (
           <p className="min-w-0 text-sm text-main">
@@ -143,7 +143,7 @@ export function ProfileForm({ profile, privacy, saving, onSave }: ProfileFormPro
         <button
           type="submit"
           disabled={saving}
-          className="min-h-11 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+          className="min-h-11 rounded-control bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
         >
           Guardar
         </button>
@@ -158,7 +158,7 @@ export function ProfileForm({ profile, privacy, saving, onSave }: ProfileFormPro
   );
 }
 
-const inputClass = "w-full rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm";
+const inputClass = "w-full rounded-control border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (

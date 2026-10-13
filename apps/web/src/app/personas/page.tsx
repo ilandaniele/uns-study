@@ -20,7 +20,7 @@ export default function PersonasPage() {
     return (
       <main className="mx-auto flex max-w-md flex-col items-center gap-3 p-10 text-center">
         <p className="text-muted">Iniciá sesión para ver quién está en la sala.</p>
-        <Link href="/login" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">
+        <Link href="/login" className="rounded-control bg-primary px-4 py-2 text-sm font-semibold text-white">
           Ingresar
         </Link>
       </main>
@@ -29,7 +29,7 @@ export default function PersonasPage() {
 
   return (
     <main className="mx-auto max-w-2xl p-4">
-      <h1 className="mb-2 font-display text-[22px] font-extrabold uppercase leading-none tracking-[0.01em] text-main">Personas en la sala</h1>
+      <h1 className="mb-2 t-heading">Personas en la sala</h1>
       <p className="mb-4 text-sm text-muted">Sólo se muestran las personas registradas que decidieron aparecer acá.</p>
 
       {loading ? (
@@ -37,7 +37,7 @@ export default function PersonasPage() {
       ) : error ? (
         <p className="text-sm text-red-600">{error}</p>
       ) : (
-        <div className="rounded-[14px] border border-app bg-surface p-4">
+        <div className="border-y border-app">
           <PeopleList people={people} />
         </div>
       )}

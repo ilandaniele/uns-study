@@ -20,14 +20,14 @@ export function RoomSocialProof({ visitorsToday, myContributionsToday }: { visit
   return (
     <div className="flex flex-col gap-1.5">
       {contributions ? (
-        <p className="flex flex-wrap items-center gap-x-2 rounded-lg bg-[var(--surface-2)] px-3 py-1.5 text-xs text-main">
+        <p className="flex flex-wrap items-center gap-x-2 text-xs text-main">
           <span>{contributions}</span>
           <Link href="/ranking" className="font-semibold text-primary underline-offset-2 hover:underline">
             Ver ranking
           </Link>
         </p>
       ) : null}
-      {visitors ? <p className="text-xs text-muted">{visitors}</p> : null}
+      {visitors ? <p className="text-xs text-faint">{visitors}</p> : null}
     </div>
   );
 }

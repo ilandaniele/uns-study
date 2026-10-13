@@ -23,7 +23,7 @@ export function FocusView() {
         <div className="flex items-start gap-1">
           <BackButton fallbackHref="/" />
           <div className="flex flex-col gap-1">
-          <h1 className="font-display text-[22px] font-extrabold uppercase leading-none tracking-[0.01em] text-main">Foco</h1>
+          <h1 className="t-heading">Foco</h1>
           <p className="text-sm text-muted">Bloques de estudio con pausas. Sigue corriendo aunque cambies de pantalla.</p>
           </div>
         </div>
@@ -46,7 +46,7 @@ export function FocusView() {
           <section
             ref={stageRef}
             aria-label="Temporizador"
-            className="relative flex flex-col items-center gap-6 rounded-3xl border border-app bg-surface px-4 py-7 sm:py-10 [&:fullscreen]:justify-center [&:fullscreen]:rounded-none [&:fullscreen]:border-0 [&:fullscreen]:bg-app"
+            className="relative flex flex-col items-center gap-6 rounded-control border border-app bg-surface px-4 py-7 sm:py-10 [&:fullscreen]:justify-center [&:fullscreen]:rounded-none [&:fullscreen]:border-0 [&:fullscreen]:bg-app"
           >
             {fs.on ? (
               <button type="button" onClick={fs.toggle} className={`${iconBtn} absolute right-4 top-4`} aria-label="Salir de pantalla completa" title="Salir (F)">

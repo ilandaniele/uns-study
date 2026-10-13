@@ -38,7 +38,7 @@ export function StatsPanel({ roomSlug }: { roomSlug: string }) {
   const qrShare = stats.qrVerifiedObservationShare30d;
 
   return (
-    <div className="rounded-[14px] border border-app bg-surface p-4">
+    <div className="border-t border-app pt-4">
       <div className="flex items-baseline justify-between text-xs">
         <span className="text-muted">Fresh Seat Coverage</span>
         <span className="font-mono font-semibold text-main">{coveragePct}%</span>

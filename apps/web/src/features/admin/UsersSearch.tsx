@@ -99,7 +99,7 @@ export function UsersSearch() {
                     : `${results.length} ${results.length === 1 ? "usuario" : "usuarios"}`}
               </p>
               <div
-                className={`flex flex-col divide-y divide-[var(--border)] rounded-[14px] border border-app bg-surface transition-opacity ${searching ? "opacity-60" : ""}`}
+                className={`flex flex-col divide-y divide-[var(--border)] border-y border-app transition-opacity ${searching ? "opacity-60" : ""}`}
               >
                 {results.map((user) => (
                   <Link

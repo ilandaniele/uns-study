@@ -34,7 +34,7 @@ export function EnableSeatFreedCta() {
     <button
       type="button"
       onClick={() => void handleEnable()}
-      className="self-start rounded-lg border border-app bg-surface min-h-11 px-3.5 text-sm font-semibold text-main lg:min-h-9 lg:text-xs hover:bg-[var(--surface-2)]"
+      className="self-start rounded-control border border-app bg-surface min-h-11 px-3.5 text-sm font-semibold text-main lg:min-h-9 lg:text-xs hover:bg-[var(--surface-2)]"
     >
       Avisame cuando se libere un lugar
     </button>

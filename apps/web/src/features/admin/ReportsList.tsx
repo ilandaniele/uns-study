@@ -28,7 +28,7 @@ export function ReportsList() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap gap-1 rounded-2xl border border-app bg-[var(--surface-2)] p-1 text-sm font-medium">
+      <div className="flex flex-wrap gap-1 rounded-control border border-app bg-[var(--surface-2)] p-1 text-sm font-medium">
         {REPORT_STATUSES.map((s) => (
           <button
             key={s}
@@ -50,7 +50,7 @@ export function ReportsList() {
           <Link
             key={report.id}
             href={`/admin/reports/${report.id}`}
-            className="flex flex-col gap-1.5 rounded-[14px] border border-app bg-surface p-4 text-sm hover:bg-[var(--surface-2)]"
+            className="flex flex-col gap-1.5 border-t border-app pt-4 text-sm hover:bg-[var(--surface-2)]"
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-semibold text-main">{REPORT_REASON_LABELS[report.reason]}</span>
@@ -63,7 +63,7 @@ export function ReportsList() {
           </Link>
         ))}
         {page && page.items.length === 0 ? (
-          <p className="rounded-[14px] border border-app bg-surface px-4 py-6 text-center text-sm text-muted">
+          <p className="border-y border-app px-4 py-6 text-center text-sm text-muted">
             No hay reportes con este estado.
           </p>
         ) : null}

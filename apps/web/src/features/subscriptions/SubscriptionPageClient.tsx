@@ -107,7 +107,7 @@ export function SubscriptionPageClient() {
     <main className="mx-auto max-w-prose space-y-6 px-4 py-8 text-main">
       <BackButton fallbackHref="/perfil" />
       <header className="space-y-2">
-        <h1 className="font-display text-2xl font-semibold uppercase tracking-wide">Sala de Estudio sin anuncios</h1>
+        <h1 className="t-heading">Sala de Estudio sin anuncios</h1>
         {price !== undefined && <p className="text-lg font-semibold text-primary tabular-nums">${price.toLocaleString("es-AR")} por mes</p>}
       </header>
 
@@ -116,7 +116,7 @@ export function SubscriptionPageClient() {
         <li>Apoyás que la sala siga funcionando</li>
       </ul>
 
-      <section className="rounded-xl border border-app bg-surface p-4">
+      <section className="border-t border-app pt-4">
         {meLoading ? (
           <p className="text-sm text-muted">Cargando…</p>
         ) : !enabled ? (
@@ -124,7 +124,7 @@ export function SubscriptionPageClient() {
         ) : !signedIn ? (
           <Link
             href="/login"
-            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98]"
+            className="inline-flex min-h-11 items-center justify-center rounded-control bg-primary px-4 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98]"
           >
             Ingresá para suscribirte
           </Link>
@@ -134,7 +134,7 @@ export function SubscriptionPageClient() {
             <button
               type="button"
               onClick={() => setConfirming(true)}
-              className="min-h-11 rounded-xl border border-app px-4 text-sm font-medium text-main hover:bg-[var(--surface-2)]"
+              className="min-h-11 rounded-control border border-app px-4 text-sm font-medium text-main hover:bg-surface-2"
             >
               Cancelar suscripción
             </button>
@@ -148,7 +148,7 @@ export function SubscriptionPageClient() {
             type="button"
             onClick={() => void handleSubscribe()}
             disabled={busy}
-            className="min-h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-60"
+            className="min-h-11 rounded-control bg-primary px-4 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-60"
           >
             {busy ? "Redirigiendo…" : "Suscribirme"}
           </button>

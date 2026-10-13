@@ -88,17 +88,17 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-[calc(100dvh-57px)] flex-col items-center justify-center bg-app px-4 py-10">
-      <div className="w-full max-w-sm rounded-2xl border border-app bg-surface p-6 shadow-sm">
+      <div className="w-full max-w-sm p-6">
         <h1 className="text-center font-display text-2xl font-extrabold leading-snug text-main">
           Marcá tu lugar. Ayudá a que otros encuentren el suyo.
         </h1>
 
-        <div className="mt-6 mb-4 flex rounded-lg bg-[var(--surface-2)] p-1 text-sm font-semibold">
+        <div className="mt-6 mb-4 flex rounded-control bg-surface-2 p-1 text-sm font-semibold">
           <button
             type="button"
             onClick={() => setTab("signin")}
             aria-pressed={tab === "signin"}
-            className={`flex-1 rounded-md py-2 transition-colors ${
+            className={`flex-1 rounded-control py-2 transition-colors ${
               tab === "signin" ? "bg-primary text-white" : "text-muted"
             }`}
           >
@@ -108,7 +108,7 @@ export default function LoginPage() {
             type="button"
             onClick={() => setTab("signup")}
             aria-pressed={tab === "signup"}
-            className={`flex-1 rounded-md py-2 transition-colors ${
+            className={`flex-1 rounded-control py-2 transition-colors ${
               tab === "signup" ? "bg-primary text-white" : "text-muted"
             }`}
           >
@@ -121,7 +121,7 @@ export default function LoginPage() {
             type="button"
             onClick={() => void handleGoogle()}
             disabled={pending}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-app px-3 py-2.5 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-control border border-app px-3 py-2.5 text-sm font-semibold text-main hover:bg-surface-2 disabled:opacity-50"
           >
             <GoogleGlyph />
             Continuar con Google
@@ -144,7 +144,7 @@ export default function LoginPage() {
               autoComplete="name"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              className="w-full rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
+              className="w-full rounded-control border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
             />
           ) : null}
           <input
@@ -156,7 +156,7 @@ export default function LoginPage() {
             autoComplete="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="w-full rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
+            className="w-full rounded-control border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
           />
           <input
             type="password"
@@ -168,7 +168,7 @@ export default function LoginPage() {
             autoComplete={tab === "signin" ? "current-password" : "new-password"}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="w-full rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
+            className="w-full rounded-control border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
           />
 
           {tab === "signin" && passwordResetEnabled ? (
@@ -187,7 +187,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={pending}
-            className="min-h-11 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+            className="min-h-11 rounded-control bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
           >
             {pending ? (tab === "signin" ? "Ingresando…" : "Creando cuenta…") : tab === "signin" ? "Ingresar" : "Crear cuenta"}
           </button>

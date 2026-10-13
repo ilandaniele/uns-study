@@ -53,7 +53,7 @@ export function RoomQuickActions({ map, onlyFree, onToggleOnlyFree, favoriteSeat
   }
 
   const chip =
-    "flex min-h-11 items-center justify-center gap-1.5 rounded-lg border px-2.5 py-2 text-[13px] font-semibold transition-colors";
+    "flex min-h-11 items-center justify-center gap-1.5 rounded-control border px-2.5 py-2 text-[13px] font-semibold transition-colors";
 
   return (
     <div className="flex flex-col gap-2">

@@ -77,7 +77,7 @@ export function GroupThread({ groupId, group, currentUserId, onBack, onLeft, hea
             <UsersThreeIcon weight="bold" size={18} />
           </span>
           <div className="min-w-0">
-            <h2 id={titleId} className="truncate font-display text-base font-semibold text-main">
+            <h2 id={titleId} className="truncate t-title">
               {group?.name ?? "Grupo"}
             </h2>
             {group ? (
@@ -105,7 +105,7 @@ export function GroupThread({ groupId, group, currentUserId, onBack, onLeft, hea
                 <button type="button" aria-hidden className="fixed inset-0 z-10 cursor-default" onClick={() => setMenuOpen(false)} tabIndex={-1} />
                 <div
                   role="menu"
-                  className="menu-enter absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-xl border border-app bg-surface text-sm shadow-lg"
+                  className="menu-enter absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-float border border-app bg-surface text-sm shadow-lg"
                 >
                   <button
                     type="button"
@@ -178,7 +178,7 @@ export function GroupThread({ groupId, group, currentUserId, onBack, onLeft, hea
                     </div>
                   ) : null}
                   <div
-                    className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${
+                    className={`max-w-[75%] rounded-float px-3 py-2 text-sm ${
                       isOwn ? "bg-primary/10 text-main" : "bg-[var(--surface-2)] text-main"
                     }`}
                   >
@@ -192,7 +192,7 @@ export function GroupThread({ groupId, group, currentUserId, onBack, onLeft, hea
                     <p className={`whitespace-pre-wrap break-words ${message.deleted ? "italic opacity-70" : ""}`}>
                       {message.deleted ? "Mensaje eliminado" : message.content}
                     </p>
-                    <p className="mt-1 text-right font-mono text-[10px] text-muted">{formatMessageTime(message.createdAt)}</p>
+                    <p className="mt-1 text-right font-mono text-[11px] text-muted">{formatMessageTime(message.createdAt)}</p>
                   </div>
                 </div>
               </div>

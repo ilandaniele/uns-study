@@ -65,10 +65,10 @@ function Overlay({ placement }: { placement: NonNullable<ReturnType<typeof useHo
         aria-modal="true"
         aria-labelledby="house-ad-label"
         tabIndex={-1}
-        className={`${closing ? "dialog-exit" : "dialog-enter"} flex h-full w-full flex-col bg-surface px-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-[calc(env(safe-area-inset-top)+0.75rem)] outline-none sm:h-auto sm:max-w-md sm:rounded-[16px] sm:border sm:border-app sm:pb-6 sm:pt-4 sm:shadow-xl`}
+        className={`${closing ? "dialog-exit" : "dialog-enter"} flex h-full w-full flex-col bg-surface px-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-[calc(env(safe-area-inset-top)+0.75rem)] outline-none sm:h-auto sm:max-w-md sm:rounded-float sm:border sm:border-app sm:pb-6 sm:pt-4 sm:shadow-xl`}
       >
         <div className="flex min-h-11 items-center justify-between gap-3">
-          <span id="house-ad-label" className="label-caps text-muted">
+          <span id="house-ad-label" className="t-label">
             Publicidad
           </span>
           {canClose ? (

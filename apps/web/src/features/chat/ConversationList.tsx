@@ -84,7 +84,7 @@ export function ConversationList({
 
   const listClass = widget
     ? "flex min-h-0 flex-1 flex-col divide-y divide-[var(--border)] overflow-y-auto"
-    : "flex flex-col divide-y divide-[var(--border)] overflow-hidden rounded-[14px] border border-app bg-surface";
+    : "flex flex-col divide-y divide-[var(--border)] border-y border-app";
   const rowClass = `flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[var(--surface-2)] ${widget ? "active:bg-[var(--surface-2)]" : ""}`;
 
   if (!widget) {

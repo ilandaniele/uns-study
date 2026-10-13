@@ -105,7 +105,7 @@ export function SeatSheet({ expanded, onExpandedChange, onClose, children }: Sea
       role="dialog"
       aria-modal="false"
       aria-label="Detalle del lugar"
-      className={`sheet-enter fixed inset-x-0 bottom-0 z-40 flex flex-col rounded-t-[22px] border-t border-app bg-surface pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.22)] ${
+      className={`sheet-enter fixed inset-x-0 bottom-0 z-40 flex flex-col rounded-t-sheet border-t border-app bg-surface pb-safe shadow-[0_-8px_24px_rgba(0,0,0,0.18)] ${
         expanded ? "max-h-[88dvh]" : "max-h-[62dvh]"
       }`}
       style={{

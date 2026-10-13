@@ -80,7 +80,7 @@ export default function PerfilPage() {
       <main className="mx-auto flex max-w-md flex-col items-center gap-3 p-10 text-center">
         <p className="text-muted">{error ?? "Iniciá sesión para ver tu perfil."}</p>
         {!session?.user ? (
-          <Link href="/login" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">
+          <Link href="/login" className="rounded-control bg-primary px-4 py-2 text-sm font-semibold text-white">
             Ingresar
           </Link>
         ) : null}
@@ -89,9 +89,9 @@ export default function PerfilPage() {
   }
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-8 p-4 pb-16">
+    <main className="mx-auto flex max-w-2xl flex-col gap-0 p-4 pb-16">
       <div>
-        <h1 className="font-display text-[22px] font-extrabold uppercase leading-none tracking-[0.01em] text-main">Perfil</h1>
+        <h1 className="t-heading">Perfil</h1>
         <p className="mt-2 text-sm text-muted">{profile.email}</p>
         {verifyAvailable && !session.user.emailVerified ? (
           <button
@@ -105,8 +105,8 @@ export default function PerfilPage() {
         ) : null}
       </div>
 
-      <section className="rounded-[14px] border border-app bg-surface p-4">
-        <h2 className="mb-3 font-display text-base font-semibold text-main">Foto de perfil</h2>
+      <section className="border-t border-app py-6 first:border-t-0">
+        <h2 className="mb-3 t-title">Foto de perfil</h2>
         <AvatarUploader
           avatarUrl={profile.avatarUrl}
           displayName={session.user.name || profile.nickname || profile.firstName || "?"}
@@ -117,8 +117,8 @@ export default function PerfilPage() {
         />
       </section>
 
-      <section className="rounded-[14px] border border-app bg-surface p-4">
-        <h2 className="mb-3 font-display text-base font-semibold text-main">Tu perfil</h2>
+      <section className="border-t border-app py-6 first:border-t-0">
+        <h2 className="mb-3 t-title">Tu perfil</h2>
         <ProfileForm
           profile={profile}
           privacy={privacy}
@@ -127,8 +127,8 @@ export default function PerfilPage() {
         />
       </section>
 
-      <section className="rounded-[14px] border border-app bg-surface p-4">
-        <h2 className="mb-1 font-display text-base font-semibold text-main">Privacidad</h2>
+      <section className="border-t border-app py-6 first:border-t-0">
+        <h2 className="mb-1 t-title">Privacidad</h2>
         <p className="mb-2 text-xs text-muted">Todo está oculto por defecto. Activá sólo lo que quieras compartir.</p>
         <PrivacyToggles
           privacy={privacy}
@@ -149,20 +149,20 @@ export default function PerfilPage() {
       </section>
 
       {roomId ? (
-        <section className="rounded-[14px] border border-app bg-surface p-4">
-          <h2 className="mb-3 font-display text-base font-semibold text-main">Modo estudio</h2>
+        <section className="border-t border-app py-6 first:border-t-0">
+          <h2 className="mb-3 t-title">Modo estudio</h2>
           <StudyModeControl roomId={roomId} initialStatus={studyStatus} />
         </section>
       ) : null}
 
-      <section className="rounded-[14px] border border-app bg-surface p-4">
-        <h2 className="mb-1 font-display text-base font-semibold text-main">Notificaciones</h2>
+      <section className="border-t border-app py-6 first:border-t-0">
+        <h2 className="mb-1 t-title">Notificaciones</h2>
         <p className="mb-2 text-xs text-muted">Avisos puntuales, nunca spam. Los podés apagar cuando quieras.</p>
         <NotificationSettings />
       </section>
 
-      <section className="rounded-[14px] border border-app bg-surface p-4">
-        <h2 className="mb-2 font-display text-base font-semibold text-main">Anuncios</h2>
+      <section className="border-t border-app py-6 first:border-t-0">
+        <h2 className="mb-2 t-title">Anuncios</h2>
         {adFree && (me?.roles.length ?? 0) > 0 ? (
           <p className="text-sm text-muted">Como parte del equipo de la sala, no ves anuncios.</p>
         ) : adFree ? (
@@ -170,7 +170,7 @@ export default function PerfilPage() {
             <p className="text-sm text-muted">Tenés Sala de Estudio sin anuncios. Gracias por apoyar la sala.</p>
             <Link
               href="/suscripcion"
-              className="inline-flex min-h-11 items-center rounded-[10px] border border-app px-4 text-sm font-semibold text-main hover:bg-[var(--surface-2)]"
+              className="inline-flex min-h-11 items-center rounded-control border border-app px-4 text-sm font-semibold text-main hover:bg-surface-2"
             >
               Gestionar suscripción
             </Link>
@@ -192,25 +192,25 @@ export default function PerfilPage() {
         )}
       </section>
 
-      <section className="rounded-[14px] border border-app bg-surface p-4">
-        <h2 className="mb-1 font-display text-base font-semibold text-main">Cómo te ven los demás</h2>
+      <section className="border-t border-app py-6 first:border-t-0">
+        <h2 className="mb-1 t-title">Cómo te ven los demás</h2>
         <p className="mb-3 text-xs text-muted">Vista previa con lo que tenés guardado.</p>
         <AppearancePreview profile={profile} privacy={privacy} />
       </section>
 
-      <section className="rounded-[14px] border border-app bg-surface p-4">
-        <h2 className="mb-2 font-display text-base font-semibold text-main">Ayuda</h2>
+      <section className="border-t border-app py-6 first:border-t-0">
+        <h2 className="mb-2 t-title">Ayuda</h2>
         <Link href="/como-usar" className="text-sm font-semibold text-primary underline underline-offset-2">
           Cómo usar la app
         </Link>
       </section>
 
-      <section className="rounded-[14px] border border-red-200 bg-red-50 p-4">
-        <h2 className="mb-2 font-display text-base font-semibold text-red-800">Zona de peligro</h2>
+      <section className="border-t border-red-200 pt-6">
+        <h2 className="mb-2 t-title text-red-700">Zona de peligro</h2>
         <button
           type="button"
           onClick={() => setShowDelete(true)}
-          className="min-h-11 rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+          className="min-h-11 rounded-control border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
         >
           Eliminar cuenta
         </button>

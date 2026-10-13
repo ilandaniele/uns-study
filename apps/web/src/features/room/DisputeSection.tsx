@@ -42,7 +42,7 @@ export function DisputeSection({ seat, me, isMySeat, dispute, pending, onOpen, o
             type="button"
             onClick={() => onOpen(option.kind)}
             disabled={pending}
-            className="rounded-xl border border-app bg-transparent px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)] disabled:opacity-50"
+            className="rounded-control border border-app bg-transparent px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)] disabled:opacity-50"
           >
             <span className="block font-semibold text-main">{option.label}</span>
             <span className="block text-xs text-muted">{option.helper}</span>
@@ -119,7 +119,7 @@ function VoteButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="min-h-11 flex-1 rounded-xl border-2 border-app bg-transparent px-3 py-2.5 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-50"
+      className="min-h-11 flex-1 rounded-control border-2 border-app bg-transparent px-3 py-2.5 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-50"
     >
       {children}
     </button>

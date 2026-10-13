@@ -1,6 +1,6 @@
 ---
 name: Sala de Estudio
-description: Live, crowd-verified seat map for one study room, readable in seconds like the building's own signage.
+description: Live, crowd-verified seat map for one study room, drawn like an architect's plan and readable in seconds.
 colors:
   primary: "#0f6e7e"
   primary-deep: "#0a5562"
@@ -12,6 +12,7 @@ colors:
   paper: "#eceee9"
   surface: "#fbfbf9"
   surface-2: "#e3e6e0"
+  text-faint: "#646c67"
   border: "#d6dad3"
   border-strong: "#b9bfb6"
   night-bg: "#0d1110"
@@ -36,12 +37,12 @@ colors:
 typography:
   display:
     fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "26px"
+    fontSize: "28px"
     fontWeight: 800
     lineHeight: 1
     letterSpacing: "0.01em"
     fontVariation: "'wdth' 118"
-  headline:
+  heading:
     fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
     fontSize: "22px"
     fontWeight: 800
@@ -52,26 +53,29 @@ typography:
     fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
     fontSize: "18px"
     fontWeight: 600
-    lineHeight: 1.4
+    lineHeight: 1.3
     letterSpacing: "-0.01em"
-    fontVariation: "'wdth' 118"
   body:
     fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "14px"
+    fontSize: "15px"
     fontWeight: 400
     lineHeight: 1.5
+  caption:
+    fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "13px"
+    fontWeight: 500
+    lineHeight: 1.4
   label:
     fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
     fontSize: "11px"
     fontWeight: 700
-    lineHeight: 1.3
+    lineHeight: 1.2
     letterSpacing: "0.08em"
-    fontVariation: "'wdth' 112"
   data:
     fontFamily: "Geist Mono, ui-monospace, SFMono-Regular, monospace"
-    fontSize: "22px"
+    fontSize: "18px"
     fontWeight: 600
-    lineHeight: 1
+    lineHeight: 1.3
     fontFeature: "'tnum' 1"
   wordmark:
     fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
@@ -80,23 +84,11 @@ typography:
     lineHeight: 1
     letterSpacing: "0.01em"
     fontVariation: "'wdth' 118"
-  caption:
-    fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "13px"
-    fontWeight: 500
-    lineHeight: 1.4
-  micro:
-    fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "10px"
-    fontWeight: 700
-    lineHeight: 1.2
 rounded:
-  md: "5px"
-  lg: "6px"
-  xl: "8px"
-  2xl: "10px"
-  3xl: "12px"
-  sheet: "22px"
+  xs: "2px"
+  control: "4px"
+  float: "8px"
+  sheet: "12px"
   full: "9999px"
 spacing:
   xs: "4px"
@@ -109,7 +101,7 @@ components:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
     typography: "{typography.body}"
-    rounded: "{rounded.2xl}"
+    rounded: "{rounded.control}"
     padding: "12px 16px"
     height: "52px"
   button-primary-hover:
@@ -117,12 +109,12 @@ components:
   button-primary-compact:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
-    rounded: "{rounded.lg}"
+    rounded: "{rounded.control}"
     padding: "8px 12px"
   button-secondary:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.lg}"
+    rounded: "{rounded.control}"
     padding: "6px 12px"
     height: "36px"
   button-secondary-hover:
@@ -130,27 +122,32 @@ components:
   button-quiet:
     backgroundColor: "{colors.surface-2}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.2xl}"
+    rounded: "{rounded.control}"
     padding: "0 16px"
     height: "48px"
   input:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.ink}"
     typography: "{typography.body}"
-    rounded: "{rounded.lg}"
+    rounded: "{rounded.control}"
     padding: "8px 12px"
-  card:
+  ruled-section:
+    textColor: "{colors.ink}"
+    padding: "16px 0 0"
+  list-row:
+    textColor: "{colors.ink}"
+    padding: "12px 0"
+  floating-surface:
     backgroundColor: "{colors.surface}"
-    rounded: "{rounded.2xl}"
+    rounded: "{rounded.float}"
     padding: "16px"
-  card-tonal:
+  alias-ticket:
     backgroundColor: "{colors.surface-2}"
-    rounded: "{rounded.2xl}"
-    padding: "16px"
+    rounded: "{rounded.control}"
   chip-observation:
     backgroundColor: "{colors.surface-2}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.2xl}"
+    rounded: "{rounded.control}"
     height: "56px"
   nav-tab:
     textColor: "{colors.muted}"
@@ -167,175 +164,161 @@ components:
 
 ## Overview
 
-**Creative North Star: "La Sala Señalizada"**
+**Creative North Star: "La Sala como plano"**
 
-The room is drawn as wayfinding signage: a building plan you can read in seconds. Everything on screen behaves like the plates, door signs and boards of a real study hall. Table names sit on dark plates over oak tabletops, the entrance carries a marker, headings are set in expanded uppercase capitals, and the counts on the status board never jitter. The interface around the map stays quiet so the map and its seat states do the talking.
+The room is drawn as an architectural plan. The interface around it behaves like the sheet the plan is printed on: hairlines, whitespace and a title block, not boxes. Content is grouped by thin rules and generous space. In-flow content never sits in a card. The map is the drawing, and everything else is annotation.
 
-The mood is calm, functional, institutional-but-unofficial, and honest about freshness. It borrows the clarity of public signage without borrowing any institution's identity. Density is moderate and phone-first: one column of plain, tactile, signposted controls on mobile; three columns on desktop with the map in the centre. Light mode is cool graphite ink on a grey-green "pizarra clara" paper; dark mode is the same layering at night, a near-black green with lifted teal.
+The mood is calm, functional, institutional-but-unofficial and honest about freshness. Density is moderate and phone-first: one column on mobile; on desktop a "tablero" with the map on the left and a single sticky rail on the right. Light mode is cool graphite ink on a grey-green "pizarra clara" paper; dark mode is the same layering at night.
 
-Color is rationed. One petrol-teal accent drives action and focus; the only saturated palette belongs to seat state, and state is never told by color alone. The one place the system becomes illustrative is the room itself: oak tables, wooden chairs with backrests, terracotta floor, windows and wall bars. That warmth stays inside the map. Navy and cream UI paper are rejected.
+Color is rationed. One petrol-teal accent drives action and focus; the only saturated palette belongs to seat state, and state is never told by color alone. Orange appears only inside the logo. The room itself (oak tables, wooden chairs, terracotta floor) is the one illustrative place, and that warmth stays inside the map.
 
 **Key Characteristics:**
 - Grey-green paper, graphite ink, one petrol-teal accent.
-- Saturated hues only for seat state, always paired with a word, letter or count.
-- Expanded uppercase Archivo for place names and screen headings, like signage plates.
+- Hairlines and whitespace group content. No in-flow cards.
+- Floating things (sheets, dialogs, menus, toasts, ads, the map frame) get a border or tone and an 8px radius. Sheet tops get 12px.
+- Expanded uppercase Archivo only for place names and screen headings.
 - Tabular mono figures for counts, times and the donation alias.
-- Flat tonal layering at rest; the strong shadow is reserved for sheets lifted over the map.
-- Tight, signage-like corners (5 to 12px), never soft pills except avatars, dots and the entrance marker.
+- Tight corners: 4px controls, 8px floating, 12px sheet tops, full only for avatars, dots and the entrance marker.
 - Motion is transform and opacity only; the only loops live on seats.
 
 ## Colors
 
-A cool, low-chroma graphite-and-paper base carrying one petrol-teal accent and a separate, strictly functional seat-state palette.
-
 ### Primary
-- **Pizarra Teal** (`primary`): filled CTAs ("Estoy acá", "Ingresar", chat send), the active-tab bar, the brand armchair plate, focus outlines, selection tint, caret and native control accent. Fixed in light mode so white text keeps contrast on filled buttons. It also fills the "mine" seat state, which makes your own seat read as part of the accent.
-- **Deep Pizarra Teal** (`primary-deep`): hover state of filled primary buttons.
-- **Night Teal** (`primary-night`): the accent in dark mode, for text links, focus rings, the active-tab bar and the mine seat; lighter so it reads on near-black.
+- **Pizarra Teal** (`primary`): filled CTAs, the active-nav marker, focus outlines, selection tint, caret and the "mine" seat. Fixed in both themes so white text keeps contrast.
+- **Deep Pizarra Teal** (`primary-deep`): hover of filled primaries.
+- **Night Teal** (`primary-night`): the accent for text links and focus in dark mode.
 
 ### Neutral
-- **Pizarra Paper** (`paper`): the app background in light mode and the light theme-color; a grey-green slate paper, not white and not cream.
-- **Chalk Surface** (`surface`): cards, header, bottom nav, sheets, inputs; the brightest layer.
-- **Slate Wash** (`surface-2`): the tonal step for nested panels, quiet buttons, observation chips, segmented controls, hover fills and the donation card.
-- **Graphite Ink** (`ink`): all primary text and headings.
-- **Graphite Muted** (`muted`): secondary text, inactive nav labels, signage labels.
-- **Graphite Faint** (`faint`): tertiary text, still above 4.5:1 on paper.
-- **Hairline** (`border`) and **Strong Hairline** (`border-strong`): card and divider strokes; the strong variant for the sheet grab handle, the dashed alias ticket and scrollbars.
-- **Night Paper / Night Surface / Night Wash / Night Ink** (`night-bg`, `night-surface`, `night-surface-2`, `night-ink`): the same four-layer stack in dark mode.
+- **Pizarra Paper** (`paper`): the app background.
+- **Chalk Surface** (`surface`): inputs, header, bottom nav, sheets and floating surfaces.
+- **Slate Wash** (`surface-2`): quiet buttons, observation chips, hover fills and the alias ticket.
+- **Graphite Ink** (`ink`): body text and headings. Prefer it over muted for body copy.
+- **Graphite Muted** (`muted`): truly secondary text and labels.
+- **Graphite Faint** (`text-faint`): tertiary meta such as timestamps and counts, still above 4.5:1.
+- **Hairline** (`border`) and **Strong Hairline** (`border-strong`): rules, dividers, the alias ticket and scrollbars.
+- **Night Paper / Surface / Wash / Ink**: the same stack in dark mode.
 
 ### Seat State
-- **Libre Green** (`seat-free`): free seats, the "Está libre" dot, the Libres counter swatch, and the copied-confirmation flash.
-- **Ocupado Red** (`seat-occupied`): occupied seats and their occupant badge ring.
-- **Dudoso Amber** (`seat-uncertain`): uncertain seats and the dispute ring.
-- **Guardado Yellow** (`seat-saved`): saved seats and the favorite-seat star badge; text on it is dark brown, never white.
-- **Sin Datos Mauve** (`seat-unknown`): seats with no fresh evidence; deliberately dull so absence of data never looks like a state.
-- Dark mode lifts each state hue (for example free becomes a brighter mint) in the stylesheet; the roles do not change.
+- **Libre Green**, **Ocupado Red**, **Dudoso Amber**, **Guardado Yellow**, **Sin Datos Mauve** (`seat-*`): seats, counters, swatches, status pills and observation chips only. Dark mode lifts each hue; the roles do not change.
 
 ### Alerts (dark mode)
-- **Night Danger / Night Warning** (`night-alert-danger-*`, `night-alert-warning-*`): translucent red and amber washes with light text and dark borders. They re-skin the light-mode red and amber error and warning boxes in dark mode only. They report problems, never decorate.
+- **Night Danger / Night Warning**: translucent red and amber washes that re-skin the light-mode error and warning styles in dark mode only.
 
 ### Room Materials
-- **Oak** (`oak`) and **Oak Edge** (`oak-border`): tabletops and wall-bar wood.
-- **Chair Backrest** (`seat-backrest`): dark-wood backrest and frame under each seat cushion.
-- The map also carries its own floor, wall, wainscot, window and radiator tokens. They belong to the illustration only.
+- **Oak**, **Oak Edge** and **Chair Backrest**: tabletops, wall-bar wood and chair frames. The map's floor, wall, window and radiator tokens belong to the illustration only.
 
 ### Named Rules
-**The State Palette Rule.** Green, red, amber, yellow and mauve exist only to report seat state: on seats, counters, legend swatches, status pills and observation chips. They are never decoration, never a brand color, never a section tint.
+**The State Palette Rule.** Green, red, amber, yellow and mauve report seat state. Never decoration, never a section tint.
 
-**The One Accent Rule.** Pizarra Teal is the only accent. If a second thing on the screen needs emphasis, use weight, size or a Slate Wash fill, not a new hue.
+**The One Accent Rule.** Pizarra Teal is the only accent. Orange lives only inside the logo. For extra emphasis use weight, size or a Slate Wash fill.
 
-**The Never Color Alone Rule.** Every state color travels with a word, a letter or a number: the seat letter (L, O, ?, G, -), the status pill label, the counter caption, the chip text. Color lives in the dot or swatch; the text stays ink so it keeps full contrast.
+**The Never Color Alone Rule.** Every state color travels with a word, letter or number, and that text stays ink.
 
 ## Typography
 
-**Display Font:** Archivo at expanded width (with ui-sans-serif, system-ui)
-**Body Font:** Archivo at normal width (with ui-sans-serif, system-ui)
-**Label/Mono Font:** Geist Mono (with ui-monospace, SFMono-Regular) for figures
-
-**Character:** One family in two widths. Stretched and heavy, Archivo reads like the room's plates and door signs; at normal width it is a plain, legible phone text face. Geist Mono carries anything that counts.
+**Display Font:** Archivo at expanded width. **Body Font:** Archivo at normal width. **Data Font:** Geist Mono.
 
 ### Hierarchy
-- **Display** (800, 26px, line-height 1, uppercase, 118% width): the seat heading in the detail panel ("ASIENTO 4").
-- **Headline** (800, 22px, line-height 1, uppercase, 118% width): screen and panel headings and the wordmark (15px in the header). Sheets use the same voice at 20px.
-- **Title** (600, 16 to 24px, sentence case, 118% width): dialog titles, card titles, the login heading, list section titles that are not place names.
-- **Body** (400, 14px, line-height about 1.5): descriptions, lists, helper copy. Inputs render at 16px on mobile to avoid zoom, 14px from `sm` up.
-- **Label** (700, 11px, 0.08em tracking, uppercase, 112% width): small signage labels: the "Bahía Blanca" subtitle, section labels like "Información", the table-and-side location line, field captions like the bank alias. Bottom-nav labels are 11px sentence case (500, 700 when active).
-- **Data** (Geist Mono 600, 22px on phones, 24px from `sm`, tabular figures): status-board counts, the alias, times and hints inside buttons.
-- **Wordmark** (800, 15px, uppercase, 118% width): "Sala de Estudio" in the header and the house-ad and donation headings. Under 420px it stacks on two lines.
-- **Caption** (500, 13px): secondary button text, quick-action labels, the hint under the duration picker and small seat-panel notes.
-- **Micro** (700, 10px): the header subtitle, ad labels, unread badges and timer captions. Never for sentences.
+- **Display** (800, 28px, uppercase, 118% width, `t-display`): the room name and seat heading.
+- **Heading** (800, 22px, uppercase, 118% width, `t-heading`): screen headings and the wordmark (15px in the header).
+- **Title** (600, 18px, sentence case, `t-title`): section titles inside a screen, dialog titles.
+- **Body** (400, 15px, line-height 1.5): descriptions and lists. Inputs are 16px to avoid mobile zoom.
+- **Caption** (500, 13px, `t-caption`): secondary text, helper copy, small notes.
+- **Label** (700, 11px, 0.08em tracking, uppercase, `t-label`): small signage labels and field captions.
+- **Data** (Geist Mono, tabular figures, `t-data`): counts, times, codes and the alias.
 
 ### Named Rules
-**The Signage Caps Rule.** Uppercase extrabold expanded Archivo is for names of places and screens, the things a sign would say. Body copy, buttons and messages stay sentence case.
+**The Signage Caps Rule.** Expanded uppercase is for names of places and screens only. Section titles, body copy, buttons and messages stay sentence case.
 
-**The Steady Figures Rule.** Any number that updates live (counts, times, durations) uses tabular figures so the board never jitters.
+**The Steady Figures Rule.** Any number that updates live uses tabular figures.
 
 ## Layout
 
-Mobile first. On phones the room page is a single column with 16px page gutters and 12 to 16px gaps: the status board, the map and quick actions stack, and a fixed bottom tab bar (Sala, Personas, Chat, Ranking, Perfil) sits above the safe area. Pages reserve bottom padding for the tab bar (3.5rem plus the safe-area inset). At `lg` (1024px) the bottom bar disappears, the sticky header shows the full nav, and the room page becomes a three-column grid (320px, flexible, 340px) inside a 1280px container, map in the centre at a 5:8 aspect. Content screens such as login centre a single 384px column. Spacing follows the 4px Tailwind step; the working rhythm is 8, 12 and 16px, with 20px inside dialogs and sheets. Touch targets are at least 44px; primary actions are 48 to 56px tall.
+Mobile first. On phones the room page is one column with 16px gutters: header, hero, quick actions, notices, the counters strip directly above the map, then the map, then people and the donation block, with a fixed bottom tab bar above the safe area.
+
+At `lg` (1024px) the room page becomes a tablero: a flexible map column on the left and one 360px sticky rail on the right, separated by a hairline, inside a 1280px container. The rail carries the room header, hero, counters, the seat detail or its empty state, quick actions, breakdown, how-to and people, each section ruled by a top hairline. Below the map frame a lg-only title block (the rótulo) names the room and shows the live status; it is decorative and hidden from assistive tech. Spacing follows the 4px step; the working rhythm is 8, 12 and 16px. Touch targets are at least 44px; primary actions are 48 to 56px tall.
 
 ## Elevation & Depth
 
-The system is flat at rest. In-flow surfaces separate by tone and hairline: paper, then a Chalk Surface card with a border, then Slate Wash inside it. Shadows are tinted with the ink color and kept low; they appear on things that float above content (menus, the map zoom control, toasts, dialogs). The strongest shadow belongs to bottom sheets lifted over the map. Inside the map, depth is illustrative: contact shadows under chairs, a soft table shadow, a light pool and a vignette.
+Flat at rest. In-flow content separates by hairline and whitespace, not by fill or shadow. Shadows appear only on things that float above content: menus, the map zoom control, toasts, dialogs and sheets. Inside the map, depth is illustrative.
 
 ### Shadow Vocabulary
-- **Hairline lift** (`box-shadow: 0 1px 2px rgb(19 24 22 / 0.08)`): a barely raised card, such as the login panel.
-- **Float** (`box-shadow: 0 1px 2px rgb(19 24 22 / 0.08), 0 4px 12px -4px rgb(19 24 22 / 0.14)`): small floating controls such as the map zoom stack and toggles.
-- **Overlay** (`box-shadow: 0 2px 4px rgb(19 24 22 / 0.08), 0 16px 32px -12px rgb(19 24 22 / 0.28)`): menus and dialogs.
-- **Sheet lift** (`box-shadow: 0 -10px 40px rgba(0,0,0,0.22)`): mobile bottom sheets over the map only.
+- **Float** (`0 1px 2px rgb(19 24 22 / 0.08), 0 4px 12px -4px rgb(19 24 22 / 0.14)`): small floating controls such as the map zoom stack.
+- **Overlay** (`0 2px 4px rgb(19 24 22 / 0.08), 0 16px 32px -12px rgb(19 24 22 / 0.28)`): menus and dialogs.
+- **Sheet lift** (`0 -8px 24px rgba(0,0,0,0.18)`): bottom sheets. One value everywhere.
 
 ### Named Rules
-**The Flat Paper Rule.** A card that sits in the page flow gets a border and a tonal step, not a shadow.
+**The Flat Plan Rule.** Nothing in flow gets a shadow or a card. A hairline and 16px of space are the grouping device.
 
-**The Lifted Sheet Rule.** The upward sheet shadow is used only by bottom sheets that rise over the map; nothing else casts upward.
+**The Lifted Sheet Rule.** The upward shadow belongs to bottom sheets only.
 
 ## Shapes
 
-Corners are tight and signage-like: 5px (`md`) for segmented-control thumbs, 6px (`lg`) for most controls, nav pills and inputs, 8px (`xl`) for the status board, toasts and menus, 10px (`2xl`) for cards, the map frame, the main CTA and observation chips, 12px (`3xl`) at most for larger panels. Bottom sheets round only their top edge at 22px. Full rounding is reserved for avatars, status dots, the grab handle and the room's "Entrada" marker. Borders are 1px hairlines; the donation alias is the one dashed border, marking it as a tear-off ticket. On the map, chairs are rounded squares (cushion radius 10, frame radius 12 in map units) with a backrest bar, and table names sit on dark rounded plates.
+Five radii, no others: 2px (`xs`) for swatches, 4px (`control`) for buttons, inputs, chips, nav pills and the map frame, 8px (`float`) for floating surfaces such as dialogs, menus, toasts, ads and chat bubbles, 12px (`sheet`) for the top edge of bottom sheets, and full rounding for avatars, status dots, the grab handle, toggles and the "Entrada" marker. Arbitrary radii are not used. Borders are 1px hairlines; the donation alias is the one dashed border, marking it as a tear-off ticket.
 
 ## Components
 
 ### Buttons
-Plain, tactile, signposted: every button names its action and presses down 1px (or scales to 0.98) on tap.
-- **Shape:** gently squared (6px) for compact buttons; 10px for the full-width primary action.
-- **Primary:** Pizarra Teal fill, white bold text. The main seat action is full width, 52px tall, 12px by 16px padding, and can carry a muted tabular hint ("· hasta las 18:40"). Compact primaries (header "Ingresar", form submit, chat send) are 8px by 12 to 16px, semibold 14px.
-- **Hover / Focus:** hover deepens to Deep Pizarra Teal; keyboard focus is the global 2px teal outline at 2px offset; disabled drops to 50% opacity.
-- **Secondary:** Chalk Surface with a hairline border, ink semibold text, Slate Wash on hover ("Cerrar sesión", "Continuar con Google").
-- **Quiet:** Slate Wash fill, no border, 48px tall, for dismissals like "Ahora no".
+Plain, tactile, signposted: every button names its action and presses down 1px on tap.
+- **Primary:** Pizarra Teal fill, white bold text, 4px corners. The main seat action is full width and 52px tall.
+- **Hover / Focus:** hover deepens to Deep Pizarra Teal; focus is the global 2px teal outline; disabled drops to 50% opacity.
+- **Secondary:** Chalk Surface with a hairline border, Slate Wash on hover.
+- **Quiet:** Slate Wash fill, 48px tall, for dismissals.
 - **Icon:** 40 to 44px square, muted icon, Slate Wash on hover.
 
 ### Chips
-- **Observation chips:** three equal tiles ("Está libre", "Está ocupado", "Está guardado"), Slate Wash fill, 10px corners, 56px tall, a 10px state dot above ink text. Tap scales to 0.96.
-- **Status pill:** a 12px state square (3px corners) beside the bold state label under the seat heading.
+- **Observation chips:** three equal tiles, Slate Wash fill, 4px corners, 56px tall, a state dot above ink text.
+- **Status pill:** a 12px state square (2px corners) beside the bold state label.
 
-### Cards / Containers
-- **Corner Style:** 10px.
-- **Background:** Chalk Surface for primary content; Slate Wash for secondary or nested panels such as the donation card.
-- **Shadow Strategy:** none in flow (see Elevation & Depth).
-- **Border:** 1px hairline.
-- **Internal Padding:** 16px; 20px in dialogs.
+### Ruled Sections and Lists
+- **Ruled section:** a top hairline and 16px of padding. No fill, no radius, no shadow. This replaces cards everywhere in flow.
+- **List:** rows separated by hairline dividers (`divide-y`), optionally framed by a hairline above and below. Rows have 12px of vertical padding and no fill.
+- **Card-in-card:** never.
+
+### Floating Surfaces
+Sheets, dialogs, menus, toasts, ads, chat cards and the map frame carry a border or tone. Floating surfaces use 8px corners; sheet tops use 12px.
 
 ### Inputs / Fields
-- **Style:** Chalk Surface, 1px hairline border, 6px corners (8px for the chat composer), 8px by 12px padding, 16px text on mobile.
-- **Focus:** global 2px teal outline; the chat composer instead shifts its border to teal with a 2px teal ring at 25%.
-- **Error / Disabled:** error text in red below the field; disabled at 50% opacity.
+Chalk Surface, 1px hairline border, 4px corners, 16px text, 8px by 12px padding. Focus is the global teal outline. Errors in red text below the field; disabled at 50% opacity.
 
 ### Navigation
-- **Mobile:** fixed bottom tab bar on translucent Chalk Surface with backdrop blur and a top hairline. Each tab is at least 48px, a 22px Phosphor icon over an 11px label. Active tab: ink bold label, teal icon and a 3px by 32px teal bar on the top edge like a tab plate. Inactive: muted, ink on hover.
-- **Desktop:** sticky header with the teal armchair plate and uppercase wordmark, then 14px semibold nav pills (6px corners). Active pill: Slate Wash fill with a 2px teal underline drawn as an inset shadow.
+- **Mobile:** fixed bottom tab bar on tinted Chalk Surface with backdrop blur and a top hairline. Tabs are at least 48px, a 22px icon over an 11px label. Active: ink bold label, teal icon and a flat teal bar on the top edge.
+- **Desktop:** sticky header, 57px tall, with the logo and uppercase wordmark in ink, then nav items with a 4px radius. Active item: ink text with a 2px underline drawn as an inset shadow, no tonal fill.
 
 ### Bottom Sheet
-A Chalk Surface sheet rising from the bottom edge with a 22px top radius, top hairline, a 44px by 6px grab handle and the Sheet lift shadow. It enters with a 16px rise and fade over 220ms and follows the finger when dragged, settling on `cubic-bezier(0.22, 1, 0.36, 1)`. The seat sheet has no backdrop so the map stays tappable; prompts use a 40% black scrim.
+A Chalk Surface sheet rising from the bottom edge with a 12px top radius, a top hairline, a grab handle and the Sheet lift shadow. The seat sheet has no backdrop so the map stays tappable; prompts use a 40% black scrim.
 
 ### Status Board
-One bordered 8px plate split into five columns (Libres, Ocupados, Guardados, Dudosos, Sin datos) by hairlines. Each column stacks a 20px by 4px state swatch, a Geist Mono count and an 11px caption. A 6px proportional strip underneath shows the whole room's mix and animates with a scale transform only.
+Five columns (Libres, Ocupados, Guardados, Dudosos, Sin datos) between hairlines, framed by a hairline above and below. Each cell shows a state swatch, a mono count and an 11px caption. A thin proportional strip shows the room's mix and animates with a scale transform only.
 
 ### Alias Ticket
-The donation alias as a tappable ticket: a full-width Chalk Surface button with a dashed Strong Hairline border and 8px corners, a signage label ("Alias Banco Provincia") over the alias in mono, and a "Copiar" tag on a 10% teal tint that flips to Libre Green "Copiado" for two seconds. The whole ticket copies on tap.
+The one tonal inset in the system: the donation alias as a tappable ticket with a dashed Strong Hairline border, 4px corners and Slate Wash fill, a label over the alias in mono, and a "Copiar" tag that flips to "Copiado" for two seconds.
 
 ### The Seat (signature)
-Each of the 108 seats is drawn top-down in SVG: a dark-wood backrest bar (main tables only, none on wall-bar stools), a wooden frame, and a rounded-square cushion filled with a soft radial gradient of its state color, carrying a white state letter. A contact shadow falls toward the table. Your own seat has a pulsing teal ring, an open dispute a pulsing amber ring, a selected seat a solid teal ring, and keyboard focus a dashed teal ring. Free seats breathe with a slow green glow. Occupied seats can show the occupant's photo or alias animal in a ring of the state color. The invisible hit area is 56px across.
+Each of the 108 seats is drawn top-down in SVG: a dark-wood backrest bar, a wooden frame and a rounded-square cushion filled with its state color, carrying a white state letter. Your own seat has a pulsing teal ring, an open dispute a pulsing amber ring, a selected seat a solid teal ring, and keyboard focus a dashed teal ring. The invisible hit area is 56px across.
 
 ### Motion
-State changes move transform and opacity only, eased with `cubic-bezier(0.22, 1, 0.36, 1)` (sheets 220ms, the status strip 500ms). Looping motion exists only on the map: the free-seat glow (2.6s), the mine pulse (1.8s), the dispute pulse (1.4s) and the selected-seat ripple (1.6s). All of it stops under `prefers-reduced-motion`.
+State changes move transform and opacity only, eased with `cubic-bezier(0.22, 1, 0.36, 1)`. Looping motion exists only on the map and stops under `prefers-reduced-motion`.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** keep the UI on Pizarra Paper, Chalk Surface and Slate Wash with Graphite Ink text; step depth by tone and a 1px hairline.
+- **Do** group content with hairlines and whitespace on Pizarra Paper with Graphite Ink text.
 - **Do** use Pizarra Teal for the one primary action per view, the active nav marker, focus and selection.
-- **Do** pair every seat-state color with its label, letter or count, and keep that text in ink.
-- **Do** set place and screen names in uppercase extrabold expanded Archivo, and everything else in sentence case.
+- **Do** pair every seat-state color with its label, letter or count.
+- **Do** set place and screen names in expanded uppercase and everything else in sentence case.
 - **Do** use Geist Mono tabular figures for counts, times and the alias.
-- **Do** keep corners between 5px and 12px, with 22px only on the top edge of bottom sheets.
-- **Do** keep touch targets at 44px or more and primary actions at 48 to 56px.
-- **Do** animate with transform and opacity only, and switch every loop off under reduced motion.
+- **Do** keep to the five radii: 2, 4, 8, 12 and full.
+- **Do** keep touch targets at 44px or more.
+- **Do** animate with transform and opacity only.
 
 ### Don't:
-- **Don't** use seat-state colors for decoration, icons, section tints or brand moments.
-- **Don't** introduce a second accent hue, navy, or cream UI paper. Warm wood and cream tones belong to the room illustration only.
-- **Don't** set body copy, buttons or messages in uppercase signage caps.
-- **Don't** put shadows on in-flow cards, or the upward sheet shadow on anything but a bottom sheet over the map.
-- **Don't** add looping animation outside the seats on the map.
-- **Don't** use soft pill shapes for buttons or cards; full rounding is for avatars, dots and the entrance marker.
+- **Don't** use gradients.
+- **Don't** put a decorative icon in a circle or square tile.
+- **Don't** add eyebrow labels above headings.
+- **Don't** use left borders thicker than 1px as accents.
+- **Don't** put shadows on in-flow elements, or the upward sheet shadow on anything but a bottom sheet.
+- **Don't** nest cards, or use a card for in-flow content.
+- **Don't** use arbitrary radii such as `rounded-[14px]`.
+- **Don't** use seat-state colors for decoration, or add a second accent hue. Orange stays inside the logo.
 - **Don't** use any university's logo, crest or institutional colors.

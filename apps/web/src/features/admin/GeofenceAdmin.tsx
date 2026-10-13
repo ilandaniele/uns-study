@@ -105,7 +105,7 @@ export function GeofenceAdmin({ roomSlug }: { roomSlug: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2 rounded-[14px] border border-app bg-surface p-4">
+      <div className="flex flex-col gap-2 border-t border-app pt-4">
         <p className="text-sm font-semibold text-main">Centro actual</p>
         <p className="font-mono text-sm text-muted">
           {geofence.latitude.toFixed(6)}, {geofence.longitude.toFixed(6)}
@@ -115,7 +115,7 @@ export function GeofenceAdmin({ roomSlug }: { roomSlug: string }) {
         </a>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-[14px] border border-app bg-surface p-4">
+      <div className="flex flex-col gap-3 border-t border-app pt-4">
         <p className="text-sm font-semibold text-main">Probar mi ubicación</p>
         <button
           type="button"
@@ -149,7 +149,7 @@ export function GeofenceAdmin({ roomSlug }: { roomSlug: string }) {
         ) : null}
       </div>
 
-      <div className="flex flex-col gap-3 rounded-[14px] border border-app bg-surface p-4">
+      <div className="flex flex-col gap-3 border-t border-app pt-4">
         <p className="text-sm font-semibold text-main">Radio del geofence</p>
         <label className="flex flex-col gap-1 text-xs text-muted">
           Radio (metros)
