@@ -13,12 +13,16 @@ test("DM: A opens B's profile, sends a message, B sees it unread in /chat/dm", a
     const pageA = await contextA.newPage();
     await pageA.goto(`/u/${userIdB}`);
     await pageA.getByRole("button", { name: "Enviar mensaje" }).click();
-    await pageA.waitForURL(/\/chat\/dm\/.+/);
+    // The chat widget opens as an inline dialog with the DM composer.
+    const dialog = pageA.getByRole("dialog");
+    await expect(dialog).toBeVisible();
 
+    // The room-chat panel stays mounted in the dialog; the DM composer is the one with the 1000-char limit.
+    const composer = dialog.locator('textarea[maxlength="1000"]');
     const content = `dm-${Date.now()}`;
-    await pageA.getByPlaceholder("Escribí un mensaje…").fill(content);
-    await pageA.getByPlaceholder("Escribí un mensaje…").press("Enter");
-    await expect(pageA.getByText(content)).toBeVisible();
+    await composer.fill(content);
+    await composer.press("Enter");
+    await expect(dialog.getByText(content)).toBeVisible();
 
     const pageB = await contextB.newPage();
     await pageB.goto("/chat/dm");

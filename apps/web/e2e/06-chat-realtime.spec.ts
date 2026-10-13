@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { signUpNewUser } from "./helpers";
+import { API_URL, signUpNewUser } from "./helpers";
 
 test("global room chat: realtime delivery, then blocking hides the blocked author's new messages", async ({ browser }) => {
   const contextA = await browser.newContext();
@@ -8,6 +8,13 @@ test("global room chat: realtime delivery, then blocking hides the blocked autho
   try {
     await signUpNewUser(contextA);
     await signUpNewUser(contextB);
+
+    // New users default to a hidden alias (no userId in chat, so no "Bloquear"); make A visible.
+    const profileRes = await contextA.request.patch(`${API_URL}/api/v1/profiles/me`, {
+      headers: { Origin: "http://localhost:3000" },
+      data: { nickname: `Chat${Date.now() % 100000}`, identityMode: "NICKNAME" },
+    });
+    expect(profileRes.ok()).toBe(true);
 
     const pageA = await contextA.newPage();
     const pageB = await contextB.newPage();

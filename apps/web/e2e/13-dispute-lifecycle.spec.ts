@@ -77,7 +77,7 @@ test("CLAIM dispute: incumbent 'Me fui' frees the seat, opener wins and can chec
   }
 });
 
-test("SAVED dispute: 'Pedir que se libere' opens a vote on an occupied seat", async ({ browser }) => {
+test("SAVED dispute: 'Se fue hace más de 30 min' opens a vote on an occupied seat", async ({ browser }) => {
   const contextD = await browser.newContext({ permissions: ["geolocation"], geolocation: IN_GEOFENCE_LOCATION });
   const contextE = await browser.newContext({ permissions: ["geolocation"], geolocation: IN_GEOFENCE_LOCATION });
 
@@ -96,8 +96,8 @@ test("SAVED dispute: 'Pedir que se libere' opens a vote on an occupied seat", as
     const seatOnE = seatLocator(pageE, SEAT_SAVED.table, SEAT_SAVED.seatNumber);
     await expect(seatOnE).toHaveAttribute("aria-label", /ocupado/, { timeout: 10_000 });
     await seatOnE.click();
-    await pageE.getByRole("button", { name: "Pedir que se libere" }).click();
-    await expect(pageE.getByText("Pedir que se libere", { exact: true })).toBeVisible({ timeout: 10_000 });
+    await pageE.getByRole("button", { name: "Se fue hace más de 30 min" }).click();
+    await expect(pageE.getByText("Se fue hace más de 30 min", { exact: true })).toBeVisible({ timeout: 10_000 });
     await expect(pageE.getByText(/Se decide en \d+:\d\d/)).toBeVisible();
     await expect(seatOnE).toHaveAttribute("aria-label", /en votación/, { timeout: 10_000 });
   } finally {

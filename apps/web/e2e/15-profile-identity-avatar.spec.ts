@@ -97,12 +97,11 @@ test("avatar upload shows up in chat and as a photo badge on the occupied seat f
     });
     expect(avatarRes.ok()).toBe(true);
 
-    // A checks in and chooses to show identity, so the photo badge appears on the seat.
+    // A checks in (identity mode is NICKNAME), so the photo badge appears on the seat.
     const pageA = await contextA.newPage();
     await pageA.goto(`/sala/${ROOM_SLUG}`);
     await seatLocator(pageA, SEAT.table, SEAT.seatNumber).click();
     await pageA.getByRole("button", { name: "Estoy acá" }).click();
-    await pageA.getByRole("button", { name: "Sí, mostrarme" }).click();
     await expect(pageA.getByRole("button", { name: "Me voy" })).toBeVisible();
 
     await pageA.goto("/chat");

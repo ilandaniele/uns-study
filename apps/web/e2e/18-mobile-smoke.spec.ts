@@ -41,8 +41,8 @@ test("mobile viewport smoke: room map, bottom sheet, check-in, and bottom nav ac
 
     // Bottom nav links load each page without console/page errors.
     for (const [label, heading] of [
+      ["Comunidad", null],
       ["Personas", null],
-      ["Chat", null],
       ["Ranking", "Ranking"],
       ["Perfil", null],
       ["Sala", null],
