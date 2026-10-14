@@ -36,9 +36,9 @@ Fly sigue en prod hasta el paso 6. No borrar Fly hasta 7 días estables.
 ## 5. Secrets del Worker `uns-api` (terminal, vos)
 Primero, una vez: `pnpm --filter @sala/api exec wrangler login`.
 
-Mismos valores que hoy (de la tabla `app_secrets` de Fly), con `fly proxy` abierto:
+Mismos valores que hoy. En Fly son secrets de la app (variables de entorno, que le ganan a la tabla
+`app_secrets`), así que el script los lee del machine con `fly ssh` y los pasa a `wrangler secret put` sin imprimirlos:
 ```powershell
-$env:SOURCE_DATABASE_URL = "<url postgres via fly proxy>"
 powershell -ExecutionPolicy Bypass -File ops\copy-app-secrets.ps1
 ```
 Copia `BETTER_AUTH_SECRET`, `IP_HASH_SALT`, `VAPID_PRIVATE_KEY`. Imprime `VAPID_PUBLIC_KEY` (público): pasámelo y lo agrego a `vars`.
@@ -70,7 +70,8 @@ Vars no secretas que faltan (pasámelas y las pongo en `apps/api/wrangler.jsonc`
 
 ## 7. Callbacks de terceros (mismo dominio, solo verificar)
 - [ ] Google OAuth redirect: `https://saladeestudio.com.ar/api/auth/callback/google`
-- [ ] Mercado Pago webhook: `https://saladeestudio.com.ar/api/v1/webhooks/mercadopago`
+- [x] Mercado Pago webhook: cambiado 2026-10-14 de `uns-study-api.fly.dev` a `https://saladeestudio.com.ar/api/v1/webhooks/mercadopago`
+  (hoy la web de Fly lo reenvía a la API de Fly; tras el DNS llega al Worker). Simulación llegó y pasó la firma.
 - [ ] Resend: dominio verificado.
 
 ## 8. Rollback (7 días) y baja de Fly
