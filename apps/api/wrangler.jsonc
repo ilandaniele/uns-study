@@ -30,12 +30,13 @@
     // Sender for auth and campaign emails; the domain is verified in Resend.
     "EMAIL_FROM": "Sala de Estudio <noreply@saladeestudio.com.ar>",
     "R2_BUCKET": "uns-study-report-evidence",
+    "R2_ACCOUNT_ID": "8355b74d76c27ea18e007625360d9cc0",
     // "1" answers every /api/* path except /api/v1/health* with 503 "Mantenimiento en curso." (e.g. during the data import).
     "MAINTENANCE_MODE": "0"
   }
-  // Not set here because their values are deployment-specific (use `wrangler secret put`, or add to
-  // "vars" when public): VAPID_PUBLIC_KEY, R2_ACCOUNT_ID, ADMIN_EMAILS, SUBSCRIPTION_PRICE_ARS,
-  // VERIFIER_MODEL, and SEAT_VERIFIER_MODE (blueprint 2.3 says keep the current value).
+  // Still to add here when known: VAPID_PUBLIC_KEY (printed by ops/copy-app-secrets.ps1).
+  // ADMIN_EMAILS is a secret (it was a Fly secret). SUBSCRIPTION_PRICE_ARS, VERIFIER_MODEL and
+  // SEAT_VERIFIER_MODE were unset on Fly, so the code defaults apply (1500, gemini-2.5-flash, off).
   //
   // Secrets (`wrangler secret put <NAME>`, never in this file):
   //   BETTER_AUTH_SECRET, IP_HASH_SALT, VAPID_PRIVATE_KEY, GOOGLE_CLIENT_SECRET,
