@@ -44,6 +44,13 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      # Turbo's local cache: lint/typecheck/test of packages whose inputs did not change since the
+      # last run are replayed instead of re-run (the API suite alone is ~7 min of PGlite work).
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
       # Everything that ships (runtime dependencies) must be free of high/critical advisories.
       - run: pnpm audit --prod --audit-level=high
       - run: pnpm install --frozen-lockfile
