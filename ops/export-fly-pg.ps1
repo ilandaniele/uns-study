@@ -1,6 +1,6 @@
 # Exports every table of the Fly Postgres database to one NDJSON file per table (row_to_json),
 # the input of ops\import-to-do.mjs. Skips app_secrets (see ops\copy-app-secrets.ps1) and the
-# socket.io adapter table. Nothing secret is printed.
+# old realtime adapter table (socket_io_attachments). Nothing secret is printed.
 # Usage: open `fly proxy` to the DB yourself, put its URL in an env var for this run only, then:
 #   $env:SOURCE_DATABASE_URL = "<postgres url through the proxy>"
 #   powershell -ExecutionPolicy Bypass -File ops\export-fly-pg.ps1 -OutDir C:\path\export [-UrlVar SOURCE_DATABASE_URL]

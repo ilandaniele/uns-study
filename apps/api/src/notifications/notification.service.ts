@@ -283,7 +283,7 @@ export class NotificationService {
     const cutoff = new Date(now.getTime() - minutes * 60_000);
     const claimed: string[] = [];
     this.db.transaction((tx) => {
-      for (const part of chunk(userIds, rowsPerInsert(3))) {
+      for (const part of chunk(userIds, rowsPerInsert(3, 2))) {
         const rows = tx
           .insert(schema.notificationThrottles)
           .values(part.map((userId) => ({ userId, type, lastNotifiedAt: now })))

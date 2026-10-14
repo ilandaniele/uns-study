@@ -19,9 +19,13 @@ export function chunk<T>(items: readonly T[], size: number): T[][] {
   return out;
 }
 
-/** Max rows per multi-row INSERT for a table with `columnCount` bound columns (>= 1). */
-export function rowsPerInsert(columnCount: number): number {
-  return Math.max(1, Math.floor(SQLITE_MAX_PARAMS / Math.max(1, columnCount)));
+/**
+ * Max rows per multi-row INSERT for a table with `columnCount` bound columns (>= 1).
+ * `extraParams` counts values bound outside the rows, such as literal values in an
+ * `onConflictDoUpdate` set or setWhere, which share the same statement budget.
+ */
+export function rowsPerInsert(columnCount: number, extraParams = 0): number {
+  return Math.max(1, Math.floor((SQLITE_MAX_PARAMS - extraParams) / Math.max(1, columnCount)));
 }
 
 /** Runs `fn` per chunk of at most `size` values (default 90) and concatenates results. For inArray. */

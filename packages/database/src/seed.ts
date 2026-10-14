@@ -22,8 +22,8 @@ export const INITIAL_ROOM = {
 };
 
 /** Rows per multi-row INSERT for `table`, counting every column as a bound parameter. */
-function batch(table: Parameters<typeof getTableColumns>[0]): number {
-  return rowsPerInsert(Object.keys(getTableColumns(table)).length);
+function batch(table: Parameters<typeof getTableColumns>[0], extraParams = 0): number {
+  return rowsPerInsert(Object.keys(getTableColumns(table)).length, extraParams);
 }
 
 /**
@@ -57,7 +57,7 @@ export async function seedInitialRoom(db: Db): Promise<void> {
     if (!room) throw new Error("Failed to upsert room");
 
     const tableIdByCode = new Map<string, string>();
-    for (const part of chunk(layout.tables, batch(roomTables))) {
+    for (const part of chunk(layout.tables, batch(roomTables, 1))) {
       const rows = tx
         .insert(roomTables)
         .values(
@@ -92,7 +92,7 @@ export async function seedInitialRoom(db: Db): Promise<void> {
     }
 
     const seatIds: string[] = [];
-    for (const part of chunk(layout.seats, batch(seats))) {
+    for (const part of chunk(layout.seats, batch(seats, 2))) {
       const rows = tx
         .insert(seats)
         .values(

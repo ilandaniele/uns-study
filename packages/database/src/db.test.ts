@@ -242,6 +242,9 @@ describe("chunk helpers", () => {
     expect(rowsPerInsert(1)).toBe(100);
     expect(rowsPerInsert(11)).toBe(9);
     expect(rowsPerInsert(250)).toBe(1);
+    // Conflict-set values share the budget: 9 rows x 11 columns + 2 would be 101.
+    expect(rowsPerInsert(11, 2)).toBe(8);
+    expect(rowsPerInsert(3, 2)).toBe(32);
   });
 
   it("inChunks handles more than 100 values and concatenates results", () => {
