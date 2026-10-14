@@ -1,50 +1,50 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Auth } from "../auth/auth.instance.js";
-import type { Socket, Server } from "socket.io";
-import type { RoomStateService } from "../rooms/room-state.service.js";
-import type { NotificationService } from "../notifications/notification.service.js";
-import type { RestrictionService } from "../users/restriction.service.js";
-import { RoomRealtimeGateway, resolveSocketUserId } from "./room-realtime.gateway.js";
+import { ManualScheduler } from "../platform/scheduler.js";
+import { RecordingHub } from "./realtime-hub.js";
+import { RoomRealtimeGateway, resolveSocketUserId, summaryJobKey } from "./room-realtime.gateway.js";
 import { signSocketToken } from "./socket-token.js";
 
 const liveSession = async (): Promise<boolean> => true;
 
-function mockAuth(getSession: (...args: unknown[]) => Promise<unknown>): Auth {
-  return { api: { getSession } } as unknown as Auth;
+function mockAuth(getSession: (...args: unknown[]) => Promise<unknown>): Pick<Auth, "api"> {
+  return { api: { getSession } } as unknown as Pick<Auth, "api">;
 }
 
 describe("resolveSocketUserId", () => {
   it("returns the user id when the session cookie is valid", async () => {
-    const auth = mockAuth(async () => ({ user: { id: "u1" } }));
-    await expect(resolveSocketUserId(auth, { headers: { cookie: "session=abc" } }, liveSession)).resolves.toBe("u1");
+    const getSession = vi.fn(async (..._args: unknown[]) => ({ user: { id: "u1" } }));
+    await expect(resolveSocketUserId(null, "session=abc", { auth: mockAuth(getSession), isSessionActive: liveSession })).resolves.toBe("u1");
+    const arg = getSession.mock.calls[0]![0] as { headers: Headers };
+    expect(arg.headers.get("cookie")).toBe("session=abc");
   });
 
   it("returns null when there is no session", async () => {
     const auth = mockAuth(async () => null);
-    await expect(resolveSocketUserId(auth, { headers: {} }, liveSession)).resolves.toBeNull();
+    await expect(resolveSocketUserId(null, null, { auth, isSessionActive: liveSession })).resolves.toBeNull();
   });
 
   it("returns null instead of throwing when the auth call fails", async () => {
     const auth = mockAuth(async () => {
       throw new Error("boom");
     });
-    await expect(resolveSocketUserId(auth, { headers: {} }, liveSession)).resolves.toBeNull();
+    await expect(resolveSocketUserId(null, null, { auth, isSessionActive: liveSession })).resolves.toBeNull();
   });
 
-  it("resolves the user id from a valid handshake.auth.token, without touching the session cookie", async () => {
+  it("resolves the user id from a valid token, without touching the session cookie", async () => {
     const auth = mockAuth(() => {
       throw new Error("should not be called");
     });
     const { token } = signSocketToken("u2", "s2"); // uses the same default (env) secret as the gateway
     const isActive = vi.fn(liveSession);
-    await expect(resolveSocketUserId(auth, { headers: {}, auth: { token } }, isActive)).resolves.toBe("u2");
+    await expect(resolveSocketUserId(token, null, { auth, isSessionActive: isActive })).resolves.toBe("u2");
     expect(isActive).toHaveBeenCalledWith({ userId: "u2", sessionId: "s2" });
   });
 
   it("refuses a valid token whose session is gone (signed out) and falls back to the cookie", async () => {
     const auth = mockAuth(async () => null);
     const { token } = signSocketToken("u2", "s2");
-    await expect(resolveSocketUserId(auth, { headers: {}, auth: { token } }, async () => false)).resolves.toBeNull();
+    await expect(resolveSocketUserId(token, null, { auth, isSessionActive: async () => false })).resolves.toBeNull();
   });
 
   it("treats a failing session lookup as inactive", async () => {
@@ -53,162 +53,131 @@ describe("resolveSocketUserId", () => {
     const failing = async (): Promise<boolean> => {
       throw new Error("db down");
     };
-    await expect(resolveSocketUserId(auth, { headers: {}, auth: { token } }, failing)).resolves.toBeNull();
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await expect(resolveSocketUserId(token, null, { auth, isSessionActive: failing })).resolves.toBeNull();
+    spy.mockRestore();
   });
 
   it("falls back to the session cookie when the token is invalid", async () => {
     const auth = mockAuth(async () => ({ user: { id: "u3" } }));
-    await expect(resolveSocketUserId(auth, { headers: {}, auth: { token: "garbage" } }, liveSession)).resolves.toBe("u3");
-  });
-});
-
-describe("RoomRealtimeGateway.onJoin", () => {
-  const ROOM_ID = "289306e1-e5f2-4cb6-ac63-9ae49e986e04";
-  function fakeSocket() {
-    const rooms = new Set<string>(["socket-id"]);
-    return { id: "socket-id", rooms, join: (r: string) => void rooms.add(r) } as unknown as Socket & { rooms: Set<string> };
-  }
-  const gateway = new RoomRealtimeGateway({} as RoomStateService, {} as Auth, { handleSeatFreed: async () => [] } as unknown as NotificationService, {} as RestrictionService);
-
-  // The client re-fetches the map only after this ack, so the ack must mean "already subscribed".
-  it("acks only after the socket has joined the room channel", () => {
-    const socket = fakeSocket();
-    expect(gateway.onJoin(socket, { roomId: ROOM_ID })).toEqual({ joined: true });
-    expect(socket.rooms.has(`room:${ROOM_ID}`)).toBe(true);
-  });
-
-  it("acks joined=false for an invalid payload", () => {
-    expect(gateway.onJoin(fakeSocket(), { roomId: "nope" })).toEqual({ joined: false });
-  });
-});
-
-describe("RoomRealtimeGateway.onChatJoin", () => {
-  const CHAT_ID = "289306e1-e5f2-4cb6-ac63-9ae49e986e04";
-  function chatSocket(userId: string | undefined) {
-    const rooms = new Set<string>();
-    return { id: "s", rooms, data: { userId }, join: (r: string) => void rooms.add(r) } as unknown as Socket & { rooms: Set<string> };
-  }
-  function gatewayWith(types: string[]) {
-    const restrictions = { activeRestrictions: async () => types.map((type) => ({ id: "r", type, until: null })) } as unknown as RestrictionService;
-    return new RoomRealtimeGateway({} as RoomStateService, {} as Auth, {} as NotificationService, restrictions);
-  }
-
-  it("joins the chat channel for an unrestricted user", async () => {
-    const socket = chatSocket("u1");
-    await gatewayWith([]).onChatJoin(socket, { roomId: CHAT_ID });
-    expect(socket.rooms.has(`chat:${CHAT_ID}`)).toBe(true);
-  });
-
-  it("still joins for a merely chat-muted user", async () => {
-    const socket = chatSocket("u1");
-    await gatewayWith(["MUTE_CHAT"]).onChatJoin(socket, { roomId: CHAT_ID });
-    expect(socket.rooms.size).toBe(1);
-  });
-
-  it("rejects a banned or suspended user", async () => {
-    for (const type of ["BANNED", "SUSPENDED"]) {
-      const socket = chatSocket("u1");
-      await gatewayWith([type]).onChatJoin(socket, { roomId: CHAT_ID });
-      expect(socket.rooms.size).toBe(0);
-    }
-  });
-
-  it("waits for authentication when chat:join arrives before handleConnection resolved the user", async () => {
-    const rooms = new Set<string>();
-    const socket = {
-      id: "s",
-      rooms,
-      data: {} as Record<string, unknown>,
-      handshake: { headers: {}, address: "1.2.3.4" },
-      join: (r: string) => void rooms.add(r),
-    } as unknown as Socket & { rooms: Set<string> };
-    let release!: () => void;
-    const gate = new Promise<void>((resolve) => (release = resolve));
-    const auth = mockAuth(async () => {
-      await gate;
-      return { user: { id: "u1" } };
-    });
-    const restrictions = { activeRestrictions: async () => [] } as unknown as RestrictionService;
-    const gateway = new RoomRealtimeGateway({} as RoomStateService, auth, {} as NotificationService, restrictions);
-
-    const connecting = gateway.handleConnection(socket);
-    const joining = gateway.onChatJoin(socket, { roomId: CHAT_ID }); // before auth resolved
-    release();
-    await Promise.all([connecting, joining]);
-    expect(rooms.has(`chat:${CHAT_ID}`)).toBe(true);
+    await expect(resolveSocketUserId("garbage", null, { auth, isSessionActive: liveSession })).resolves.toBe("u3");
   });
 
   it("logs a failing token session check instead of swallowing it silently", async () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { token } = signSocketToken("u2", "s2");
-    await resolveSocketUserId(mockAuth(async () => null), { headers: {}, auth: { token } }, async () => {
-      throw new Error("db down");
+    await resolveSocketUserId(token, null, {
+      auth: mockAuth(async () => null),
+      isSessionActive: async () => {
+        throw new Error("db down");
+      },
     });
     expect(JSON.parse(spy.mock.calls[0]![0] as string)).toMatchObject({ evt: "socket_session_check_error", msg: "db down" });
     spy.mockRestore();
-  });
-
-  it("rejects an anonymous socket", async () => {
-    const socket = chatSocket(undefined);
-    await gatewayWith([]).onChatJoin(socket, { roomId: CHAT_ID });
-    expect(socket.rooms.size).toBe(0);
   });
 });
 
 describe("RoomRealtimeGateway.broadcastSeatChanges", () => {
   const ROOM_ID = "289306e1-e5f2-4cb6-ac63-9ae49e986e04";
   const change = (seatId: string) => ({ seatId, status: "FREE" as const, confidence: 0.5, lastUpdatedAt: new Date(), verified: false, previousStatus: "OCCUPIED" as const });
+  const summary = { roomId: ROOM_ID, total: 2, free: 2, occupied: 0, uncertain: 0, saved: 0, unknown: 0 };
+
+  function build(scheduler: ManualScheduler | null) {
+    const hub = new RecordingHub();
+    const getRoomSummary = vi.fn(async () => summary);
+    const handleSeatFreed = vi.fn(async () => [{ userId: "u9", seatIds: ["a"] }]);
+    const gateway = new RoomRealtimeGateway(hub, { getRoomSummary }, { handleSeatFreed } as never, scheduler);
+    return { hub, gateway, getRoomSummary, handleSeatFreed };
+  }
 
   it("emits seat events immediately, then one coalesced summary + notification pass on flush", async () => {
-    const summary = { roomId: ROOM_ID, total: 2, free: 2, occupied: 0, uncertain: 0, saved: 0, unknown: 0 };
-    const getRoomSummary = vi.fn(async () => summary);
-    const handleSeatFreed = vi.fn(async () => []);
-    const gateway = new RoomRealtimeGateway({ getRoomSummary } as unknown as RoomStateService, {} as Auth, { handleSeatFreed } as unknown as NotificationService, {} as RestrictionService);
-    const emit = vi.fn();
-    gateway.server = { to: () => ({ emit }) } as unknown as Server;
+    const { hub, gateway, getRoomSummary, handleSeatFreed } = build(null);
 
     await gateway.broadcastSeatChanges(ROOM_ID, [change("a")]);
     await gateway.broadcastSeatChanges(ROOM_ID, [change("b")]);
-    expect(emit.mock.calls.map((c) => c[0])).toEqual(["seat:state-changed", "seat:state-changed"]);
+    expect(hub.sent.map((s) => s.event)).toEqual(["seat:state-changed", "seat:state-changed"]);
+    expect(hub.sent.every((s) => s.to === `room:${ROOM_ID}`)).toBe(true);
     expect(getRoomSummary).not.toHaveBeenCalled();
 
     await gateway.flushPending();
     expect(getRoomSummary).toHaveBeenCalledTimes(1);
-    expect(emit.mock.calls.map((c) => c[0])).toContain("room:summary-changed");
+    expect(hub.eventsFor("room:summary-changed")).toEqual([{ to: `room:${ROOM_ID}`, event: "room:summary-changed", payload: summary }]);
+    expect(hub.eventsFor("seat:freed-alert")).toEqual([{ to: "user:u9", event: "seat:freed-alert", payload: { seatIds: ["a"], freeCount: 2 } }]);
     expect(handleSeatFreed).toHaveBeenCalledWith(ROOM_ID, [expect.objectContaining({ seatId: "a" }), expect.objectContaining({ seatId: "b" })], summary);
+  });
+
+  it("defers the flush to a single summary:<roomId> job when a scheduler is given", async () => {
+    const scheduler = new ManualScheduler();
+    const { hub, gateway, getRoomSummary } = build(scheduler);
+    const flushed: string[] = [];
+    scheduler.register("summary", async ({ key }) => {
+      flushed.push(key);
+      await gateway.flushRoom(key.slice("summary:".length));
+    });
+
+    await gateway.broadcastSeatChanges(ROOM_ID, [change("a")]);
+    await gateway.broadcastSeatChanges(ROOM_ID, [change("b")]);
+    expect(scheduler.has(summaryJobKey(ROOM_ID))).toBe(true);
+    expect(getRoomSummary).not.toHaveBeenCalled();
+
+    await scheduler.runDue(new Date(Date.now() + 1_000));
+    expect(flushed).toEqual([`summary:${ROOM_ID}`]);
+    expect(getRoomSummary).toHaveBeenCalledTimes(1);
+    expect(hub.eventsFor("room:summary-changed")).toHaveLength(1);
+  });
+
+  it("flushRoom is a no-op when nothing is pending (e.g. the DO restarted)", async () => {
+    const { hub, gateway, getRoomSummary } = build(null);
+    await gateway.flushRoom(ROOM_ID);
+    expect(getRoomSummary).not.toHaveBeenCalled();
+    expect(hub.sent).toEqual([]);
+  });
+
+  it("still emits the summary when seat-freed notifications fail", async () => {
+    const hub = new RecordingHub();
+    const gateway = new RoomRealtimeGateway(
+      hub,
+      { getRoomSummary: async () => summary },
+      {
+        handleSeatFreed: async () => {
+          throw new Error("push down");
+        },
+      } as never,
+      null,
+    );
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await gateway.broadcastSeatChanges(ROOM_ID, [change("a")]);
+    await gateway.flushPending();
+    spy.mockRestore();
+    expect(hub.eventsFor("room:summary-changed")).toHaveLength(1);
   });
 });
 
-describe("RoomRealtimeGateway session sweep", () => {
-  it("disconnects sockets whose session was revoked or expired and keeps the rest", async () => {
-    const { freshDb, insertUsers } = await import("../test-utils.js");
-    const { schema } = await import("@sala/database");
-    const db = await freshDb();
-    await insertUsers(db, ["u1", "u2", "u3"]);
-    const hour = 3600_000;
-    await db.insert(schema.session).values([
-      { id: "s1-live", token: "t1", userId: "u1", expiresAt: new Date(Date.now() + hour) },
-      { id: "s2-expired", token: "t2", userId: "u2", expiresAt: new Date(Date.now() - hour) },
+describe("RoomRealtimeGateway emitters", () => {
+  const hub = new RecordingHub();
+  const gateway = new RoomRealtimeGateway(hub, { getRoomSummary: async () => ({}) as never }, { handleSeatFreed: async () => [] } as never, null);
+
+  it("routes each event to the right channel", () => {
+    gateway.emitDailyReset("r1");
+    gateway.emitChatMessage("c1", { id: "m" } as never);
+    gateway.emitChatDeleted("c1", "m1");
+    gateway.emitDm(["a", "b"], { id: "d" } as never);
+    gateway.emitDisputeChallenge("inc", {} as never);
+    gateway.emitCheckInExpiring("u1", {} as never);
+    expect(hub.sent.map((s) => [s.to, s.event])).toEqual([
+      ["room:r1", "room:daily-reset"],
+      ["chat:c1", "chat:message-created"],
+      ["chat:c1", "chat:message-deleted"],
+      ["user:a", "dm:message-created"],
+      ["user:b", "dm:message-created"],
+      ["user:inc", "dispute:you-are-challenged"],
+      ["user:u1", "checkin:expiring"],
     ]);
+    expect(hub.sent[0]!.payload).toEqual({ roomId: "r1" });
+  });
 
-    const makeSocket = (data: Record<string, unknown>) => ({ data, disconnect: vi.fn() });
-    const tokenLive = makeSocket({ userId: "u1", sessionId: "s1-live" });
-    const tokenRevoked = makeSocket({ userId: "u1", sessionId: "s1-gone" });
-    const cookieLive = makeSocket({ userId: "u1" });
-    const cookieExpired = makeSocket({ userId: "u2" });
-    const cookieNoSession = makeSocket({ userId: "u3" });
-    const anonymous = makeSocket({});
-    const all = [tokenLive, tokenRevoked, cookieLive, cookieExpired, cookieNoSession, anonymous];
-
-    const gateway = new RoomRealtimeGateway({} as RoomStateService, {} as Auth, {} as NotificationService, {} as RestrictionService, db);
-    gateway.server = { sockets: { sockets: new Map(all.map((s, i) => [String(i), s])) } } as unknown as Server;
-    await (gateway as unknown as { disconnectEndedSessions(): Promise<void> }).disconnectEndedSessions();
-
-    expect(tokenLive.disconnect).not.toHaveBeenCalled();
-    expect(cookieLive.disconnect).not.toHaveBeenCalled();
-    expect(anonymous.disconnect).not.toHaveBeenCalled();
-    expect(tokenRevoked.disconnect).toHaveBeenCalledWith(true);
-    expect(cookieExpired.disconnect).toHaveBeenCalledWith(true);
-    expect(cookieNoSession.disconnect).toHaveBeenCalledWith(true);
-  }, 30_000);
+  it("disconnectUser closes through the hub", () => {
+    gateway.disconnectUser("u1");
+    expect(hub.disconnects).toEqual([{ userId: "u1", code: 4001, reason: "session-ended" }]);
+  });
 });

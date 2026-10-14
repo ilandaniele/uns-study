@@ -1,29 +1,29 @@
 import { sql } from "drizzle-orm";
-import { check, index, pgTable, primaryKey, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { check, index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { user } from "./auth.js";
 
-export const groupConversations = pgTable("group_conversations", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: varchar("name", { length: 60 }).notNull(),
+export const groupConversations = sqliteTable("group_conversations", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull(),
   createdBy: text("created_by")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  lastMessageAt: integer("last_message_at", { mode: "timestamp_ms" }),
 });
 
-export const groupMembers = pgTable(
+export const groupMembers = sqliteTable(
   "group_members",
   {
-    groupId: uuid("group_id")
+    groupId: text("group_id")
       .notNull()
       .references(() => groupConversations.id, { onDelete: "cascade" }),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     role: text("role", { enum: ["OWNER", "MEMBER"] }).notNull().default("MEMBER"),
-    joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
-    lastReadAt: timestamp("last_read_at", { withTimezone: true }),
+    joinedAt: integer("joined_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    lastReadAt: integer("last_read_at", { mode: "timestamp_ms" }),
   },
   (t) => [
     primaryKey({ columns: [t.groupId, t.userId] }),
@@ -32,19 +32,19 @@ export const groupMembers = pgTable(
   ],
 );
 
-export const groupMessages = pgTable(
+export const groupMessages = sqliteTable(
   "group_messages",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    groupId: uuid("group_id")
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    groupId: text("group_id")
       .notNull()
       .references(() => groupConversations.id, { onDelete: "cascade" }),
     senderId: text("sender_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    content: varchar("content", { length: 1000 }).notNull(),
-    deletedAt: timestamp("deleted_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    content: text("content").notNull(),
+    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
   },
-  (t) => [index("idx_group_messages_group_created").on(t.groupId, t.createdAt.desc())],
+  (t) => [index("idx_group_messages_group_created").on(t.groupId, sql`${t.createdAt} desc`)],
 );

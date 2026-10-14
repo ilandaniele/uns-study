@@ -21,7 +21,7 @@ describe("RoomCache", () => {
   it("serves the room by id and slug from memory after the first load", async () => {
     await cache.getRoom(db, roomId);
     await cache.getRoom(db, slug);
-    const { queries } = await countQueries(async () => {
+    const { queries } = await countQueries(db, async () => {
       await cache.getRoom(db, roomId);
       await cache.getRoom(db, slug);
     });
@@ -37,7 +37,7 @@ describe("RoomCache", () => {
     const [seat] = await getSeats(db);
     const first = await cache.getLayout(db, roomId);
     expect(first.seats.length).toBe(108);
-    const { queries, result } = await countQueries(() => cache.getActiveSeat(db, roomId, seat!.id));
+    const { queries, result } = await countQueries(db, () => cache.getActiveSeat(db, roomId, seat!.id));
     expect(queries).toBe(0);
     expect(result?.id).toBe(seat!.id);
   });
@@ -66,7 +66,7 @@ describe("RoomCache", () => {
   it("invalidate() with no argument clears every room", async () => {
     await cache.getRoom(db, roomId);
     cache.invalidate();
-    const { queries } = await countQueries(() => cache.getRoom(db, roomId));
+    const { queries } = await countQueries(db, () => cache.getRoom(db, roomId));
     expect(queries).toBe(1);
   });
 });

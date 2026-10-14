@@ -1,18 +1,3 @@
-import { Inject, Injectable, Logger, type OnModuleDestroy } from "@nestjs/common";
-import {
-  ConnectedSocket,
-  MessageBody,
-  OnGatewayConnection,
-  OnGatewayDisconnect,
-  OnGatewayInit,
-  SubscribeMessage,
-  WebSocketGateway,
-  WebSocketServer,
-} from "@nestjs/websockets";
-import { fromNodeHeaders } from "better-auth/node";
-import type { IncomingHttpHeaders } from "node:http";
-import type { Server, Socket } from "socket.io";
-import { z } from "zod";
 import {
   SocketEvents,
   type ChatMessageDto,
@@ -29,274 +14,81 @@ import {
   type SeatStateChangedEvent,
   type TableNicknameChangedEvent,
 } from "@sala/contracts";
-import { AUTH } from "../auth/auth.tokens.js";
-import { RestrictionService } from "../users/restriction.service.js";
 import type { Auth } from "../auth/auth.instance.js";
-import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
-import { NotificationService } from "../notifications/notification.service.js";
+import type { NotificationService } from "../notifications/notification.service.js";
+import { Logger } from "../platform/logger.js";
+import type { Scheduler } from "../platform/scheduler.js";
+import type { RoomStateService, SeatStateChange } from "../rooms/room-state.service.js";
+import type { RealtimeHub } from "./realtime-hub.js";
 import { verifySocketToken, type SocketTokenClaims } from "./socket-token.js";
-import { and, eq, gt, inArray } from "drizzle-orm";
-import { schema, type Db } from "@sala/database";
-import { DB } from "../database/database.module.js";
-import { env } from "../env.js";
-import { socketClientIp, takeSocketToken, type SocketBucket } from "./socket-bucket.js";
-
-function roomChannel(roomId: string): string {
-  return `room:${roomId}`;
-}
-
-function userChannel(userId: string): string {
-  return `user:${userId}`;
-}
-
-function chatChannel(chatRoomId: string): string {
-  return `chat:${chatRoomId}`;
-}
-
-const roomPayloadSchema = z.object({ roomId: z.string().uuid() });
-const chatPayloadSchema = z.object({ roomId: z.string().uuid() });
-
-/** Per-socket cap on how many room channels can be joined at once — a socket has no business
- *  watching more than a handful of rooms in this MVP. */
-const MAX_JOINED_ROOMS_PER_SOCKET = 5;
-
-/** How often authenticated sockets are re-checked against the session table, so signing out,
- *  revoking sessions or resetting the password cuts a socket that is already open. */
-const SESSION_SWEEP_MS = 60_000;
-
-/** Per-socket budget for client->server events (joins/leaves); beyond it the event is ignored. */
-const SOCKET_EVENT_LIMIT = 10;
-const SOCKET_EVENT_WINDOW_MS = 10_000;
-
-/** Concurrent sockets allowed per client IP; extras are disconnected on connect. */
-const MAX_CONNECTIONS_PER_IP = 20;
-
-/** How long a chat:join restriction lookup is reused (same trade-off as AuthGuard's block cache). */
-const RESTRICTION_CACHE_TTL_MS = 30_000;
 
 /** Summary emits (and seat-freed notifications) for one room are coalesced within this window. */
 const SUMMARY_COALESCE_MS = 250;
 
+/** Scheduler key of the deferred summary flush for a room (handler registered for prefix `summary`). */
+export function summaryJobKey(roomId: string): string {
+  return `summary:${roomId}`;
+}
+
 /**
- * Resolves the authenticated user id (if any) for a raw Socket.IO handshake. Tries the signed
- * `handshake.auth.token` first (issued by `GET /api/v1/realtime/token` — required in production
- * since the socket server isn't behind the web app's same-origin proxy and can't read its session
- * cookie), then falls back to the Better Auth session cookie used by HTTP requests (works locally,
- * where the socket and API share an origin). A token only counts while the session it was minted
- * for is still live (`isSessionActive`), so signing out cuts realtime access immediately instead of
- * after the token TTL. Never rejects — anonymous sockets stay anonymous. Exported standalone so it
- * can be unit-tested against a mocked `Auth` without a real socket.
+ * Resolves the authenticated user id (if any) for a WebSocket upgrade. Tries the signed `?token=`
+ * first (issued by `GET /api/v1/realtime/token`; required wherever the socket host cannot read the
+ * web app's session cookie), then falls back to the Better Auth session cookie used by HTTP requests
+ * (works where the socket and API share an origin). A token only counts while the session it was
+ * minted for is still live (`isSessionActive`), so signing out cuts realtime access immediately
+ * instead of after the token TTL. Never rejects: anonymous sockets stay anonymous. Exported
+ * standalone so it can be unit-tested against a mocked `Auth` without a real socket.
  */
 export async function resolveSocketUserId(
-  auth: Auth,
-  handshake: { headers: IncomingHttpHeaders; auth?: unknown },
-  isSessionActive: (claims: SocketTokenClaims) => Promise<boolean>,
+  token: string | null,
+  cookieHeader: string | null,
+  deps: {
+    auth: Pick<Auth, "api">;
+    isSessionActive: (claims: SocketTokenClaims) => Promise<boolean>;
+  },
 ): Promise<string | null> {
-  const token = (handshake.auth as { token?: unknown } | undefined)?.token;
   if (typeof token === "string") {
     const claims = verifySocketToken(token);
-    if (claims && (await isSessionActive(claims).catch((err: unknown) => {
+    if (claims && (await deps.isSessionActive(claims).catch((err: unknown) => {
       console.error(JSON.stringify({ evt: "socket_session_check_error", msg: err instanceof Error ? err.message : String(err) }));
       return false;
     }))) return claims.userId;
   }
 
   try {
-    const session = await auth.api.getSession({ headers: fromNodeHeaders(handshake.headers) });
+    const headers = new Headers();
+    if (cookieHeader) headers.set("cookie", cookieHeader);
+    const session = await deps.auth.api.getSession({ headers });
     return session?.user?.id ?? null;
   } catch {
     return null;
   }
 }
 
-/** Socket.IO notifications for room state, chat and DMs. PostgreSQL remains canonical — sockets
- *  never carry coordinates and never mutate state. */
-@Injectable()
-// Client->server payloads are just room UUIDs; cap well below the 1 MB default.
-@WebSocketGateway({ maxHttpBufferSize: 64 * 1024, cors: { origin: env.webOrigins, credentials: true } })
-export class RoomRealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy {
-  @WebSocketServer()
-  server!: Server;
-
+/** Realtime notifications for room state, chat and DMs, published through a `RealtimeHub`. The
+ *  database remains canonical: sockets never carry coordinates and never mutate state.
+ *
+ *  Pending seat changes live in memory. The `summary:<roomId>` job only triggers `flushRoom`; if the
+ *  Durable Object restarted in between, the flush is a no-op (accepted: clients re-fetch on reconnect). */
+export class RoomRealtimeGateway {
   private readonly logger = new Logger(RoomRealtimeGateway.name);
 
   /** Per-room deferred summary/notification work, coalesced within `SUMMARY_COALESCE_MS`. */
-  private readonly pendingSummaries = new Map<string, { changes: SeatStateChange[]; timer: NodeJS.Timeout | null; lastFlushAt: number }>();
-
-  /** Live socket count per client IP (see `MAX_CONNECTIONS_PER_IP`). */
-  private readonly connectionsPerIp = new Map<string, number>();
-
-  /** Per-socket event budget; weakly keyed so a closed socket takes its bucket with it. */
-  private readonly socketBuckets = new WeakMap<Socket, SocketBucket>();
-
-  /** userId -> whether a SUSPENDED/BANNED restriction was active, and when we looked. */
-  private readonly blockedCache = new Map<string, { blocked: boolean; at: number }>();
+  private readonly pendingSummaries = new Map<string, { changes: SeatStateChange[]; timer: ReturnType<typeof setTimeout> | null; scheduled: boolean; lastFlushAt: number }>();
 
   constructor(
-    @Inject(RoomStateService) private readonly roomState: RoomStateService,
-    @Inject(AUTH) private readonly auth: Auth,
-    @Inject(NotificationService) private readonly notifications: NotificationService,
-    @Inject(RestrictionService) private readonly restrictions: RestrictionService,
-    // Optional only so unit tests can build the gateway without a DB; Nest always injects it.
-    @Inject(DB) private readonly db?: Db,
+    private readonly hub: RealtimeHub,
+    private readonly roomState: Pick<RoomStateService, "getRoomSummary">,
+    private readonly notifications: Pick<NotificationService, "handleSeatFreed">,
+    /** `null` falls back to `setTimeout` (unit tests without a scheduler). */
+    private readonly scheduler: Scheduler | null,
   ) {}
-
-  /** True while the Better Auth session a socket token was minted for still exists, belongs to the
-   *  same user and hasn't expired. Without a DB (unit tests) every token is refused. */
-  private async isSessionActive({ userId, sessionId }: SocketTokenClaims): Promise<boolean> {
-    if (!this.db) return false;
-    const rows = await this.db
-      .select({ id: schema.session.id })
-      .from(schema.session)
-      .where(and(eq(schema.session.id, sessionId), eq(schema.session.userId, userId), gt(schema.session.expiresAt, new Date())))
-      .limit(1);
-    return rows.length > 0;
-  }
-
-  private sessionSweep: NodeJS.Timeout | null = null;
-
-  afterInit(): void {
-    this.sessionSweep = setInterval(() => {
-      void this.disconnectEndedSessions().catch((err: unknown) =>
-        this.logger.warn(`session sweep failed: ${err instanceof Error ? err.message : String(err)}`),
-      );
-    }, SESSION_SWEEP_MS);
-    this.sessionSweep.unref();
-  }
-
-  onModuleDestroy(): void {
-    if (this.sessionSweep) clearInterval(this.sessionSweep);
-  }
-
-  /** Disconnects every authenticated socket whose session is gone: the exact session when the socket
-   *  came in with a socket token, else any live session of that user (cookie handshakes). */
-  private async disconnectEndedSessions(): Promise<void> {
-    if (!this.db || !this.server) return;
-    const sockets = [...this.server.sockets.sockets.values()].filter((s) => typeof s.data.userId === "string");
-    if (sockets.length === 0) return;
-    const userIds = [...new Set(sockets.map((s) => s.data.userId as string))];
-    const live = await this.db
-      .select({ id: schema.session.id, userId: schema.session.userId })
-      .from(schema.session)
-      .where(and(inArray(schema.session.userId, userIds), gt(schema.session.expiresAt, new Date())));
-    const liveSessions = new Set(live.map((r) => r.id));
-    const liveUsers = new Set(live.map((r) => r.userId));
-    for (const socket of sockets) {
-      const sessionId = socket.data.sessionId as string | undefined;
-      const alive = sessionId ? liveSessions.has(sessionId) : liveUsers.has(socket.data.userId as string);
-      if (!alive) socket.disconnect(true);
-    }
-  }
-
-  /** Anonymous connections are allowed; joining a room map is opt-in via `room:join`. Authed
-   *  sockets are additionally auto-joined to their private `user:{userId}` channel for DMs. */
-  async handleConnection(socket: Socket): Promise<void> {
-    const ip = socketClientIp(socket.handshake.headers, socket.handshake.address);
-    const open = this.connectionsPerIp.get(ip) ?? 0;
-    if (open >= MAX_CONNECTIONS_PER_IP) {
-      socket.disconnect(true);
-      return;
-    }
-    this.connectionsPerIp.set(ip, open + 1);
-    socket.data.ip = ip;
-
-    // Message handlers can fire before this resolves (the client emits `chat:join` right after
-    // connecting); they await `socket.data.ready` so they never see a not-yet-authenticated socket.
-    const ready = this.authenticate(socket);
-    socket.data.ready = ready;
-    await ready;
-  }
-
-  private async authenticate(socket: Socket): Promise<void> {
-    let sessionId: string | undefined;
-    const userId = await resolveSocketUserId(this.auth, socket.handshake, async (claims) => {
-      const active = await this.isSessionActive(claims);
-      if (active) sessionId = claims.sessionId;
-      return active;
-    });
-    socket.data.userId = userId;
-    socket.data.sessionId = userId ? sessionId : undefined;
-    if (userId) socket.join(userChannel(userId));
-  }
-
-  handleDisconnect(socket: Socket): void {
-    const ip = socket.data.ip as string | undefined;
-    if (!ip) return; // rejected before it was counted
-    const open = (this.connectionsPerIp.get(ip) ?? 1) - 1;
-    if (open > 0) this.connectionsPerIp.set(ip, open);
-    else this.connectionsPerIp.delete(ip);
-  }
-
-  /** False once the socket has used up its event budget; the caller then ignores the event. */
-  private allowEvent(socket: Socket): boolean {
-    let bucket = this.socketBuckets.get(socket);
-    if (!bucket) {
-      bucket = { count: 0, windowStart: Date.now() };
-      this.socketBuckets.set(socket, bucket);
-    }
-    return takeSocketToken(bucket, Date.now(), SOCKET_EVENT_LIMIT, SOCKET_EVENT_WINDOW_MS);
-  }
-
-  private async isBlocked(userId: string): Promise<boolean> {
-    const now = Date.now();
-    const cached = this.blockedCache.get(userId);
-    if (cached && now - cached.at < RESTRICTION_CACHE_TTL_MS) return cached.blocked;
-    const active = await this.restrictions.activeRestrictions(userId);
-    const blocked = active.some((r) => r.type === "SUSPENDED" || r.type === "BANNED");
-    if (this.blockedCache.size > 5000) this.blockedCache.clear();
-    this.blockedCache.set(userId, { blocked, at: now });
-    return blocked;
-  }
-
-  /** Returns an ack (`{ joined }`) once the socket is subscribed, so the client can re-fetch its
-   *  snapshot strictly after joining and never miss an event emitted in between. */
-  @SubscribeMessage(SocketEvents.RoomJoin)
-  onJoin(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): { joined: boolean } {
-    if (!this.allowEvent(socket)) return { joined: false };
-    const parsed = roomPayloadSchema.safeParse(body);
-    if (!parsed.success) return { joined: false };
-    const channel = roomChannel(parsed.data.roomId);
-    const joinedRooms = [...socket.rooms].filter((r) => r !== socket.id);
-    if (joinedRooms.length >= MAX_JOINED_ROOMS_PER_SOCKET && !socket.rooms.has(channel)) return { joined: false };
-    void socket.join(channel);
-    return { joined: true };
-  }
-
-  @SubscribeMessage(SocketEvents.RoomLeave)
-  onLeave(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): void {
-    if (!this.allowEvent(socket)) return;
-    const parsed = roomPayloadSchema.safeParse(body);
-    if (!parsed.success) return;
-    socket.leave(roomChannel(parsed.data.roomId));
-  }
-
-  /** `roomId` here is the chat room id (`ChatMessageDto.chatRoomId`), not the map room id. Requires auth. */
-  @SubscribeMessage(SocketEvents.ChatJoin)
-  async onChatJoin(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): Promise<void> {
-    await socket.data.ready;
-    if (!socket.data.userId) return;
-    if (!this.allowEvent(socket)) return;
-    const parsed = chatPayloadSchema.safeParse(body);
-    if (!parsed.success) return;
-    // A banned/suspended user can't post (AuthGuard) and shouldn't keep reading live chat either.
-    if (await this.isBlocked(socket.data.userId)) return;
-    socket.join(chatChannel(parsed.data.roomId));
-  }
-
-  @SubscribeMessage(SocketEvents.ChatLeave)
-  onChatLeave(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): void {
-    if (!this.allowEvent(socket)) return;
-    const parsed = chatPayloadSchema.safeParse(body);
-    if (!parsed.success) return;
-    socket.leave(chatChannel(parsed.data.roomId));
-  }
 
   /** Emits `seat:state-changed` per changed seat immediately, then returns. The refreshed
    *  `room:summary-changed` and the seat-freed notifications are computed off the request path,
    *  coalesced per room within `SUMMARY_COALESCE_MS`. */
   async broadcastSeatChanges(roomId: string, changes: SeatStateChange[]): Promise<void> {
     if (changes.length === 0) return;
-    const channel = roomChannel(roomId);
     for (const change of changes) {
       const event: SeatStateChangedEvent = {
         roomId,
@@ -307,28 +99,36 @@ export class RoomRealtimeGateway implements OnGatewayInit, OnGatewayConnection, 
         verified: change.verified,
         occupiedUntil: change.occupiedUntil ? change.occupiedUntil.toISOString() : null,
       };
-      this.server?.to(channel).emit(SocketEvents.SeatStateChanged, event);
+      this.hub.publishToRoom(roomId, SocketEvents.SeatStateChanged, event);
     }
     this.scheduleSummary(roomId, changes);
   }
 
   private scheduleSummary(roomId: string, changes: SeatStateChange[]): void {
-    const pending = this.pendingSummaries.get(roomId) ?? { changes: [], timer: null, lastFlushAt: 0 };
+    const pending = this.pendingSummaries.get(roomId) ?? { changes: [], timer: null, scheduled: false, lastFlushAt: 0 };
     pending.changes.push(...changes);
     this.pendingSummaries.set(roomId, pending);
-    if (pending.timer) return;
+    if (pending.timer || pending.scheduled) return;
     const delay = Math.max(0, SUMMARY_COALESCE_MS - (Date.now() - pending.lastFlushAt));
+    if (this.scheduler) {
+      this.scheduler.scheduleIfAbsent(summaryJobKey(roomId), new Date(Date.now() + delay));
+      pending.scheduled = true; // either we inserted the job or one is already due
+      return;
+    }
     pending.timer = setTimeout(() => {
       this.flushRoom(roomId).catch((err) => this.logger.error("Failed to flush room summary", err instanceof Error ? err.stack : String(err)));
     }, delay);
-    pending.timer.unref?.();
+    (pending.timer as { unref?: () => void }).unref?.();
   }
 
-  private async flushRoom(roomId: string): Promise<void> {
+  /** Emits the coalesced summary and seat-freed notifications for a room. Public: it is the
+   *  scheduler handler for `summary:<roomId>`. A no-op when nothing is pending. */
+  async flushRoom(roomId: string): Promise<void> {
     const pending = this.pendingSummaries.get(roomId);
     if (!pending) return;
     if (pending.timer) clearTimeout(pending.timer);
     pending.timer = null;
+    pending.scheduled = false;
     const changes = pending.changes;
     pending.changes = [];
     pending.lastFlushAt = Date.now();
@@ -337,16 +137,16 @@ export class RoomRealtimeGateway implements OnGatewayInit, OnGatewayConnection, 
     // Derived from the live map (via `getRoomSummary`), so the emitted summary always equals what
     // a fresh map fetch shows.
     const summary = await this.roomState.getRoomSummary(roomId);
-    this.server?.to(roomChannel(roomId)).emit(SocketEvents.RoomSummaryChanged, summary satisfies RoomSummary);
+    this.hub.publishToRoom(roomId, SocketEvents.RoomSummaryChanged, summary satisfies RoomSummary);
 
     // Figures out who should get a "seat freed" alert (opted in, not currently checked into this
     // room) and sends any due push notifications itself. The in-app toast (for whoever has the page
-    // open) is this gateway's job since it already owns `this.server` and the per-user channels.
+    // open) is this gateway's job since it owns the per-user channels.
     try {
       const recipients = await this.notifications.handleSeatFreed(roomId, changes, summary);
       for (const { userId, seatIds } of recipients) {
         const event: SeatFreedAlertEvent = { seatIds, freeCount: summary.free };
-        this.server?.to(userChannel(userId)).emit(SocketEvents.SeatFreedAlert, event);
+        this.hub.publishToUser(userId, SocketEvents.SeatFreedAlert, event);
       }
     } catch (err) {
       this.logger.error("Failed to process seat-freed notifications", err instanceof Error ? err.stack : String(err));
@@ -355,82 +155,87 @@ export class RoomRealtimeGateway implements OnGatewayInit, OnGatewayConnection, 
 
   /** Runs all pending deferred summary/notification work now (used by tests and shutdown). */
   async flushPending(): Promise<void> {
-    await Promise.all([...this.pendingSummaries.keys()].map((roomId) => this.flushRoom(roomId)));
+    await Promise.all(
+      [...this.pendingSummaries.keys()].map((roomId) => {
+        this.scheduler?.cancel(summaryJobKey(roomId));
+        return this.flushRoom(roomId);
+      }),
+    );
   }
 
-  /** Room-wide, unconditional in-app banner — everyone currently viewing the room sees it,
+  /** Room-wide, unconditional in-app banner: everyone currently viewing the room sees it,
    *  regardless of their notification preferences (those only gate the push side). */
   emitAdminPresent(roomId: string, payload: RoomAdminPresentEvent): void {
-    this.server?.to(roomChannel(roomId)).emit(SocketEvents.RoomAdminPresent, payload);
+    this.hub.publishToRoom(roomId, SocketEvents.RoomAdminPresent, payload);
   }
 
   emitDailyReset(roomId: string): void {
-    this.server?.to(roomChannel(roomId)).emit(SocketEvents.RoomDailyReset, { roomId });
+    this.hub.publishToRoom(roomId, SocketEvents.RoomDailyReset, { roomId });
   }
 
   emitChatMessage(chatRoomId: string, message: ChatMessageDto): void {
-    this.server?.to(chatChannel(chatRoomId)).emit(SocketEvents.ChatMessageCreated, message);
+    this.hub.publishToChat(chatRoomId, SocketEvents.ChatMessageCreated, message);
   }
 
   emitChatDeleted(chatRoomId: string, messageId: string): void {
-    this.server?.to(chatChannel(chatRoomId)).emit(SocketEvents.ChatMessageDeleted, { chatRoomId, messageId });
+    this.hub.publishToChat(chatRoomId, SocketEvents.ChatMessageDeleted, { chatRoomId, messageId });
   }
 
   /** Notifies both participants' private `user:{userId}` channels. */
   emitDm(userIds: string[], message: DirectMessageDto): void {
     for (const userId of userIds) {
-      this.server?.to(userChannel(userId)).emit(SocketEvents.DmMessageCreated, message);
+      this.hub.publishToUser(userId, SocketEvents.DmMessageCreated, message);
     }
   }
 
   /** Each member's private `user:{userId}` channel. */
   emitGroupMessage(memberIds: string[], message: GroupMessageDto): void {
     for (const userId of memberIds) {
-      this.server?.to(userChannel(userId)).emit(SocketEvents.GroupMessageCreated, message);
+      this.hub.publishToUser(userId, SocketEvents.GroupMessageCreated, message);
     }
   }
 
   emitGroupUpdated(memberIds: string[], payload: GroupUpdatedEvent): void {
     for (const userId of memberIds) {
-      this.server?.to(userChannel(userId)).emit(SocketEvents.GroupUpdated, payload);
+      this.hub.publishToUser(userId, SocketEvents.GroupUpdated, payload);
     }
   }
 
   emitDisputeOpened(roomId: string, dispute: SeatDisputeLiteDto): void {
-    this.server?.to(roomChannel(roomId)).emit(SocketEvents.SeatDisputeOpened, dispute);
+    this.hub.publishToRoom(roomId, SocketEvents.SeatDisputeOpened, dispute);
   }
 
   emitDisputeUpdated(roomId: string, dispute: SeatDisputeLiteDto): void {
-    this.server?.to(roomChannel(roomId)).emit(SocketEvents.SeatDisputeUpdated, dispute);
+    this.hub.publishToRoom(roomId, SocketEvents.SeatDisputeUpdated, dispute);
   }
 
   emitDisputeResolved(roomId: string, dispute: SeatDisputeLiteDto): void {
-    this.server?.to(roomChannel(roomId)).emit(SocketEvents.SeatDisputeResolved, dispute);
+    this.hub.publishToRoom(roomId, SocketEvents.SeatDisputeResolved, dispute);
   }
 
   /** Notifies the incumbent's private `user:{userId}` channel that their seat is being disputed. */
   emitDisputeChallenge(incumbentUserId: string, payload: DisputeChallengedEvent): void {
-    this.server?.to(userChannel(incumbentUserId)).emit(SocketEvents.DisputeYouAreChallenged, payload);
+    this.hub.publishToUser(incumbentUserId, SocketEvents.DisputeYouAreChallenged, payload);
   }
 
   /** Notifies a CLAIM opener's private `user:{userId}` channel that their claim won and the seat
    *  is now free for them to self-check-in. */
   emitDisputeWon(openerUserId: string, payload: DisputeWonEvent): void {
-    this.server?.to(userChannel(openerUserId)).emit(SocketEvents.DisputeYouWon, payload);
+    this.hub.publishToUser(openerUserId, SocketEvents.DisputeYouWon, payload);
   }
 
   /** Tells a user (private `user:{userId}` channel) their active check-in is about to expire. */
   emitCheckInExpiring(userId: string, payload: CheckInExpiringEvent): void {
-    this.server?.to(userChannel(userId)).emit(SocketEvents.CheckInExpiring, payload);
+    this.hub.publishToUser(userId, SocketEvents.CheckInExpiring, payload);
   }
 
   /** Broadcasts a table's nickname changing (crossing/leaving the vote threshold, or an admin clearing it). */
   emitTableNicknameChanged(roomId: string, payload: TableNicknameChangedEvent): void {
-    this.server?.to(roomChannel(roomId)).emit(SocketEvents.TableNicknameChanged, payload);
+    this.hub.publishToRoom(roomId, SocketEvents.TableNicknameChanged, payload);
   }
 
-  /** Forcibly disconnects every live socket for a user — used on SUSPEND/BAN so the session revocation takes effect immediately. */
+  /** Forcibly disconnects every live socket for a user, used on SUSPEND/BAN so the session revocation takes effect immediately. */
   disconnectUser(userId: string): void {
-    this.server?.in(userChannel(userId)).disconnectSockets(true);
+    this.hub.disconnectUser(userId);
   }
 }

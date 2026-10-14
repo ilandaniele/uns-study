@@ -1,1 +1,0 @@
-ALTER TABLE "user_privacy_settings" ADD COLUMN "show_admin_badge" boolean DEFAULT true NOT NULL;

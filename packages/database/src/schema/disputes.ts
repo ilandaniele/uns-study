@@ -1,37 +1,37 @@
 import { sql } from "drizzle-orm";
-import { index, integer, pgEnum, pgTable, primaryKey, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { checkIns } from "./checkins.js";
 import { rooms, seats } from "./rooms.js";
 import { user } from "./auth.js";
 
-export const disputeKindEnum = pgEnum("dispute_kind", ["CLAIM", "ABSENT", "SAVED"]);
-export const disputeStatusEnum = pgEnum("dispute_status", ["OPEN", "RESOLVED_ABSENT", "RESOLVED_PRESENT", "TIED", "CANCELLED"]);
-export const disputeVoteEnum = pgEnum("dispute_vote", ["ABSENT", "PRESENT"]);
+export const disputeKindEnum = { enumValues: ["CLAIM", "ABSENT", "SAVED"] as const };
+export const disputeStatusEnum = { enumValues: ["OPEN", "RESOLVED_ABSENT", "RESOLVED_PRESENT", "TIED", "CANCELLED"] as const };
+export const disputeVoteEnum = { enumValues: ["ABSENT", "PRESENT"] as const };
 
-export const seatDisputes = pgTable(
+export const seatDisputes = sqliteTable(
   "seat_disputes",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    roomId: uuid("room_id")
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    roomId: text("room_id")
       .notNull()
       .references(() => rooms.id, { onDelete: "cascade" }),
-    seatId: uuid("seat_id")
+    seatId: text("seat_id")
       .notNull()
       .references(() => seats.id, { onDelete: "cascade" }),
     // Null for a SAVED dispute opened on a seat with no active check-in (belongings only, no incumbent).
-    checkInId: uuid("check_in_id").references(() => checkIns.id, { onDelete: "set null" }),
+    checkInId: text("check_in_id").references(() => checkIns.id, { onDelete: "set null" }),
     incumbentUserId: text("incumbent_user_id").references(() => user.id, { onDelete: "set null" }),
     openerUserId: text("opener_user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    kind: disputeKindEnum("kind").notNull(),
-    status: disputeStatusEnum("status").notNull().default("OPEN"),
-    openedAt: timestamp("opened_at", { withTimezone: true }).notNull().defaultNow(),
-    closesAt: timestamp("closes_at", { withTimezone: true }).notNull(),
-    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    kind: text("kind", { enum: disputeKindEnum.enumValues }).notNull(),
+    status: text("status", { enum: disputeStatusEnum.enumValues }).notNull().default("OPEN"),
+    openedAt: integer("opened_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    closesAt: integer("closes_at", { mode: "timestamp_ms" }).notNull(),
+    resolvedAt: integer("resolved_at", { mode: "timestamp_ms" }),
     // Minimal claimant location evidence, like check-ins: accuracy only, no raw coordinates persisted.
     locationAccuracyM: real("location_accuracy_m"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
   },
   (table) => [
     // Only one OPEN dispute per seat at a time.
@@ -48,19 +48,19 @@ export const seatDisputes = pgTable(
   ],
 );
 
-export const seatDisputeVotes = pgTable(
+export const seatDisputeVotes = sqliteTable(
   "seat_dispute_votes",
   {
-    disputeId: uuid("dispute_id")
+    disputeId: text("dispute_id")
       .notNull()
       .references(() => seatDisputes.id, { onDelete: "cascade" }),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    vote: disputeVoteEnum("vote").notNull(),
+    vote: text("vote", { enum: disputeVoteEnum.enumValues }).notNull(),
     weight: integer("weight").notNull().default(1),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
   },
   (table) => [primaryKey({ columns: [table.disputeId, table.userId] })],
 );

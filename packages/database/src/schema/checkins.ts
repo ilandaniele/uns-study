@@ -1,43 +1,43 @@
 import { sql } from "drizzle-orm";
-import { boolean, index, pgEnum, pgTable, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { rooms, seats } from "./rooms.js";
 import { user } from "./auth.js";
 
-export const checkInStatusEnum = pgEnum("check_in_status", ["ACTIVE", "COMPLETED", "EXPIRED", "CANCELLED"]);
+export const checkInStatusEnum = { enumValues: ["ACTIVE", "COMPLETED", "EXPIRED", "CANCELLED"] as const };
 
-export const checkIns = pgTable(
+export const checkIns = sqliteTable(
   "check_ins",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    roomId: uuid("room_id")
+    roomId: text("room_id")
       .notNull()
       .references(() => rooms.id, { onDelete: "cascade" }),
-    seatId: uuid("seat_id")
+    seatId: text("seat_id")
       .notNull()
       .references(() => seats.id, { onDelete: "cascade" }),
-    status: checkInStatusEnum("status").notNull().default("ACTIVE"),
-    showIdentity: boolean("show_identity").notNull().default(false),
-    presenceVerified: boolean("presence_verified").notNull().default(false),
+    status: text("status", { enum: checkInStatusEnum.enumValues }).notNull().default("ACTIVE"),
+    showIdentity: integer("show_identity", { mode: "boolean" }).notNull().default(false),
+    presenceVerified: integer("presence_verified", { mode: "boolean" }).notNull().default(false),
     locationAccuracyM: real("location_accuracy_m"),
-    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
-    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-    endedAt: timestamp("ended_at", { withTimezone: true }),
+    startedAt: integer("started_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    endedAt: integer("ended_at", { mode: "timestamp_ms" }),
     // Photo verification (see docs/SEAT_PHOTO_VERIFIER.md). `verifiedAt` is set once the seat
     // verifier model agrees with the claimed seat; protection lasts VERIFIED_PROTECTION_MINUTES
     // from that time (see `isCheckInVerified`). The photo itself is never stored — only its hash,
     // to block reusing the same image to verify any other check-in (own or someone else's) — see
     // the `uq_check_ins_verification_photo_sha256` partial unique index below.
-    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    verifiedAt: integer("verified_at", { mode: "timestamp_ms" }),
     verificationConfidence: real("verification_confidence"),
     verifierModel: text("verifier_model"),
     verificationPhotoSha256: text("verification_photo_sha256"),
     // Set once the "expires in 10 min" reminder has been claimed; reset to null when extended.
-    expiryReminderSentAt: timestamp("expiry_reminder_sent_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    expiryReminderSentAt: integer("expiry_reminder_sent_at", { mode: "timestamp_ms" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
   },
   (table) => [
     // One active self check-in per user / per seat.

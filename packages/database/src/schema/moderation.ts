@@ -1,9 +1,9 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { check, index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { rooms } from "./rooms.js";
 import { user } from "./auth.js";
 
-export const reportReasonEnum = pgEnum("report_reason", [
+export const reportReasonEnum = { enumValues: [
   "SPAM",
   "HARASSMENT",
   "INAPPROPRIATE_BEHAVIOR",
@@ -11,13 +11,13 @@ export const reportReasonEnum = pgEnum("report_reason", [
   "SEAT_TROLLING",
   "OFFENSIVE_CONTENT",
   "OTHER",
-]);
-export const reportContextEnum = pgEnum("report_context", ["PROFILE", "CHAT", "DM"]);
-export const reportStatusEnum = pgEnum("report_status", ["OPEN", "UNDER_REVIEW", "RESOLVED", "DISMISSED"]);
-export const reportAttachmentStatusEnum = pgEnum("report_attachment_status", ["PENDING", "UPLOADED"]);
-export const restrictionTypeEnum = pgEnum("restriction_type", ["MUTE_CHAT", "RESTRICT_OBSERVATIONS", "SUSPENDED", "BANNED"]);
+] as const };
+export const reportContextEnum = { enumValues: ["PROFILE", "CHAT", "DM"] as const };
+export const reportStatusEnum = { enumValues: ["OPEN", "UNDER_REVIEW", "RESOLVED", "DISMISSED"] as const };
+export const reportAttachmentStatusEnum = { enumValues: ["PENDING", "UPLOADED"] as const };
+export const restrictionTypeEnum = { enumValues: ["MUTE_CHAT", "RESTRICT_OBSERVATIONS", "SUSPENDED", "BANNED"] as const };
 
-export const userBlocks = pgTable(
+export const userBlocks = sqliteTable(
   "user_blocks",
   {
     blockerId: text("blocker_id")
@@ -26,7 +26,7 @@ export const userBlocks = pgTable(
     blockedId: text("blocked_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
   },
   (table) => [
     primaryKey({ columns: [table.blockerId, table.blockedId] }),
@@ -35,34 +35,34 @@ export const userBlocks = pgTable(
   ],
 );
 
-export const userReports = pgTable(
+export const userReports = sqliteTable(
   "user_reports",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     reporterId: text("reporter_id").references(() => user.id, { onDelete: "set null" }),
     reportedUserId: text("reported_user_id").references(() => user.id, { onDelete: "set null" }),
-    roomId: uuid("room_id").references(() => rooms.id, { onDelete: "set null" }),
-    reason: reportReasonEnum("reason").notNull(),
+    roomId: text("room_id").references(() => rooms.id, { onDelete: "set null" }),
+    reason: text("reason", { enum: reportReasonEnum.enumValues }).notNull(),
     description: text("description"),
-    context: reportContextEnum("context").notNull(),
-    contextMessageId: uuid("context_message_id"),
-    status: reportStatusEnum("status").notNull().default("OPEN"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    context: text("context", { enum: reportContextEnum.enumValues }).notNull(),
+    contextMessageId: text("context_message_id"),
+    status: text("status", { enum: reportStatusEnum.enumValues }).notNull().default("OPEN"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    resolvedAt: integer("resolved_at", { mode: "timestamp_ms" }),
     resolvedBy: text("resolved_by").references(() => user.id, { onDelete: "set null" }),
   },
   (table) => [
     index("idx_user_reports_status_created").on(table.status, table.createdAt),
     index("idx_user_reports_reporter_created").on(table.reporterId, table.createdAt),
-    index("idx_user_reports_created").on(table.createdAt.desc()),
+    index("idx_user_reports_created").on(sql`${table.createdAt} desc`),
   ],
 );
 
-export const userReportAttachments = pgTable(
+export const userReportAttachments = sqliteTable(
   "user_report_attachments",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    reportId: uuid("report_id")
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    reportId: text("report_id")
       .notNull()
       .references(() => userReports.id, { onDelete: "cascade" }),
     objectKey: text("object_key").notNull().unique(),
@@ -71,8 +71,8 @@ export const userReportAttachments = pgTable(
     uploadedBy: text("uploaded_by")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    status: reportAttachmentStatusEnum("status").notNull().default("PENDING"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    status: text("status", { enum: reportAttachmentStatusEnum.enumValues }).notNull().default("PENDING"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
   },
   (table) => [
     index("idx_user_report_attachments_report").on(table.reportId),
@@ -80,50 +80,50 @@ export const userReportAttachments = pgTable(
   ],
 );
 
-export const userRestrictions = pgTable(
+export const userRestrictions = sqliteTable(
   "user_restrictions",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    type: restrictionTypeEnum("type").notNull(),
+    type: text("type", { enum: restrictionTypeEnum.enumValues }).notNull(),
     reason: text("reason").notNull(),
-    until: timestamp("until", { withTimezone: true }),
+    until: integer("until", { mode: "timestamp_ms" }),
     createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    liftedAt: timestamp("lifted_at", { withTimezone: true }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    liftedAt: integer("lifted_at", { mode: "timestamp_ms" }),
   },
   (table) => [index("idx_user_restrictions_user").on(table.userId)],
 );
 
-export const moderationActions = pgTable(
+export const moderationActions = sqliteTable(
   "moderation_actions",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     actorId: text("actor_id").references(() => user.id, { onDelete: "set null" }),
     targetUserId: text("target_user_id").references(() => user.id, { onDelete: "set null" }),
-    reportId: uuid("report_id").references(() => userReports.id, { onDelete: "set null" }),
+    reportId: text("report_id").references(() => userReports.id, { onDelete: "set null" }),
     action: text("action").notNull(),
-    metadata: jsonb("metadata"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    metadata: text("metadata", { mode: "json" }).$type<unknown>(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
   },
-  (table) => [index("idx_moderation_actions_created").on(table.createdAt.desc())],
+  (table) => [index("idx_moderation_actions_created").on(sql`${table.createdAt} desc`)],
 );
 
-export const announcements = pgTable(
+export const announcements = sqliteTable(
   "announcements",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    roomId: uuid("room_id").references(() => rooms.id, { onDelete: "cascade" }),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    roomId: text("room_id").references(() => rooms.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     body: text("body").notNull(),
-    active: boolean("active").notNull().default(true),
-    startsAt: timestamp("starts_at", { withTimezone: true }).notNull().defaultNow(),
-    endsAt: timestamp("ends_at", { withTimezone: true }),
+    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    startsAt: integer("starts_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    endsAt: integer("ends_at", { mode: "timestamp_ms" }),
     createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
   },
   (table) => [index("idx_announcements_room_starts").on(table.roomId, table.startsAt)],
 );

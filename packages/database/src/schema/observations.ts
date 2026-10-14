@@ -1,32 +1,33 @@
-import { boolean, index, jsonb, pgEnum, pgTable, real, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { rooms, seats } from "./rooms.js";
 import { user } from "./auth.js";
 
-export const observedStatusEnum = pgEnum("observed_status", ["FREE", "OCCUPIED", "SAVED"]);
+export const observedStatusEnum = { enumValues: ["FREE", "OCCUPIED", "SAVED"] as const };
 
-export const seatObservations = pgTable(
+export const seatObservations = sqliteTable(
   "seat_observations",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    roomId: uuid("room_id")
+    roomId: text("room_id")
       .notNull()
       .references(() => rooms.id, { onDelete: "cascade" }),
-    seatId: uuid("seat_id")
+    seatId: text("seat_id")
       .notNull()
       .references(() => seats.id, { onDelete: "cascade" }),
-    observedStatus: observedStatusEnum("observed_status").notNull(),
-    presenceVerified: boolean("presence_verified").notNull().default(false),
-    qrVerified: boolean("qr_verified").notNull().default(false),
+    observedStatus: text("observed_status", { enum: observedStatusEnum.enumValues }).notNull(),
+    presenceVerified: integer("presence_verified", { mode: "boolean" }).notNull().default(false),
+    qrVerified: integer("qr_verified", { mode: "boolean" }).notNull().default(false),
     /** Set by "Todos los lugares ocupados": an admin bulk-marked this seat; shown as "Administración". */
-    adminOverride: boolean("admin_override").notNull().default(false),
+    adminOverride: integer("admin_override", { mode: "boolean" }).notNull().default(false),
     confidenceWeight: real("confidence_weight").notNull().default(1),
-    observedAt: timestamp("observed_at", { withTimezone: true }).notNull().defaultNow(),
-    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    observedAt: integer("observed_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
   },
   (table) => [
     index("idx_seat_observations_seat_expires").on(table.seatId, table.expiresAt),
@@ -36,22 +37,22 @@ export const seatObservations = pgTable(
   ],
 );
 
-export const seatStateEvents = pgTable(
+export const seatStateEvents = sqliteTable(
   "seat_state_events",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    roomId: uuid("room_id")
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    roomId: text("room_id")
       .notNull()
       .references(() => rooms.id, { onDelete: "cascade" }),
-    seatId: uuid("seat_id")
+    seatId: text("seat_id")
       .notNull()
       .references(() => seats.id, { onDelete: "cascade" }),
     userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
     eventType: text("event_type").notNull(),
     oldStatus: text("old_status"),
     newStatus: text("new_status"),
-    metadata: jsonb("metadata"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    metadata: text("metadata", { mode: "json" }).$type<unknown>(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
   },
-  (table) => [index("idx_seat_state_events_room_created").on(table.roomId, table.createdAt.desc())],
+  (table) => [index("idx_seat_state_events_room_created").on(table.roomId, sql`${table.createdAt} desc`)],
 );

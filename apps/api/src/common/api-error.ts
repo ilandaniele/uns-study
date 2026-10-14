@@ -1,16 +1,38 @@
-import { HttpException } from "@nestjs/common";
 import type { ApiErrorCode, PresenceDetails, PresenceRejectReason } from "@sala/contracts";
 
-/** Thrown by domain services / controllers; rendered as `{ error: { code, message, reason? } }`. */
-export class ApiException extends HttpException {
+export interface ApiErrorBody {
+  code: ApiErrorCode;
+  message: string;
+  reason?: PresenceRejectReason;
+  details?: PresenceDetails;
+}
+
+/** Thrown by domain services / routers; rendered as `{ error: { code, message, reason? } }`. */
+export class ApiException extends Error {
   constructor(
     public readonly code: ApiErrorCode,
     message: string,
-    status: number,
+    public readonly status: number,
     public readonly reason?: PresenceRejectReason,
     public readonly details?: PresenceDetails,
   ) {
-    super({ error: { code, message, ...(reason ? { reason } : {}), ...(details ? { details } : {}) } }, status);
+    super(message);
+    this.name = "ApiException";
+  }
+
+  getStatus(): number {
+    return this.status;
+  }
+
+  getResponse(): { error: ApiErrorBody } {
+    return {
+      error: {
+        code: this.code,
+        message: this.message,
+        ...(this.reason ? { reason: this.reason } : {}),
+        ...(this.details ? { details: this.details } : {}),
+      },
+    };
   }
 }
 
@@ -61,3 +83,64 @@ export const ApiErrors = {
   tableNameNotAllowed: () =>
     new ApiException("TABLE_NAME_NOT_ALLOWED", "Para proponer o votar tenés que haber marcado un lugar en la sala.", 403),
 };
+
+const INTERNAL_MESSAGE = "Error interno.";
+
+/** Maps a framework error status onto the closest ApiError code (other 4xx are request-shape problems). */
+function codeForStatus(status: number): ApiErrorCode {
+  if (status >= 500) return "INTERNAL_ERROR";
+  switch (status) {
+    case 401:
+      return "UNAUTHENTICATED";
+    case 403:
+      return "FORBIDDEN";
+    case 404:
+      return "NOT_FOUND";
+    case 429:
+      return "RATE_LIMITED";
+    default:
+      return "VALIDATION_ERROR";
+  }
+}
+
+function statusOf(err: unknown): number | null {
+  if (typeof err !== "object" || err === null) return null;
+  const status = (err as { status?: unknown }).status;
+  return typeof status === "number" && Number.isFinite(status) ? status : null;
+}
+
+function logUnhandled(req: { method: string; path: string }, err: unknown): void {
+  // Path only (no query string, which could carry tokens); the stack is what identifies the failure.
+  console.error(
+    JSON.stringify({
+      evt: "unhandled_error",
+      method: req.method,
+      path: req.path,
+      msg: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    }),
+  );
+}
+
+/** Normalizes every thrown error into the `{ error: { code, message } }` ApiError shape. */
+export function toErrorResponse(
+  err: unknown,
+  req: { method: string; path: string },
+): { status: number; body: { error: ApiErrorBody } } {
+  if (err instanceof ApiException) return { status: err.getStatus(), body: err.getResponse() };
+
+  const status = statusOf(err);
+  if (status !== null) {
+    const code = codeForStatus(status);
+    if (status >= 500) {
+      logUnhandled(req, err);
+      return { status, body: { error: { code, message: INTERNAL_MESSAGE } } };
+    }
+    const raw = (err as { message?: unknown }).message;
+    const message = Array.isArray(raw) ? raw.join(", ") : typeof raw === "string" ? raw : String(raw ?? "");
+    return { status, body: { error: { code, message } } };
+  }
+
+  logUnhandled(req, err);
+  return { status: 500, body: { error: { code: "INTERNAL_ERROR", message: INTERNAL_MESSAGE } } };
+}

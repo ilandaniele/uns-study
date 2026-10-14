@@ -1,4 +1,4 @@
-import type { Logger } from "@nestjs/common";
+import type { Logger } from "../platform/logger.js";
 
 const pending = new Set<Promise<void>>();
 

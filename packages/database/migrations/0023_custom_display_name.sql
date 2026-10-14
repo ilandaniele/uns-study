@@ -1,1 +1,0 @@
-ALTER TABLE "user_profiles" ADD COLUMN "custom_name" text;

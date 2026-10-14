@@ -1,31 +1,18 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { PGlite } from "@electric-sql/pglite";
-import { createDb, migrate, seedInitialRoom } from "@sala/database";
-import type { TestProject } from "vitest/node";
-
-declare module "vitest" {
-  export interface ProvidedContext {
-    pgliteTemplate: string;
-  }
-}
+import { buildTemplate } from "@sala/database/testing";
 
 /**
- * Migrating PGlite takes over a second. Vitest runs every test file in a fresh module context,
- * so a per-file cache would still migrate 95 times: build the migrated and seeded data directory
- * once per run instead, dump it to a temp file, and let every `freshDb()` boot from that dump.
+ * Migrating + seeding takes noticeable time. Vitest runs every test file in a fresh module
+ * context, so a per-file cache would repeat it for every file: build the migrated and seeded
+ * database once per run, serialize it to a temp file, and let every `freshDb()` load that copy.
+ * The path travels through `process.env.SALA_TEST_TEMPLATE` (workers inherit it).
  */
-export default async function setup(project: TestProject) {
-  const dir = await mkdtemp(path.join(tmpdir(), "sala-pglite-"));
-  const file = path.join(dir, "template.tar");
-  const pglite = new PGlite("memory://");
-  const db = createDb({ pglite });
-  await migrate(db, "");
-  await seedInitialRoom(db);
-  const dump = await pglite.dumpDataDir("none");
-  await pglite.close();
-  await writeFile(file, Buffer.from(await dump.arrayBuffer()));
-  project.provide("pgliteTemplate", file);
+export default async function setup() {
+  const dir = await mkdtemp(path.join(tmpdir(), "sala-sqlite-"));
+  const file = path.join(dir, "template.sqlite");
+  await writeFile(file, await buildTemplate());
+  process.env.SALA_TEST_TEMPLATE = file;
   return () => rm(dir, { recursive: true, force: true });
 }

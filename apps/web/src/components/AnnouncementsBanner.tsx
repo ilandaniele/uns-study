@@ -1,7 +1,7 @@
 "use client";
 
 import { SocketEvents, type AnnouncementDto } from "@sala/contracts";
-import type { Socket } from "socket.io-client";
+import type { Socket } from "@/lib/socket";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { XIcon } from "@phosphor-icons/react/dist/ssr";
@@ -13,7 +13,7 @@ const VISIBILITY_REFETCH_MIN_MS = 60_000;
 
 export interface AnnouncementsBannerProps {
   roomSlug: string;
-  /** Optional shared Socket.IO connection; when provided, live updates arrive via
+  /** Optional shared realtime connection; when provided, live updates arrive via
    *  `room:announcement-changed` instead of relying only on window focus refetches. */
   socket?: Socket | null;
 }

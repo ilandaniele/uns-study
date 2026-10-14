@@ -1,4 +1,3 @@
-import { Injectable } from "@nestjs/common";
 import { asc, eq, or } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import { ApiErrors } from "../api-error.js";
@@ -26,7 +25,6 @@ const ROOM_TTL_MS = 5 * 60_000;
  * timezone, ...) and its tables/seats. Writers MUST call `invalidate(roomId)` (admin geofence
  * update, table nickname change, seed) — the API runs as a single instance, so that is enough.
  */
-@Injectable()
 export class RoomCache {
   private readonly rooms = new TtlCache<string, RoomRow | undefined>(ROOM_TTL_MS);
   private readonly layouts = new TtlCache<string, RoomLayout>(ROOM_TTL_MS);

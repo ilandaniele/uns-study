@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { user } from "./auth.js";
 
 /**
@@ -6,7 +6,7 @@ import { user } from "./auth.js";
  * provider status; the app only treats "authorized" as ad-free. Always re-fetched from the provider
  * by the webhook, never trusted from the notification payload.
  */
-export const userSubscriptions = pgTable(
+export const userSubscriptions = sqliteTable(
   "user_subscriptions",
   {
     userId: text("user_id")
@@ -15,9 +15,9 @@ export const userSubscriptions = pgTable(
     provider: text("provider").notNull().default("mercadopago"),
     providerSubscriptionId: text("provider_subscription_id").notNull(),
     status: text("status").notNull(),
-    currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    currentPeriodEnd: integer("current_period_end", { mode: "timestamp_ms" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
   },
   (t) => [uniqueIndex("uq_user_subscriptions_provider_id").on(t.providerSubscriptionId)],
 );

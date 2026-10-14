@@ -4,6 +4,9 @@ node_modules
 !.env.example
 .data
 .next
+.wrangler/
+.open-next/
+.dev.vars
 dist
 .turbo
 coverage

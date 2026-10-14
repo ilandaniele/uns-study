@@ -1,1 +1,0 @@
-ALTER TYPE "public"."study_session_source" ADD VALUE 'MANUAL';

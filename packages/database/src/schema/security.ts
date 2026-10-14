@@ -1,15 +1,16 @@
-import { index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { user } from "./auth.js";
 
-export const securityEvents = pgTable(
+export const securityEvents = sqliteTable(
   "security_events",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
     eventType: text("event_type").notNull(),
     ipHash: text("ip_hash"),
-    metadata: jsonb("metadata"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    metadata: text("metadata", { mode: "json" }).$type<unknown>(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
   },
-  (table) => [index("idx_security_events_user_created").on(table.userId, table.createdAt.desc())],
+  (table) => [index("idx_security_events_user_created").on(table.userId, sql`${table.createdAt} desc`)],
 );
