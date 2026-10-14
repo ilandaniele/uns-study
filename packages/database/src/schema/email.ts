@@ -6,6 +6,8 @@ export const emailCampaigns = pgTable("email_campaigns", {
   id: uuid("id").primaryKey().defaultRandom(),
   subject: text("subject").notNull(),
   bodyText: text("body_text").notNull(),
+  /** all | free | subscribers; see `email-recipients.ts`. */
+  audience: text("audience").notNull().default("all"),
   status: text("status").notNull().default("draft"),
   createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

@@ -59,4 +59,34 @@ describe("email recipients", () => {
     ]);
     expect(await ids()).toEqual(["expired", "lifted"]);
   });
+
+  describe("audience", () => {
+    beforeEach(async () => {
+      await insertUsers(db, ["pro", "lapsed", "free"]);
+      await verify("pro", "lapsed", "free");
+      await db.insert(schema.userSubscriptions).values([
+        { userId: "pro", providerSubscriptionId: "s1", status: "authorized" },
+        { userId: "lapsed", providerSubscriptionId: "s2", status: "cancelled" },
+      ]);
+    });
+
+    it("all keeps everyone eligible", async () => {
+      expect((await recipientsQuery(db, NOW, "all")).map((r) => r.userId).sort()).toEqual(["free", "lapsed", "pro"]);
+    });
+
+    it("subscribers only reaches authorized subscriptions", async () => {
+      expect((await recipientsQuery(db, NOW, "subscribers")).map((r) => r.userId)).toEqual(["pro"]);
+      expect(await countRecipients(db, NOW, "subscribers")).toBe(1);
+    });
+
+    it("free reaches users without an authorized subscription, including lapsed ones", async () => {
+      expect((await recipientsQuery(db, NOW, "free")).map((r) => r.userId).sort()).toEqual(["free", "lapsed"]);
+      expect(await countRecipients(db, NOW, "free")).toBe(2);
+    });
+
+    it("still applies opt-out within an audience", async () => {
+      await db.insert(schema.notificationPreferences).values({ userId: "pro", marketingEmails: false });
+      expect(await countRecipients(db, NOW, "subscribers")).toBe(0);
+    });
+  });
 });

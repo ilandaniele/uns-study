@@ -1,10 +1,13 @@
 "use client";
 
+import type { EmailAudience } from "@sala/contracts";
 import { useRef } from "react";
 import { useExitTransition } from "@/lib/useExitTransition";
 import { useFocusTrap } from "@/lib/useFocusTrap";
+import { AUDIENCE_LABEL } from "./audience";
 
 export interface ConfirmSendDialogProps {
+  audience: EmailAudience;
   recipientCount: number;
   pending: boolean;
   error: string | null;
@@ -13,7 +16,7 @@ export interface ConfirmSendDialogProps {
 }
 
 /** Last stop before a campaign is queued: states the exact audience size and that it can't be undone. */
-export function ConfirmSendDialog({ recipientCount, pending, error, onConfirm, onCancel }: ConfirmSendDialogProps) {
+export function ConfirmSendDialog({ audience, recipientCount, pending, error, onConfirm, onCancel }: ConfirmSendDialogProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const { closing, requestClose } = useExitTransition(onCancel);
@@ -33,7 +36,7 @@ export function ConfirmSendDialog({ recipientCount, pending, error, onConfirm, o
         <h2 id="confirm-send-title" className="font-display text-lg font-semibold text-main">
           Enviar mail
         </h2>
-        <p className="mt-1 text-sm text-muted">Vas a enviar este mail a {recipientCount} personas. No se puede deshacer.</p>
+        <p className="mt-1 text-sm text-muted">Vas a enviar este mail a {recipientCount} personas ({AUDIENCE_LABEL[audience].toLowerCase()}). No se puede deshacer.</p>
         {error ? <p className="mt-2 text-sm text-[var(--seat-occupied)]">{error}</p> : null}
         <div className="mt-5 flex flex-col gap-2">
           <button

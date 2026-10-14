@@ -1,11 +1,14 @@
-import { Body, Controller, Get, Inject, Param, Patch, Post, UseGuards } from "@nestjs/common";
-import { emailCampaignInputSchema, type EmailCampaignDto, type EmailCampaignInput, type EmailConfigDto, type EmailRecipientPreviewDto } from "@sala/contracts";
+import { Body, Controller, Get, Inject, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { emailAudienceSchema, emailCampaignInputSchema, type EmailAudience, type EmailCampaignDto, type EmailCampaignInput, type EmailConfigDto, type EmailRecipientPreviewDto } from "@sala/contracts";
 import { AdminGuard, AdminOnlyGuard } from "../users/admin.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import type { RequestUser } from "../auth/request-user.js";
 import { ZodBodyPipe } from "../common/zod-body.pipe.js";
 import { UuidParamPipe } from "../common/uuid-param.pipe.js";
 import { EmailCampaignsService } from "./email-campaigns.service.js";
+
+/** Explicit audience without the create default, so a PATCH that omits it never resets it to "all". */
+const emailCampaignPatchSchema = emailCampaignInputSchema.extend({ audience: emailAudienceSchema }).partial();
 
 /** Reading is open to MODERATOR too; creating, editing and sending campaigns is ADMIN only. */
 @Controller("admin/email-campaigns")
@@ -24,8 +27,8 @@ export class AdminEmailController {
   }
 
   @Get("recipients/count")
-  async recipientCount(): Promise<EmailRecipientPreviewDto> {
-    return this.campaigns.previewCount();
+  async recipientCount(@Query("audience", new ZodBodyPipe(emailAudienceSchema.default("all"))) audience: EmailAudience): Promise<EmailRecipientPreviewDto> {
+    return this.campaigns.previewCount(audience);
   }
 
   @Post()
@@ -38,7 +41,7 @@ export class AdminEmailController {
   @UseGuards(AdminOnlyGuard)
   async update(
     @Param("id", new UuidParamPipe()) id: string,
-    @Body(new ZodBodyPipe(emailCampaignInputSchema.partial())) body: Partial<EmailCampaignInput>,
+    @Body(new ZodBodyPipe(emailCampaignPatchSchema)) body: Partial<EmailCampaignInput>,
   ): Promise<EmailCampaignDto> {
     return this.campaigns.update(id, body);
   }

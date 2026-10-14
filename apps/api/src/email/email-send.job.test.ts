@@ -38,7 +38,7 @@ describe("EmailSendJob", () => {
     await insertUsers(db, ["admin1", "u1", "u2", "u3"]);
     for (const id of ["u1", "u2", "u3"]) await db.update(schema.user).set({ emailVerified: true }).where(eq(schema.user.id, id));
     const svc = new EmailCampaignsService(db);
-    const c = await svc.create({ subject: "Hola", bodyText: "Visitá https://sala-de-estudio.fly.dev" }, "admin1");
+    const c = await svc.create({ subject: "Hola", bodyText: "Visitá https://sala-de-estudio.fly.dev", audience: "all" }, "admin1");
     await svc.send(c.id, "admin1");
     campaignId = c.id;
   });

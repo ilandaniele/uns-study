@@ -1,7 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
-import type { EmailCampaignDto, EmailCampaignInput, EmailCampaignStatus, EmailConfigDto, EmailRecipientPreviewDto } from "@sala/contracts";
+import type { EmailAudience, EmailCampaignDto, EmailCampaignInput, EmailCampaignStatus, EmailConfigDto, EmailRecipientPreviewDto } from "@sala/contracts";
+import { emailAudienceSchema } from "@sala/contracts";
 import { DB } from "../database/database.module.js";
 import { ApiErrors, ApiException } from "../common/api-error.js";
 import { env } from "../env.js";
@@ -21,8 +22,8 @@ export class EmailCampaignsService {
     return { enabled: emailEnabled() };
   }
 
-  async previewCount(now: Date = new Date()): Promise<EmailRecipientPreviewDto> {
-    return { recipientCount: await countRecipients(this.db, now) };
+  async previewCount(audience: EmailAudience = "all", now: Date = new Date()): Promise<EmailRecipientPreviewDto> {
+    return { recipientCount: await countRecipients(this.db, now, audience) };
   }
 
   async list(): Promise<EmailCampaignDto[]> {
@@ -44,7 +45,7 @@ export class EmailCampaignsService {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
         .insert(schema.emailCampaigns)
-        .values({ subject: input.subject, bodyText: input.bodyText, createdBy: actorId })
+        .values({ subject: input.subject, bodyText: input.bodyText, audience: input.audience, createdBy: actorId })
         .returning();
       if (!row) throw new Error("Failed to create email campaign");
       await tx.insert(schema.moderationActions).values({ actorId, action: "EMAIL_CAMPAIGN_CREATED", metadata: { campaignId: row.id } });
@@ -59,7 +60,9 @@ export class EmailCampaignsService {
 
     const [row] = await this.db
       .update(schema.emailCampaigns)
-      .set({ ...(patch.subject !== undefined ? { subject: patch.subject } : {}), ...(patch.bodyText !== undefined ? { bodyText: patch.bodyText } : {}) })
+      .set({ ...(patch.subject !== undefined ? { subject: patch.subject } : {}), ...(patch.bodyText !== undefined ? { bodyText: patch.bodyText } : {}),
+        ...(patch.audience !== undefined ? { audience: patch.audience } : {}),
+      })
       .where(and(eq(schema.emailCampaigns.id, id), eq(schema.emailCampaigns.status, "draft")))
       .returning();
     // Lost a race with `send`: the draft is gone.
@@ -76,7 +79,8 @@ export class EmailCampaignsService {
     if (!emailEnabled()) throw ApiErrors.featureDisabled("El envío de mails no está configurado.");
 
     return this.db.transaction(async (tx) => {
-      const recipients = await recipientsQuery(tx, now);
+      const [draft] = await tx.select({ audience: schema.emailCampaigns.audience }).from(schema.emailCampaigns).where(eq(schema.emailCampaigns.id, id)).limit(1);
+      const recipients = await recipientsQuery(tx, now, toAudience(draft?.audience));
       const [campaign] = await tx
         .update(schema.emailCampaigns)
         .set({ status: "sending", recipientCount: recipients.length })
@@ -106,12 +110,17 @@ export function emailEnabled(): boolean {
   return Boolean(env.resendApiKey && env.emailFrom);
 }
 
+function toAudience(value: string | undefined): EmailAudience {
+  return emailAudienceSchema.catch("all").parse(value);
+}
+
 function toDto(row: CampaignRow, counts: { status: string; n: number }[]): EmailCampaignDto {
   const of = (status: string) => Number(counts.find((c) => c.status === status)?.n ?? 0);
   return {
     id: row.id,
     subject: row.subject,
     bodyText: row.bodyText,
+    audience: toAudience(row.audience),
     status: row.status as EmailCampaignStatus,
     createdBy: row.createdBy,
     createdAt: row.createdAt.toISOString(),

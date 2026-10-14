@@ -26,14 +26,14 @@ describe("EmailCampaignsService", () => {
   });
 
   it("create makes a draft and audits it", async () => {
-    const c = await svc.create({ subject: "Hola", bodyText: "Chau" }, "admin1");
+    const c = await svc.create({ subject: "Hola", bodyText: "Chau", audience: "all" }, "admin1");
     expect(c.status).toBe("draft");
     const actions = await db.select().from(schema.moderationActions);
     expect(actions.map((a) => a.action)).toEqual(["EMAIL_CAMPAIGN_CREATED"]);
   });
 
   it("send enqueues one pending delivery per recipient and flips to sending", async () => {
-    const c = await svc.create({ subject: "Hola", bodyText: "Chau" }, "admin1");
+    const c = await svc.create({ subject: "Hola", bodyText: "Chau", audience: "all" }, "admin1");
     const sent = await svc.send(c.id, "admin1");
     expect(sent.status).toBe("sending");
     expect(sent.recipientCount).toBe(2);
@@ -44,8 +44,20 @@ describe("EmailCampaignsService", () => {
     expect(actions).toHaveLength(1);
   });
 
+  it("send freezes only the campaign audience and update can change it in draft", async () => {
+    await db.insert(schema.userSubscriptions).values({ userId: "u1", providerSubscriptionId: "s1", status: "authorized" });
+    const c = await svc.create({ subject: "Hola", bodyText: "Chau", audience: "free" }, "admin1");
+    expect(c.audience).toBe("free");
+    expect((await svc.previewCount("subscribers")).recipientCount).toBe(1);
+    expect((await svc.update(c.id, { subject: "Nuevo" })).audience).toBe("free");
+    expect((await svc.update(c.id, { audience: "subscribers" })).audience).toBe("subscribers");
+    const sent = await svc.send(c.id, "admin1");
+    expect(sent.recipientCount).toBe(1);
+    expect((await db.select().from(schema.emailCampaignDeliveries)).map((d) => d.userId)).toEqual(["u1"]);
+  });
+
   it("send is idempotent: a second send is rejected and adds no rows", async () => {
-    const c = await svc.create({ subject: "Hola", bodyText: "Chau" }, "admin1");
+    const c = await svc.create({ subject: "Hola", bodyText: "Chau", audience: "all" }, "admin1");
     await svc.send(c.id, "admin1");
     await expect(svc.send(c.id, "admin1")).rejects.toMatchObject({ status: 409 });
     expect(await db.select().from(schema.emailCampaignDeliveries)).toHaveLength(2);
@@ -53,14 +65,14 @@ describe("EmailCampaignsService", () => {
   });
 
   it("update works on drafts and is rejected after send", async () => {
-    const c = await svc.create({ subject: "Hola", bodyText: "Chau" }, "admin1");
+    const c = await svc.create({ subject: "Hola", bodyText: "Chau", audience: "all" }, "admin1");
     expect((await svc.update(c.id, { subject: "Nuevo" })).subject).toBe("Nuevo");
     await svc.send(c.id, "admin1");
     await expect(svc.update(c.id, { subject: "Tarde" })).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
   });
 
   it("send throws featureDisabled without Resend config and leaves the draft untouched", async () => {
-    const c = await svc.create({ subject: "Hola", bodyText: "Chau" }, "admin1");
+    const c = await svc.create({ subject: "Hola", bodyText: "Chau", audience: "all" }, "admin1");
     env.resendApiKey = "";
     expect(svc.config()).toEqual({ enabled: false });
     await expect(svc.send(c.id, "admin1")).rejects.toMatchObject({ status: 503 });
@@ -70,7 +82,7 @@ describe("EmailCampaignsService", () => {
   });
 
   it("list reports counts per status", async () => {
-    const c = await svc.create({ subject: "Hola", bodyText: "Chau" }, "admin1");
+    const c = await svc.create({ subject: "Hola", bodyText: "Chau", audience: "all" }, "admin1");
     await svc.send(c.id, "admin1");
     const [dto] = await svc.list();
     expect(dto).toMatchObject({ pendingCount: 2, sentCount: 0, failedCount: 0, recipientCount: 2 });

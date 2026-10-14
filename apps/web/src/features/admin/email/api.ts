@@ -1,11 +1,11 @@
-import { emailCampaignInputSchema, type EmailCampaignDto, type EmailCampaignInput, type EmailConfigDto, type EmailRecipientPreviewDto } from "@sala/contracts";
+import { emailCampaignInputSchema, type EmailAudience, type EmailCampaignDto, type EmailCampaignInput, type EmailConfigDto, type EmailRecipientPreviewDto } from "@sala/contracts";
 import { apiFetch, apiPost } from "@/lib/api";
 
 const BASE = "/api/v1/admin/email-campaigns";
 
 export const fetchEmailConfig = () => apiFetch<EmailConfigDto>(`${BASE}/config`);
 export const fetchEmailCampaigns = () => apiFetch<EmailCampaignDto[]>(BASE);
-export const fetchRecipientCount = () => apiFetch<EmailRecipientPreviewDto>(`${BASE}/recipients/count`);
+export const fetchRecipientCount = (audience: EmailAudience) => apiFetch<EmailRecipientPreviewDto>(`${BASE}/recipients/count?audience=${audience}`);
 export const createEmailCampaign = (input: EmailCampaignInput) => apiPost<EmailCampaignDto>(BASE, input, emailCampaignInputSchema);
 export const updateEmailCampaign = (id: string, input: Partial<EmailCampaignInput>) =>
   apiFetch<EmailCampaignDto>(`${BASE}/${id}`, { method: "PATCH", body: JSON.stringify(input) });

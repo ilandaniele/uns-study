@@ -1,0 +1,1 @@
+ALTER TABLE "email_campaigns" ADD COLUMN "audience" text DEFAULT 'all' NOT NULL;

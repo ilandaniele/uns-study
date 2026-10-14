@@ -6,7 +6,7 @@ import { DB } from "../database/database.module.js";
 import { env } from "../env.js";
 import { renderEmail } from "./email-render.js";
 import { RESEND_CLIENT, ResendError, type ResendClient, type ResendMessage } from "./resend.client.js";
-import { blockingRestrictions } from "./email-recipients.js";
+import { activeSubscription, blockingRestrictions } from "./email-recipients.js";
 import { unsubscribeUrls } from "./unsubscribe-token.js";
 
 const SWEEP_INTERVAL_MS = 30_000;
@@ -101,6 +101,7 @@ export class EmailSendJob {
         email: schema.user.email,
         emailVerified: schema.user.emailVerified,
         restricted: exists(blockingRestrictions(this.db, now)),
+        subscribed: exists(activeSubscription(this.db)),
         optedOut: sql<boolean>`exists (select 1 from ${schema.notificationPreferences} np where np.user_id = ${schema.user.id} and np.marketing_emails = false)`,
       })
       .from(schema.user)
@@ -122,6 +123,8 @@ export class EmailSendJob {
         skipped.push({ id: row.id, error: "ineligible" });
       } else if (u.optedOut) {
         skipped.push({ id: row.id, error: "opted_out" });
+      } else if ((campaign.audience === "subscribers" && !u.subscribed) || (campaign.audience === "free" && u.subscribed)) {
+        skipped.push({ id: row.id, error: "audience_changed" });
       } else {
         const urls = unsubscribeUrls(u.id);
         const { text, html } = renderEmail(campaign.bodyText, urls.page);
