@@ -20,7 +20,7 @@ interface RealtimeTokenDto {
 /**
  * Fetches a short-lived Socket.IO auth token via the same-origin REST API (`GET
  * /api/v1/realtime/token`, works behind the web app's proxy). The socket itself connects straight
- * to `NEXT_PUBLIC_SOCKET_URL` — Socket.IO can't be routed through Vercel's rewrites — so it can't
+ * to `NEXT_PUBLIC_SOCKET_URL` — Socket.IO can't be routed through the web app's rewrites — so it can't
  * rely on the session cookie in production and needs this token instead. Returns `null` for
  * anonymous visitors, who connect without one.
  */

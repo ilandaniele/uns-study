@@ -69,7 +69,7 @@ describe("proxy CSP nonce", () => {
     expect(res.headers.get("content-security-policy")).toBeNull();
   });
 
-  it.each(["uns-study.vercel.app", "sala-de-estudio.fly.dev", "www.saladeestudio.com.ar"])(
+  it.each(["sala-de-estudio.fly.dev", "www.saladeestudio.com.ar"])(
     "redirects the old host %s to the canonical domain, without a CSP",
     (host) => {
       const res = proxy(new NextRequest("https://" + host + "/mapa?x=1", { headers: { host } }));

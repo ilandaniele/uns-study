@@ -24,7 +24,7 @@ function sign(payload: string, key: Buffer): string {
 /**
  * Issues a short-lived signed token (`userId.sessionId.exp.sig`) proving the caller had a valid
  * Better Auth session at issuance time. Socket.IO connects directly to the API host (it can't be
- * proxied through Vercel's rewrites like REST calls), so it can't rely on the same-origin session
+ * proxied through the web app's rewrites like REST calls), so it can't rely on the same-origin session
  * cookie — this token is passed via `handshake.auth.token` instead. The session id is bound in so
  * the gateway can refuse a token whose session was signed out or revoked before it expired.
  */

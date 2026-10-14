@@ -4,7 +4,7 @@ import { CANONICAL_HOST, LEGACY_HOSTS } from "@/lib/hosts";
 
 const PROXY_SECRET_HEADER = "x-sala-proxy-secret";
 
-// Send every request on an old host (Vercel, fly.dev, www) to the same path on the canonical
+// Send every request on an old host (fly.dev, www) to the same path on the canonical
 // domain. 308 keeps the method, so a stale tab's POST isn't turned into a GET.
 export function proxy(request: NextRequest) {
   if (!LEGACY_HOSTS.includes(request.headers.get("host") ?? "")) return forwardWithProxySecret(request);

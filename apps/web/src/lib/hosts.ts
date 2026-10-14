@@ -4,7 +4,6 @@ export const CANONICAL_HOST = "saladeestudio.com.ar";
 
 // Earlier production hosts and the www alias; middleware redirects each to CANONICAL_HOST.
 export const LEGACY_HOSTS: readonly string[] = [
-  "uns-study.vercel.app",
   "sala-de-estudio.fly.dev",
   "www.saladeestudio.com.ar",
 ];
