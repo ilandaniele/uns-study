@@ -1,34 +1,19 @@
 name: Security (scheduled)
 
-# New advisories land on dependencies that did not change. Re-check main every day so a
-# vulnerable package is caught even when nobody pushes.
+# New advisories land on dependencies that did not change. Re-check main weekly so a
+# vulnerable package is caught even when nobody pushes (weekly: CI already checks every push).
 on:
   schedule:
-    - cron: "17 9 * * *"
+    - cron: "17 9 * * 1"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  audit:
-    name: Dependency audit
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 22
-      # Shipped code: high or worse fails. Dev tooling: only critical fails.
-      - run: pnpm audit --prod --audit-level=high
-      - run: pnpm audit --audit-level=critical
-
-  secrets:
-    name: Secret scan
+  # One job on purpose: every job is billed at least one minute.
+  scan:
+    name: Dependency audit and secret scan
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -36,13 +21,19 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Install gitleaks (pinned, checksum verified)
+      - name: Secret scan (gitleaks, pinned, checksum verified)
         env:
           VERSION: 8.30.1
           SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
         run: |
-          curl -fsSLo gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz"
-          echo "${SHA256}  gitleaks.tgz" | sha256sum -c -
-          tar -xzf gitleaks.tgz gitleaks
-          rm gitleaks.tgz
-      - run: ./gitleaks git --redact --verbose --no-banner --exit-code 1 .
+          curl -fsSLo "$RUNNER_TEMP/gitleaks.tgz" "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz"
+          echo "${SHA256}  $RUNNER_TEMP/gitleaks.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/gitleaks.tgz" -C "$RUNNER_TEMP" gitleaks
+          "$RUNNER_TEMP/gitleaks" git --redact --verbose --no-banner --exit-code 1 .
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      # Shipped code: high or worse fails. Dev tooling: only critical fails.
+      - run: pnpm audit --prod --audit-level=high
+      - run: pnpm audit --audit-level=critical

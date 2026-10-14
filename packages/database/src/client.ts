@@ -1,4 +1,4 @@
-import { PGlite } from "@electric-sql/pglite";
+import { PGlite, type PGliteInterface } from "@electric-sql/pglite";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { drizzle as drizzleNodePostgres, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { drizzle as drizzlePglite, type PgliteDatabase } from "drizzle-orm/pglite";
@@ -20,6 +20,8 @@ export interface CreateDbOptions {
    * set this: migrations, seed and one-off scripts share `createDb()` and may run long statements.
    */
   queryTimeouts?: boolean;
+  /** An already-open PGlite instance to wrap (tests clone one migrated template instead of migrating each time). */
+  pglite?: PGliteInterface;
 }
 
 /**
@@ -103,6 +105,13 @@ export function createDb(options: CreateDbOptions = {}): Db {
     });
     const db = drizzleNodePostgres(pool, { schema }) as unknown as Db;
     closers.set(db, () => pool.end());
+    return db;
+  }
+
+  if (options.pglite) {
+    const pglite = options.pglite;
+    const db = drizzlePglite(pglite as PGlite, { schema }) as unknown as Db;
+    closers.set(db, () => pglite.close());
     return db;
   }
 

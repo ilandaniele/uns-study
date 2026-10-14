@@ -6,8 +6,6 @@ import {
   getChatWidgetState,
   initialChatWidgetState,
   openChatWidget,
-  openDmId,
-  openGroupId,
   pushChatView,
   resetChatWidget,
   subscribeChatWidget,
@@ -145,21 +143,6 @@ describe("chatWidgetReducer", () => {
 });
 
 describe("selectors", () => {
-  it("openDmId is null when closed or the top is not a dm", () => {
-    const s = chatWidgetReducer(initialChatWidgetState, { type: "open", view: dm("a") });
-    expect(openDmId(s)).toBe("a");
-    expect(openDmId(chatWidgetReducer(s, { type: "close" }))).toBeNull();
-    expect(openDmId(chatWidgetReducer(s, { type: "back" }))).toBeNull();
-  });
-
-  it("openGroupId is null when closed or the top is not a group", () => {
-    const s = chatWidgetReducer(initialChatWidgetState, { type: "open", view: group("g") });
-    expect(openGroupId(s)).toBe("g");
-    expect(openGroupId(chatWidgetReducer(s, { type: "close" }))).toBeNull();
-    expect(openGroupId(chatWidgetReducer(s, { type: "back" }))).toBeNull();
-    expect(openGroupId(chatWidgetReducer(initialChatWidgetState, { type: "open", view: dm("a") }))).toBeNull();
-  });
-
   it("viewKey and topView", () => {
     expect(viewKey({ kind: "room" })).toBe("room");
     expect(viewKey({ kind: "list" })).toBe("list");
@@ -195,8 +178,8 @@ describe("imperative API", () => {
     unsubscribe();
     openChatWidget({ view: "dm", conversationId: "a" });
     expect(listener).toHaveBeenCalledTimes(5);
-    expect(openDmId(getChatWidgetState())).toBe("a");
+    expect(topView(getChatWidgetState())).toEqual({ kind: "dm", conversationId: "a" });
     openChatWidget({ view: "group", groupId: "g" });
-    expect(openGroupId(getChatWidgetState())).toBe("g");
+    expect(topView(getChatWidgetState())).toEqual({ kind: "group", groupId: "g" });
   });
 });

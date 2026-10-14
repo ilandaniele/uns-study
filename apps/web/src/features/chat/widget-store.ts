@@ -56,18 +56,6 @@ export function viewKey(view: ChatWidgetView): string {
   return view.kind;
 }
 
-/** Conversation id when the card is open AND a DM is on top; else null. */
-export function openDmId(state: ChatWidgetState): string | null {
-  const top = topView(state);
-  return state.open && top.kind === "dm" ? top.conversationId : null;
-}
-
-/** Group id when the card is open AND a group thread is on top; else null. */
-export function openGroupId(state: ChatWidgetState): string | null {
-  const top = topView(state);
-  return state.open && top.kind === "group" ? top.groupId : null;
-}
-
 /** Pure. Returns the SAME object reference for no-ops. */
 export function chatWidgetReducer(state: ChatWidgetState, action: ChatWidgetAction): ChatWidgetState {
   switch (action.type) {

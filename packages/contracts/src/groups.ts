@@ -82,5 +82,3 @@ export const groupSendSchema = z.object({
 });
 
 export type CreateGroupInput = z.infer<typeof createGroupSchema>;
-export type AddGroupMembersInput = z.infer<typeof addGroupMembersSchema>;
-export type GroupSendInput = z.infer<typeof groupSendSchema>;

@@ -64,7 +64,7 @@ Configure:
 
 ## PostgreSQL (Fly Postgres, previously Neon)
 
-Since 2026-10-05 the database runs on the self-managed Fly Postgres app `sala-de-estudio-db` (gru, `flyio/postgres-flex:17`, one machine, 1 GB volume with daily snapshots kept 14 days). It was moved from Neon with `ops/migrate-neon-to-fly-postgres.ps1`.
+Since 2026-10-05 the database runs on the self-managed Fly Postgres app `sala-de-estudio-db` (gru, `flyio/postgres-flex:17`, one machine, 1 GB volume with daily snapshots kept 14 days). It was moved from Neon with a one-off script (removed; see git history).
 
 - Database `sala`, reached by the API over Fly's private network at `sala-de-estudio-db.internal:5432` with `sslmode=disable`.
 - The owner role `sala_owner` has no login. `ops/migrate-fly-db.ps1` unlocks it only while migrations run (see "Migrations").

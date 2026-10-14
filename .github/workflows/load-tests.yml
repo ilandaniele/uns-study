@@ -21,7 +21,7 @@ on:
         default: 2h
         type: string
   schedule:
-    - cron: "0 6 * * 1" # Mondays 06:00 UTC; the scheduled run is the `load` scenario
+    - cron: "0 6 1 * *" # 1st of each month, 06:00 UTC (monthly to save Actions minutes); the scheduled run is the `load` scenario
 
 permissions:
   contents: read

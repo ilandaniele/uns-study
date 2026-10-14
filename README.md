@@ -95,12 +95,12 @@ For local testing away from the room, set `PRESENCE_DEV_BYPASS=true` (refused wh
   `/api/v1/health`. Secrets are set once via `fly secrets set`:
   ```bash
   fly secrets set \
-    DATABASE_URL="postgres://...neon.tech/...?sslmode=require" \
+    DATABASE_URL="postgres://sala_app:...@sala-de-estudio-db.flycast:5432/..." \
     GOOGLE_CLIENT_SECRET="..."
   ```
-  `DATABASE_URL` is the Neon project `sala-estudio-uns`'s **direct** (non-pooled) connection string
-  with `sslmode=require` — `packages/database/src/client.ts` enables SSL exactly when the URL
-  contains `sslmode=`. `BETTER_AUTH_SECRET` and `IP_HASH_SALT` are **not** Fly secrets: on first boot
+  `DATABASE_URL` is the least-privilege `sala_app` connection string for the Fly Postgres app
+  `sala-de-estudio-db` (see `10_ENVIRONMENT_AND_SERVICES.md`). `packages/database/src/client.ts`
+  enables SSL exactly when the URL contains `sslmode=`. `BETTER_AUTH_SECRET` and `IP_HASH_SALT` are **not** Fly secrets: on first boot
   the API generates and persists them in the `app_secrets` table (see `apps/api/src/secrets.ts`), so
   there's nothing to hand-type for those two. Setting either as an env var still overrides the stored
   value, if you ever need that. Rotating a stored secret = delete its `app_secrets` row + restart the
