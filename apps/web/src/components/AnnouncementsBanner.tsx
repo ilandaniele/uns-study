@@ -4,7 +4,9 @@ import { SocketEvents, type AnnouncementDto } from "@sala/contracts";
 import type { Socket } from "socket.io-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { XIcon } from "@phosphor-icons/react/dist/ssr";
 import { apiFetch } from "@/lib/api";
+import { dismissAnnouncement, readDismissedAnnouncements } from "@/lib/dismissed-announcements";
 
 /** Minimum gap between tab-visibility refetches. */
 const VISIBILITY_REFETCH_MIN_MS = 60_000;
@@ -20,10 +22,13 @@ export interface AnnouncementsBannerProps {
  *  passed in) and when the tab becomes visible again. Renders nothing when there are none. */
 export function AnnouncementsBanner({ roomSlug, socket }: AnnouncementsBannerProps) {
   const [announcements, setAnnouncements] = useState<AnnouncementDto[]>([]);
+  // Read after mount (localStorage is client-only); until then nothing renders anyway.
+  const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
 
   const load = useCallback(async () => {
     try {
       const items = await apiFetch<AnnouncementDto[]>(`/api/v1/rooms/${roomSlug}/announcements`);
+      setDismissed(readDismissedAnnouncements());
       setAnnouncements(items);
     } catch {
       // Announcements are non-critical; fail silently and keep the last known list.
@@ -60,17 +65,28 @@ export function AnnouncementsBanner({ roomSlug, socket }: AnnouncementsBannerPro
     };
   }, [socket, load]);
 
-  if (announcements.length === 0) return null;
+  const visible = announcements.filter((a) => !dismissed.has(a.id));
+  if (visible.length === 0) return null;
 
   return (
     <div className="flex flex-col gap-2">
-      {announcements.map((announcement) => (
+      {visible.map((announcement) => (
         <div
           key={announcement.id}
-          className="rounded-control border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          className="flex items-start gap-2 rounded-control border border-amber-300 bg-amber-50 py-3 pl-4 pr-2 text-sm text-amber-900"
         >
-          <p className="font-semibold">{announcement.title}</p>
-          <p className="whitespace-pre-wrap">{announcement.body}</p>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">{announcement.title}</p>
+            <p className="whitespace-pre-wrap">{announcement.body}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDismissed(dismissAnnouncement(announcement.id))}
+            aria-label={`Cerrar novedad: ${announcement.title}`}
+            className="-my-1 grid h-9 w-9 shrink-0 place-items-center rounded-full text-amber-900/70 hover:bg-amber-100 hover:text-amber-900"
+          >
+            <XIcon aria-hidden="true" size={16} weight="bold" />
+          </button>
         </div>
       ))}
       <Link href="/comunidad" className="self-end text-xs text-muted underline underline-offset-2 hover:text-main">

@@ -60,3 +60,13 @@ test("mobile viewport smoke: room map, bottom sheet, check-in, and bottom nav ac
     await context.close();
   }
 });
+
+test("mobile: the bottom of a long page scrolls clear of the bottom nav and chat button", async ({ page }) => {
+  await page.goto(`/sala/${ROOM_SLUG}`);
+  const alias = page.getByRole("button", { name: /^Copiar alias/ });
+  await expect(alias).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const aliasBox = await alias.boundingBox();
+  const navBox = await page.getByRole("navigation", { name: "Secciones" }).boundingBox();
+  expect(aliasBox && navBox && aliasBox.y + aliasBox.height <= navBox.y).toBeTruthy();
+});

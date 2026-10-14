@@ -180,9 +180,13 @@
   --badge-fg: var(--surface);
 }
 
-html,
-body {
+/* `min-height`, not `height`: a fixed-height body lets long pages overflow past it, so its bottom
+   padding (which clears the mobile bottom nav and chat button) never ends up under the content. */
+html {
   height: 100%;
+}
+body {
+  min-height: 100%;
 }
 
 body {
