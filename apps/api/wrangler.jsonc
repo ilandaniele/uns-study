@@ -27,6 +27,8 @@
     "GOOGLE_CLIENT_ID": "1032351199989-q4i4g9vsn7unkemt09in1md9omp4hh0o.apps.googleusercontent.com",
     "PRESENCE_DEV_BYPASS": "false",
     "VAPID_SUBJECT": "https://saladeestudio.com.ar",
+    // Public half of the Web Push pair (same as Fly, so existing push subscriptions keep working).
+    "VAPID_PUBLIC_KEY": "BGEmtdDGtWFbRG1zH9YadrHWtKzvyUyVDsnWSG3oDTmJ4m3wO1km3EFpbhBkWeOQqFFPtUcSEQ5UH2bf_MDJaKA",
     // Sender for auth and campaign emails; the domain is verified in Resend.
     "EMAIL_FROM": "Sala de Estudio <noreply@saladeestudio.com.ar>",
     "R2_BUCKET": "uns-study-report-evidence",
@@ -34,7 +36,6 @@
     // "1" answers every /api/* path except /api/v1/health* with 503 "Mantenimiento en curso." (e.g. during the data import).
     "MAINTENANCE_MODE": "0"
   }
-  // Still to add here when known: VAPID_PUBLIC_KEY (printed by ops/copy-app-secrets.ps1).
   // ADMIN_EMAILS is a secret (it was a Fly secret). SUBSCRIPTION_PRICE_ARS, VERIFIER_MODEL and
   // SEAT_VERIFIER_MODE were unset on Fly, so the code defaults apply (1500, gemini-2.5-flash, off).
   //

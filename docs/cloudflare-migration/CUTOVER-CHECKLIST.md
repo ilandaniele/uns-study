@@ -41,19 +41,19 @@ Mismos valores que hoy. En Fly son secrets de la app (variables de entorno, que 
 ```powershell
 powershell -ExecutionPolicy Bypass -File ops\copy-app-secrets.ps1
 ```
-Copia `BETTER_AUTH_SECRET`, `IP_HASH_SALT`, `VAPID_PRIVATE_KEY`. Imprime `VAPID_PUBLIC_KEY` (público): pasámelo y lo agrego a `vars`.
+Copia `BETTER_AUTH_SECRET`, `IP_HASH_SALT`, `VAPID_PRIVATE_KEY` (hecho 2026-10-14). `VAPID_PUBLIC_KEY` ya está en `vars`.
 
 Resto, uno por uno: copiar valor al portapapeles y correr
 ```powershell
 powershell -ExecutionPolicy Bypass -File ops\set-worker-secret.ps1 -Name <NOMBRE>
 ```
-- [ ] `GOOGLE_CLIENT_SECRET` (Google Cloud > Credentials)
-- [ ] `TURNSTILE_SECRET_KEY` (Cloudflare > Turnstile)
-- [ ] `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` (paso 2)
-- [ ] `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` (Mercado Pago > Tus integraciones)
-- [ ] `RESEND_API_KEY` (Resend > API Keys)
-- [ ] `GEMINI_API_KEY` y/o `ANTHROPIC_API_KEY` (la misma que usa el verificador hoy)
-- [ ] `OPS_IMPORT_TOKEN`: valor random nuevo, p. ej. `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))" | Set-Clipboard`
+- [x] `GOOGLE_CLIENT_SECRET` (Google Cloud > Credentials)
+- [x] `TURNSTILE_SECRET_KEY` (Cloudflare > Turnstile)
+- [x] `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` (paso 2)
+- [x] `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` (Mercado Pago > Tus integraciones)
+- [x] `RESEND_API_KEY` (Resend > API Keys)
+- [x] `GEMINI_API_KEY` y/o `ANTHROPIC_API_KEY` (la misma que usa el verificador hoy)
+- [x] `OPS_IMPORT_TOKEN`: valor random nuevo, p. ej. `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))" | Set-Clipboard`
 
 Vars no secretas que faltan (pasámelas y las pongo en `apps/api/wrangler.jsonc`):
 `VAPID_PUBLIC_KEY`, `R2_ACCOUNT_ID` (= account id), `ADMIN_EMAILS`, `SUBSCRIPTION_PRICE_ARS`, `VERIFIER_MODEL`, `SEAT_VERIFIER_MODE`.
