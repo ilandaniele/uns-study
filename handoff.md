@@ -4,8 +4,8 @@ Shared contract for all agents. Specs live in `00_*.md`..`10_*.md` and `CLAUDE.m
 
 ## Environment facts
 - Windows 11, Node 24, pnpm 9.15.9, Git Bash available. Docker daemon NOT running.
-- No real credentials yet (Neon, Google, Upstash). Everything must run locally without them.
-- Package manager: pnpm workspaces + Turborepo. Test runner: Vitest everywhere (API included; use `unplugin-swc` or plain classes — domain services must be testable without Nest DI).
+- Production runs on Fly.io (web, API, and Postgres app `sala-de-estudio-db`); local dev and tests still run without credentials (PGlite + in-memory rate limiting).
+- Package manager: pnpm workspaces + Turborepo. Test runner: Vitest everywhere (API included; domain services are plain classes, testable without Nest DI).
 
 ## Layout
 ```
@@ -85,7 +85,6 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 - `src/lib/geolocation.ts` — `getFreshLocation()`, `enableHighAccuracy/maximumAge:0/timeout:15s`, throws `GeolocationRequestError` with codes `PERMISSION_DENIED|TIMEOUT|UNAVAILABLE`.
 - `src/lib/socket.ts` — singleton `socket.io-client`, `withCredentials: true`, base `NEXT_PUBLIC_SOCKET_URL`.
 - `src/lib/errors.ts` — maps geolocation/API errors to the exact Spanish copy from `06_UI_UX_SPEC.md` §6 + `SEAT_TAKEN`/`RATE_LIMITED` copy from the work item.
-- `src/lib/identity-prefs.ts` — localStorage-only show-identity preference (TODO backend persistence, as instructed).
 - `src/features/room/` — `useRoomState` (map + `/me` fetch, socket join/reconnect/refetch, applies `seat:state-changed`/`room:summary-changed`/`room:daily-reset`), `useSeatActions` (check-in/observation/extend/checkout, presence-aware error mapping), `RoomMap`/`StudyTable`/`WallBar`/`Seat` (pure SVG from `RoomMapDto`, no hardcoded geometry; `MY_SEAT` is a client-only overlay computed from `me.activeCheckIn.seatId`), `SeatDetail`, `SummaryCounters`, `Legend`, `IdentityPrompt`, `format.ts` (status label / confidence wording / recency — unit tested).
 - `/sala/[slug]/page.tsx` uses `useParams()` (not the async `params` prop) since it's a client component; mobile wraps `RoomMap` in `react-zoom-pan-pinch`, desktop uses a 3-column grid (counters/legend | map | seat panel) per the mockup, with a mobile bottom-sheet duplicate of `SeatDetail`.
 - `eslint-config-next`'s `dist/index.js` is already a flat-config array in this version — importing it directly (no `FlatCompat`) avoids a `Converting circular structure to JSON` crash seen with `@eslint/eslintrc` + ESLint 9.39 + `eslint-plugin-react`.
@@ -98,6 +97,7 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 - [x] Security review (Fable) findings fixed  - [x] Playwright E2E 4/4  - [x] API dist bundles workspace packages  - [x] PGlite single-process lock
 
 ## Deployment state (2026-09-27, updated for the Render -> Fly.io move)
+> Historical. Since then Postgres moved from Neon to the Fly Postgres app `sala-de-estudio-db` (least-privilege grants in `ops/sala-app-grants.sql`); see `10_ENVIRONMENT_AND_SERVICES.md` for current state.
 - GitHub: private repo `ilandaniele/uns-study`, CI green.
 - Web: Fly.io app `sala-de-estudio`, https://sala-de-estudio.fly.dev (`fly deploy -c fly.web.toml --remote-only`; the old https://uns-study.vercel.app host 308-redirects there via `apps/web/src/proxy.ts`). `/api/auth/*` and `/api/v1/*` are rewritten to the API (`API_PROXY_TARGET`), so auth cookies are first-party. Socket.IO connects straight to the API host (defaults to `API_PROXY_TARGET` at build, see next.config.ts). `API_PROXY_TARGET` is a build arg in `fly.web.toml`.
 - API: moving from Render to **Fly.io** (`fly.toml` + `Dockerfile.api` at repo root; `render.yaml`/`apps/api/railway.json` removed). App name `uns-study-api`, region `gru`, `https://uns-study-api.fly.dev`, scale-to-zero (`min_machines_running = 0`). Postgres stays on Neon project `sala-estudio-uns` (id purple-paper-17024644, AWS us-east-1) — same `DATABASE_URL`, now set via `fly secrets set` instead of the Render dashboard. `GOOGLE_CLIENT_SECRET` is also a Fly secret (see README "Deploy"). `BETTER_AUTH_SECRET` and `IP_HASH_SALT` are **not** Fly secrets anymore — the API auto-generates and persists them in the new `app_secrets` table on first boot (`apps/api/src/secrets.ts`), so deploying needs no hand-typed generated secrets; rotating one = delete its row + restart (rotating `BETTER_AUTH_SECRET` logs everyone out). No Redis/Upstash needed anymore in production: `RateLimitService` now falls back to a Postgres-backed limiter (`rate_limit_hits` table, migration `0003_colorful_quicksilver.sql`) when neither is configured, since `DATABASE_URL` is already required — the Render Key Value instance `uns-study-kv` is no longer used. **Not yet pushed** — this work item builds the Fly config only; the orchestrator deploys (`fly launch`/`fly deploy`, `fly secrets set`) and pushes once Fly is confirmed working, since pushing also affects the now-decommissioned Render service.
@@ -105,10 +105,10 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 - Room coordinates confirmed: -38.7018942, -62.2702852, radius 120 m, max accuracy 100 m.
 - Unused but created (safe to delete): Neon project `uns-study` (Sao Paulo), Upstash Redis `uns-study` (Sao Paulo), Render Postgres `uns-study-db`, and once the Fly deploy is confirmed: the Render `uns-study-api` service itself and Render Key Value `uns-study-kv`.
 
-## Next (blocked on Ilan)
-- Real credentials: Neon `DATABASE_URL` (already have it from Render, just needs to be set as a Fly secret), Google OAuth client secret, Turnstile keys. Upstash Redis is no longer needed (Postgres-backed rate limiting covers production). `BETTER_AUTH_SECRET`/`IP_HASH_SALT` need no credential at all — auto-generated into `app_secrets` on first boot.
+## Next
+- Production credentials are set as Fly secrets. Upstash Redis is not needed (Postgres-backed rate limiting covers production). `BETTER_AUTH_SECRET`/`IP_HASH_SALT` are auto-generated into `app_secrets` on first boot.
 - Room coordinates confirmed (2026-09-27). Geofence radius 120 m — tune after real-device tests.
-- Deploy: Fly.io (apps/web via fly.web.toml, apps/api via fly.toml); see README "Deploy". Orchestrator to run `fly launch`/`fly deploy` + `fly secrets set` + push, and flip Vercel's `API_PROXY_TARGET`/`NEXT_PUBLIC_SOCKET_URL` to the Fly host.
+- Deploy: Fly.io (apps/web via fly.web.toml, apps/api via fly.toml); GitHub Actions deploys on push to main. See README "Deploy".
 - Beta launch point reached per 08_IMPLEMENTATION_PLAN.md; later phases (profiles, chat, reports, rankings, QR, ads) not started.
 
 (apps/api backend complete per the API contract above; apps/web is a separate work item.)
@@ -148,7 +148,6 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 **Open issues / left for other agents**
 - `apps/web` not touched (per scope).
 - No real Neon/Upstash/Google credentials configured — everything above ran against local PGlite + in-memory rate limiting, as expected for this stage.
-- Bahía Blanca room coordinates in the seed are still the placeholder noted in `packages/database/src/seed.ts` (`TODO confirm`) — not this work item's scope.
 
 ## API notes — seat disputes (apps/api/src/disputes/)
 

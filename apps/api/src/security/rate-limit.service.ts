@@ -34,10 +34,6 @@ class MemoryWindow {
     this.hits.set(key, timestamps);
     return { allowed: true, remaining: limit - timestamps.length };
   }
-
-  reset(): void {
-    this.hits.clear();
-  }
 }
 
 /** Minimal shape of the ioredis client (and its `ioredis-mock` stand-in) this module needs. */
@@ -207,11 +203,6 @@ export class RateLimitService {
     }
 
     return this.memory.check(key, limit, windowSeconds * 1000);
-  }
-
-  /** Test/dev helper. */
-  resetMemory(): void {
-    this.memory.reset();
   }
 }
 

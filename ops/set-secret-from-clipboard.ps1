@@ -4,7 +4,7 @@
 #   mphook   -> MP_WEBHOOK_SECRET  (Mercado Pago > Webhooks > "Clave secreta")
 #   resend   -> RESEND_API_KEY     (resend.com/api-keys, "Sending access")
 #   migdb    -> MIGRATION_DATABASE_URL (Neon > Connect, role neondb_owner; set this BEFORE `db`)
-#   db       -> DATABASE_URL       (the least-privilege `sala_app` connection string, ops/neon-least-privilege.sql)
+#   db       -> DATABASE_URL       (the least-privilege `sala_app` connection string, ops/sala-app-grants.sql)
 # The secret is staged; the API picks it up on its next deploy (push to main) or `fly secrets deploy`.
 $ErrorActionPreference = "Stop"
 $env:FLY_CONFIG_DIR = Join-Path $env:TEMP "claude\flyhome"

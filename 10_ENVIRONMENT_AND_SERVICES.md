@@ -68,7 +68,7 @@ Since 2026-10-05 the database runs on the self-managed Fly Postgres app `sala-de
 
 - Database `sala`, reached by the API over Fly's private network at `sala-de-estudio-db.internal:5432` with `sslmode=disable`.
 - The owner role `sala_owner` has no login. `ops/migrate-fly-db.ps1` unlocks it only while migrations run (see "Migrations").
-- `DATABASE_URL` uses the least-privilege role `sala_app` (data access only, same grants as `ops/neon-least-privilege.sql`).
+- `DATABASE_URL` uses the least-privilege role `sala_app` (data access only, grants in `ops/sala-app-grants.sql`).
 - The Neon project `uns-study` was deleted by the owner on 2026-10-05.
 
 ### Backups and recovery

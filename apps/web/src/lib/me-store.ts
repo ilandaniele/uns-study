@@ -9,11 +9,6 @@ import { createResource, useResource } from "./resource-cache";
 // One shared `/api/v1/me` for Header, BottomNav, the room page, etc.
 const meResource = createResource<MeDto>(() => apiFetch<MeDto>("/api/v1/me"));
 
-/** Resolves the (cached or freshly fetched) caller identity; concurrent callers share one request. */
-export function getMe(): Promise<MeDto> {
-  return meResource.load();
-}
-
 /** Last known `/me` without fetching (`undefined` = not loaded yet or invalidated). */
 export function peekMe(): MeDto | undefined {
   return meResource.getState().data;

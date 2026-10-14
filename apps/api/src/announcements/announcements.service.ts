@@ -77,12 +77,6 @@ export class AnnouncementsService {
     const [row] = await this.db.delete(schema.announcements).where(eq(schema.announcements.id, id)).returning();
     return row?.roomId ?? null;
   }
-
-  async getRoomId(id: string): Promise<string | null> {
-    const [row] = await this.db.select({ roomId: schema.announcements.roomId }).from(schema.announcements).where(eq(schema.announcements.id, id)).limit(1);
-    if (!row) throw ApiErrors.notFound("Anuncio no encontrado.");
-    return row.roomId;
-  }
 }
 
 function toDto(row: typeof schema.announcements.$inferSelect): AnnouncementDto {

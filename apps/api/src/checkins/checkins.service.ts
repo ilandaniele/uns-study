@@ -366,6 +366,3 @@ function uniqueViolationConstraint(err: unknown): string | undefined {
   if (typeof cause === "object" && cause !== null) return (cause as { constraint?: string }).constraint;
   return undefined;
 }
-
-// Moved to the presence module; re-exported for existing importers.
-export { presenceMessage } from "../presence/presence.service.js";
