@@ -10,18 +10,18 @@ Fly sigue en prod hasta el paso 6. No borrar Fly hasta 7 días estables.
 - Señales para pasar a Paid (USD 5/mes): deploy de web falla por tamaño, error 1102 en logs, o 429/límite diario.
 
 ## 2. R2 (browser)
-- [ ] R2 > crear bucket `uns-study-report-evidence` (si no existe).
+- [x] R2 > crear bucket `uns-study-report-evidence` (si no existe).
 - [ ] CORS del bucket: `PUT` y `GET` desde `https://saladeestudio.com.ar`.
-- [ ] R2 > Manage API tokens > token Object Read & Write sobre ese bucket. Guardar Access Key ID y Secret en el gestor de contraseñas.
+- [x] R2 > Manage API tokens > token Object Read & Write sobre ese bucket. Guardar Access Key ID y Secret en el gestor de contraseñas.
 
 ## 3. API token para GitHub Actions (browser)
-- [ ] My Profile > API Tokens > Create Token > template "Edit Cloudflare Workers".
+- [x] My Profile > API Tokens > Create Token > template "Edit Cloudflare Workers".
   - Agregar: Zone `saladeestudio.com.ar` > Workers Routes: Edit.
   - Agregar: Account > Account Settings: Read.
-- [ ] GitHub repo > Settings > Secrets and variables > Actions > Secrets:
+- [x] GitHub repo > Settings > Secrets and variables > Actions > Secrets:
   - `CLOUDFLARE_API_TOKEN` = token recién creado.
   - `CLOUDFLARE_ACCOUNT_ID` = `8355b74d76c27ea18e007625360d9cc0`.
-- [ ] Misma pantalla, pestaña Variables (valores públicos, los mismos que usa Fly hoy):
+- [x] Misma pantalla, pestaña Variables (valores públicos, los mismos que usa Fly hoy):
   `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_GA_ID`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`,
   `NEXT_PUBLIC_ADSENSE_CLIENT`, `NEXT_PUBLIC_ADSENSE_SLOT_RAIL`,
   `NEXT_PUBLIC_ADSENSE_SLOT_COMMUNITY_FEED`, `NEXT_PUBLIC_GAM_REWARDED_UNIT`, `NEXT_PUBLIC_GAM_INTERSTITIAL_UNIT`.
