@@ -44,7 +44,7 @@ export class GeminiSeatLocator implements SeatLocator {
           role: "user",
           parts: [
             { text: "Floor plan of the room (windows at the top, entrance at the bottom):" },
-            { inlineData: { mimeType: "image/png", data: this.plan() } },
+            { inlineData: { mimeType: "image/webp", data: this.plan() } },
             { text: "Photo taken from the seat:" },
             { inlineData: { mimeType: req.image.mimeType, data: req.image.base64 } },
             { text: `${describeLayout(req.seats)}\n\nPredict the seat from the photo alone; null if ambiguous.` },

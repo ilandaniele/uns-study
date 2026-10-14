@@ -51,7 +51,7 @@ const toolInputSchema = z.object({
 
 let planBase64: string | undefined;
 export function loadPlan(): string {
-  planBase64 ??= readFileSync(new URL("../assets/plano.png", import.meta.url)).toString("base64");
+  planBase64 ??= readFileSync(new URL("../assets/plano.webp", import.meta.url)).toString("base64");
   return planBase64;
 }
 
@@ -78,7 +78,7 @@ export class ClaudeSeatLocator implements SeatLocator {
               { type: "text", text: "Floor plan of the room (windows at the top, entrance at the bottom):" },
               {
                 type: "image",
-                source: { type: "base64", media_type: "image/png", data: this.plan() },
+                source: { type: "base64", media_type: "image/webp", data: this.plan() },
                 cache_control: { type: "ephemeral" },
               },
               { type: "text", text: "Photo taken from the seat:" },
