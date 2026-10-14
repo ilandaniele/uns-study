@@ -17,7 +17,7 @@ export const DataPaths = {
 } as const;
 
 /** The ranking view opens on this period/category. */
-export const DEFAULT_RANKING = { period: "week", category: "study_time" } as const;
+const DEFAULT_RANKING = { period: "week", category: "study_time" } as const;
 
 /** Data behind a nav destination; signed-in-only endpoints are skipped for visitors (they'd 401). */
 function pathsFor(href: string): string[] {
@@ -33,7 +33,7 @@ function pathsFor(href: string): string[] {
 }
 
 /** Starts loading a page's data on hover/touch/focus of its link, so it renders with data on arrival. */
-export function prefetchRouteData(href: string): void {
+function prefetchRouteData(href: string): void {
   for (const path of pathsFor(href)) prefetchPath(path);
 }
 

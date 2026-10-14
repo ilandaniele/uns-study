@@ -93,7 +93,7 @@ function RoundPips() {
   );
 }
 
-export function TimerControls({ compact }: { compact?: boolean }) {
+function TimerControls({ compact }: { compact?: boolean }) {
   const { timer } = useFocus();
   const running = timer.status === "running";
   const label = running ? "Pausar" : timer.status === "paused" ? "Seguir" : timer.phase === "focus" ? "Empezar" : "Empezar pausa";

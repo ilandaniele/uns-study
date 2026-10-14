@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { env } from "../env.js";
 import { createSeatPhotoVerifier } from "./seat-photo-verifier.factory.js";
-import { HttpSeatPhotoVerifier } from "./http-seat-photo-verifier.js";
 import { InProcessSeatPhotoVerifier } from "./in-process-seat-photo-verifier.js";
 import { MockSeatPhotoVerifier } from "./mock-seat-photo-verifier.js";
 
@@ -20,40 +19,8 @@ describe("createSeatPhotoVerifier", () => {
     vi.restoreAllMocks();
   });
 
-  it("refuses a non-https SEAT_VERIFIER_URL in production (disabled, not a silent downgrade)", () => {
-    env.isProduction = true;
-    env.seatVerifierUrl = "http://insecure-verifier.example.com";
-    env.seatVerifierMode = "";
-
-    const verifier = createSeatPhotoVerifier();
-
-    expect(verifier).toBeNull();
-    expect(console.warn).toHaveBeenCalled();
-  });
-
-  it("wires up an https SEAT_VERIFIER_URL in production", () => {
-    env.isProduction = true;
-    env.seatVerifierUrl = "https://verifier.example.com";
-    env.seatVerifierMode = "";
-
-    const verifier = createSeatPhotoVerifier();
-
-    expect(verifier).toBeInstanceOf(HttpSeatPhotoVerifier);
-  });
-
-  it("accepts a non-https SEAT_VERIFIER_URL outside production", () => {
-    env.isProduction = false;
-    env.seatVerifierUrl = "http://localhost:9999";
-    env.seatVerifierMode = "";
-
-    const verifier = createSeatPhotoVerifier();
-
-    expect(verifier).toBeInstanceOf(HttpSeatPhotoVerifier);
-  });
-
   it("ignores SEAT_VERIFIER_MODE=mock in production", () => {
     env.isProduction = true;
-    env.seatVerifierUrl = "";
     env.seatVerifierMode = "mock";
 
     const verifier = createSeatPhotoVerifier();
@@ -63,7 +30,6 @@ describe("createSeatPhotoVerifier", () => {
 
   it("uses the mock verifier (with a loud startup warning) outside production", () => {
     env.isProduction = false;
-    env.seatVerifierUrl = "";
     env.seatVerifierMode = "mock";
 
     const verifier = createSeatPhotoVerifier();
@@ -74,16 +40,14 @@ describe("createSeatPhotoVerifier", () => {
 
   it("returns null when nothing is configured", () => {
     env.isProduction = false;
-    env.seatVerifierUrl = "";
     env.seatVerifierMode = "";
 
     expect(createSeatPhotoVerifier()).toBeNull();
   });
 
-  it("uses the in-process verifier when a Gemini key is set, even with a verifier URL", () => {
+  it("uses the in-process verifier when a Gemini key is set", () => {
     env.isProduction = true;
     env.geminiApiKey = "g-key";
-    env.seatVerifierUrl = "https://verifier.example.com";
     env.seatVerifierMode = "";
 
     expect(createSeatPhotoVerifier()).toBeInstanceOf(InProcessSeatPhotoVerifier);
@@ -92,7 +56,6 @@ describe("createSeatPhotoVerifier", () => {
   it("uses the in-process verifier with only an Anthropic key", () => {
     env.isProduction = true;
     env.anthropicApiKey = "a-key";
-    env.seatVerifierUrl = "";
     env.seatVerifierMode = "";
 
     expect(createSeatPhotoVerifier()).toBeInstanceOf(InProcessSeatPhotoVerifier);

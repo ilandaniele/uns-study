@@ -6,13 +6,12 @@ function render(msg: unknown): unknown {
 }
 
 /**
- * Drop-in for the Nest `Logger` (`new Logger(Context.name)`, `.log/.warn/.error/.debug/.verbose`).
+ * Console logger for the Worker (`new Logger(Context.name)`, `.log/.warn/.error/.debug/.verbose`).
  * Emits one JSON line per call: `{ lvl, ctx, msg, ...}`. Extra arguments land in `rest` (an Error
  * contributes its stack as `stack`).
  */
 // Context lives outside the instance so the class has no private members: structurally it is
-// then interchangeable with any other `{ log, warn, error, debug, verbose }` logger (e.g. Nest's
-// during the port).
+// then interchangeable with any other `{ log, warn, error, debug, verbose }` logger.
 const contexts = new WeakMap<object, string | undefined>();
 
 export class Logger {
@@ -45,7 +44,7 @@ function emit(self: Logger, lvl: Level, msg: unknown, rest: unknown[]): void {
   const line: Record<string, unknown> = { lvl, ctx: contexts.get(self), msg: render(msg) };
   if (msg instanceof Error && msg.stack) line.stack = msg.stack;
   let extra = rest;
-  // Nest convention: `logger.error(message, stack)`.
+  // Convention: `logger.error(message, stack)`.
   if (lvl === "error" && typeof extra[0] === "string") {
     line.stack = extra[0];
     extra = extra.slice(1);

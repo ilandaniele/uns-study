@@ -22,10 +22,6 @@ export interface ServerAck {
 
 export type ServerFrame = ServerEvent | ServerAck;
 
-/** Heartbeat: the client sends the raw text `ping`, the runtime auto-answers `pong` without waking the DO. */
-export const WS_PING = "ping";
-export const WS_PONG = "pong";
-
 /** Frames larger than this close the socket with 1009. */
 export const MAX_FRAME_BYTES = 4096;
 

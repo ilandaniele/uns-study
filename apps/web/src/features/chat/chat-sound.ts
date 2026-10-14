@@ -2,14 +2,14 @@
 
 import { useSyncExternalStore } from "react";
 
-export const CHAT_SOUND_KEY = "sala:chat-sound";
+const CHAT_SOUND_KEY = "sala:chat-sound";
 
 /** Stored "on" | "off"; missing or garbage means on. */
 export function parseChatSound(raw: string | null): boolean {
   return raw !== "off";
 }
 
-export function readChatSoundEnabled(): boolean {
+function readChatSoundEnabled(): boolean {
   if (typeof window === "undefined") return true;
   try {
     return parseChatSound(window.localStorage.getItem(CHAT_SOUND_KEY));

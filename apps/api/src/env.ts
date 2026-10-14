@@ -23,13 +23,10 @@ function ipHashSalt(src: Record<string, string | undefined>): string {
 /** Pure: builds the config from a flat string map (`process.env`, Worker bindings, or a test fixture). */
 export function loadEnv(src: Record<string, string | undefined>) {
   const isProduction = src.NODE_ENV === "production";
-  // `WEB_ORIGINS` is the Worker var name; `WEB_ORIGIN` is the legacy one.
-  const webOriginsRaw = src.WEB_ORIGINS || src.WEB_ORIGIN || "http://localhost:3000";
+  const webOriginsRaw = src.WEB_ORIGINS || "http://localhost:3000";
   const webOrigins = webOriginsRaw.split(",").map((s) => s.trim()).filter(Boolean);
   return {
-    nodeEnv: src.NODE_ENV ?? "development",
     isProduction,
-    port: num(src, "PORT", 4000),
     webOrigins,
     betterAuthSecret: src.BETTER_AUTH_SECRET ?? "",
     betterAuthUrl: src.BETTER_AUTH_URL ?? "http://localhost:4000",
@@ -54,14 +51,10 @@ export function loadEnv(src: Record<string, string | undefined>) {
     r2AccountId: src.R2_ACCOUNT_ID ?? "",
     r2AccessKeyId: src.R2_ACCESS_KEY_ID ?? "",
     r2SecretAccessKey: src.R2_SECRET_ACCESS_KEY ?? "",
-    // `R2_BUCKET` is the Worker var name; `R2_BUCKET_REPORT_EVIDENCE` is the legacy one.
-    r2Bucket: src.R2_BUCKET || src.R2_BUCKET_REPORT_EVIDENCE || "",
-    r2Endpoint: src.R2_ENDPOINT ?? "",
+    r2Bucket: src.R2_BUCKET || "",
     // True when the `EVIDENCE` R2 binding exists (set by `initEnv`, which sees the bindings).
     r2Binding: false,
     // Seat photo verification — see docs/SEAT_PHOTO_VERIFIER.md.
-    seatVerifierUrl: src.SEAT_VERIFIER_URL ?? "",
-    seatVerifierToken: src.SEAT_VERIFIER_TOKEN ?? "",
     seatVerifierMinConfidence: num(src, "SEAT_VERIFIER_MIN_CONFIDENCE", 0.8),
     // "mock" (dev/test only, ignored in production) accepts every photo as the claimed seat.
     seatVerifierMode: src.SEAT_VERIFIER_MODE ?? "",

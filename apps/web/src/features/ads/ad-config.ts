@@ -20,7 +20,7 @@ export const CLOSE_COUNTDOWN_S = 10;
 export const REWARD_SNOOZE_MS = 3 * 3600_000;
 
 /** Routes that never show ads. */
-export const EXCLUDED_PREFIXES = ["/admin", "/login", "/privacidad", "/terminos", "/baja", "/suscripcion", "/foco"];
+const EXCLUDED_PREFIXES = ["/admin", "/login", "/privacidad", "/terminos", "/baja", "/suscripcion", "/foco"];
 
 /** A 160px rail only fits beside the 1280px room grid from about this viewport width. */
 export const RAIL_MIN_VIEWPORT_PX = 1640;
@@ -30,7 +30,7 @@ export const RAIL_MIN_VIEWPORT_PX = 1640;
  * ads. AdSense policy forbids its ads on app-only, navigation, login, loading, empty or error
  * screens, so every other route gets house ads or nothing.
  */
-export const ADSENSE_CONTENT_PREFIXES = ["/comunidad"];
+const ADSENSE_CONTENT_PREFIXES = ["/comunidad"];
 
 export function isAdSenseContentPath(pathname: string | null | undefined): boolean {
   if (!pathname || isExcludedPath(pathname)) return false;

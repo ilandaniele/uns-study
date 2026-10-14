@@ -17,7 +17,7 @@ const AVATAR_ROUTE = /^\/api\/v1\/profiles\/me\/avatar$/;
 // `Cookie` header is only a cheap pre-filter; `hasLiveSession` does the real verification.
 const SESSION_COOKIE_RE = /(?:^|;\s*)(?:__Secure-)?better-auth\.session_token=/;
 
-export function payloadTooLarge(): HTTPException {
+function payloadTooLarge(): HTTPException {
   return new HTTPException(413, { message: "Payload Too Large" });
 }
 

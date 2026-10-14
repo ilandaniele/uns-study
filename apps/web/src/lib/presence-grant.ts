@@ -66,7 +66,7 @@ export function clearPresenceGrant(roomId: string): void {
 }
 
 /** Asks the API until when the caller's grant for `roomId` runs. Best effort: failures leave the mirror as is. */
-export async function refreshPresenceGrant(roomId: string): Promise<void> {
+async function refreshPresenceGrant(roomId: string): Promise<void> {
   try {
     const grant = await apiFetch<PresenceGrantDto>(`/api/v1/presence/grant?roomId=${encodeURIComponent(roomId)}`);
     setPresenceGrant(roomId, grant.expiresAt);

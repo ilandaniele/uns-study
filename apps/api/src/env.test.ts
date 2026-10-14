@@ -20,17 +20,15 @@ describe("loadEnv", () => {
     expect(loadEnv({ NODE_ENV: "development", E2E_TEST_HOOKS: "1", IP_HASH_SALT: "s" }).e2eTestHooks).toBe(true);
   });
 
-  it("reads WEB_ORIGINS (falling back to WEB_ORIGIN) and derives the public URL", () => {
+  it("reads WEB_ORIGINS and derives the public URL", () => {
     const a = loadEnv({ WEB_ORIGINS: "https://a.test, https://b.test", IP_HASH_SALT: "s" });
     expect(a.webOrigins).toEqual(["https://a.test", "https://b.test"]);
     expect(a.publicWebUrl).toBe("https://a.test");
-    expect(loadEnv({ WEB_ORIGIN: "https://legacy.test", IP_HASH_SALT: "s" }).webOrigins).toEqual(["https://legacy.test"]);
     expect(loadEnv({ PUBLIC_WEB_URL: "https://x.test/", IP_HASH_SALT: "s" }).publicWebUrl).toBe("https://x.test");
   });
 
-  it("reads R2_BUCKET with the legacy name as fallback", () => {
+  it("reads R2_BUCKET", () => {
     expect(loadEnv({ R2_BUCKET: "b", IP_HASH_SALT: "s" }).r2Bucket).toBe("b");
-    expect(loadEnv({ R2_BUCKET_REPORT_EVIDENCE: "old", IP_HASH_SALT: "s" }).r2Bucket).toBe("old");
   });
 
   it("parses numbers, booleans and lists, ignoring garbage numbers", () => {

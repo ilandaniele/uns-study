@@ -38,7 +38,6 @@ R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
 R2_BUCKET=
-R2_ENDPOINT=
 
 TURNSTILE_SECRET_KEY=
 ```
@@ -131,7 +130,7 @@ The code for these features is shipped. Each one turns on when its variables are
 |---|---|---|---|---|
 | Mercado Pago subscriptions | `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` | `uns-api` | both set 2026-10-04 (app "Sala de Estudio", 4960911583819408). Production webhook must point at `https://saladeestudio.com.ar/api/v1/webhooks/mercadopago` with the "Planes y suscripciones" event. A signed MP simulation passed signature checks | nothing; move the webhook URL if the API domain changes |
 | Transactional email (Resend) | `RESEND_API_KEY`, `EMAIL_FROM` | `uns-api` | `RESEND_API_KEY` set 2026-10-04. `saladeestudio.com.ar` added in Resend (São Paulo) on 2026-10-05, with its DKIM, SPF (`send`, `rsend`) and DMARC records on Cloudflare. `EMAIL_FROM` is `Sala de Estudio <noreply@saladeestudio.com.ar>` in `apps/api/wrangler.jsonc`. The domain was verified in Resend on 2026-10-05 | nothing |
-| AdSense | `NEXT_PUBLIC_ADSENSE_CLIENT`, `NEXT_PUBLIC_ADSENSE_SLOT_ROOM_BOTTOM`, `NEXT_PUBLIC_ADSENSE_SLOT_COMMUNITY_FEED`, `NEXT_PUBLIC_ADSENSE_SLOT_RAIL` | `uns-web` (build-time) | `NEXT_PUBLIC_ADSENSE_CLIENT` is set in the web build environment, so the web serves `/ads.txt` and the `google-adsense-account` meta tag. On 2026-10-05 the owner added `saladeestudio.com.ar` in AdSense (`pub-1784864280582108`): ownership was verified, a review was requested, and the Google CMP consent message (3 choices) was chosen for EEA/UK/CH visitors. Ad units `sala-room-bottom`, `sala-community-feed` and `sala-rail` exist and their slot IDs are set in the web build environment | Google approving the site; ads fill after that |
+| AdSense | `NEXT_PUBLIC_ADSENSE_CLIENT`, `NEXT_PUBLIC_ADSENSE_SLOT_COMMUNITY_FEED`, `NEXT_PUBLIC_ADSENSE_SLOT_RAIL` | `uns-web` (build-time) | `NEXT_PUBLIC_ADSENSE_CLIENT` is set in the web build environment, so the web serves `/ads.txt` and the `google-adsense-account` meta tag. On 2026-10-05 the owner added `saladeestudio.com.ar` in AdSense (`pub-1784864280582108`): ownership was verified, a review was requested, and the Google CMP consent message (3 choices) was chosen for EEA/UK/CH visitors. Ad units `sala-room-bottom`, `sala-community-feed` and `sala-rail` exist and their slot IDs are set in the web build environment | Google approving the site; ads fill after that |
 | Custom domain | Zone routes plus `BETTER_AUTH_URL` and origin updates | both | `saladeestudio.com.ar` bought 2026-10-05. Google OAuth redirect URI and origin, the Turnstile hostname and the R2 CORS origin were added. `www` 308-redirects to the root. DNS is live on Cloudflare (delegated from NIC Argentina 2026-10-05); `/api/*` routes to `uns-api` and the rest to `uns-web` | nothing |
 
 To store an API secret without printing it, run the command from `apps/api` and paste the value at the prompt (it is not echoed):

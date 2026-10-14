@@ -1,7 +1,7 @@
 import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
- * Fixed-window hit counters for the Postgres-backed rate limiter. One
+ * Fixed-window hit counters for the Durable Object SQLite rate limiter. One
  * row per `(key, window_start)`; `count` is incremented atomically via `INSERT ... ON CONFLICT`.
  */
 export const rateLimitHits = sqliteTable(

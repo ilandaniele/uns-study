@@ -54,7 +54,7 @@ export type PushEnableResult = { ok: true } | { ok: false; reason: PushEnableFai
 const SERVICE_WORKER_TIMEOUT_MS = 10_000;
 
 /** Whether two VAPID keys (raw bytes) are the same key. */
-export function sameKey(a: ArrayBuffer | null | undefined, b: Uint8Array): boolean {
+function sameKey(a: ArrayBuffer | null | undefined, b: Uint8Array): boolean {
   if (!a) return false;
   const bytes = new Uint8Array(a);
   if (bytes.length !== b.length) return false;

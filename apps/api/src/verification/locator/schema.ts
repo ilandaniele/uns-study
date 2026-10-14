@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 const decodedSize = (base64: string): number => Math.floor((base64.length * 3) / 4);
 

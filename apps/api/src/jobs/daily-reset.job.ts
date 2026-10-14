@@ -6,8 +6,6 @@ import type { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { localDateOf } from "../common/dates.js";
 import type { StudySessionService } from "../rankings/study-session.service.js";
 
-export { localDateOf };
-
 const SEAT_STATE_EVENT_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 const VISITOR_RETENTION_DAYS = 7;
 

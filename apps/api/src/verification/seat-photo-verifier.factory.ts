@@ -1,7 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { env, type Env } from "../env.js";
 import { Logger } from "../platform/logger.js";
-import { HttpSeatPhotoVerifier } from "./http-seat-photo-verifier.js";
 import { InProcessSeatPhotoVerifier } from "./in-process-seat-photo-verifier.js";
 import { GeminiSeatLocator } from "./locator/gemini-locator.js";
 import { ClaudeSeatLocator, type MessagesClient, type SeatLocator } from "./locator/seat-locator.js";
@@ -19,7 +18,7 @@ const DEFAULT_CLAUDE_MODEL = "claude-sonnet-5-5";
  * `VERIFIER_UNAVAILABLE`.
  *
  * Order: mock (development, no model key) -> in-process model (Gemini wins over Claude: its free
- * tier covers the Flash models) -> HTTP verifier -> `null`.
+ * tier covers the Flash models) -> `null`.
  */
 export function createSeatPhotoVerifier(e: Env = env): SeatPhotoVerifier | null {
   const hasModelKey = Boolean(e.geminiApiKey || e.anthropicApiKey);
@@ -40,18 +39,6 @@ export function createSeatPhotoVerifier(e: Env = env): SeatPhotoVerifier | null 
       locator = new ClaudeSeatLocator(new Anthropic({ apiKey: e.anthropicApiKey }) as unknown as MessagesClient, model);
     }
     return new InProcessSeatPhotoVerifier(locator, model);
-  }
-  if (e.seatVerifierUrl) {
-    // Photo bytes go over this connection - an http:// (or otherwise non-https) endpoint in
-    // production would ship them, and the Authorization bearer token, in the clear. Refuse to wire
-    // it up at all rather than silently downgrade to an insecure call.
-    if (e.isProduction && !e.seatVerifierUrl.startsWith("https://")) {
-      logger.warn(
-        `SEAT_VERIFIER_URL is not an https:// URL in production (${e.seatVerifierUrl}) - the seat photo verifier is disabled.`,
-      );
-      return null;
-    }
-    return new HttpSeatPhotoVerifier(e.seatVerifierUrl, e.seatVerifierToken || undefined);
   }
   return null;
 }

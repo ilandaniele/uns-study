@@ -192,7 +192,7 @@ export class PresenceService {
   }
 }
 
-export function presenceMessage(reason: string): string {
+function presenceMessage(reason: string): string {
   switch (reason) {
     case "OUTSIDE_GEOFENCE":
       return "Tenés que estar dentro de la sala para hacer esto.";

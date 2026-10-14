@@ -1,4 +1,4 @@
-export type LayoutTableType = "MAIN_TABLE" | "WALL_BAR";
+type LayoutTableType = "MAIN_TABLE" | "WALL_BAR";
 
 export interface LayoutTable {
   code: string;

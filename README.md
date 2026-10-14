@@ -68,7 +68,7 @@ For local testing away from the room, set `PRESENCE_DEV_BYPASS=true` (refused wh
 - `R2_*` (API) — Cloudflare R2 credentials for report-evidence uploads. Left empty, report
   submission still works but skips the photo (`STORAGE_UNAVAILABLE`, surfaced to the user as a
   friendly "sent without photo" message).
-- `NEXT_PUBLIC_ADSENSE_CLIENT` / `NEXT_PUBLIC_ADSENSE_SLOT_ROOM_BOTTOM` /
+- `NEXT_PUBLIC_ADSENSE_CLIENT` / `NEXT_PUBLIC_ADSENSE_SLOT_RAIL` /
   `NEXT_PUBLIC_ADSENSE_SLOT_COMMUNITY_FEED` (web) — AdSense publisher + per-placement slot ids.
   `<AdSlot>` renders nothing unless both the client id and that placement's slot id are set.
 - `NEXT_PUBLIC_GA_ID` (web) — GA4 measurement id; the loader and `trackEvent` calls are no-ops

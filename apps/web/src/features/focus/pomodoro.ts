@@ -60,7 +60,7 @@ export const LIMITS = {
 
 const MIN_MS = 60_000;
 
-export function clampSetting(key: keyof typeof LIMITS, value: number): number {
+function clampSetting(key: keyof typeof LIMITS, value: number): number {
   const [lo, hi] = LIMITS[key];
   if (!Number.isFinite(value)) return lo;
   return Math.min(hi, Math.max(lo, Math.round(value)));
@@ -219,7 +219,7 @@ export interface FocusStats {
   days: Record<string, { sessions: number; minutes: number }>;
 }
 
-export function dayKey(epochMs: number): string {
+function dayKey(epochMs: number): string {
   const d = new Date(epochMs);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");

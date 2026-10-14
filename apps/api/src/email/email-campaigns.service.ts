@@ -130,7 +130,7 @@ export class EmailCampaignsService {
   }
 }
 
-export function emailEnabled(): boolean {
+function emailEnabled(): boolean {
   return Boolean(env.resendApiKey && env.emailFrom);
 }
 

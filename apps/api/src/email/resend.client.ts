@@ -18,7 +18,7 @@ export class ResendError extends Error {
   }
 }
 
-export const RESEND_BATCH_MAX = 100;
+const RESEND_BATCH_MAX = 100;
 
 export class ResendClient {
   constructor(

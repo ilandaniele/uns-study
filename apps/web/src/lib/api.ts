@@ -140,7 +140,7 @@ export const CLIENT_VALIDATION_MESSAGE = "Los datos ingresados no son válidos. 
  * Checks `data` against `schema` before anything is sent. Throws the same `ApiRequestError` the API
  * would (code VALIDATION_ERROR, status 400) so callers handle one shape; the server still validates.
  */
-export function assertValidBody(data: unknown, schema?: BodySchema): void {
+function assertValidBody(data: unknown, schema?: BodySchema): void {
   if (!schema || schema.safeParse(data).success) return;
   throw new ApiRequestError({ error: { code: "VALIDATION_ERROR", message: CLIENT_VALIDATION_MESSAGE } }, 400);
 }

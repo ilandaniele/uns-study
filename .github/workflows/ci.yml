@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    branches-ignore: [main]
+    # Dependabot branches run through their pull_request event only, so each update runs CI once, not twice.
+    branches-ignore: [main, "dependabot/**"]
     paths-ignore: ["**/*.md", "docs/**", "reference-images/**", "design-options/**"]
   pull_request:
     paths-ignore: ["**/*.md", "docs/**", "reference-images/**", "design-options/**"]
@@ -15,7 +16,9 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # A newer push to the same branch or PR supersedes the running check. Main is never cancelled here:
+  # deploy.yml calls this workflow and must finish what it started.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   checks:

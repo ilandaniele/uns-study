@@ -1,6 +1,6 @@
 /** Where the domain services push realtime notifications. Production: `DoRealtimeHub` over the
- *  Durable Object's hibernating sockets. Tests: `RecordingHub`. PostgreSQL-style rule still holds:
- *  the database is canonical, these are only notifications. */
+ *  Durable Object's hibernating sockets. Tests: `RecordingHub`. The rule still holds:
+ *  the Durable Object SQLite database is canonical, these are only notifications. */
 export interface RealtimeHub {
   publishToRoom(roomId: string, event: string, payload: unknown): void;
   publishToChat(chatRoomId: string, event: string, payload: unknown): void;

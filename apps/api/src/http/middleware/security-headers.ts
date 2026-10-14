@@ -3,7 +3,7 @@ import { env } from "../../env.js";
 import type { AppEnv } from "../context.js";
 
 /**
- * Security headers for a JSON/image API (no HTML), the same set the Nest API sent. A header
+ * Security headers for a JSON/image API (no HTML), the same set the previous Node API sent. A header
  * a handler already set (the avatar route sets its own CSP) is left alone. The browser only sees
  * avatars through the same-origin `/api/v1`, so CORP stays same-site.
  */

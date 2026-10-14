@@ -1,7 +1,7 @@
 # Seat photo verification: model contract
 
 After tapping "Estoy acá", a user can optionally take a photo from their seat.
-The API forwards the photo to a **seat verifier** model, run inside the API Worker or at an external HTTP endpoint. The model
+The API forwards the photo to a **seat verifier** model, run inside the API Worker. The model
 says which seat the photo was taken from. If the model agrees with the seat the
 user checked in to, that check-in becomes **verified**.
 
@@ -23,24 +23,21 @@ back in ("Estoy acá") — that starts a fresh check-in, which can be verified
 again. Protection also ends when the check-in itself ends, whichever comes
 first.
 
-By default the model runs inside the API Worker (see "In-process verifier"
-below). The API can instead call any external HTTP endpoint that follows the
-contract below.
+The model runs inside the API Worker (see "In-process verifier" below).
+The contract below is the shape of its input and output.
 
 ## Configuration (API env)
 
 | Variable | Meaning |
 |---|---|
-| `GEMINI_API_KEY` / `ANTHROPIC_API_KEY` | Worker secrets. When either is set, the verifier runs in-process in the API Worker (Gemini wins when both are set). |
+| `GEMINI_API_KEY` / `ANTHROPIC_API_KEY` | Worker secrets. When either is set, the verifier runs in-process in the API Worker (Gemini wins when both are set). With neither, the feature is off and the web hides the button. |
 | `VERIFIER_MODEL` | Optional, default `gemini-2.5-flash` (`claude-sonnet-5-5` with the Anthropic key). Reported as `modelVersion: "sala-seat-v1:<model>"`. |
-| `SEAT_VERIFIER_URL` | HTTPS endpoint of an external model, used only when no in-process key is set. With neither, the feature is off and the web hides the button. **Must be `https://` in production** — a non-https URL there is treated as unset (feature disabled, loud startup warning) rather than sending photo bytes and the bearer token in the clear. |
-| `SEAT_VERIFIER_TOKEN` | Optional, external endpoint only. Sent as `Authorization: Bearer <token>`. |
 | `SEAT_VERIFIER_MIN_CONFIDENCE` | Optional, default `0.8`. |
 | `SEAT_VERIFIER_MODE=mock` | Dev/test only (ignored when `NODE_ENV=production`). Accepts every photo as the claimed seat with confidence 0.9. |
 
 ## Request (API to model)
 
-`POST $SEAT_VERIFIER_URL`, `Content-Type: application/json`, timeout 10 s.
+JSON, timeout 10 s.
 
 ```json
 {
@@ -83,7 +80,7 @@ malformed body counts as "could not verify". The user is not penalised for it.
   check-in — not a different user's, and not even a later check-in by the
   same user. This is enforced by a database-level unique constraint, not just
   an application check, so it holds under concurrent requests too.
-- The model endpoint must not store the photo either, unless the user has
+- The model must not store the photo either, unless the user has
   opted in to training data (not implemented yet).
 
 ## Suggested approach for the model

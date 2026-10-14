@@ -16,7 +16,7 @@ export interface SeatFreedToast {
 /**
  * Realtime alerts for the room page: `seat:freed-alert` (private, opt-in) as a self-clearing
  * toast, and `room:admin-present` (room-wide, unconditional) as a dismissible banner. Both are
- * pure notifications — PostgreSQL/the room map itself is unaffected by either.
+ * pure notifications — the room's canonical state (Durable Object SQLite) is unaffected by either.
  */
 export function useRoomAlerts(): {
   toast: SeatFreedToast | null;

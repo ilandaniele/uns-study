@@ -13,17 +13,17 @@ import type { SocketTokenClaims } from "./socket-token.js";
 import { decodeClientFrame, encodeServerAck, MAX_FRAME_BYTES, WsCloseCodes } from "./ws-protocol.js";
 
 /** Per-socket cap on how many room channels (and, separately, chat channels) can be joined at once. */
-export const MAX_JOINED_ROOMS_PER_SOCKET = 5;
+const MAX_JOINED_ROOMS_PER_SOCKET = 5;
 
 /** Per-socket budget for client->server events (joins/leaves); beyond it the frame is dropped. */
-export const SOCKET_EVENT_LIMIT = 10;
-export const SOCKET_EVENT_WINDOW_MS = 10_000;
+const SOCKET_EVENT_LIMIT = 10;
+const SOCKET_EVENT_WINDOW_MS = 10_000;
 
 /** Consecutive dropped frames after which the socket is closed with 4008. */
-export const MAX_CONSECUTIVE_DROPS = 3;
+const MAX_CONSECUTIVE_DROPS = 3;
 
 /** Concurrent sockets allowed per client IP; extras get a 429 on upgrade. */
-export const MAX_CONNECTIONS_PER_IP = 20;
+const MAX_CONNECTIONS_PER_IP = 20;
 
 /** How long a chat:join restriction lookup is reused. */
 const RESTRICTION_CACHE_TTL_MS = 30_000;
