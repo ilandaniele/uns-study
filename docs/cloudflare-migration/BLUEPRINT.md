@@ -1,7 +1,7 @@
 # Cloudflare migration blueprint (Fly.io to Workers + Durable Object SQLite)
 
 Status: approved design, ready for builders. Branch: `cf/migration`.
-Source decisions: `docs/relevamiento-cloudflare.md` (option D), plus the decisions recorded in section 0.
+Source decisions: `docs/cloudflare-migration/RELEVAMIENTO.md` (option D), plus the decisions recorded in section 0.
 Builders: read section 0, your work item, and every contract your item touches.
 
 ---
@@ -1292,12 +1292,12 @@ node ops/import-to-do.mjs --help
   - Edit only the stack bullets (Neon/Upstash/Socket.IO/Fly lines) to name Workers, Durable Object SQLite, WebSocket Hibernation, R2 and Turnstile.
   - Preserve the user's uncommitted edits. Read the file fresh and change only those lines.
 - **Load tests:** base URL default `https://saladeestudio.com.ar`. Remove the Fly host references and any socket.io client usage. If k6 used socket.io, switch to k6 `ws` with the 2.7 protocol.
-- `docs/relevamiento-cloudflare.md` and `docs/cloudflare-migration/**` are historical and exempt.
+- `docs/cloudflare-migration/RELEVAMIENTO.md` and `docs/cloudflare-migration/**` are historical and exempt.
 
 **Verify:**
 
 ```
-rg -n -i "fly\.io|fly\.toml|flyctl|fly\.dev|fly-client-ip|PGLITE|pglite|PROXY_SHARED_SECRET|x-sala-proxy|upstash|ioredis|socket\.io|NestJS|@nestjs" --glob "!docs/relevamiento-cloudflare.md" --glob "!docs/cloudflare-migration/**" --glob "!pnpm-lock.yaml" --glob "!**/node_modules/**" .
+rg -n -i "fly\.io|fly\.toml|flyctl|fly\.dev|fly-client-ip|PGLITE|pglite|PROXY_SHARED_SECRET|x-sala-proxy|upstash|ioredis|socket\.io|NestJS|@nestjs" --glob "!docs/cloudflare-migration/RELEVAMIENTO.md" --glob "!docs/cloudflare-migration/**" --glob "!pnpm-lock.yaml" --glob "!**/node_modules/**" .
 # must print nothing
 ```
 

@@ -1,12 +1,16 @@
 #!/usr/bin/env node
-// Usage: node apps/api/scripts/smoke.mjs [baseUrl] [--signup]
+// Usage: node apps/api/scripts/smoke.mjs [baseUrl] [--signup] [--origin=<web origin>]
 // Smoke test against `wrangler dev --port 4000` (default) or a deployed URL.
+// Requests carry the web app's Origin, which must be in WEB_ORIGINS. Deployed, web and API share
+// one origin; locally the web app runs on http://localhost:3000, so that is the default there.
 // --signup also signs up two users and races a check-in on the same seat; it needs the API to run
 // with PRESENCE_DEV_BYPASS=1 (wrangler dev --var PRESENCE_DEV_BYPASS:1 --var NODE_ENV:development).
 const args = process.argv.slice(2);
 const withSignup = args.includes("--signup");
 const base = (args.find((a) => !a.startsWith("--")) ?? "http://localhost:4000").replace(/\/$/, "");
-const origin = new URL(base).origin;
+const baseUrl = new URL(base);
+const isLocal = ["localhost", "127.0.0.1"].includes(baseUrl.hostname);
+const origin = args.find((a) => a.startsWith("--origin="))?.slice("--origin=".length) ?? (isLocal ? "http://localhost:3000" : baseUrl.origin);
 
 let failures = 0;
 function check(name, ok, detail = "") {
