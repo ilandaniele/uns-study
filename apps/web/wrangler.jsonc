@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "uns-web",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "saladeestudio.com.ar/*", "zone_name": "saladeestudio.com.ar" },
+    { "pattern": "www.saladeestudio.com.ar/*", "zone_name": "saladeestudio.com.ar" }
+  ],
+  "observability": { "enabled": true }
+}

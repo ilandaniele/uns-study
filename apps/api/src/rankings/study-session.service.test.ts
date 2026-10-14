@@ -11,7 +11,7 @@ describe("StudySessionService", () => {
   let roomId: string;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     svc = new StudySessionService(db);
     const room = await getRoom(db);
     roomId = room.id;

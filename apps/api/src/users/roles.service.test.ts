@@ -17,7 +17,7 @@ describe("RolesService", () => {
   const originalAdminEmails = process.env.ADMIN_EMAILS;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     await insertUsers(db, ["u1"]);
   });
 

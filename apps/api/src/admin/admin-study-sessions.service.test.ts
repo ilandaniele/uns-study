@@ -8,11 +8,9 @@ import { RolesService } from "../users/roles.service.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
 import { AliasService } from "../users/alias.service.js";
-import { AdminOnlyGuard } from "../users/admin.guard.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
 import { RankingsService } from "../rankings/rankings.service.js";
 import { AdminStudySessionsService } from "./admin-study-sessions.service.js";
-import { AdminStudySessionsController } from "./admin-study-sessions.controller.js";
 
 const NOW = new Date("2026-01-15T22:00:00Z"); // 19:00 local
 
@@ -23,7 +21,7 @@ describe("AdminStudySessionsService.credit", () => {
   let roomId: string;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     roomsService = new RoomsService(db, new RoomStateService(db));
     svc = new AdminStudySessionsService(db, new RolesService(db), roomsService, new StudySessionService(db));
     roomId = (await getRoom(db)).id;
@@ -113,12 +111,5 @@ describe("manualStudySessionSchema", () => {
     expect(manualStudySessionSchema.safeParse({ ...base, minutes: 60, endedAt: "2026-01-15T13:00:00.000Z" }).success).toBe(false);
     expect(manualStudySessionSchema.safeParse({ ...base, minutes: 721 }).success).toBe(false);
     expect(manualStudySessionSchema.safeParse({ ...base, minutes: 60, reason: "  " }).success).toBe(false);
-  });
-});
-
-describe("AdminStudySessionsController", () => {
-  it("is guarded by AdminOnlyGuard (moderators are rejected before reaching the service)", () => {
-    const guards = Reflect.getMetadata("__guards__", AdminStudySessionsController) as unknown[];
-    expect(guards).toEqual([AdminOnlyGuard]);
   });
 });

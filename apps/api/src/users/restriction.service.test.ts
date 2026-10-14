@@ -9,7 +9,7 @@ describe("RestrictionService", () => {
   let svc: RestrictionService;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     svc = new RestrictionService(db);
     await insertUsers(db, ["u1"]);
   });

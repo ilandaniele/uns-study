@@ -1,4 +1,3 @@
-import { Injectable } from "@nestjs/common";
 import { env } from "../env.js";
 
 const VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
@@ -14,7 +13,6 @@ interface TurnstileSiteVerifyResponse {
  * `TURNSTILE_SECRET_KEY` is set — fine for local dev, required in production for the
  * challenge to actually gate anything.
  */
-@Injectable()
 export class TurnstileService {
   isEnabled(): boolean {
     return Boolean(env.turnstileSecretKey);

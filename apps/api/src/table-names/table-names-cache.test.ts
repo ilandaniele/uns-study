@@ -1,22 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { schema } from "@sala/database";
-import type { Auth } from "../auth/auth.instance.js";
 import { buildNotificationService, freshDb, getRoom, insertUsers } from "../test-utils.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
+import { RecordingHub } from "../realtime/realtime-hub.js";
 import { RoomCache } from "../common/cache/room-cache.service.js";
 import { TableNamesService } from "./table-names.service.js";
 
-const mockAuth = { api: { getSession: async () => null } } as unknown as Auth;
 
 describe("TableNamesService room-cache invalidation", () => {
   it("adminClearNickname drops the cached layout so the map stops showing the old nickname", async () => {
-    const db = await freshDb();
+    const db = freshDb();
     const cache = new RoomCache();
     const roomState = new RoomStateService(db);
-    const gateway = new RoomRealtimeGateway(roomState, mockAuth, buildNotificationService(db), new RestrictionService(db));
+    const gateway = new RoomRealtimeGateway(new RecordingHub(), roomState, buildNotificationService(db), null);
     const svc = new TableNamesService(db, new RestrictionService(db), gateway, cache);
     const room = await getRoom(db);
     await insertUsers(db, ["admin1"]);

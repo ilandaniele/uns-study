@@ -20,7 +20,7 @@ describe("RankingsService", () => {
   let seatId: string;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     const roomsService = new RoomsService(db, new RoomStateService(db));
     svc = new RankingsService(db, roomsService, new AliasService(db), new RolesService(db));
     const room = await getRoom(db);

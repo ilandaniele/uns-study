@@ -8,7 +8,7 @@ describe("ReputationService", () => {
   let svc: ReputationService;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     svc = new ReputationService(db);
     await insertUsers(db, ["u1"]);
   });

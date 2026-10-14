@@ -1,16 +1,13 @@
-import { Inject, Injectable } from "@nestjs/common";
 import { and, desc, eq, gte, isNull, lte, or } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { AnnouncementDto, announcementSchema } from "@sala/contracts";
 import type { z } from "zod";
-import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 
 export type AnnouncementInput = z.infer<typeof announcementSchema>;
 
-@Injectable()
 export class AnnouncementsService {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(private readonly db: Db) {}
 
   /** Announcements visible right now for a room: global (roomId null) + room-specific, active and in window. */
   async listActive(roomId: string, now: Date = new Date()): Promise<AnnouncementDto[]> {

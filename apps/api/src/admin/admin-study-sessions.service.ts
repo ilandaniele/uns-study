@@ -1,9 +1,7 @@
-import { Inject, Injectable } from "@nestjs/common";
 import { and, asc, desc, eq, gt, lt } from "drizzle-orm";
 import type { z } from "zod";
 import { schema, type Db } from "@sala/database";
 import type { manualStudySessionSchema } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { RolesService } from "../users/roles.service.js";
 import { RoomsService } from "../rooms/rooms.service.js";
@@ -23,13 +21,12 @@ export interface ManualStudySessionDto {
  * past counting bug). Stored as a `MANUAL` session so rankings and streaks pick it up like any other,
  * and audited in `moderation_actions`.
  */
-@Injectable()
 export class AdminStudySessionsService {
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(RolesService) private readonly roles: RolesService,
-    @Inject(RoomsService) private readonly rooms: RoomsService,
-    @Inject(StudySessionService) private readonly studySessions: StudySessionService,
+    private readonly db: Db,
+    private readonly roles: RolesService,
+    private readonly rooms: RoomsService,
+    private readonly studySessions: StudySessionService,
   ) {}
 
   async credit(actorId: string, input: z.infer<typeof manualStudySessionSchema>, now: Date = new Date()): Promise<ManualStudySessionDto> {
@@ -48,10 +45,10 @@ export class AdminStudySessionsService {
 
     const roomId = input.roomId ? (await this.rooms.findRoomRow(input.roomId)).id : await this.defaultRoomId(input.userId);
 
-    return this.db.transaction(async (tx) => {
+    return this.db.transaction((tx) => {
       // Never credit time the user already has counted (a recorded session or a live check-in), or
       // the same minutes would add up twice.
-      const nearby = await tx
+      const nearby = tx
         .select({ startedAt: schema.studySessions.startedAt, minutes: schema.studySessions.verifiedMinutes })
         .from(schema.studySessions)
         .where(
@@ -60,22 +57,26 @@ export class AdminStudySessionsService {
             lt(schema.studySessions.startedAt, endedAt),
             gt(schema.studySessions.startedAt, new Date(startedAt.getTime() - MAX_VERIFIED_MINUTES * 60_000)),
           ),
-        );
+        )
+        .all();
       const overlapsSession = nearby.some((s) => s.startedAt.getTime() + s.minutes * 60_000 > startedAt.getTime());
-      const [active] = await tx
+      const active = tx
         .select({ id: schema.checkIns.id })
         .from(schema.checkIns)
         .where(and(eq(schema.checkIns.userId, input.userId), eq(schema.checkIns.status, "ACTIVE"), lt(schema.checkIns.startedAt, endedAt)))
-        .limit(1);
+        .limit(1)
+        .get();
       if (overlapsSession || active) throw ApiErrors.validation("El usuario ya tiene tiempo de estudio registrado en ese horario.");
 
-      const id = await this.studySessions.recordManual(tx, { userId: input.userId, roomId, startedAt, minutes });
-      await tx.insert(schema.moderationActions).values({
-        actorId,
-        targetUserId: input.userId,
-        action: "STUDY_TIME_CREDITED",
-        metadata: { sessionId: id, roomId, startedAt: startedAt.toISOString(), endedAt: endedAt.toISOString(), minutes, reason: input.reason },
-      });
+      const id = this.studySessions.recordManual(tx, { userId: input.userId, roomId, startedAt, minutes });
+      tx.insert(schema.moderationActions)
+        .values({
+          actorId,
+          targetUserId: input.userId,
+          action: "STUDY_TIME_CREDITED",
+          metadata: { sessionId: id, roomId, startedAt: startedAt.toISOString(), endedAt: endedAt.toISOString(), minutes, reason: input.reason },
+        })
+        .run();
       return { id, userId: input.userId, roomId, startedAt: startedAt.toISOString(), endedAt: endedAt.toISOString(), minutes };
     });
   }

@@ -1,7 +1,5 @@
-import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, gte, inArray } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
-import { DB } from "../database/database.module.js";
 import { TurnstileService } from "./turnstile.service.js";
 
 const CHALLENGE_WINDOW_MIN = 30;
@@ -21,11 +19,10 @@ export type ObservationLimits = (typeof OBSERVATION_LIMITS)[keyof typeof OBSERVA
  * account-age-sensitive rate limits. Pure-ish: only reads (never writes) so it stays cheap to
  * call before every check-in/observation.
  */
-@Injectable()
 export class AbusePolicyService {
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(TurnstileService) private readonly turnstile: TurnstileService,
+    private readonly db: Db,
+    private readonly turnstile: TurnstileService,
   ) {}
 
   /** True when Turnstile is enabled and the user has a recent abuse-flagging security event. */

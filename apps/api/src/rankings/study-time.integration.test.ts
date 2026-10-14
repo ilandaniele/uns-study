@@ -18,13 +18,12 @@ import { QrService } from "../qr/qr.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";
 import { DisputeService } from "../disputes/disputes.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
+import { RecordingHub } from "../realtime/realtime-hub.js";
 import { ExpirationJob } from "../jobs/expiration.job.js";
 import { DailyResetJob } from "../jobs/daily-reset.job.js";
-import type { Auth } from "../auth/auth.instance.js";
 import { StudySessionService } from "./study-session.service.js";
 import { RankingsService } from "./rankings.service.js";
 
-const mockAuth = { api: { getSession: async () => null } } as unknown as Auth;
 
 /**
  * Drives the real check-in / dispute / job services through a simulated day (the clock is faked so
@@ -44,7 +43,7 @@ describe("study time end to end", () => {
   let room: Awaited<ReturnType<typeof getRoom>>;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     const roomState = new RoomStateService(db);
     const presence = new PresenceService();
     const reputation = new ReputationService(db);
@@ -52,7 +51,7 @@ describe("study time end to end", () => {
     const studySessions = new StudySessionService(db);
     const restrictions = new RestrictionService(db);
     const notifications = buildNotificationService(db);
-    const gateway = new RoomRealtimeGateway(roomState, mockAuth, notifications, new RestrictionService(db)); // no server attached — emits are no-ops
+    const gateway = new RoomRealtimeGateway(new RecordingHub(), roomState, notifications, null); // no server attached — emits are no-ops
     disputes = new DisputeService(
       db,
       roomState,

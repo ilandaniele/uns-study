@@ -45,5 +45,3 @@ export class ResendClient {
     return (json.data ?? []).map((d) => d.id);
   }
 }
-
-export const RESEND_CLIENT = Symbol("RESEND_CLIENT");

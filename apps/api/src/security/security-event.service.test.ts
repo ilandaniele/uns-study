@@ -11,7 +11,7 @@ describe("SecurityEventService", () => {
   let svc: SecurityEventService;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     svc = new SecurityEventService(db, new ReputationService(db));
     await insertUsers(db, ["u1"]);
   });

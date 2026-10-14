@@ -1,6 +1,5 @@
-import { Inject, Injectable } from "@nestjs/common";
-import { and, asc, count, desc, eq, gt, inArray, lt, ne, or, sql } from "drizzle-orm";
-import { schema, type Db } from "@sala/database";
+import { and, asc, count, desc, eq, gt, inArray, ne, or, sql } from "drizzle-orm";
+import { chunk, inChunks, rowsPerInsert, schema, type Db, type Tx } from "@sala/database";
 import {
   GROUP_MAX_MEMBERS,
   type CreateGroupInput,
@@ -11,19 +10,18 @@ import {
   type GroupRole,
   type Page,
 } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { BlocksService } from "../blocks/blocks.service.js";
 import { AliasService } from "../users/alias.service.js";
+import { formatCursor, newestFirst, olderThan, withRowid } from "../chat/page-cursor.js";
 import { displayName, shownAliasAnimal, visibleAvatarUrl } from "../users/display-name.js";
 
 const PAGE_SIZE = 50;
 /** Hard cap on unpaginated list responses. */
 const MAX_LIST_ROWS = 200;
 
-type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
-/** Either the pool or a transaction: both can run the read queries below. */
+/** Either the db or a transaction: both can run the read queries below. */
 type Executor = Db | Tx;
 
 interface Identity {
@@ -34,14 +32,13 @@ interface Identity {
 
 type MessageRow = typeof schema.groupMessages.$inferSelect;
 
-@Injectable()
 export class GroupsService {
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(RestrictionService) private readonly restrictions: RestrictionService,
+    private readonly db: Db,
+    private readonly restrictions: RestrictionService,
     // Pairwise block checks are done in batch via `blockedAmong`; the service is kept for parity with DmService.
-    @Inject(BlocksService) readonly blocks: BlocksService,
-    @Inject(AliasService) private readonly aliases: AliasService,
+    readonly blocks: BlocksService,
+    private readonly aliases: AliasService,
   ) {}
 
   private notFoundGroup() {
@@ -49,17 +46,18 @@ export class GroupsService {
   }
 
   /** 404 for both "no such group" and "not a member", so group ids can't be probed. */
-  private async assertMember(groupId: string, userId: string, exec: Executor = this.db): Promise<typeof schema.groupMembers.$inferSelect> {
-    const [row] = await exec
+  private assertMember(groupId: string, userId: string, exec: Executor = this.db): typeof schema.groupMembers.$inferSelect {
+    const [row] = exec
       .select()
       .from(schema.groupMembers)
-      .where(and(eq(schema.groupMembers.groupId, groupId), eq(schema.groupMembers.userId, userId)));
+      .where(and(eq(schema.groupMembers.groupId, groupId), eq(schema.groupMembers.userId, userId)))
+      .all();
     if (!row) throw this.notFoundGroup();
     return row;
   }
 
-  private async memberIdsOf(groupId: string, exec: Executor = this.db): Promise<string[]> {
-    const rows = await exec.select({ userId: schema.groupMembers.userId }).from(schema.groupMembers).where(eq(schema.groupMembers.groupId, groupId));
+  private memberIdsOf(groupId: string, exec: Executor = this.db): string[] {
+    const rows = exec.select({ userId: schema.groupMembers.userId }).from(schema.groupMembers).where(eq(schema.groupMembers.groupId, groupId)).all();
     return rows.map((r) => r.userId);
   }
 
@@ -79,7 +77,7 @@ export class GroupsService {
   }
 
   async getGroup(groupId: string, viewerId: string): Promise<GroupConversationDto> {
-    await this.assertMember(groupId, viewerId);
+    this.assertMember(groupId, viewerId);
     return this.buildOne(groupId, viewerId);
   }
 
@@ -93,8 +91,10 @@ export class GroupsService {
     const otherIds = rows.map((r) => (r.userA === viewerId ? r.userB : r.userA));
     if (otherIds.length === 0) return [];
 
-    const blocked = await this.blockedAmong(viewerId, otherIds);
-    const privacyRows = await this.db.select().from(schema.userPrivacySettings).where(inArray(schema.userPrivacySettings.userId, otherIds));
+    const blocked = this.blockedAmong(viewerId, otherIds);
+    const privacyRows = inChunks(otherIds, (part) =>
+      this.db.select().from(schema.userPrivacySettings).where(inArray(schema.userPrivacySettings.userId, part)).all(),
+    );
     const dmDisabled = new Set(privacyRows.filter((p) => !p.allowDirectMessages).map((p) => p.userId));
 
     const ids = otherIds.filter((id) => !blocked.has(id) && !dmDisabled.has(id));
@@ -113,16 +113,17 @@ export class GroupsService {
     await this.restrictions.assertNot(ownerId, ["SUSPENDED", "BANNED"]);
     if (input.memberIds.includes(ownerId)) throw ApiErrors.validation("No podés agregarte a vos mismo.");
 
-    const groupId = await this.db.transaction(async (tx) => {
-      await this.validateTargets(ownerId, input.memberIds, [ownerId], tx);
+    const groupId = this.db.transaction((tx) => {
+      this.validateTargets(ownerId, input.memberIds, [ownerId], tx);
 
-      const [group] = await tx
+      const [group] = tx
         .insert(schema.groupConversations)
         .values({ name: input.name.trim(), createdBy: ownerId })
-        .returning({ id: schema.groupConversations.id });
+        .returning({ id: schema.groupConversations.id })
+        .all();
       if (!group) throw new Error("Failed to insert group");
 
-      await tx.insert(schema.groupMembers).values([
+      this.insertMembers(tx, [
         { groupId: group.id, userId: ownerId, role: "OWNER" as const },
         ...input.memberIds.map((userId) => ({ groupId: group.id, userId, role: "MEMBER" as const })),
       ]);
@@ -133,19 +134,20 @@ export class GroupsService {
   }
 
   async addMembers(groupId: string, requesterId: string, userIds: string[]): Promise<{ group: GroupConversationDto; memberIds: string[] }> {
-    const membership = await this.assertMember(groupId, requesterId);
+    const membership = this.assertMember(groupId, requesterId);
     if (membership.role !== "OWNER") throw ApiErrors.forbidden("Solo quien creó el grupo puede agregar personas.");
     await this.restrictions.assertNot(requesterId, ["SUSPENDED", "BANNED"]);
 
-    const memberIds = await this.db.transaction(async (tx) => {
-      const [locked] = await tx
+    const memberIds = this.db.transaction((tx) => {
+      // The sync transaction is the only writer, so the group row needs no lock.
+      const [exists] = tx
         .select({ id: schema.groupConversations.id })
         .from(schema.groupConversations)
         .where(eq(schema.groupConversations.id, groupId))
-        .for("update");
-      if (!locked) throw this.notFoundGroup();
+        .all();
+      if (!exists) throw this.notFoundGroup();
 
-      const current = await this.memberIdsOf(groupId, tx);
+      const current = this.memberIdsOf(groupId, tx);
       const existing = new Set(current);
       const fresh = userIds.filter((id) => !existing.has(id));
       if (fresh.length === 0) return current;
@@ -153,9 +155,12 @@ export class GroupsService {
       if (current.length + fresh.length > GROUP_MAX_MEMBERS) {
         throw ApiErrors.validation(`Un grupo puede tener hasta ${GROUP_MAX_MEMBERS} personas.`);
       }
-      await this.validateTargets(requesterId, fresh, current, tx);
+      this.validateTargets(requesterId, fresh, current, tx);
 
-      await tx.insert(schema.groupMembers).values(fresh.map((userId) => ({ groupId, userId, role: "MEMBER" as const })));
+      this.insertMembers(
+        tx,
+        fresh.map((userId) => ({ groupId, userId, role: "MEMBER" as const })),
+      );
       return [...current, ...fresh];
     });
 
@@ -163,74 +168,77 @@ export class GroupsService {
   }
 
   async leaveGroup(groupId: string, userId: string): Promise<{ remainingMemberIds: string[]; deleted: boolean }> {
-    return this.db.transaction(async (tx) => {
-      const [locked] = await tx
+    return this.db.transaction((tx) => {
+      const [exists] = tx
         .select({ id: schema.groupConversations.id })
         .from(schema.groupConversations)
         .where(eq(schema.groupConversations.id, groupId))
-        .for("update");
-      if (!locked) throw this.notFoundGroup();
+        .all();
+      if (!exists) throw this.notFoundGroup();
 
-      const [left] = await tx
+      const [left] = tx
         .delete(schema.groupMembers)
         .where(and(eq(schema.groupMembers.groupId, groupId), eq(schema.groupMembers.userId, userId)))
-        .returning({ role: schema.groupMembers.role });
+        .returning({ role: schema.groupMembers.role })
+        .all();
       if (!left) throw this.notFoundGroup();
 
-      const remaining = await tx
+      const remaining = tx
         .select({ userId: schema.groupMembers.userId })
         .from(schema.groupMembers)
         .where(eq(schema.groupMembers.groupId, groupId))
-        .orderBy(asc(schema.groupMembers.joinedAt), asc(schema.groupMembers.userId));
+        .orderBy(asc(schema.groupMembers.joinedAt), asc(schema.groupMembers.userId))
+        .all();
 
       if (remaining.length === 0) {
-        await tx.delete(schema.groupConversations).where(eq(schema.groupConversations.id, groupId));
+        tx.delete(schema.groupConversations).where(eq(schema.groupConversations.id, groupId)).run();
         return { remainingMemberIds: [], deleted: true };
       }
 
       if (left.role === "OWNER") {
-        await tx
-          .update(schema.groupMembers)
+        tx.update(schema.groupMembers)
           .set({ role: "OWNER" })
-          .where(and(eq(schema.groupMembers.groupId, groupId), eq(schema.groupMembers.userId, remaining[0]!.userId)));
+          .where(and(eq(schema.groupMembers.groupId, groupId), eq(schema.groupMembers.userId, remaining[0]!.userId)))
+          .run();
       }
       return { remainingMemberIds: remaining.map((r) => r.userId), deleted: false };
     });
   }
 
   async listMessages(groupId: string, viewerId: string, cursor?: string | null): Promise<Page<GroupMessageDto>> {
-    await this.assertMember(groupId, viewerId);
+    this.assertMember(groupId, viewerId);
 
     const conditions = [eq(schema.groupMessages.groupId, groupId)];
-    if (cursor) {
-      const cursorDate = new Date(cursor);
-      if (!Number.isNaN(cursorDate.getTime())) conditions.push(lt(schema.groupMessages.createdAt, cursorDate));
-    }
+    const older = olderThan(schema.groupMessages, schema.groupMessages.createdAt, cursor);
+    if (older) conditions.push(older);
 
     const rows = await this.db
-      .select()
+      .select(withRowid(schema.groupMessages))
       .from(schema.groupMessages)
       .where(and(...conditions))
-      .orderBy(desc(schema.groupMessages.createdAt))
+      .orderBy(...newestFirst(schema.groupMessages, schema.groupMessages.createdAt))
       .limit(PAGE_SIZE + 1);
 
     const page = rows.slice(0, PAGE_SIZE);
-    const nextCursor = rows.length > PAGE_SIZE ? page[page.length - 1]!.createdAt.toISOString() : null;
+    const last = page[page.length - 1];
+    const nextCursor = rows.length > PAGE_SIZE && last ? formatCursor(last.createdAt, last.rowid) : null;
 
     const identities = await this.identities([...new Set(page.map((r) => r.senderId))]);
     return { items: page.map((row) => toMessageDto(row, identities.get(row.senderId))), nextCursor };
   }
 
   async sendMessage(groupId: string, senderId: string, content: string): Promise<{ message: GroupMessageDto; memberIds: string[] }> {
-    await this.assertMember(groupId, senderId);
+    this.assertMember(groupId, senderId);
     await this.restrictions.assertNot(senderId, ["MUTE_CHAT", "SUSPENDED", "BANNED"]);
 
-    const { row, memberIds } = await this.db.transaction(async (tx) => {
-      const [inserted] = await tx.insert(schema.groupMessages).values({ groupId, senderId, content }).returning();
+    const { row, memberIds } = this.db.transaction((tx) => {
+      // Re-check membership in the transaction that inserts: a concurrent leave cannot slip in between.
+      this.assertMember(groupId, senderId, tx);
+      const [inserted] = tx.insert(schema.groupMessages).values({ groupId, senderId, content }).returning().all();
       if (!inserted) throw new Error("Failed to insert group message");
 
-      await tx.update(schema.groupConversations).set({ lastMessageAt: inserted.createdAt }).where(eq(schema.groupConversations.id, groupId));
-      return { row: inserted, memberIds: await this.memberIdsOf(groupId, tx) };
+      tx.update(schema.groupConversations).set({ lastMessageAt: inserted.createdAt }).where(eq(schema.groupConversations.id, groupId)).run();
+      return { row: inserted, memberIds: this.memberIdsOf(groupId, tx) };
     });
 
     const identities = await this.identities([senderId]);
@@ -238,7 +246,7 @@ export class GroupsService {
   }
 
   async markRead(groupId: string, userId: string): Promise<void> {
-    await this.assertMember(groupId, userId);
+    this.assertMember(groupId, userId);
     await this.db
       .update(schema.groupMembers)
       .set({ lastReadAt: new Date() })
@@ -246,36 +254,49 @@ export class GroupsService {
   }
 
   /** Users among `ids` that `viewerId` blocked or that blocked `viewerId`. */
-  private async blockedAmong(viewerId: string, ids: string[], exec: Executor = this.db): Promise<Set<string>> {
+  private blockedAmong(viewerId: string, ids: string[], exec: Executor = this.db): Set<string> {
     const b = schema.userBlocks;
-    const rows = await exec
-      .select({ blockerId: b.blockerId, blockedId: b.blockedId })
-      .from(b)
-      .where(or(and(eq(b.blockerId, viewerId), inArray(b.blockedId, ids)), and(inArray(b.blockerId, ids), eq(b.blockedId, viewerId))));
+    // Each id binds twice, so keep parts small enough for the 100-parameter cap.
+    const rows = inChunks(
+      ids,
+      (part) =>
+        exec
+          .select({ blockerId: b.blockerId, blockedId: b.blockedId })
+          .from(b)
+          .where(or(and(eq(b.blockerId, viewerId), inArray(b.blockedId, part)), and(inArray(b.blockerId, part), eq(b.blockedId, viewerId))))
+          .all(),
+      45,
+    );
     return new Set(rows.map((r) => (r.blockerId === viewerId ? r.blockedId : r.blockerId)));
+  }
+
+  /** Multi-row insert of members, chunked for the bound-parameter cap. */
+  private insertMembers(tx: Tx, rows: Array<typeof schema.groupMembers.$inferInsert>): void {
+    for (const part of chunk(rows, rowsPerInsert(5))) tx.insert(schema.groupMembers).values(part).run();
   }
 
   /**
    * All-or-nothing check of every target, in order: exists, is a contact, not blocked, accepts DMs.
    * The first failure aborts the request.
    */
-  private async validateTargets(requesterId: string, targetIds: string[], memberIds: string[], exec: Executor): Promise<void> {
+  private validateTargets(requesterId: string, targetIds: string[], memberIds: string[], exec: Executor): void {
     if (targetIds.length === 0) return;
 
-    const users = await exec.select({ id: schema.user.id }).from(schema.user).where(inArray(schema.user.id, targetIds));
+    const users = exec.select({ id: schema.user.id }).from(schema.user).where(inArray(schema.user.id, targetIds)).all();
     const existing = new Set(users.map((u) => u.id));
 
     // `direct_conversations` enforces `user_a < user_b`; a contact is any row between the pair.
     const dc = schema.directConversations;
-    const contactRows = await exec
+    const contactRows = exec
       .select({ userA: dc.userA, userB: dc.userB })
       .from(dc)
-      .where(or(and(eq(dc.userA, requesterId), inArray(dc.userB, targetIds)), and(eq(dc.userB, requesterId), inArray(dc.userA, targetIds))));
+      .where(or(and(eq(dc.userA, requesterId), inArray(dc.userB, targetIds)), and(eq(dc.userB, requesterId), inArray(dc.userA, targetIds))))
+      .all();
     const contacts = new Set(contactRows.map((r) => (r.userA === requesterId ? r.userB : r.userA)));
 
-    const blocked = await this.blockedAmong(requesterId, targetIds, exec);
+    const blocked = this.blockedAmong(requesterId, targetIds, exec);
 
-    const privacyRows = await exec.select().from(schema.userPrivacySettings).where(inArray(schema.userPrivacySettings.userId, targetIds));
+    const privacyRows = exec.select().from(schema.userPrivacySettings).where(inArray(schema.userPrivacySettings.userId, targetIds)).all();
     const dmDisabled = new Set(privacyRows.filter((p) => !p.allowDirectMessages).map((p) => p.userId));
 
     for (const id of targetIds) {
@@ -289,11 +310,12 @@ export class GroupsService {
     // against the other targets and against everyone already in the group, not only the requester.
     const everyone = [...new Set([...memberIds, ...targetIds])];
     const b = schema.userBlocks;
-    const [clash] = await exec
+    const [clash] = exec
       .select({ blockerId: b.blockerId })
       .from(b)
       .where(and(inArray(b.blockerId, everyone), inArray(b.blockedId, everyone), or(inArray(b.blockerId, targetIds), inArray(b.blockedId, targetIds))))
-      .limit(1);
+      .limit(1)
+      .all();
     if (clash) throw ApiErrors.blocked();
   }
 
@@ -302,9 +324,11 @@ export class GroupsService {
     const result = new Map<string, Identity>();
     if (userIds.length === 0) return result;
 
-    const users = await this.db.select().from(schema.user).where(inArray(schema.user.id, userIds));
-    const profiles = await this.db.select().from(schema.userProfiles).where(inArray(schema.userProfiles.userId, userIds));
-    const privacies = await this.db.select().from(schema.userPrivacySettings).where(inArray(schema.userPrivacySettings.userId, userIds));
+    const users = inChunks(userIds, (part) => this.db.select().from(schema.user).where(inArray(schema.user.id, part)).all());
+    const profiles = inChunks(userIds, (part) => this.db.select().from(schema.userProfiles).where(inArray(schema.userProfiles.userId, part)).all());
+    const privacies = inChunks(userIds, (part) =>
+      this.db.select().from(schema.userPrivacySettings).where(inArray(schema.userPrivacySettings.userId, part)).all(),
+    );
 
     const aliasMap = await this.aliases.ensureAliasesForProfiles(profiles);
     const profileById = new Map(profiles.map((p) => [p.userId, { ...p, alias: aliasMap.get(p.userId) ?? p.alias }]));
@@ -333,31 +357,45 @@ export class GroupsService {
   private async buildDtos(groupIds: string[], viewerId: string): Promise<GroupConversationDto[]> {
     if (groupIds.length === 0) return [];
 
-    const groups = await this.db.select().from(schema.groupConversations).where(inArray(schema.groupConversations.id, groupIds));
-    const memberRows = await this.db
-      .select()
-      .from(schema.groupMembers)
-      .where(inArray(schema.groupMembers.groupId, groupIds))
-      .orderBy(asc(schema.groupMembers.joinedAt), asc(schema.groupMembers.userId));
+    const groups = inChunks(groupIds, (part) => this.db.select().from(schema.groupConversations).where(inArray(schema.groupConversations.id, part)).all());
+    const memberRows = inChunks(groupIds, (part) =>
+      this.db
+        .select()
+        .from(schema.groupMembers)
+        .where(inArray(schema.groupMembers.groupId, part))
+        .orderBy(asc(schema.groupMembers.joinedAt), asc(schema.groupMembers.userId))
+        .all(),
+    );
 
-    const lastRows = await this.db
-      .selectDistinctOn([schema.groupMessages.groupId])
-      .from(schema.groupMessages)
-      .where(inArray(schema.groupMessages.groupId, groupIds))
-      .orderBy(schema.groupMessages.groupId, desc(schema.groupMessages.createdAt));
+    // Latest message per group: rank in SQL, then load just the winners.
+    const latestIds = inChunks(groupIds, (part) => {
+      const ranked = this.db
+        .select({
+          id: schema.groupMessages.id,
+          rn: sql<number>`row_number() over (partition by ${schema.groupMessages.groupId} order by ${schema.groupMessages.createdAt} desc, ${schema.groupMessages.id} desc)`.as("rn"),
+        })
+        .from(schema.groupMessages)
+        .where(inArray(schema.groupMessages.groupId, part))
+        .as("ranked");
+      return this.db.select({ id: ranked.id }).from(ranked).where(eq(ranked.rn, 1)).all();
+    }).map((r) => r.id);
+    const lastRows = inChunks(latestIds, (part) => this.db.select().from(schema.groupMessages).where(inArray(schema.groupMessages.id, part)).all());
 
-    const unreadRows = await this.db
-      .select({ groupId: schema.groupMessages.groupId, count: count() })
-      .from(schema.groupMessages)
-      .innerJoin(schema.groupMembers, and(eq(schema.groupMembers.groupId, schema.groupMessages.groupId), eq(schema.groupMembers.userId, viewerId)))
-      .where(
-        and(
-          inArray(schema.groupMessages.groupId, groupIds),
-          ne(schema.groupMessages.senderId, viewerId),
-          gt(schema.groupMessages.createdAt, sql`coalesce(${schema.groupMembers.lastReadAt}, ${schema.groupMembers.joinedAt})`),
-        ),
-      )
-      .groupBy(schema.groupMessages.groupId);
+    const unreadRows = inChunks(groupIds, (part) =>
+      this.db
+        .select({ groupId: schema.groupMessages.groupId, count: count() })
+        .from(schema.groupMessages)
+        .innerJoin(schema.groupMembers, and(eq(schema.groupMembers.groupId, schema.groupMessages.groupId), eq(schema.groupMembers.userId, viewerId)))
+        .where(
+          and(
+            inArray(schema.groupMessages.groupId, part),
+            ne(schema.groupMessages.senderId, viewerId),
+            gt(schema.groupMessages.createdAt, sql`coalesce(${schema.groupMembers.lastReadAt}, ${schema.groupMembers.joinedAt})`),
+          ),
+        )
+        .groupBy(schema.groupMessages.groupId)
+        .all(),
+    );
 
     const identityIds = [...new Set([...memberRows.map((m) => m.userId), ...lastRows.map((m) => m.senderId)])];
     const identities = await this.identities(identityIds);

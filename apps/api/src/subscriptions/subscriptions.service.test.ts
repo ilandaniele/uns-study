@@ -3,7 +3,7 @@ import type { Db } from "@sala/database";
 import { schema } from "@sala/database";
 import { eq } from "drizzle-orm";
 import { freshDb, insertUsers } from "../test-utils.js";
-import type { RequestUser } from "../auth/request-user.js";
+import type { RequestUser } from "../http/context.js";
 import { env } from "../env.js";
 import { MpHttpError, type MpPreapproval } from "./mercadopago.client.js";
 import { SubscriptionsService, type MpClientLike } from "./subscriptions.service.js";
@@ -35,7 +35,7 @@ describe("SubscriptionsService", () => {
   const user: RequestUser = { id: "u1", name: "u1", email: "u1@example.test", image: null };
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     await insertUsers(db, ["u1"]);
     client = fakeClient();
     svc = new SubscriptionsService(db, client);

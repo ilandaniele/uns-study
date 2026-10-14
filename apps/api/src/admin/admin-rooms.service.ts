@@ -1,9 +1,6 @@
-import { Inject, Injectable } from "@nestjs/common";
-import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { and, count, desc, eq, gt, gte, sql } from "drizzle-orm";
-import { schema, type Db } from "@sala/database";
+import { and, count, desc, eq, getTableColumns, gt, gte, sql } from "drizzle-orm";
+import { chunk, rowsPerInsert, schema, type Db } from "@sala/database";
 import type { GeofenceTestResultDto, LocationInput, RoomDailyStatDto, RoomGeofenceDto, RoomStatsDto } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
 import { env } from "../env.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
@@ -13,9 +10,17 @@ import { RoomCache } from "../common/cache/room-cache.service.js";
 
 const HOURS_24_MS = 24 * 60 * 60 * 1000;
 const DAY_MS = HOURS_24_MS;
+const HOUR_MS = 60 * 60 * 1000;
 const BA_TZ = "America/Argentina/Buenos_Aires";
 /** Far above any user's reputation weight, so an admin mark wins the weighted-conflict rule against user FREE observations. */
 const ADMIN_OVERRIDE_WEIGHT = 1000;
+
+/** `en-CA` formats as `YYYY-MM-DD`. */
+const baDayFormat = new Intl.DateTimeFormat("en-CA", { timeZone: BA_TZ, year: "numeric", month: "2-digit", day: "2-digit" });
+const baDay = (ms: number): string => baDayFormat.format(new Date(ms));
+
+/** Upper bound of bound parameters per `seat_observations` row, for chunking the bulk insert. */
+const OBSERVATION_COLUMN_COUNT = Object.keys(getTableColumns(schema.seatObservations)).length;
 
 export interface AdminOccupantDto {
   seatId: string;
@@ -26,15 +31,14 @@ export interface AdminOccupantDto {
   email: string | null;
 }
 
-@Injectable()
 export class AdminRoomsService {
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(RoomsService) private readonly rooms: RoomsService,
-    @Inject(RoomStateService) private readonly roomState: RoomStateService,
-    @Inject(PresenceService) private readonly presence: PresenceService,
-    @Inject(RolesService) private readonly roles: RolesService,
-    @Inject(RoomCache) private readonly roomCache: RoomCache = new RoomCache(),
+    private readonly db: Db,
+    private readonly rooms: RoomsService,
+    private readonly roomState: RoomStateService,
+    private readonly presence: PresenceService,
+    private readonly roles: RolesService,
+    private readonly roomCache: RoomCache = new RoomCache(),
   ) {}
 
   /** Room map plus occupants with real names (no privacy filtering); emails only for ADMIN callers. */
@@ -81,7 +85,7 @@ export class AdminRoomsService {
     const [qr30d] = await this.db
       .select({
         total: count(),
-        verified: sql<number>`count(*) filter (where ${schema.seatObservations.qrVerified})`,
+        verified: sql<number>`count(*) filter (where ${schema.seatObservations.qrVerified})`.mapWith(Number),
       })
       .from(schema.seatObservations)
       .where(
@@ -122,8 +126,10 @@ export class AdminRoomsService {
   }
 
   /**
-   * Active / returning users over 7 and 30 days. One query: distinct (user, Buenos Aires day) pairs from
-   * check-ins and observations in the last 30 days; windows are folded in memory (pairs are bounded by users x 30).
+   * Active / returning users over 7 and 30 days. Check-ins and observations in the last 30 days are grouped
+   * per (user, UTC hour); the Buenos Aires day of each bucket is computed in JS (the zone has whole-hour
+   * offsets, so an hour never straddles two local days) and the windows are folded in memory. Buckets are
+   * bounded by users x 30 x 24.
    */
   private async usageMetrics(
     roomId: string,
@@ -131,33 +137,31 @@ export class AdminRoomsService {
   ): Promise<Pick<RoomStatsDto, "activeUsers7d" | "activeUsers30d" | "returningUsers7d" | "returningUsers30d">> {
     const since30 = new Date(now.getTime() - 30 * DAY_MS);
     const since7 = new Date(now.getTime() - 7 * DAY_MS);
-    const localDay = (col: AnyPgColumn) => sql<string>`(${col} at time zone ${sql.raw(`'${BA_TZ}'`)})::date::text`;
 
-    const rows = await this.db
-      .select({ userId: schema.checkIns.userId, day: localDay(schema.checkIns.createdAt), at: sql<Date>`max(${schema.checkIns.createdAt})` })
+    const checkInRows = await this.db
+      .select({ userId: schema.checkIns.userId, at: sql<number>`max(${schema.checkIns.createdAt})`.mapWith(Number) })
       .from(schema.checkIns)
       .where(and(eq(schema.checkIns.roomId, roomId), gte(schema.checkIns.createdAt, since30)))
-      .groupBy(schema.checkIns.userId, localDay(schema.checkIns.createdAt))
-      .union(
-        this.db
-          .select({ userId: schema.seatObservations.userId, day: localDay(schema.seatObservations.createdAt), at: sql<Date>`max(${schema.seatObservations.createdAt})` })
-          .from(schema.seatObservations)
-          .where(
-            and(
-              eq(schema.seatObservations.roomId, roomId),
-              eq(schema.seatObservations.adminOverride, false),
-              gte(schema.seatObservations.createdAt, since30),
-            ),
-          )
-          .groupBy(schema.seatObservations.userId, localDay(schema.seatObservations.createdAt)),
-      );
+      .groupBy(schema.checkIns.userId, sql`${schema.checkIns.createdAt} / ${HOUR_MS}`);
+    const observationRows = await this.db
+      .select({ userId: schema.seatObservations.userId, at: sql<number>`max(${schema.seatObservations.createdAt})`.mapWith(Number) })
+      .from(schema.seatObservations)
+      .where(
+        and(
+          eq(schema.seatObservations.roomId, roomId),
+          eq(schema.seatObservations.adminOverride, false),
+          gte(schema.seatObservations.createdAt, since30),
+        ),
+      )
+      .groupBy(schema.seatObservations.userId, sql`${schema.seatObservations.createdAt} / ${HOUR_MS}`);
+    const rows = [...checkInRows, ...observationRows];
 
     const fold = (from: Date) => {
       const daysByUser = new Map<string, Set<string>>();
       for (const r of rows) {
-        if (new Date(r.at).getTime() < from.getTime()) continue;
+        if (r.at < from.getTime()) continue;
         const set = daysByUser.get(r.userId) ?? new Set<string>();
-        set.add(r.day);
+        set.add(baDay(r.at));
         daysByUser.set(r.userId, set);
       }
       return { active: daysByUser.size, returning: [...daysByUser.values()].filter((d) => d.size >= 2).length };
@@ -204,19 +208,22 @@ export class AdminRoomsService {
     const room = await this.rooms.findRoomRow(idOrSlug);
     const old = { latitude: room.latitude, longitude: room.longitude, radiusM: room.geofenceRadiusM };
 
-    await this.db
-      .update(schema.rooms)
-      .set({ latitude: next.latitude, longitude: next.longitude, geofenceRadiusM: next.radiusM, updatedAt: new Date() })
-      .where(eq(schema.rooms.id, room.id));
+    this.db.transaction((tx) => {
+      tx.update(schema.rooms)
+        .set({ latitude: next.latitude, longitude: next.longitude, geofenceRadiusM: next.radiusM, updatedAt: new Date() })
+        .where(eq(schema.rooms.id, room.id))
+        .run();
+      tx.insert(schema.moderationActions)
+        .values({
+          actorId,
+          targetUserId: null,
+          action: "ROOM_GEOFENCE_UPDATED",
+          metadata: { roomId: room.id, old, next },
+        })
+        .run();
+    });
     // The geofence is cached for presence checks — drop it so the new one applies immediately.
     this.roomCache.invalidate(room.id);
-
-    await this.db.insert(schema.moderationActions).values({
-      actorId,
-      targetUserId: null,
-      action: "ROOM_GEOFENCE_UPDATED",
-      metadata: { roomId: room.id, old, next },
-    });
 
     return { latitude: next.latitude, longitude: next.longitude, radiusM: next.radiusM, maxAccuracyM: env.presenceMaxAccuracyM };
   }
@@ -235,40 +242,46 @@ export class AdminRoomsService {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + minutes * 60_000);
 
-    // Read before opening the transaction (a query outside it would queue behind it on a single connection).
-    const [live, checkedIn] = await Promise.all([
-      this.roomState.getLiveSeatStates(room.id, now),
-      this.db
-        .select({ seatId: schema.checkIns.seatId })
-        .from(schema.checkIns)
-        .where(and(eq(schema.checkIns.roomId, room.id), eq(schema.checkIns.status, "ACTIVE"))),
-    ]);
-    const seated = new Set(checkedIn.map((c) => c.seatId));
-    const targets = [...live.values()].filter((s) => s.status !== "OCCUPIED" && !seated.has(s.seatId)).map((s) => s.seatId);
+    // The derived seat states are read first (async); the active check-ins are re-read inside the transaction.
+    const live = await this.roomState.getLiveSeatStates(room.id, now);
 
-    const { count: marked, changes } = await this.db.transaction(async (tx) => {
-      if (targets.length > 0) {
-        await tx.insert(schema.seatObservations).values(
-          targets.map((seatId) => ({
-            userId: actorId,
-            roomId: room.id,
-            seatId,
-            observedStatus: "OCCUPIED" as const,
-            presenceVerified: false,
-            adminOverride: true,
-            confidenceWeight: ADMIN_OVERRIDE_WEIGHT,
-            observedAt: now,
-            expiresAt,
-          })),
-        );
+    const { count: marked, changes } = this.db.transaction((tx) => {
+      const seated = new Set(
+        tx
+          .select({ seatId: schema.checkIns.seatId })
+          .from(schema.checkIns)
+          .where(and(eq(schema.checkIns.roomId, room.id), eq(schema.checkIns.status, "ACTIVE")))
+          .all()
+          .map((c) => c.seatId),
+      );
+      const targets = [...live.values()].filter((s) => s.status !== "OCCUPIED" && !seated.has(s.seatId)).map((s) => s.seatId);
+
+      for (const part of chunk(targets, rowsPerInsert(OBSERVATION_COLUMN_COUNT))) {
+        tx.insert(schema.seatObservations)
+          .values(
+            part.map((seatId) => ({
+              userId: actorId,
+              roomId: room.id,
+              seatId,
+              observedStatus: "OCCUPIED" as const,
+              presenceVerified: false,
+              adminOverride: true,
+              confidenceWeight: ADMIN_OVERRIDE_WEIGHT,
+              observedAt: now,
+              expiresAt,
+            })),
+          )
+          .run();
       }
-      const changes = await this.roomState.recomputeSeats(targets, { roomId: room.id, now, eventType: "ADMIN_MARK_ALL_OCCUPIED", actingUserId: actorId, tx });
-      await tx.insert(schema.moderationActions).values({
-        actorId,
-        targetUserId: null,
-        action: "ADMIN_MARK_ALL_OCCUPIED",
-        metadata: { roomId: room.id, count: targets.length, minutes },
-      });
+      const changes = this.roomState.recomputeSeats(targets, { roomId: room.id, now, eventType: "ADMIN_MARK_ALL_OCCUPIED", actingUserId: actorId, tx });
+      tx.insert(schema.moderationActions)
+        .values({
+          actorId,
+          targetUserId: null,
+          action: "ADMIN_MARK_ALL_OCCUPIED",
+          metadata: { roomId: room.id, count: targets.length, minutes },
+        })
+        .run();
       return { count: targets.length, changes };
     });
 
@@ -280,8 +293,8 @@ export class AdminRoomsService {
     const room = await this.rooms.findRoomRow(idOrSlug);
     const now = new Date();
 
-    const result = await this.db.transaction(async (tx) => {
-      const expired = await tx
+    const result = this.db.transaction((tx) => {
+      const expired = tx
         .update(schema.seatObservations)
         .set({ expiresAt: now, updatedAt: now })
         .where(
@@ -291,21 +304,24 @@ export class AdminRoomsService {
             gt(schema.seatObservations.expiresAt, now),
           ),
         )
-        .returning({ seatId: schema.seatObservations.seatId });
+        .returning({ seatId: schema.seatObservations.seatId })
+        .all();
       const seatIds = [...new Set(expired.map((r) => r.seatId))];
-      const changes = await this.roomState.recomputeSeats(seatIds, {
+      const changes = this.roomState.recomputeSeats(seatIds, {
         roomId: room.id,
         now,
         eventType: "ADMIN_MARK_ALL_OCCUPIED_UNDO",
         actingUserId: actorId,
         tx,
       });
-      await tx.insert(schema.moderationActions).values({
-        actorId,
-        targetUserId: null,
-        action: "ADMIN_MARK_ALL_OCCUPIED_UNDO",
-        metadata: { roomId: room.id, count: seatIds.length },
-      });
+      tx.insert(schema.moderationActions)
+        .values({
+          actorId,
+          targetUserId: null,
+          action: "ADMIN_MARK_ALL_OCCUPIED_UNDO",
+          metadata: { roomId: room.id, count: seatIds.length },
+        })
+        .run();
       return { count: seatIds.length, changes };
     });
 

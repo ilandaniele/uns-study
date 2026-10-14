@@ -1,14 +1,10 @@
-import { Inject, Injectable } from "@nestjs/common";
 import { eq } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { SubscriptionCheckoutDto, SubscriptionDto, SubscriptionStatus } from "@sala/contracts";
-import type { RequestUser } from "../auth/request-user.js";
+import type { RequestUser } from "../http/context.js";
 import { ApiErrors } from "../common/api-error.js";
-import { DB } from "../database/database.module.js";
 import { env } from "../env.js";
 import { MpHttpError, type MercadoPagoClient, type MpPreapproval } from "./mercadopago.client.js";
-
-export const MP_CLIENT = Symbol("MP_CLIENT");
 
 /** The subset of `MercadoPagoClient` the service uses (lets tests pass a fake). */
 export type MpClientLike = Pick<MercadoPagoClient, "createPreapproval" | "getPreapproval" | "getAuthorizedPayment" | "cancelPreapproval">;
@@ -31,12 +27,26 @@ function hasExpectedTerms(pre: MpPreapproval): boolean {
   );
 }
 
+type Decision = { action: "skip" } | { action: "cancel-new" } | { action: "apply"; cancelOld?: string };
+
+/** What an incoming preapproval (`id`, `status`) should do given the stored row. */
+function decide(stored: typeof schema.userSubscriptions.$inferSelect | undefined, id: string, status: string): Decision {
+  if (!stored || stored.providerSubscriptionId === id) return { action: "apply" };
+  // A stale notification for an older, abandoned preapproval must not revoke an active one.
+  if (stored.status === "authorized" && status !== "authorized") return { action: "skip" };
+  if (status === "authorized") {
+    // Keep the live one; the newcomer must not bill too.
+    if (stored.status === "authorized") return { action: "cancel-new" };
+    if (stored.status !== "cancelled") return { action: "apply", cancelOld: stored.providerSubscriptionId };
+  }
+  return { action: "apply" };
+}
+
 /** Ad-free subscription backed by a Mercado Pago preapproval. MP is canonical; we mirror its state. */
-@Injectable()
 export class SubscriptionsService {
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(MP_CLIENT) private readonly mp: MpClientLike | null,
+    private readonly db: Db,
+    private readonly mp: MpClientLike | null,
   ) {}
 
   async getForUser(userId: string): Promise<SubscriptionDto> {
@@ -121,28 +131,34 @@ export class SubscriptionsService {
 
     const status = pre.status === "authorized" && !hasExpectedTerms(pre) ? "pending" : pre.status;
 
-    await this.db.transaction(async (tx) => {
-      const [owner] = await tx.select({ id: schema.user.id }).from(schema.user).where(eq(schema.user.id, userId));
-      if (!owner) return;
-      const [stored] = await tx.select().from(schema.userSubscriptions).where(eq(schema.userSubscriptions.userId, userId));
-      // A stale notification for an older, abandoned preapproval must not revoke an active one.
-      if (stored && stored.providerSubscriptionId !== pre.id && stored.status === "authorized" && status !== "authorized") return;
-      if (stored && stored.providerSubscriptionId !== pre.id && status === "authorized") {
-        if (stored.status === "authorized") {
-          // Keep the live one; the newcomer must not bill too.
-          await this.cancelQuietly(pre.id);
-          return;
-        }
-        if (stored.status !== "cancelled") await this.cancelQuietly(stored.providerSubscriptionId);
-      }
+    // Decide against the stored row first, run the Mercado Pago cancels (external I/O) outside any
+    // transaction, then re-read and write in one sync transaction.
+    const [owner] = await this.db.select({ id: schema.user.id }).from(schema.user).where(eq(schema.user.id, userId));
+    if (!owner) return;
+    const [seen] = await this.db.select().from(schema.userSubscriptions).where(eq(schema.userSubscriptions.userId, userId));
+    const first = decide(seen, pre.id, status);
+    if (first.action === "skip") return;
+    if (first.action === "cancel-new") {
+      // Keep the live one; the newcomer must not bill too.
+      await this.cancelQuietly(pre.id);
+      return;
+    }
+    if (first.cancelOld) await this.cancelQuietly(first.cancelOld);
 
-      await tx
-        .insert(schema.userSubscriptions)
+    this.db.transaction((tx) => {
+      const [stillOwner] = tx.select({ id: schema.user.id }).from(schema.user).where(eq(schema.user.id, userId)).all();
+      if (!stillOwner) return;
+      const [stored] = tx.select().from(schema.userSubscriptions).where(eq(schema.userSubscriptions.userId, userId)).all();
+      // The row changed while the cancel was in flight: the webhook retry re-evaluates it.
+      if (decide(stored, pre.id, status).action !== "apply") return;
+
+      tx.insert(schema.userSubscriptions)
         .values({ userId, providerSubscriptionId: pre.id, status, currentPeriodEnd })
         .onConflictDoUpdate({
           target: schema.userSubscriptions.userId,
           set: { providerSubscriptionId: pre.id, status, currentPeriodEnd, updatedAt: new Date() },
-        });
+        })
+        .run();
     });
   }
 

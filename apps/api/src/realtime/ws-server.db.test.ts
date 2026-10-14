@@ -5,7 +5,7 @@ import { dbSessionLookup } from "./ws-server.js";
 
 describe("dbSessionLookup", () => {
   it("only counts sessions that exist, belong to the user and have not expired", async () => {
-    const db = await freshDb();
+    const db = freshDb();
     await insertUsers(db, ["u1", "u2", "u3"]);
     const hour = 3600_000;
     await db.insert(schema.session).values([

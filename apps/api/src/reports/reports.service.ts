@@ -1,4 +1,3 @@
-import { Inject, Injectable } from "@nestjs/common";
 import { and, count, eq, or } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import {
@@ -8,7 +7,6 @@ import {
   type ReportReason,
   type UploadInstructionDto,
 } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { RateLimitService } from "../security/rate-limit.service.js";
 import { RestrictionService } from "../users/restriction.service.js";
@@ -31,14 +29,13 @@ export interface CreateReportInput {
   contextMessageId?: string;
 }
 
-@Injectable()
 export class ReportsService {
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(RateLimitService) private readonly rateLimit: RateLimitService,
-    @Inject(RestrictionService) private readonly restrictions: RestrictionService,
-    @Inject(RolesService) private readonly roles: RolesService,
-    @Inject(StorageService) private readonly storage: StorageService,
+    private readonly db: Db,
+    private readonly rateLimit: RateLimitService,
+    private readonly restrictions: RestrictionService,
+    private readonly roles: RolesService,
+    private readonly storage: StorageService,
   ) {}
 
   async createReport(rawInput: CreateReportInput): Promise<ReportCreatedDto> {
@@ -90,30 +87,38 @@ export class ReportsService {
 
     if (!this.storage.isEnabled()) throw ApiErrors.storageUnavailable();
 
-    const [{ value }] = await this.db
-      .select({ value: count() })
-      .from(schema.userReportAttachments)
-      .where(eq(schema.userReportAttachments.reportId, reportId));
-    if (Number(value) >= MAX_ATTACHMENTS_PER_REPORT) {
+    if ((await this.countAttachments(reportId)) >= MAX_ATTACHMENTS_PER_REPORT) {
       throw ApiErrors.validation("Máximo 3 archivos adjuntos por reporte.");
     }
     if (sizeBytes > REPORT_EVIDENCE_MAX_BYTES) {
       throw ApiErrors.validation("El archivo supera el tamaño máximo permitido.");
     }
 
+    // Signing happens before the transaction; the cap is re-checked inside it so concurrent requests cannot overshoot.
     const presigned = await this.storage.presignPut(contentType, sizeBytes);
 
-    const [attachment] = await this.db
-      .insert(schema.userReportAttachments)
-      .values({
-        reportId,
-        objectKey: presigned.objectKey,
-        contentType,
-        sizeBytes,
-        uploadedBy: userId,
-        status: "PENDING",
-      })
-      .returning();
+    const attachment = this.db.transaction((tx) => {
+      const row = tx
+        .select({ value: count() })
+        .from(schema.userReportAttachments)
+        .where(eq(schema.userReportAttachments.reportId, reportId))
+        .get();
+      if (Number(row?.value ?? 0) >= MAX_ATTACHMENTS_PER_REPORT) {
+        throw ApiErrors.validation("Máximo 3 archivos adjuntos por reporte.");
+      }
+      return tx
+        .insert(schema.userReportAttachments)
+        .values({
+          reportId,
+          objectKey: presigned.objectKey,
+          contentType,
+          sizeBytes,
+          uploadedBy: userId,
+          status: "PENDING",
+        })
+        .returning()
+        .get();
+    });
     if (!attachment) throw new Error("Failed to create attachment");
 
     return {
@@ -121,7 +126,7 @@ export class ReportsService {
       uploadUrl: presigned.uploadUrl,
       method: "PUT",
       headers: presigned.headers,
-      expiresAt: presigned.expiresAt,
+      expiresAt: presigned.expiresAt.toISOString(),
     };
   }
 
@@ -139,11 +144,11 @@ export class ReportsService {
     if (attachment.status === "UPLOADED") return;
 
     const head = await this.storage.head(attachment.objectKey);
-    if (!head || head.contentLength === null || head.contentLength <= 0) {
+    if (!head || head.size <= 0) {
       await this.rejectAttachment(attachment.id, attachment.objectKey);
       throw ApiErrors.validation("El archivo no se subió correctamente.");
     }
-    if (head.contentLength > REPORT_EVIDENCE_MAX_BYTES) {
+    if (head.size > REPORT_EVIDENCE_MAX_BYTES) {
       await this.rejectAttachment(attachment.id, attachment.objectKey);
       throw ApiErrors.validation("El archivo supera el tamaño máximo permitido.");
     }
@@ -153,6 +158,14 @@ export class ReportsService {
     }
 
     await this.db.update(schema.userReportAttachments).set({ status: "UPLOADED" }).where(eq(schema.userReportAttachments.id, attachmentId));
+  }
+
+  private async countAttachments(reportId: string): Promise<number> {
+    const [row] = await this.db
+      .select({ value: count() })
+      .from(schema.userReportAttachments)
+      .where(eq(schema.userReportAttachments.reportId, reportId));
+    return Number(row?.value ?? 0);
   }
 
   /** A HEAD mismatch means the object doesn't actually match what was declared — delete both the

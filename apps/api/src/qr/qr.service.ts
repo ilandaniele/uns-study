@@ -1,9 +1,7 @@
 import { randomBytes } from "node:crypto";
-import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, sql } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { QrResolveDto } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 
 export interface RoomQrCodeDto {
@@ -17,9 +15,8 @@ export interface RoomQrCodeDto {
 }
 
 /** Admin-managed QR codes (`room_qr_codes`) that resolve to a room, optionally scoped to a table. */
-@Injectable()
 export class QrService {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(private readonly db: Db) {}
 
   async create(roomId: string, tableCode: string | null): Promise<RoomQrCodeDto> {
     let tableId: string | null = null;

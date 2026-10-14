@@ -11,8 +11,8 @@ describe("renderEmail", () => {
   });
 
   it("linkifies urls and keeps trailing punctuation outside the anchor", () => {
-    const { html } = renderEmail("Mirá https://sala-de-estudio.fly.dev.", UNSUB);
-    expect(html).toContain('<a href="https://sala-de-estudio.fly.dev">https://sala-de-estudio.fly.dev</a>.');
+    const { html } = renderEmail("Mirá https://saladeestudio.com.ar.", UNSUB);
+    expect(html).toContain('<a href="https://saladeestudio.com.ar">https://saladeestudio.com.ar</a>.');
   });
 
   it("converts newlines to <br>", () => {

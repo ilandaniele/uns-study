@@ -2,35 +2,37 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@sala/database";
 import { schema } from "@sala/database";
 import { eq } from "drizzle-orm";
+import { createECDH } from "node:crypto";
+import { env } from "../env.js";
 import { freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
+import { ManualScheduler } from "../platform/scheduler.js";
 import { PushService } from "./push.service.js";
 import { NotificationService } from "./notification.service.js";
 
 const { sendNotification } = vi.hoisted(() => ({
   sendNotification: vi.fn(async (_subscription: unknown, _payload?: string) => undefined),
 }));
-vi.mock("web-push", () => ({
-  default: {
-    setVapidDetails: vi.fn(),
-    sendNotification,
-  },
+// `buildPushHTTPRequest` (VAPID JWT + aes128gcm) is replaced by a stub that echoes the JSON payload
+// as the body; the stubbed `fetch` forwards each request to `sendNotification`.
+vi.mock("@pushforge/builder", () => ({
+  buildPushHTTPRequest: vi.fn(async (opts: { subscription: { endpoint: string }; message: { payload: unknown } }) => ({
+    endpoint: opts.subscription.endpoint,
+    headers: new Headers(),
+    body: JSON.stringify(opts.message.payload),
+  })),
 }));
-// `scheduleAdminPresent`'s delay is normally a random 2-5 minutes (`node:crypto`'s `randomInt`) —
-// pinned to a fixed default here so timer-advancing tests are deterministic; individual tests
+// `scheduleAdminPresent`'s delay is normally a random 2-5 minutes (`node:crypto`'s `randomInt`) -
+// pinned to a fixed default here so the scheduled due time is deterministic; individual tests
 // override it with `mockReturnValueOnce` where the exact delay matters.
 const { randomInt } = vi.hoisted(() => ({ randomInt: vi.fn(() => 3 * 60_000) }));
 vi.mock("node:crypto", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:crypto")>();
   return { ...actual, randomInt };
 });
-// `env.ts` reads `process.env.VAPID_*` once at module-evaluation time (before this file's
-// `beforeEach` ever runs), so setting the env vars there wouldn't reach it — override the frozen
-// values directly instead.
-vi.mock("../env.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../env.js")>();
-  return { env: { ...actual.env, vapidPublicKey: "test-public-key", vapidPrivateKey: "test-private-key" } };
-});
+
+const ecdh = createECDH("prime256v1");
+ecdh.generateKeys();
 
 function change(seatId: string, status: SeatStateChange["status"], previousStatus: SeatStateChange["previousStatus"]): SeatStateChange {
   return { seatId, status, confidence: 1, lastUpdatedAt: new Date(), verified: false, previousStatus };
@@ -39,6 +41,7 @@ function change(seatId: string, status: SeatStateChange["status"], previousStatu
 describe("NotificationService", () => {
   let db: Db;
   let svc: NotificationService;
+  let scheduler: ManualScheduler;
   let roomId: string;
   let seatIds: string[];
 
@@ -47,8 +50,25 @@ describe("NotificationService", () => {
     sendNotification.mockResolvedValue(undefined);
     randomInt.mockClear();
 
-    db = await freshDb();
-    svc = new NotificationService(db, new PushService(db), new RoomStateService(db));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init: { body: string }) => {
+        try {
+          await sendNotification({ endpoint: url }, init.body);
+          return new Response(null, { status: 201 });
+        } catch (err) {
+          const statusCode = (err as { statusCode?: number }).statusCode;
+          if (statusCode) return new Response(null, { status: statusCode });
+          throw err;
+        }
+      }),
+    );
+    env.vapidPublicKey = ecdh.getPublicKey().toString("base64url");
+    env.vapidPrivateKey = ecdh.getPrivateKey().toString("base64url");
+
+    db = freshDb();
+    scheduler = new ManualScheduler();
+    svc = new NotificationService(db, new PushService(db), new RoomStateService(db), scheduler);
     const room = await getRoom(db);
     roomId = room.id;
     seatIds = (await getSeats(db)).map((s) => s.id);
@@ -59,6 +79,12 @@ describe("NotificationService", () => {
         { userId: "subscriber", seatFreed: true },
         { userId: "checked-in-subscriber", seatFreed: true },
       ]);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    env.vapidPublicKey = "";
+    env.vapidPrivateKey = "";
   });
 
   async function addPushSubscription(userId: string, endpoint = `https://fcm.googleapis.com/fcm/send/${userId}`) {
@@ -165,7 +191,6 @@ describe("NotificationService", () => {
 
   describe("scheduleAdminPresent", () => {
     beforeEach(async () => {
-      vi.useFakeTimers();
       await db.update(schema.notificationPreferences).set({ adminPresent: true }).where(eq(schema.notificationPreferences.userId, "subscriber"));
     });
 
@@ -173,44 +198,49 @@ describe("NotificationService", () => {
       vi.useRealTimers();
     });
 
-    it("fires the banner + push only after the delay, and only if the admin is still checked in", async () => {
+    it("schedules a one-shot `admin-present:<adminUserId>` job 2-5 minutes out with the room payload", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-01-01T12:00:00Z"));
+
+      svc.scheduleAdminPresent(roomId, "admin1");
+
+      expect(scheduler.get("admin-present:admin1")).toEqual({
+        dueAt: new Date("2026-01-01T12:03:00Z"),
+        payload: { roomId, adminUserId: "admin1" },
+      });
+      expect(randomInt).toHaveBeenCalledWith(2 * 60_000, 5 * 60_000);
+    });
+
+    it("fires the banner + push through fireAdminPresent while the admin is still checked in", async () => {
       await addPushSubscription("subscriber");
       await addActiveCheckIn("admin1", seatIds[0]!);
       const emitBanner = vi.fn();
 
-      svc.scheduleAdminPresent(roomId, "admin1", emitBanner);
-      expect(emitBanner).not.toHaveBeenCalled();
-
-      await vi.advanceTimersByTimeAsync(5 * 60_000);
+      await svc.fireAdminPresent(roomId, "admin1", emitBanner);
 
       expect(emitBanner).toHaveBeenCalledTimes(1);
       expect(sendNotification).toHaveBeenCalledTimes(1);
     });
 
-    it("never fires if the admin already checked out before the timer runs", async () => {
+    it("never fires if the admin already checked out before the job runs", async () => {
       const emitBanner = vi.fn();
-      svc.scheduleAdminPresent(roomId, "admin1", emitBanner); // no active check-in inserted for admin1
-
-      await vi.advanceTimersByTimeAsync(5 * 60_000);
+      await svc.fireAdminPresent(roomId, "admin1", emitBanner); // no active check-in inserted for admin1
 
       expect(emitBanner).not.toHaveBeenCalled();
       expect(sendNotification).not.toHaveBeenCalled();
     });
 
-    it("a repeated fresh check-in by the same admin reschedules instead of stacking a second timer", async () => {
-      await addActiveCheckIn("admin1", seatIds[0]!);
-      const emitBanner = vi.fn();
+    it("a repeated fresh check-in by the same admin replaces the pending job instead of stacking a second one", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-01-01T12:00:00Z"));
       randomInt.mockReturnValueOnce(4 * 60_000).mockReturnValueOnce(2 * 60_000);
 
-      svc.scheduleAdminPresent(roomId, "admin1", emitBanner); // would fire at t=4min if left alone
-      await vi.advanceTimersByTimeAsync(3 * 60_000); // t=3min — before the first timer's mark
-      svc.scheduleAdminPresent(roomId, "admin1", emitBanner); // clears it, reschedules 2min from t=3min
+      svc.scheduleAdminPresent(roomId, "admin1"); // would fire at 12:04
+      vi.setSystemTime(new Date("2026-01-01T12:03:00Z"));
+      svc.scheduleAdminPresent(roomId, "admin1"); // replaces it: 12:05
 
-      await vi.advanceTimersByTimeAsync(1 * 60_000); // t=4min — first timer's original mark, now moot
-      expect(emitBanner).not.toHaveBeenCalled();
-
-      await vi.advanceTimersByTimeAsync(1 * 60_000); // t=5min — the rescheduled timer's mark
-      expect(emitBanner).toHaveBeenCalledTimes(1);
+      expect(scheduler.get("admin-present:admin1")?.dueAt).toEqual(new Date("2026-01-01T12:05:00Z"));
+      expect(scheduler.nextDueAt()).toEqual(new Date("2026-01-01T12:05:00Z"));
     });
   });
 

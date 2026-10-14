@@ -37,7 +37,7 @@ describe("ProfilesService", () => {
   let location: { latitude: number; longitude: number; accuracy: number; capturedAt: string };
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     ({ profiles, checkIns, study } = await build(db));
     const room = await getRoom(db);
     roomId = room.id;

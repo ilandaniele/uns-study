@@ -10,7 +10,7 @@ describe("BlocksService", () => {
   let svc: BlocksService;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     svc = new BlocksService(db, new AliasService(db));
     await insertUsers(db, ["u1", "u2", "u3"]);
   });

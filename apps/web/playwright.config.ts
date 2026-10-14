@@ -2,11 +2,12 @@ import { defineConfig, devices } from "@playwright/test";
 
 /**
  * E2E config for the first vertical slice (anonymous map -> auth -> presence -> check-in ->
- * realtime -> observations). Assumes the API (port 4000, `PRESENCE_DEV_BYPASS=true`, `E2E_TEST_HOOKS=true`) and the
- * web app (port 3000) are already running locally; `reuseExistingServer` avoids double-starting
- * them when they are (CI would start fresh instead).
+ * realtime -> observations). Starts the API Worker under `wrangler dev` (port 4000, state in `.wrangler/e2e`, wiped by
+ * global setup) and the web app under `next dev` (port 3000, same-origin rewrites to the API);
+ * `reuseExistingServer` skips either when it is already running.
  */
 export default defineConfig({
+  globalSetup: "./e2e/global-setup.ts",
   testDir: "./e2e",
   fullyParallel: false,
   workers: 1,
@@ -26,16 +27,16 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "pnpm --filter @sala/api dev",
+      command:
+        "pnpm --filter @sala/api exec wrangler dev --port 4000 --persist-to .wrangler/e2e --var E2E_TEST_HOOKS:1 --var PRESENCE_DEV_BYPASS:1 --var NODE_ENV:development",
       url: "http://localhost:4000/api/v1/rooms",
-      // E2E_TEST_HOOKS mounts the force-expiry endpoint; the API refuses it when NODE_ENV=production.
-      env: { E2E_TEST_HOOKS: "true", PRESENCE_DEV_BYPASS: "true" },
       reuseExistingServer: true,
       timeout: 120_000,
     },
     {
       command: "pnpm --filter @sala/web dev",
       url: "http://localhost:3000",
+      env: { API_PROXY_TARGET: "http://localhost:4000", NEXT_PUBLIC_SOCKET_URL: "ws://localhost:4000" },
       reuseExistingServer: true,
       timeout: 120_000,
     },

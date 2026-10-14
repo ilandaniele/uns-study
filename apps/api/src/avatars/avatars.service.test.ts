@@ -33,7 +33,7 @@ describe("AvatarsService", () => {
   let svc: AvatarsService;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     svc = new AvatarsService(db, new RestrictionService(db));
     await insertUsers(db, ["u1", "u2"]);
   });

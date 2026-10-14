@@ -11,7 +11,7 @@ describe("email recipients", () => {
   let db: Db;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
   });
 
   async function verify(...ids: string[]) {

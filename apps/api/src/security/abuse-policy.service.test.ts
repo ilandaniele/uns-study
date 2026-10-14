@@ -11,7 +11,7 @@ describe("AbusePolicyService", () => {
   let turnstile: TurnstileService;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     turnstile = new TurnstileService();
     turnstile.isEnabled = () => true; // simulate TURNSTILE_SECRET_KEY set, without a real secret
     await insertUsers(db, ["u1"]);

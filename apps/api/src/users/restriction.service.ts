@@ -1,7 +1,5 @@
-import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, gt, isNull, or } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
-import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 
 export type RestrictionType = "MUTE_CHAT" | "RESTRICT_OBSERVATIONS" | "SUSPENDED" | "BANNED";
@@ -13,9 +11,8 @@ export interface ActiveRestriction {
 }
 
 /** A restriction is active when it hasn't been lifted and (has no expiry, or hasn't expired yet). */
-@Injectable()
 export class RestrictionService {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(private readonly db: Db) {}
 
   async activeRestrictions(userId: string): Promise<ActiveRestriction[]> {
     const now = new Date();

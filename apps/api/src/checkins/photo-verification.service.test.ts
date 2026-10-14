@@ -46,7 +46,7 @@ describe("PhotoVerificationService", () => {
   let image: { mimeType: "image/jpeg"; base64: string };
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     checkIns = await buildCheckIns(db);
     const room = await getRoom(db);
     roomId = room.id;
@@ -197,6 +197,20 @@ describe("PhotoVerificationService", () => {
     expect(outcomes.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     const rejected = outcomes.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
     expect(rejected?.reason).toMatchObject({ code: "PHOTO_REUSED" });
+  });
+
+  it("re-reads the check-in after the verifier call: one that ended meanwhile is not verified", async () => {
+    const { checkIn } = await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    const endsDuringCall = new StubVerifier(async (req) => {
+      await checkIns.checkOut("u1");
+      return { seatCode: req.claimedSeatCode, confidence: 0.95, modelVersion: "test-v1" };
+    });
+
+    await expect(svc(endsDuringCall).verify({ userId: "u1", checkInId: checkIn.id, image, location })).rejects.toMatchObject({
+      code: "NO_ACTIVE_CHECKIN",
+    });
+    const [row] = await db.select().from(schema.checkIns).where(eq(schema.checkIns.id, checkIn.id));
+    expect(row?.verifiedAt).toBeNull();
   });
 
   it("rejects a photo submitted for a check-in that doesn't belong to the caller", async () => {

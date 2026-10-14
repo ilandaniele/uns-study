@@ -1,61 +1,90 @@
+import { Hono } from "hono";
 import { beforeEach, describe, expect, it } from "vitest";
-import type { ExecutionContext } from "@nestjs/common";
 import type { Db } from "@sala/database";
 import { schema } from "@sala/database";
+import { toErrorResponse } from "../common/api-error.js";
+import { requireAdmin, requireAdminOnly } from "../http/guards.js";
+import type { AppEnv } from "../http/context.js";
+import type { Services } from "../services.js";
 import { freshDb, insertUsers } from "../test-utils.js";
 import { RolesService } from "../users/roles.service.js";
 import { RestrictionService } from "../users/restriction.service.js";
-import { AdminGuard, AdminOnlyGuard } from "../users/admin.guard.js";
 
-function contextFor(headers: Record<string, string>): ExecutionContext {
-  const req = { headers, user: undefined };
-  return {
-    switchToHttp: () => ({ getRequest: () => req }),
-  } as unknown as ExecutionContext;
+type Session = { user: { id: string; name: string; email: string; image: string | null } } | null;
+
+const sessionFor = (id: string): Session => ({ user: { id, name: id, email: `${id}@example.test`, image: null } });
+
+/** The admin routers use exactly these guards; here they run against the real roles/restriction services. */
+function buildApp(db: Db, session: Session) {
+  const services = { roles: new RolesService(db), restriction: new RestrictionService(db) } as unknown as Services;
+  const app = new Hono<AppEnv>();
+  app.use("*", async (c, next) => {
+    c.set("services", services);
+    c.set("auth", { api: { getSession: async () => session } } as never);
+    c.set("ip", "127.0.0.1");
+    c.set("user", null);
+    await next();
+  });
+  app.onError((err, c) => {
+    const r = toErrorResponse(err, { method: c.req.method, path: c.req.path });
+    return c.json(r.body, r.status as never);
+  });
+  app.get("/staff", requireAdmin, (c) => c.json({ ok: true }));
+  app.get("/admin-only", requireAdminOnly, (c) => c.json({ ok: true }));
+  return app;
 }
 
-function fakeAuth(session: { user: { id: string; name: string; email: string; image: string | null } } | null) {
-  return { api: { getSession: async () => session } } as never;
+async function code(res: Response): Promise<string | undefined> {
+  return ((await res.json()) as { error?: { code: string } }).error?.code;
 }
 
-describe("AdminGuard", () => {
+describe("admin guards", () => {
   let db: Db;
-  let roles: RolesService;
-  let restrictions: RestrictionService;
 
   beforeEach(async () => {
-    db = await freshDb();
-    roles = new RolesService(db);
-    restrictions = new RestrictionService(db);
-    await insertUsers(db, ["plain", "admin"]);
-    await db.insert(schema.userRoles).values({ userId: "admin", role: "ADMIN" });
+    db = freshDb();
+    await insertUsers(db, ["plain", "admin", "mod"]);
+    await db.insert(schema.userRoles).values([
+      { userId: "admin", role: "ADMIN" },
+      { userId: "mod", role: "MODERATOR" },
+    ]);
   });
 
   it("rejects an unauthenticated request", async () => {
-    const guard = new AdminGuard(fakeAuth(null), roles, restrictions);
-    await expect(guard.canActivate(contextFor({}))).rejects.toMatchObject({ code: "UNAUTHENTICATED" });
+    const res = await buildApp(db, null).request("/staff");
+    expect(res.status).toBe(401);
+    expect(await code(res)).toBe("UNAUTHENTICATED");
   });
 
   it("rejects an authenticated non-admin user with 403 FORBIDDEN", async () => {
-    const guard = new AdminGuard(fakeAuth({ user: { id: "plain", name: "plain", email: "plain@example.test", image: null } }), roles, restrictions);
-    await expect(guard.canActivate(contextFor({}))).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
+    const res = await buildApp(db, sessionFor("plain")).request("/staff");
+    expect(res.status).toBe(403);
+    expect(await code(res)).toBe("FORBIDDEN");
   });
 
   it("rejects a banned admin with RESTRICTED", async () => {
     await db.insert(schema.userRestrictions).values({ userId: "admin", type: "BANNED", reason: "x" });
-    const session = { user: { id: "admin", name: "admin", email: "admin@example.test", image: null } };
-    await expect(new AdminGuard(fakeAuth(session), roles, restrictions).canActivate(contextFor({}))).rejects.toMatchObject({ code: "RESTRICTED" });
-    await expect(new AdminOnlyGuard(fakeAuth(session), roles, restrictions).canActivate(contextFor({}))).rejects.toMatchObject({ code: "RESTRICTED" });
+    const app = buildApp(db, sessionFor("admin"));
+    expect(await code(await app.request("/staff"))).toBe("RESTRICTED");
+    expect(await code(await app.request("/admin-only"))).toBe("RESTRICTED");
   });
 
   it("rejects a suspended admin with RESTRICTED", async () => {
     await db.insert(schema.userRestrictions).values({ userId: "admin", type: "SUSPENDED", reason: "x" });
-    const session = { user: { id: "admin", name: "admin", email: "admin@example.test", image: null } };
-    await expect(new AdminGuard(fakeAuth(session), roles, restrictions).canActivate(contextFor({}))).rejects.toMatchObject({ code: "RESTRICTED" });
+    expect(await code(await buildApp(db, sessionFor("admin")).request("/staff"))).toBe("RESTRICTED");
   });
 
-  it("allows an ADMIN user through", async () => {
-    const guard = new AdminGuard(fakeAuth({ user: { id: "admin", name: "admin", email: "admin@example.test", image: null } }), roles, restrictions);
-    await expect(guard.canActivate(contextFor({}))).resolves.toBe(true);
+  it("allows an ADMIN user through both guards", async () => {
+    const app = buildApp(db, sessionFor("admin"));
+    expect((await app.request("/staff")).status).toBe(200);
+    expect((await app.request("/admin-only")).status).toBe(200);
+  });
+
+  it("lets a MODERATOR through the staff guard but not the admin-only one", async () => {
+    const app = buildApp(db, sessionFor("mod"));
+    expect((await app.request("/staff")).status).toBe(200);
+    const res = await app.request("/admin-only");
+    expect(res.status).toBe(403);
+    expect(await code(res)).toBe("FORBIDDEN");
   });
 });

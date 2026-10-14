@@ -1,10 +1,8 @@
 import { createHmac } from "node:crypto";
-import { Inject, Injectable } from "@nestjs/common";
 import { fromZonedTime } from "date-fns-tz";
 import { and, count, eq, gte } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { RoomTodayStatsDto } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
 import { localDateOf } from "../common/dates.js";
 import { env } from "../env.js";
 import { RoomsService } from "./rooms.service.js";
@@ -19,11 +17,10 @@ export function visitorHashOf(secret: string, visitor: { userId: string | null; 
 }
 
 /** Social-proof counters: distinct room visitors per local day and the caller's own contributions. */
-@Injectable()
 export class RoomStatsService {
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(RoomsService) private readonly rooms: RoomsService,
+    private readonly db: Db,
+    private readonly rooms: RoomsService,
     private readonly secret: string = env.betterAuthSecret,
   ) {}
 
@@ -33,22 +30,24 @@ export class RoomStatsService {
     await this.db
       .insert(schema.roomDailyVisitors)
       .values({ roomId: room.id, localDate: localDateOf(now, room.timezone), visitorHash: visitorHashOf(this.secret, visitor) })
-      .onConflictDoNothing();
+      .onConflictDoNothing()
+      .run();
   }
 
   async getToday(idOrSlug: string, userId: string | null, now: Date = new Date()): Promise<RoomTodayStatsDto> {
     const room = await this.rooms.findRoomRow(idOrSlug);
     const localDate = localDateOf(now, room.timezone);
 
-    const [visitors] = await this.db
+    const visitors = this.db
       .select({ n: count() })
       .from(schema.roomDailyVisitors)
-      .where(and(eq(schema.roomDailyVisitors.roomId, room.id), eq(schema.roomDailyVisitors.localDate, localDate)));
+      .where(and(eq(schema.roomDailyVisitors.roomId, room.id), eq(schema.roomDailyVisitors.localDate, localDate)))
+      .get();
 
     let myContributionsToday: number | null = null;
     if (userId) {
       const dayStart = fromZonedTime(`${localDate}T00:00:00`, room.timezone);
-      const [mine] = await this.db
+      const mine = this.db
         .select({ n: count() })
         .from(schema.seatObservations)
         .where(
@@ -58,7 +57,8 @@ export class RoomStatsService {
             eq(schema.seatObservations.adminOverride, false),
             gte(schema.seatObservations.createdAt, dayStart),
           ),
-        );
+        )
+        .get();
       myContributionsToday = mine?.n ?? 0;
     }
 

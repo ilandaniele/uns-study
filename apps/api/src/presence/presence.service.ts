@@ -1,4 +1,3 @@
-import { Injectable } from "@nestjs/common";
 import { and, eq, gt } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import { PRESENCE_GRANT_MINUTES, type LocationInput, type PresenceDetails, type PresenceRejectReason, type PresenceResult } from "@sala/contracts";
@@ -48,7 +47,6 @@ export interface RequirePresenceInput {
   options?: PresenceValidateOptions;
 }
 
-@Injectable()
 export class PresenceService {
   /** Great-circle distance between two lat/lng points, in meters. */
   haversineDistanceM(a: { latitude: number; longitude: number }, b: { latitude: number; longitude: number }): number {
@@ -76,7 +74,7 @@ export class PresenceService {
 
     const reject = (reason: PresenceRejectReason, details?: PresenceDetails): PresenceResult => {
       // Structured, coordinate-free log line so real-world rejections can be diagnosed from
-      // `fly logs` (distance/accuracy/age only — never the user's position or id).
+      // the worker logs (distance/accuracy/age only — never the user's position or id).
       console.info(
         JSON.stringify({
           evt: "presence_rejected",
@@ -178,17 +176,18 @@ export class PresenceService {
       .onConflictDoUpdate({
         target: [schema.presenceGrants.userId, schema.presenceGrants.roomId],
         set: { grantedAt: now, expiresAt },
-      });
+      })
+      .run();
     return { roomId, expiresAt };
   }
 
   /** When the caller's grant for `roomId` runs out, or null without an unexpired one. */
   async grantExpiresAt(db: Db, userId: string, roomId: string, now: Date = new Date()): Promise<Date | null> {
-    const [row] = await db
+    const row = db
       .select({ expiresAt: schema.presenceGrants.expiresAt })
       .from(schema.presenceGrants)
       .where(and(eq(schema.presenceGrants.userId, userId), eq(schema.presenceGrants.roomId, roomId), gt(schema.presenceGrants.expiresAt, now)))
-      .limit(1);
+      .get();
     return row?.expiresAt ?? null;
   }
 }

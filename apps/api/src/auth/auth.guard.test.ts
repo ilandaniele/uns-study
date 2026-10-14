@@ -27,7 +27,7 @@ describe("AuthGuard restrictions", () => {
   let restrictions: RestrictionService;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     restrictions = new RestrictionService(db);
     await insertUsers(db, ["u1", "u2"]);
   });

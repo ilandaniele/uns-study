@@ -1,36 +1,32 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
-import { Interval } from "@nestjs/schedule";
 import { and, eq, exists, inArray, isNull, lt, notExists, or, sql } from "drizzle-orm";
-import { schema, type Db } from "@sala/database";
-import { DB } from "../database/database.module.js";
+import { inChunks, schema, type Db } from "@sala/database";
 import { env } from "../env.js";
+import { Logger } from "../platform/logger.js";
 import { renderEmail } from "./email-render.js";
-import { RESEND_CLIENT, ResendError, type ResendClient, type ResendMessage } from "./resend.client.js";
-import { activeSubscription, blockingRestrictions } from "./email-recipients.js";
+import { ResendError, type ResendClient, type ResendMessage } from "./resend.client.js";
+import { activeSubscription, blockingRestrictions, optedOutPreference } from "./email-recipients.js";
 import { unsubscribeUrls } from "./unsubscribe-token.js";
 
-const SWEEP_INTERVAL_MS = 30_000;
 const BATCH_SIZE = 100;
 /** A claimed-but-unfinished delivery is reclaimable after this long (crashed instance, 5xx retry). */
 const LEASE_MS = 10 * 60_000;
 const MAX_ATTEMPTS = 3;
 
 /**
- * Delivers pending campaign rows. Rows are claimed with a lease (`claimed_at`, `attempts`) via
- * `FOR UPDATE SKIP LOCKED`, so overlapping sweeps/instances never send the same row twice. 429/5xx
+ * Delivers pending campaign rows. Rows are claimed with a lease (`claimed_at`, `attempts`) in one
+ * synchronous transaction (select + update), so overlapping sweeps never send the same row twice. 429/5xx
  * leaves rows pending (the lease expiry is the backoff) until `MAX_ATTEMPTS`; anything else fails them.
  * Does nothing unless Resend is configured, and only ever sees campaigns an admin confirmed (`sending`).
  */
-@Injectable()
 export class EmailSendJob {
   private readonly logger = new Logger(EmailSendJob.name);
 
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(RESEND_CLIENT) private readonly client: ResendClient | null,
+    private readonly db: Db,
+    private readonly client: ResendClient | null,
   ) {}
 
-  @Interval(SWEEP_INTERVAL_MS)
+  /** Scheduler entry point (`email-send`, every 30 s). */
   async tick(): Promise<void> {
     try {
       await this.runSweep(new Date());
@@ -58,32 +54,38 @@ export class EmailSendJob {
     return claimed.length;
   }
 
+  /** Claims up to one batch in one sync transaction; the send itself happens outside it. */
   private async claim(now: Date) {
     const leaseExpired = new Date(now.getTime() - LEASE_MS);
     const claimable = and(
       eq(schema.emailCampaignDeliveries.status, "pending"),
       or(isNull(schema.emailCampaignDeliveries.claimedAt), lt(schema.emailCampaignDeliveries.claimedAt, leaseExpired)),
     );
-    const ids = this.db
-      .select({ id: schema.emailCampaignDeliveries.id })
-      .from(schema.emailCampaignDeliveries)
-      .innerJoin(schema.emailCampaigns, eq(schema.emailCampaigns.id, schema.emailCampaignDeliveries.campaignId))
-      .where(and(eq(schema.emailCampaigns.status, "sending"), claimable))
-      .orderBy(schema.emailCampaignDeliveries.createdAt)
-      .limit(BATCH_SIZE)
-      .for("update", { of: schema.emailCampaignDeliveries, skipLocked: true });
+    return this.db.transaction((tx) => {
+      const ids = tx
+        .select({ id: schema.emailCampaignDeliveries.id })
+        .from(schema.emailCampaignDeliveries)
+        .innerJoin(schema.emailCampaigns, eq(schema.emailCampaigns.id, schema.emailCampaignDeliveries.campaignId))
+        .where(and(eq(schema.emailCampaigns.status, "sending"), claimable))
+        .orderBy(schema.emailCampaignDeliveries.createdAt)
+        .limit(BATCH_SIZE)
+        .all()
+        .map((r) => r.id);
 
-    return this.db
-      .update(schema.emailCampaignDeliveries)
-      .set({ claimedAt: now, attempts: sql`${schema.emailCampaignDeliveries.attempts} + 1` })
-      // Re-checking `claimable` makes a racing claimer that waited on a row lock back off.
-      .where(and(inArray(schema.emailCampaignDeliveries.id, ids), claimable))
-      .returning({
-        id: schema.emailCampaignDeliveries.id,
-        campaignId: schema.emailCampaignDeliveries.campaignId,
-        userId: schema.emailCampaignDeliveries.userId,
-        attempts: schema.emailCampaignDeliveries.attempts,
-      });
+      return inChunks(ids, (part) =>
+        tx
+          .update(schema.emailCampaignDeliveries)
+          .set({ claimedAt: now, attempts: sql`${schema.emailCampaignDeliveries.attempts} + 1` })
+          .where(and(inArray(schema.emailCampaignDeliveries.id, part), claimable))
+          .returning({
+            id: schema.emailCampaignDeliveries.id,
+            campaignId: schema.emailCampaignDeliveries.campaignId,
+            userId: schema.emailCampaignDeliveries.userId,
+            attempts: schema.emailCampaignDeliveries.attempts,
+          })
+          .all(),
+      );
+    });
   }
 
   private async sendCampaignRows(
@@ -95,22 +97,23 @@ export class EmailSendJob {
     const [campaign] = await this.db.select().from(schema.emailCampaigns).where(eq(schema.emailCampaigns.id, campaignId)).limit(1);
     if (!campaign) return;
 
-    const users = await this.db
-      .select({
-        id: schema.user.id,
-        email: schema.user.email,
-        emailVerified: schema.user.emailVerified,
-        restricted: exists(blockingRestrictions(this.db, now)),
-        subscribed: exists(activeSubscription(this.db)),
-        optedOut: sql<boolean>`exists (select 1 from ${schema.notificationPreferences} np where np.user_id = ${schema.user.id} and np.marketing_emails = false)`,
-      })
-      .from(schema.user)
-      .where(
-        inArray(
-          schema.user.id,
-          rows.map((r) => r.userId),
-        ),
-      );
+    const users = inChunks(
+      rows.map((r) => r.userId),
+      (part) =>
+        this.db
+          .select({
+            id: schema.user.id,
+            email: schema.user.email,
+            emailVerified: schema.user.emailVerified,
+            restricted: exists(blockingRestrictions(this.db, now)),
+            subscribed: exists(activeSubscription(this.db)),
+            optedOut: exists(optedOutPreference(this.db)),
+          })
+          .from(schema.user)
+          .where(inArray(schema.user.id, part))
+          .all(),
+      80,
+    );
     const userById = new Map(users.map((u) => [u.id, u]));
 
     const sendable: { id: string; attempts: number; message: ResendMessage }[] = [];
@@ -143,33 +146,45 @@ export class EmailSendJob {
       }
     }
 
-    for (const s of skipped) {
-      await this.db
-        .update(schema.emailCampaignDeliveries)
-        .set({ status: "failed", error: s.error })
-        .where(and(eq(schema.emailCampaignDeliveries.id, s.id), eq(schema.emailCampaignDeliveries.status, "pending")));
+    if (skipped.length > 0) {
+      this.db.transaction((tx) => {
+        for (const s of skipped) {
+          tx.update(schema.emailCampaignDeliveries)
+            .set({ status: "failed", error: s.error })
+            .where(and(eq(schema.emailCampaignDeliveries.id, s.id), eq(schema.emailCampaignDeliveries.status, "pending")))
+            .run();
+        }
+      });
     }
     if (sendable.length === 0) return;
 
+    // The Resend call is the only external I/O; it runs between the claim transaction and the
+    // result transaction below.
     try {
       const messageIds = await client.sendBatch(sendable.map((s) => s.message));
-      for (const [i, s] of sendable.entries()) {
-        await this.db
-          .update(schema.emailCampaignDeliveries)
-          .set({ status: "sent", sentAt: now, providerMessageId: messageIds[i] ?? null, error: null })
-          .where(eq(schema.emailCampaignDeliveries.id, s.id));
-      }
+      this.db.transaction((tx) => {
+        for (const [i, s] of sendable.entries()) {
+          tx.update(schema.emailCampaignDeliveries)
+            .set({ status: "sent", sentAt: now, providerMessageId: messageIds[i] ?? null, error: null })
+            .where(eq(schema.emailCampaignDeliveries.id, s.id))
+            .run();
+        }
+      });
     } catch (err) {
       const message = (err instanceof Error ? err.message : String(err)).slice(0, 500);
       const retryable = err instanceof ResendError && (err.status === 429 || err.status >= 500);
       const exhausted = sendable.filter((s) => !retryable || s.attempts >= MAX_ATTEMPTS).map((s) => s.id);
       const retrying = sendable.filter((s) => retryable && s.attempts < MAX_ATTEMPTS).map((s) => s.id);
-      if (exhausted.length > 0) {
-        await this.db.update(schema.emailCampaignDeliveries).set({ status: "failed", error: message }).where(inArray(schema.emailCampaignDeliveries.id, exhausted));
-      }
-      if (retrying.length > 0) {
-        await this.db.update(schema.emailCampaignDeliveries).set({ error: message }).where(inArray(schema.emailCampaignDeliveries.id, retrying));
-      }
+      this.db.transaction((tx) => {
+        inChunks(exhausted, (part) => {
+          tx.update(schema.emailCampaignDeliveries).set({ status: "failed", error: message }).where(inArray(schema.emailCampaignDeliveries.id, part)).run();
+          return [];
+        });
+        inChunks(retrying, (part) => {
+          tx.update(schema.emailCampaignDeliveries).set({ error: message }).where(inArray(schema.emailCampaignDeliveries.id, part)).run();
+          return [];
+        });
+      });
     }
   }
 

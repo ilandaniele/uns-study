@@ -19,6 +19,7 @@ import { flushBackground } from "../common/background.js";
 import { ObservationService } from "./observations.service.js";
 import type { ObservationLimits } from "../security/abuse-policy.service.js";
 import type { DisputeService } from "../disputes/disputes.service.js";
+import { ManualScheduler } from "../platform/scheduler.js";
 
 async function build(db: Db) {
   const roomState = new RoomStateService(db);
@@ -30,7 +31,7 @@ async function build(db: Db) {
   const qr = new QrService(db);
   const push = new PushService(db);
   const send = vi.spyOn(push, "sendToUser").mockResolvedValue(null);
-  const notifications = new NotificationService(db, push, roomState);
+  const notifications = new NotificationService(db, push, roomState, new ManualScheduler());
   const disputes = buildDisputeService(db, notifications);
   const checkIns = new CheckInService(db, roomState, presence, security, studySessions, qr, disputes, new RolesService(db));
   const observations = new ObservationService(db, roomState, presence, security, abusePolicy, qr, reputation, notifications, disputes);
@@ -50,7 +51,7 @@ describe("ObservationService", () => {
   let location: { latitude: number; longitude: number; accuracy: number; capturedAt: string };
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     ({ observations, checkIns, qr, reputation, send, disputes } = await build(db));
     const room = await getRoom(db);
     roomId = room.id;

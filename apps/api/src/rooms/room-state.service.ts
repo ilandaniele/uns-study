@@ -1,8 +1,6 @@
-import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, getTableColumns, gt, inArray, sql } from "drizzle-orm";
-import { schema, type Db } from "@sala/database";
+import { and, eq, getTableColumns, gt, inArray } from "drizzle-orm";
+import { inChunks, schema, type Db } from "@sala/database";
 import type { SeatStatus } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
 import { calculateSeatState } from "./seat-state-calculator.js";
 import { isCheckInVerified } from "../checkins/verification.js";
 
@@ -26,16 +24,16 @@ export interface SeatStateChange {
  * Recomputes and persists `seat_current_state` from the canonical sources (active check-ins,
  * active observations) and records an append-only `seat_state_events` row per change.
  */
-@Injectable()
 export class RoomStateService {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(private readonly db: Db) {}
 
   /**
-   * Recomputes the given seats (within `tx` if provided, else the module db) and returns only the
-   * seats whose persisted status/confidence actually changed — callers use this to decide what to
-   * broadcast over the realtime gateway.
+   * Recomputes the given seats (within `tx` if provided, else in a transaction of its own) and
+   * returns only the seats whose persisted status/confidence actually changed — callers use this to
+   * decide what to broadcast over the realtime gateway. Synchronous so it can run inside the
+   * caller's synchronous transaction; the transaction is what serializes concurrent recomputes.
    */
-  async recomputeSeats(
+  recomputeSeats(
     seatIds: string[],
     opts: {
       roomId: string;
@@ -49,14 +47,13 @@ export class RoomStateService {
       roomId: "",
       eventType: "RECOMPUTE",
     },
-  ): Promise<SeatStateChange[]> {
-    // Reuse the caller's transaction if it already opened one; otherwise open our own so the
-    // per-seat advisory locks below actually serialize concurrent recomputes of the same seat.
+  ): SeatStateChange[] {
+    // Reuse the caller's transaction if it already opened one (no nested transactions on SQLite).
     if (opts.tx) return this.recomputeSeatsLocked(opts.tx, seatIds, opts);
     return this.db.transaction((tx) => this.recomputeSeatsLocked(tx, seatIds, opts));
   }
 
-  private async recomputeSeatsLocked(
+  private recomputeSeatsLocked(
     db: Db,
     seatIds: string[],
     opts: {
@@ -66,24 +63,16 @@ export class RoomStateService {
       actingUserId?: string | null;
       seatMetadata?: Record<string, Record<string, unknown>>;
     },
-  ): Promise<SeatStateChange[]> {
+  ): SeatStateChange[] {
     const now = opts.now ?? new Date();
     const changes: SeatStateChange[] = [];
 
-    // Sorted so every transaction takes its advisory locks in the same order (deadlock safety).
     const uniqueSeatIds = [...new Set(seatIds)].sort();
     if (uniqueSeatIds.length === 0) return changes;
 
-    // Advisory locks, held for the rest of this transaction, serialize concurrent
-    // read-compute-upsert cycles for the same seat (works under both Postgres and PGlite).
-    // One statement; `order by u.o` keeps the sorted acquisition order.
-    const seatIdList = sql.join(uniqueSeatIds.map((id) => sql`${id}`), sql`, `);
-    await db.execute(sql`select pg_advisory_xact_lock(hashtext(u.id)) from unnest(array[${seatIdList}]::text[]) with ordinality as u(id, o) order by u.o`);
-
-    // One batched read per source for the whole seat set (after the locks, so it's consistent).
-    // Awaited one at a time: `db` is a transaction (a single pg client), which cannot run queries concurrently.
-    const [checkInRows, openRows, observationRows, previousRows] = [
-      await db
+    // One batched read per source for the whole seat set.
+    const checkInRows = inChunks(uniqueSeatIds, (part) =>
+      db
         .select({
           seatId: schema.checkIns.seatId,
           id: schema.checkIns.id,
@@ -92,12 +81,18 @@ export class RoomStateService {
           expiresAt: schema.checkIns.expiresAt,
         })
         .from(schema.checkIns)
-        .where(and(inArray(schema.checkIns.seatId, uniqueSeatIds), eq(schema.checkIns.status, "ACTIVE"))),
-      await db
+        .where(and(inArray(schema.checkIns.seatId, part), eq(schema.checkIns.status, "ACTIVE")))
+        .all(),
+    );
+    const openRows = inChunks(uniqueSeatIds, (part) =>
+      db
         .select({ seatId: schema.seatDisputes.seatId })
         .from(schema.seatDisputes)
-        .where(and(inArray(schema.seatDisputes.seatId, uniqueSeatIds), eq(schema.seatDisputes.status, "OPEN"))),
-      await db
+        .where(and(inArray(schema.seatDisputes.seatId, part), eq(schema.seatDisputes.status, "OPEN")))
+        .all(),
+    );
+    const observationRows = inChunks(uniqueSeatIds, (part) =>
+      db
         .select({
           seatId: schema.seatObservations.seatId,
           userId: schema.seatObservations.userId,
@@ -106,9 +101,12 @@ export class RoomStateService {
           observedAt: schema.seatObservations.observedAt,
         })
         .from(schema.seatObservations)
-        .where(and(inArray(schema.seatObservations.seatId, uniqueSeatIds), gt(schema.seatObservations.expiresAt, now))),
-      await db.select().from(schema.seatCurrentState).where(inArray(schema.seatCurrentState.seatId, uniqueSeatIds)),
-    ];
+        .where(and(inArray(schema.seatObservations.seatId, part), gt(schema.seatObservations.expiresAt, now)))
+        .all(),
+    );
+    const previousRows = inChunks(uniqueSeatIds, (part) =>
+      db.select().from(schema.seatCurrentState).where(inArray(schema.seatCurrentState.seatId, part)).all(),
+    );
 
     const checkInBySeat = new Map<string, (typeof checkInRows)[number]>();
     for (const c of checkInRows) if (!checkInBySeat.has(c.seatId)) checkInBySeat.set(c.seatId, c);
@@ -121,12 +119,15 @@ export class RoomStateService {
     }
     const previousBySeat = new Map(previousRows.map((r) => [r.seatId, r]));
 
-    const tiedRows = checkInRows.length
-      ? await db
+    const tiedRows = inChunks(
+      checkInRows.map((c) => c.id),
+      (part) =>
+        db
           .select({ checkInId: schema.seatDisputes.checkInId, resolvedAt: schema.seatDisputes.resolvedAt })
           .from(schema.seatDisputes)
-          .where(and(inArray(schema.seatDisputes.checkInId, checkInRows.map((c) => c.id)), eq(schema.seatDisputes.status, "TIED")))
-      : [];
+          .where(and(inArray(schema.seatDisputes.checkInId, part), eq(schema.seatDisputes.status, "TIED")))
+          .all(),
+    );
     const tiedResolvedAtByCheckIn = new Map<string, Date | null>();
     for (const t of tiedRows) if (t.checkInId != null && !tiedResolvedAtByCheckIn.has(t.checkInId)) tiedResolvedAtByCheckIn.set(t.checkInId, t.resolvedAt);
 
@@ -157,10 +158,10 @@ export class RoomStateService {
 
       const previous = previousBySeat.get(seatId);
 
-      // `now` is captured by the caller *before* it waits on the advisory lock, so a slower writer
-      // (e.g. a check-in) can carry an older stamp than a recompute that already ran for the same
-      // seat (e.g. the expiration sweep). Clients merge by `lastUpdatedAt`, so the later write
-      // (the truth in PostgreSQL) must always carry the strictly greater stamp.
+      // `now` is captured by the caller before the write, so a writer with an older stamp (e.g. a
+      // check-in) can follow a recompute that already ran for the same seat (e.g. the expiration
+      // sweep). Clients merge by `lastUpdatedAt`, so the later write (the truth in the database)
+      // must always carry the strictly greater stamp.
       const prevStamp = previous ? new Date(previous.lastUpdatedAt).getTime() : null;
       const stamp = prevStamp !== null && prevStamp >= now.getTime() ? new Date(prevStamp + 1) : now;
 
@@ -170,8 +171,7 @@ export class RoomStateService {
       const changed =
         !previous || previous.status !== result.status || previous.confidence !== result.confidence || opts.eventType === "PHOTO_VERIFIED";
 
-      await db
-        .insert(schema.seatCurrentState)
+      db.insert(schema.seatCurrentState)
         .values({
           seatId,
           status: result.status,
@@ -189,19 +189,22 @@ export class RoomStateService {
             lastUpdatedAt: stamp,
             updatedAt: stamp,
           },
-        });
+        })
+        .run();
 
       if (changed) {
-        await db.insert(schema.seatStateEvents).values({
-          roomId: opts.roomId,
-          seatId,
-          userId: opts.actingUserId ?? null,
-          eventType: opts.eventType,
-          oldStatus: previous?.status ?? null,
-          newStatus: result.status,
-          metadata: { confidence: result.confidence, sourceSummary: result.sourceSummary, ...(opts.seatMetadata?.[seatId] ?? {}) },
-          createdAt: stamp,
-        });
+        db.insert(schema.seatStateEvents)
+          .values({
+            roomId: opts.roomId,
+            seatId,
+            userId: opts.actingUserId ?? null,
+            eventType: opts.eventType,
+            oldStatus: previous?.status ?? null,
+            newStatus: result.status,
+            metadata: { confidence: result.confidence, sourceSummary: result.sourceSummary, ...(opts.seatMetadata?.[seatId] ?? {}) },
+            createdAt: stamp,
+          })
+          .run();
         changes.push({ seatId, status: result.status, confidence: result.confidence, lastUpdatedAt: stamp, verified, occupiedUntil: activeCheckIn ? new Date(activeCheckIn.expiresAt) : null, previousStatus: previous?.status ?? null });
       }
     }
@@ -212,7 +215,6 @@ export class RoomStateService {
   /**
    * Live (non-persisted) seat states for a room map read: derives expiry lazily so a stale
    * `seat_current_state` row (not yet swept by the expiration job) never leaks to clients.
-   * All the independent reads run in a single parallel batch.
    */
   async getLiveSeatStates(
     roomId: string,
@@ -220,50 +222,55 @@ export class RoomStateService {
     /** The room's active seats if the caller already loads them (skips re-selecting them). */
     loadedSeats?: { id: string }[] | Promise<{ id: string }[]>,
   ): Promise<Map<string, SeatStateChange & { sourceSummary: string; dispute: { id: string; closesAt: Date } | null; occupiedUntil: Date | null; changed: boolean }>> {
+    const seatRows =
+      (await loadedSeats) ??
+      this.db.select({ id: schema.seats.id }).from(schema.seats).where(and(eq(schema.seats.roomId, roomId), eq(schema.seats.active, true))).all();
+
     const activeCheckInIds = this.db
       .select({ id: schema.checkIns.id })
       .from(schema.checkIns)
       .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE")));
 
+    const activeCheckIns = this.db
+      .select({
+        seatId: schema.checkIns.seatId,
+        id: schema.checkIns.id,
+        updatedAt: schema.checkIns.updatedAt,
+        verifiedAt: schema.checkIns.verifiedAt,
+        expiresAt: schema.checkIns.expiresAt,
+      })
+      .from(schema.checkIns)
+      .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE")))
+      .all();
+    const openDisputes = this.db
+      .select({ id: schema.seatDisputes.id, seatId: schema.seatDisputes.seatId, closesAt: schema.seatDisputes.closesAt })
+      .from(schema.seatDisputes)
+      .where(and(eq(schema.seatDisputes.roomId, roomId), eq(schema.seatDisputes.status, "OPEN")))
+      .all();
     // Tied disputes are restricted (via subquery) to the current active check-ins, so historical
     // TIED rows are never scanned.
-    const [seatRows, activeCheckIns, openDisputes, tiedDisputes, observationRows, storedRows] = await Promise.all([
-      loadedSeats ??
-        this.db.select({ id: schema.seats.id }).from(schema.seats).where(and(eq(schema.seats.roomId, roomId), eq(schema.seats.active, true))),
-      this.db
-        .select({
-          seatId: schema.checkIns.seatId,
-          id: schema.checkIns.id,
-          updatedAt: schema.checkIns.updatedAt,
-          verifiedAt: schema.checkIns.verifiedAt,
-          expiresAt: schema.checkIns.expiresAt,
-        })
-        .from(schema.checkIns)
-        .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE"))),
-      this.db
-        .select({ id: schema.seatDisputes.id, seatId: schema.seatDisputes.seatId, closesAt: schema.seatDisputes.closesAt })
-        .from(schema.seatDisputes)
-        .where(and(eq(schema.seatDisputes.roomId, roomId), eq(schema.seatDisputes.status, "OPEN"))),
-      this.db
-        .select({ checkInId: schema.seatDisputes.checkInId, resolvedAt: schema.seatDisputes.resolvedAt })
-        .from(schema.seatDisputes)
-        .where(and(eq(schema.seatDisputes.roomId, roomId), eq(schema.seatDisputes.status, "TIED"), inArray(schema.seatDisputes.checkInId, activeCheckInIds))),
-      this.db
-        .select({
-          seatId: schema.seatObservations.seatId,
-          userId: schema.seatObservations.userId,
-          status: schema.seatObservations.observedStatus,
-          weight: schema.seatObservations.confidenceWeight,
-          observedAt: schema.seatObservations.observedAt,
-        })
-        .from(schema.seatObservations)
-        .where(and(eq(schema.seatObservations.roomId, roomId), gt(schema.seatObservations.expiresAt, now))),
-      this.db
-        .select(getTableColumns(schema.seatCurrentState))
-        .from(schema.seatCurrentState)
-        .innerJoin(schema.seats, eq(schema.seats.id, schema.seatCurrentState.seatId))
-        .where(and(eq(schema.seats.roomId, roomId), eq(schema.seats.active, true))),
-    ]);
+    const tiedDisputes = this.db
+      .select({ checkInId: schema.seatDisputes.checkInId, resolvedAt: schema.seatDisputes.resolvedAt })
+      .from(schema.seatDisputes)
+      .where(and(eq(schema.seatDisputes.roomId, roomId), eq(schema.seatDisputes.status, "TIED"), inArray(schema.seatDisputes.checkInId, activeCheckInIds)))
+      .all();
+    const observationRows = this.db
+      .select({
+        seatId: schema.seatObservations.seatId,
+        userId: schema.seatObservations.userId,
+        status: schema.seatObservations.observedStatus,
+        weight: schema.seatObservations.confidenceWeight,
+        observedAt: schema.seatObservations.observedAt,
+      })
+      .from(schema.seatObservations)
+      .where(and(eq(schema.seatObservations.roomId, roomId), gt(schema.seatObservations.expiresAt, now)))
+      .all();
+    const storedRows = this.db
+      .select(getTableColumns(schema.seatCurrentState))
+      .from(schema.seatCurrentState)
+      .innerJoin(schema.seats, eq(schema.seats.id, schema.seatCurrentState.seatId))
+      .where(and(eq(schema.seats.roomId, roomId), eq(schema.seats.active, true)))
+      .all();
 
     const seatIds = new Set(seatRows.map((s) => s.id));
     const checkedInSeats = new Set(activeCheckIns.map((c) => c.seatId));

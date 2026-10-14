@@ -2,19 +2,18 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { and, eq } from "drizzle-orm";
 import type { Db } from "@sala/database";
 import { schema } from "@sala/database";
-import type { Auth } from "../auth/auth.instance.js";
 import { buildNotificationService, freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
+import { RecordingHub } from "../realtime/realtime-hub.js";
 import { TableNamesService } from "./table-names.service.js";
 
-const mockAuth = { api: { getSession: async () => null } } as unknown as Auth;
 
 async function build(db: Db) {
   const roomState = new RoomStateService(db);
   const restrictions = new RestrictionService(db);
-  const gateway = new RoomRealtimeGateway(roomState, mockAuth, buildNotificationService(db), new RestrictionService(db)); // no @WebSocketServer() attached — emits are no-ops in tests
+  const gateway = new RoomRealtimeGateway(new RecordingHub(), roomState, buildNotificationService(db), null); // no @WebSocketServer() attached — emits are no-ops in tests
   return new TableNamesService(db, restrictions, gateway);
 }
 
@@ -41,7 +40,7 @@ describe("TableNamesService", () => {
   }
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     tableNames = await build(db);
     const room = await getRoom(db);
     roomId = room.id;

@@ -17,14 +17,13 @@ import { QrService } from "../qr/qr.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";
 import { ObservationService } from "../observations/observations.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
-import type { Auth } from "../auth/auth.instance.js";
+import { RecordingHub } from "../realtime/realtime-hub.js";
 import { DailyResetJob, resetInstantFor } from "../jobs/daily-reset.job.js";
 import { NotificationService } from "../notifications/notification.service.js";
 import { PushService } from "../notifications/push.service.js";
 import { flushBackground } from "../common/background.js";
 import { DisputeService } from "./disputes.service.js";
 
-const mockAuth = { api: { getSession: async () => null } } as unknown as Auth;
 
 async function build(db: Db) {
   const roomState = new RoomStateService(db);
@@ -33,7 +32,7 @@ async function build(db: Db) {
   const security = new SecurityEventService(db, reputation);
   const studySessions = new StudySessionService(db);
   const restrictions = new RestrictionService(db);
-  const gateway = new RoomRealtimeGateway(roomState, mockAuth, buildNotificationService(db), new RestrictionService(db)); // no @WebSocketServer() attached — emits are no-ops in tests
+  const gateway = new RoomRealtimeGateway(new RecordingHub(), roomState, buildNotificationService(db), null); // no @WebSocketServer() attached — emits are no-ops in tests
   const qr = new QrService(db);
   const rateLimit = new RateLimitService();
   const abusePolicy = new AbusePolicyService(db, new TurnstileService());
@@ -60,7 +59,7 @@ describe("DisputeService", () => {
   let location: { latitude: number; longitude: number; accuracy: number; capturedAt: string };
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     ({ disputes: svc, checkIns, observations, roomState, dailyReset, send } = await build(db));
     const room = await getRoom(db);
     roomId = room.id;

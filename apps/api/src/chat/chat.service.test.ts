@@ -26,7 +26,7 @@ describe("ChatService", () => {
   let svc: ChatService;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     svc = await build(db);
     await insertUsers(db, ["u1", "u2", "mod1"]);
     await db.insert(schema.userRoles).values({ userId: "mod1", role: "MODERATOR" });

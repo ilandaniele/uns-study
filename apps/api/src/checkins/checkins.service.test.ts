@@ -28,7 +28,7 @@ describe("CheckInService", () => {
   let location: { latitude: number; longitude: number; accuracy: number; capturedAt: string };
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     svc = await build(db);
     const room = await getRoom(db);
     roomId = room.id;
@@ -103,6 +103,7 @@ describe("CheckInService", () => {
     const rejected = results.filter((r) => r.status === "rejected");
     expect(fulfilled).toHaveLength(1);
     expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason).toMatchObject({ code: "SEAT_TAKEN" });
   });
 
   it("concurrent same-user double check-in to two seats ends with exactly one ACTIVE check-in", async () => {
@@ -118,15 +119,19 @@ describe("CheckInService", () => {
     expect(rows.filter((r) => r.status === "ACTIVE")).toHaveLength(1);
   });
 
-  it("rethrows a non-unique-violation error from the retry instead of masking it as a validation error", async () => {
+  it("an error inside the write rolls the whole move back and surfaces unmasked", async () => {
     await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
     const roomState = (svc as unknown as { roomState: RoomStateService }).roomState;
-    const spy = vi
-      .spyOn(roomState, "recomputeSeats")
-      .mockRejectedValueOnce(Object.assign(new Error("dup"), { code: "23505", constraint: "uq_checkin_active_user" }))
-      .mockRejectedValueOnce(new Error("db down"));
+    const spy = vi.spyOn(roomState, "recomputeSeats").mockImplementationOnce(() => {
+      throw new Error("db down");
+    });
     await expect(svc.checkIn({ userId: "u1", roomId, seatId: seatIds[1]!, location, showIdentity: false })).rejects.toThrow("db down");
     spy.mockRestore();
+
+    // Nothing from the failed move survived: the user is still on the first seat, the second is free.
+    const rows = await db.select().from(schema.checkIns).where(eq(schema.checkIns.userId, "u1"));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ seatId: seatIds[0], status: "ACTIVE" });
   });
 
   it("re-checking into the same seat resets the expiry reminder so the new window gets one", async () => {

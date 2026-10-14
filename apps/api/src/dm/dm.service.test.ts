@@ -19,7 +19,7 @@ describe("DmService", () => {
   let svc: DmService;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     svc = await build(db);
     await insertUsers(db, ["u1", "u2", "u3"]);
   });
@@ -137,6 +137,8 @@ describe("DmService", () => {
     await svc.sendMessage(c2.id, "u2", "a2");
     await svc.sendMessage(c3.id, "u3", "b1");
     await svc.markRead(c3.id, "u1");
+    // SQLite timestamps have millisecond resolution: keep the next message strictly after the read mark.
+    await new Promise((resolve) => setTimeout(resolve, 2));
     await svc.sendMessage(c3.id, "u3", "b2");
     await svc.sendMessage(c3.id, "u1", "mine");
     await svc.sendMessage(c2.id, "u1", "reply"); // own message never counts as unread

@@ -1,17 +1,14 @@
-import { Inject, Injectable } from "@nestjs/common";
 import { eq } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { NotificationPreferencesDto } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
 
 type PreferencesRow = typeof schema.notificationPreferences.$inferSelect;
 export type NotificationPreferencesPatch = Partial<Pick<PreferencesRow, "seatFreed" | "adminPresent" | "checkinExpiry" | "marketingEmails">>;
 
 /** Per-user opt-in switches, the first two `false` until the user turns them on (same "everything private
  *  by default" convention as `user_privacy_settings`). */
-@Injectable()
 export class NotificationPreferencesService {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(private readonly db: Db) {}
 
   private async ensure(userId: string): Promise<PreferencesRow> {
     await this.db.insert(schema.notificationPreferences).values({ userId }).onConflictDoNothing();

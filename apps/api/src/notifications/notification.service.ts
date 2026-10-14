@@ -1,9 +1,9 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
 import { randomInt } from "node:crypto";
 import { and, eq, gt, lt, ne, notExists, sql } from "drizzle-orm";
-import { schema, type Db } from "@sala/database";
+import { chunk, rowsPerInsert, schema, type Db } from "@sala/database";
 import { DISPUTE_MINUTES, seatLabel } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
+import { Logger } from "../platform/logger.js";
+import type { Scheduler } from "../platform/scheduler.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { PushService } from "./push.service.js";
 import { mapWithConcurrency } from "./concurrency.js";
@@ -58,43 +58,30 @@ function seatChallengeCopy(reason: SeatChallengeReason, seatCode: string): { tit
  * remains canonical for preferences/subscriptions/throttling; this service never mutates seat
  * state itself.
  */
-@Injectable()
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
 
-  /** One pending "admin present" timer per admin userId — a second fresh check-in by the same
-   *  admin before the first timer fires reschedules it instead of stacking a second banner/push. */
-  private readonly adminPresentTimers = new Map<string, NodeJS.Timeout>();
-
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(PushService) private readonly push: PushService,
-    @Inject(RoomStateService) private readonly roomState: RoomStateService,
+    private readonly db: Db,
+    private readonly push: PushService,
+    private readonly roomState: RoomStateService,
+    private readonly scheduler: Scheduler,
   ) {}
 
   /**
    * Schedules the room-wide admin-present banner + throttled push for a random 2-5 minutes from
-   * now, so the timing can never be correlated back to `adminUserId`'s specific check-in. `emitBanner`
-   * (the caller's `RoomRealtimeGateway.emitAdminPresent`) is only invoked if, once the timer fires,
-   * the admin still holds an ACTIVE check-in in `roomId` — if they've since checked out, nothing
-   * happens. The timer is `unref`'d so it never keeps the process alive on its own.
+   * now, so the timing can never be correlated back to `adminUserId`'s specific check-in. The
+   * scheduler job (`admin-present:<adminUserId>`) calls `fireAdminPresent`, which only emits the
+   * banner if the admin still holds an ACTIVE check-in in `roomId`. A second fresh check-in by the
+   * same admin before the job fires replaces it instead of stacking a second banner/push.
    */
-  scheduleAdminPresent(roomId: string, adminUserId: string, emitBanner: () => void): void {
-    const existing = this.adminPresentTimers.get(adminUserId);
-    if (existing) clearTimeout(existing);
-
+  scheduleAdminPresent(roomId: string, adminUserId: string): void {
     const delayMs = randomInt(ADMIN_PRESENT_DELAY_MIN_MS, ADMIN_PRESENT_DELAY_MAX_MS);
-    const timer = setTimeout(() => {
-      this.adminPresentTimers.delete(adminUserId);
-      this.fireAdminPresent(roomId, adminUserId, emitBanner).catch((err) =>
-        this.logger.error("Failed to fire scheduled admin-present alert", err instanceof Error ? err.stack : String(err)),
-      );
-    }, delayMs);
-    timer.unref?.();
-    this.adminPresentTimers.set(adminUserId, timer);
+    this.scheduler.schedule(`admin-present:${adminUserId}`, new Date(Date.now() + delayMs), { roomId, adminUserId });
   }
 
-  private async fireAdminPresent(roomId: string, adminUserId: string, emitBanner: () => void): Promise<void> {
+  /** Scheduler handler body: emits the banner (via `emitBanner`) and the push if the admin is still checked in. */
+  async fireAdminPresent(roomId: string, adminUserId: string, emitBanner: () => void): Promise<void> {
     if (!(await this.hasActiveCheckIn(adminUserId, roomId))) return;
     emitBanner();
     await this.notifyAdminPresent(roomId, adminUserId);
@@ -294,15 +281,22 @@ export class NotificationService {
     if (userIds.length === 0) return [];
     const now = new Date();
     const cutoff = new Date(now.getTime() - minutes * 60_000);
-    const rows = await this.db
-      .insert(schema.notificationThrottles)
-      .values(userIds.map((userId) => ({ userId, type, lastNotifiedAt: now })))
-      .onConflictDoUpdate({
-        target: [schema.notificationThrottles.userId, schema.notificationThrottles.type],
-        set: { lastNotifiedAt: now },
-        where: lt(schema.notificationThrottles.lastNotifiedAt, cutoff),
-      })
-      .returning({ userId: schema.notificationThrottles.userId });
-    return rows.map((r) => r.userId);
+    const claimed: string[] = [];
+    this.db.transaction((tx) => {
+      for (const part of chunk(userIds, rowsPerInsert(3))) {
+        const rows = tx
+          .insert(schema.notificationThrottles)
+          .values(part.map((userId) => ({ userId, type, lastNotifiedAt: now })))
+          .onConflictDoUpdate({
+            target: [schema.notificationThrottles.userId, schema.notificationThrottles.type],
+            set: { lastNotifiedAt: now },
+            setWhere: lt(schema.notificationThrottles.lastNotifiedAt, cutoff),
+          })
+          .returning({ userId: schema.notificationThrottles.userId })
+          .all();
+        claimed.push(...rows.map((r) => r.userId));
+      }
+    });
+    return claimed;
   }
 }

@@ -16,7 +16,7 @@ describe("PresenceService presence grants", () => {
   }
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     room = await getRoom(db);
     await insertUsers(db, ["u1", "u2"]);
   });

@@ -28,7 +28,7 @@ describe("GroupsService", () => {
   let svc: GroupsService;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     svc = build(db);
     await insertUsers(db, ["u1", "u2", "u3", "u4"]);
     await makeContacts(db, "u1", "u2");
@@ -203,7 +203,7 @@ describe("GroupsService", () => {
       const first = await svc.listMessages(group.id, "u2");
       expect(first.items).toHaveLength(50);
       expect(first.items[0]!.content).toBe("m54");
-      expect(first.nextCursor).toBe(first.items[49]!.createdAt);
+      expect(first.nextCursor?.startsWith(`${first.items[49]!.createdAt}#`)).toBe(true);
 
       const second = await svc.listMessages(group.id, "u2", first.nextCursor);
       expect(second.items).toHaveLength(5);
@@ -262,12 +262,13 @@ describe("GroupsService", () => {
   describe("listGroups", () => {
     it("sorts by latest activity and uses a constant number of queries", async () => {
       const one = await newGroup(["u2"]);
-      const measureOne = await countQueries(() => svc.listGroups("u1"));
+      await svc.sendMessage(one.id, "u2", "primero");
+      const measureOne = await countQueries(db, () => svc.listGroups("u1"));
 
       const two = await newGroup(["u3"]);
       const three = await newGroup(["u2", "u3"]);
       await svc.sendMessage(one.id, "u2", "hola");
-      const measureThree = await countQueries(() => svc.listGroups("u1"));
+      const measureThree = await countQueries(db, () => svc.listGroups("u1"));
 
       expect(measureThree.queries).toBe(measureOne.queries);
       const ids = (await svc.listGroups("u1")).map((g) => g.id);

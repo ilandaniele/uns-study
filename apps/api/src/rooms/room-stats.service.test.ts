@@ -16,7 +16,7 @@ describe("RoomStatsService", () => {
   let seatId: string;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     stats = new RoomStatsService(db, new RoomsService(db, new RoomStateService(db)), "test-secret");
     roomId = (await getRoom(db)).id;
     seatId = (await getSeats(db))[0]!.id;

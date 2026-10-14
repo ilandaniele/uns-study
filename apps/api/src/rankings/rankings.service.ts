@@ -1,16 +1,13 @@
-import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, gte, inArray, lt, lte, sql, type SQL } from "drizzle-orm";
-import type { PgColumn } from "drizzle-orm/pg-core";
+import { and, eq, gte, inArray, lt, lte } from "drizzle-orm";
 import { fromZonedTime } from "date-fns-tz";
-import { schema, type Db } from "@sala/database";
+import { inChunks, schema, type Db } from "@sala/database";
 import type { RankingCategory, RankingDto, RankingEntryDto, RankingPeriod } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
 import { minutesByLocalDay, verifiedMinutesFor } from "./study-session.service.js";
 import { localDateOf } from "../common/dates.js";
-import { RoomsService } from "../rooms/rooms.service.js";
+import type { RoomsService } from "../rooms/rooms.service.js";
 import { displayName, needsAlias, showsAdminBadge, shownAliasAnimal, visibleAvatarUrl } from "../users/display-name.js";
-import { RolesService } from "../users/roles.service.js";
-import { AliasService } from "../users/alias.service.js";
+import type { RolesService } from "../users/roles.service.js";
+import type { AliasService } from "../users/alias.service.js";
 
 const STUDY_TIME_DAILY_CAP_MIN = 720;
 const CONTRIBUTION_OBSERVATION_DAILY_CAP = 20;
@@ -88,13 +85,12 @@ const RANKING_PUBLIC_LIMIT = 100;
  * Computes the three MVP+ ranking categories (`study_time`, `streak`, `contribution`) over the
  * PRD's four periods, scoped to one room and respecting each user's room-visibility privacy.
  */
-@Injectable()
 export class RankingsService {
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(RoomsService) private readonly rooms: RoomsService,
-    @Inject(AliasService) private readonly aliases: AliasService,
-    @Inject(RolesService) private readonly roles: RolesService,
+    private readonly db: Db,
+    private readonly rooms: RoomsService,
+    private readonly aliases: AliasService,
+    private readonly roles: RolesService,
   ) {}
 
   /** Raw (viewer-independent) ranking values per `roomId|period|category`, invalidated by TTL only. */
@@ -187,8 +183,10 @@ export class RankingsService {
     const result = new Map<string, VisibilityInfo>();
     if (!userIds.length) return result;
 
-    const profiles = await this.db.select().from(schema.userProfiles).where(inArray(schema.userProfiles.userId, userIds));
-    const privacyRows = await this.db.select().from(schema.userPrivacySettings).where(inArray(schema.userPrivacySettings.userId, userIds));
+    const profiles = inChunks(userIds, (part) => this.db.select().from(schema.userProfiles).where(inArray(schema.userProfiles.userId, part)).all());
+    const privacyRows = inChunks(userIds, (part) =>
+      this.db.select().from(schema.userPrivacySettings).where(inArray(schema.userPrivacySettings.userId, part)).all(),
+    );
     const aliasByUser = await this.aliases.ensureAliasesForProfiles(profiles);
     const admins = await this.roles.adminIds(userIds);
     const profileByUser = new Map(profiles.map((p) => [p.userId, { ...p, alias: aliasByUser.get(p.userId) ?? p.alias }]));
@@ -248,7 +246,7 @@ export class RankingsService {
     const conditions = [eq(schema.studySessions.roomId, room.id)];
     if (start) conditions.push(gte(schema.studySessions.localDate, addDaysToLocal(start, -1)));
     if (end) conditions.push(lte(schema.studySessions.localDate, end));
-    const sessions = await this.db
+    const sessions = this.db
       .select({
         userId: schema.studySessions.userId,
         checkInId: schema.studySessions.checkInId,
@@ -256,7 +254,8 @@ export class RankingsService {
         minutes: schema.studySessions.verifiedMinutes,
       })
       .from(schema.studySessions)
-      .where(and(...conditions));
+      .where(and(...conditions))
+      .all();
 
     // A check-in only leaves ACTIVE in the same transaction that writes its session row, but skip
     // any live check-in that already has one anyway so the two can never count twice.
@@ -281,10 +280,11 @@ export class RankingsService {
     room: { id: string; timezone: string },
     now: Date,
   ): Promise<{ checkInId: string; userId: string; startedAt: Date; minutes: number }[]> {
-    const active = await this.db
+    const active = this.db
       .select({ id: schema.checkIns.id, userId: schema.checkIns.userId, startedAt: schema.checkIns.startedAt, expiresAt: schema.checkIns.expiresAt })
       .from(schema.checkIns)
-      .where(and(eq(schema.checkIns.roomId, room.id), eq(schema.checkIns.status, "ACTIVE")));
+      .where(and(eq(schema.checkIns.roomId, room.id), eq(schema.checkIns.status, "ACTIVE")))
+      .all();
     return active.map((c) => ({
       checkInId: c.id,
       userId: c.userId,
@@ -322,10 +322,24 @@ export class RankingsService {
     if (fromUtc) ciConditions.push(gte(schema.checkIns.createdAt, fromUtc));
     if (toUtcExclusive) ciConditions.push(lt(schema.checkIns.createdAt, toUtcExclusive));
 
-    const [obsPoints, ciPoints] = await Promise.all([
-      this.cappedDailyCount(schema.seatObservations, schema.seatObservations.userId, schema.seatObservations.createdAt, and(...obsConditions), room.timezone, CONTRIBUTION_OBSERVATION_DAILY_CAP),
-      this.cappedDailyCount(schema.checkIns, schema.checkIns.userId, schema.checkIns.createdAt, and(...ciConditions), room.timezone, CONTRIBUTION_CHECKIN_DAILY_CAP),
-    ]);
+    const obsPoints = this.cappedDailyCount(
+      this.db
+        .select({ userId: schema.seatObservations.userId, createdAt: schema.seatObservations.createdAt })
+        .from(schema.seatObservations)
+        .where(and(...obsConditions))
+        .all(),
+      room.timezone,
+      CONTRIBUTION_OBSERVATION_DAILY_CAP,
+    );
+    const ciPoints = this.cappedDailyCount(
+      this.db
+        .select({ userId: schema.checkIns.userId, createdAt: schema.checkIns.createdAt })
+        .from(schema.checkIns)
+        .where(and(...ciConditions))
+        .all(),
+      room.timezone,
+      CONTRIBUTION_CHECKIN_DAILY_CAP,
+    );
 
     const values = new Map<string, number>();
     for (const [userId, points] of obsPoints) values.set(userId, (values.get(userId) ?? 0) + points);
@@ -333,29 +347,22 @@ export class RankingsService {
     return values;
   }
 
-  /** Per user: sum over local days (in `tz`) of `LEAST(count(*), cap)`, computed in SQL. */
-  private async cappedDailyCount(
-    table: typeof schema.seatObservations | typeof schema.checkIns,
-    userIdCol: PgColumn,
-    createdAtCol: PgColumn,
-    where: SQL | undefined,
-    tz: string,
-    cap: number,
-  ): Promise<Map<string, number>> {
-    const perDay = this.db
-      .select({
-        userId: sql<string>`${userIdCol}`.as("user_id"),
-        capped: sql<number>`LEAST(count(*), ${cap})`.as("capped"),
-      })
-      .from(table)
-      .where(where)
-      .groupBy(userIdCol, sql`((${createdAtCol} AT TIME ZONE ${tz}::text))::date`)
-      .as("per_day");
-    const rows = await this.db
-      .select({ userId: perDay.userId, total: sql<string>`sum(${perDay.capped})` })
-      .from(perDay)
-      .groupBy(perDay.userId);
-    return new Map(rows.map((r) => [r.userId, Number(r.total)]));
+  /** Per user: sum over local days (in `tz`) of `min(count, cap)`, bucketed in JS. */
+  private cappedDailyCount(rows: { userId: string; createdAt: Date }[], tz: string, cap: number): Map<string, number> {
+    const perUserDay = new Map<string, Map<string, number>>();
+    for (const row of rows) {
+      const day = localDateOf(row.createdAt, tz);
+      const byDay = perUserDay.get(row.userId) ?? new Map<string, number>();
+      byDay.set(day, (byDay.get(day) ?? 0) + 1);
+      perUserDay.set(row.userId, byDay);
+    }
+    const totals = new Map<string, number>();
+    for (const [userId, byDay] of perUserDay) {
+      let total = 0;
+      for (const count of byDay.values()) total += Math.min(count, cap);
+      totals.set(userId, total);
+    }
+    return totals;
   }
 }
 

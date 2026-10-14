@@ -13,7 +13,7 @@ describe("AttachmentSweepJob", () => {
   let db: Db;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     await insertUsers(db, ["reporter", "reported"]);
     const [report] = await db
       .insert(schema.userReports)

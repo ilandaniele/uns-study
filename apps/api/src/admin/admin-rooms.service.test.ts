@@ -13,10 +13,8 @@ import { QrService } from "../qr/qr.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";
 import { RolesService } from "../users/roles.service.js";
 import { AliasService } from "../users/alias.service.js";
-import { AdminGuard } from "../users/admin.guard.js";
 import { RoomPeopleService } from "../study/room-people.service.js";
 import type { SeatMarkedByDto } from "@sala/contracts";
-import { AdminRoomsController } from "./admin-rooms.controller.js";
 import { AdminRoomsService } from "./admin-rooms.service.js";
 
 describe("AdminRoomsService.stats — Fresh Seat Coverage", () => {
@@ -28,7 +26,7 @@ describe("AdminRoomsService.stats — Fresh Seat Coverage", () => {
   let location: { latitude: number; longitude: number; accuracy: number; capturedAt: string };
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     const roomState = new RoomStateService(db);
     checkIns = new CheckInService(
       db,
@@ -128,7 +126,7 @@ describe("AdminRoomsService — geofence calibration", () => {
   let center: { latitude: number; longitude: number };
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     const roomState = new RoomStateService(db);
     const roomCache = new RoomCache();
     svc = new AdminRoomsService(db, new RoomsService(db, roomState, roomCache), roomState, new PresenceService(), new RolesService(db), roomCache);
@@ -205,7 +203,7 @@ describe("AdminRoomsService — mark all occupied", () => {
   let seatIds: string[];
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     roomState = new RoomStateService(db);
     checkIns = new CheckInService(
       db,
@@ -296,9 +294,16 @@ describe("AdminRoomsService — mark all occupied", () => {
     expect(entries.every((e) => e.markedBy.displayName === "Administración")).toBe(true);
   });
 
-  it("is only reachable through AdminGuard", () => {
-    const guards = Reflect.getMetadata("__guards__", AdminRoomsController) as unknown[];
-    expect(guards).toContain(AdminGuard);
-    expect(Reflect.getMetadata("__guards__", AdminRoomsController.prototype.markAllOccupied)).toBeUndefined();
+  it("rolls the whole bulk mark back when anything inside the transaction fails", async () => {
+    const failing = new AdminRoomsService(
+      db,
+      new RoomsService(db, roomState),
+      { getLiveSeatStates: roomState.getLiveSeatStates.bind(roomState), recomputeSeats: () => { throw new Error("boom"); } } as unknown as RoomStateService,
+      new PresenceService(),
+      new RolesService(db),
+    );
+    await expect(failing.markAllOccupied(roomId, "admin1", 60)).rejects.toThrow("boom");
+    expect(await db.select().from(schema.seatObservations)).toHaveLength(0);
+    expect(await audit("ADMIN_MARK_ALL_OCCUPIED")).toHaveLength(0);
   });
 });

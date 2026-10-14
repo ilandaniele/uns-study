@@ -1,22 +1,20 @@
-import { Inject, Injectable } from "@nestjs/common";
 import { and, count, desc, eq, inArray } from "drizzle-orm";
-import { schema, type Db } from "@sala/database";
+import { inChunks, rowsPerInsert, schema, type Db } from "@sala/database";
 import type { EmailAudience, EmailCampaignDto, EmailCampaignInput, EmailCampaignStatus, EmailConfigDto, EmailRecipientPreviewDto } from "@sala/contracts";
 import { emailAudienceSchema } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
 import { ApiErrors, ApiException } from "../common/api-error.js";
 import { env } from "../env.js";
 import { countRecipients, recipientsQuery } from "./email-recipients.js";
 
-const INSERT_CHUNK = 1000;
+/** Bound columns per delivery row: id, campaignId, userId, createdAt (+ margin for defaults). */
+const DELIVERY_COLUMNS = 6;
 const LIST_LIMIT = 100;
 
 type CampaignRow = typeof schema.emailCampaigns.$inferSelect;
 
 /** Admin-side email campaign CRUD. Nothing is ever sent here except through `send`, which only enqueues deliveries. */
-@Injectable()
 export class EmailCampaignsService {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(private readonly db: Db) {}
 
   config(): EmailConfigDto {
     return { enabled: emailEnabled() };
@@ -26,29 +24,53 @@ export class EmailCampaignsService {
     return { recipientCount: await countRecipients(this.db, now, audience) };
   }
 
+  /** Whether `userId` still receives marketing email (a missing preferences row means opted in). */
+  async marketingEmailsOn(userId: string): Promise<boolean> {
+    const [pref] = await this.db
+      .select({ on: schema.notificationPreferences.marketingEmails })
+      .from(schema.notificationPreferences)
+      .where(eq(schema.notificationPreferences.userId, userId))
+      .limit(1);
+    return pref?.on ?? true;
+  }
+
+  /** Opts `userId` out of marketing email (unsubscribe link / RFC 8058 one-click). */
+  async unsubscribe(userId: string): Promise<void> {
+    await this.db
+      .insert(schema.notificationPreferences)
+      .values({ userId, marketingEmails: false })
+      .onConflictDoUpdate({ target: schema.notificationPreferences.userId, set: { marketingEmails: false, updatedAt: new Date() } });
+  }
+
   async list(): Promise<EmailCampaignDto[]> {
     const rows = await this.db.select().from(schema.emailCampaigns).orderBy(desc(schema.emailCampaigns.createdAt)).limit(LIST_LIMIT);
     if (!rows.length) return [];
-    const counts = await this.db
-      .select({
-        campaignId: schema.emailCampaignDeliveries.campaignId,
-        status: schema.emailCampaignDeliveries.status,
-        n: count(),
-      })
-      .from(schema.emailCampaignDeliveries)
-      .where(inArray(schema.emailCampaignDeliveries.campaignId, rows.map((r) => r.id)))
-      .groupBy(schema.emailCampaignDeliveries.campaignId, schema.emailCampaignDeliveries.status);
+    const counts = inChunks(
+      rows.map((r) => r.id),
+      (part) =>
+        this.db
+          .select({
+            campaignId: schema.emailCampaignDeliveries.campaignId,
+            status: schema.emailCampaignDeliveries.status,
+            n: count(),
+          })
+          .from(schema.emailCampaignDeliveries)
+          .where(inArray(schema.emailCampaignDeliveries.campaignId, part))
+          .groupBy(schema.emailCampaignDeliveries.campaignId, schema.emailCampaignDeliveries.status)
+          .all(),
+    );
     return rows.map((row) => toDto(row, counts.filter((c) => c.campaignId === row.id)));
   }
 
   async create(input: EmailCampaignInput, actorId: string): Promise<EmailCampaignDto> {
-    return this.db.transaction(async (tx) => {
-      const [row] = await tx
+    return this.db.transaction((tx) => {
+      const [row] = tx
         .insert(schema.emailCampaigns)
         .values({ subject: input.subject, bodyText: input.bodyText, audience: input.audience, createdBy: actorId })
-        .returning();
+        .returning()
+        .all();
       if (!row) throw new Error("Failed to create email campaign");
-      await tx.insert(schema.moderationActions).values({ actorId, action: "EMAIL_CAMPAIGN_CREATED", metadata: { campaignId: row.id } });
+      tx.insert(schema.moderationActions).values({ actorId, action: "EMAIL_CAMPAIGN_CREATED", metadata: { campaignId: row.id } }).run();
       return toDto(row, []);
     });
   }
@@ -78,29 +100,31 @@ export class EmailCampaignsService {
   async send(id: string, actorId: string, now: Date = new Date()): Promise<EmailCampaignDto> {
     if (!emailEnabled()) throw ApiErrors.featureDisabled("El envío de mails no está configurado.");
 
-    return this.db.transaction(async (tx) => {
-      const [draft] = await tx.select({ audience: schema.emailCampaigns.audience }).from(schema.emailCampaigns).where(eq(schema.emailCampaigns.id, id)).limit(1);
-      const recipients = await recipientsQuery(tx, now, toAudience(draft?.audience));
-      const [campaign] = await tx
+    return this.db.transaction((tx) => {
+      const [draft] = tx.select({ audience: schema.emailCampaigns.audience }).from(schema.emailCampaigns).where(eq(schema.emailCampaigns.id, id)).limit(1).all();
+      const recipients = recipientsQuery(tx, now, toAudience(draft?.audience)).all();
+      const [campaign] = tx
         .update(schema.emailCampaigns)
         .set({ status: "sending", recipientCount: recipients.length })
         .where(and(eq(schema.emailCampaigns.id, id), eq(schema.emailCampaigns.status, "draft")))
-        .returning();
+        .returning()
+        .all();
       if (!campaign) {
-        const [exists] = await tx.select({ id: schema.emailCampaigns.id }).from(schema.emailCampaigns).where(eq(schema.emailCampaigns.id, id)).limit(1);
+        const [exists] = tx.select({ id: schema.emailCampaigns.id }).from(schema.emailCampaigns).where(eq(schema.emailCampaigns.id, id)).limit(1).all();
         if (!exists) throw ApiErrors.notFound("Campaña no encontrada.");
         throw new ApiException("VALIDATION_ERROR", "La campaña ya se envió.", 409);
       }
 
-      for (let i = 0; i < recipients.length; i += INSERT_CHUNK) {
-        await tx
-          .insert(schema.emailCampaignDeliveries)
-          .values(recipients.slice(i, i + INSERT_CHUNK).map((r) => ({ campaignId: id, userId: r.userId })))
-          .onConflictDoNothing();
+      const perInsert = rowsPerInsert(DELIVERY_COLUMNS);
+      for (let i = 0; i < recipients.length; i += perInsert) {
+        tx.insert(schema.emailCampaignDeliveries)
+          .values(recipients.slice(i, i + perInsert).map((r) => ({ campaignId: id, userId: r.userId })))
+          .onConflictDoNothing()
+          .run();
       }
-      await tx
-        .insert(schema.moderationActions)
-        .values({ actorId, action: "EMAIL_CAMPAIGN_SENT", metadata: { campaignId: id, recipientCount: recipients.length } });
+      tx.insert(schema.moderationActions)
+        .values({ actorId, action: "EMAIL_CAMPAIGN_SENT", metadata: { campaignId: id, recipientCount: recipients.length } })
+        .run();
       return toDto(campaign, [{ status: "pending", n: recipients.length }]);
     });
   }

@@ -28,7 +28,7 @@ describe("action query counts", () => {
   let location: { latitude: number; longitude: number; accuracy: number; capturedAt: string };
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     const roomState = new RoomStateService(db);
     const presence = new PresenceService();
     const reputation = new ReputationService(db);
@@ -51,18 +51,18 @@ describe("action query counts", () => {
   it("counts round trips per action", async () => {
     const counts: Record<string, number> = {};
 
-    const inMeasure = await countQueries(() => checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false }));
+    const inMeasure = await countQueries(db, () => checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false }));
     await flushBackground();
     counts.checkIn = inMeasure.queries;
 
     const active = await checkIns.getActiveCheckIn("u1");
-    const extendMeasure = await countQueries(() => checkIns.extend("u1", location, active!));
+    const extendMeasure = await countQueries(db, () => checkIns.extend("u1", location, active!));
     counts.extend = extendMeasure.queries;
 
-    const observeMeasure = await countQueries(() => observations.observe({ userId: "u2", roomId, seatId: seatIds[1]!, status: "FREE", location }));
+    const observeMeasure = await countQueries(db, () => observations.observe({ userId: "u2", roomId, seatId: seatIds[1]!, status: "FREE", location }));
     counts.observe = observeMeasure.queries;
 
-    const outMeasure = await countQueries(() => checkIns.checkOut("u1"));
+    const outMeasure = await countQueries(db, () => checkIns.checkOut("u1"));
     counts.checkOut = outMeasure.queries;
 
     console.info("round trips", JSON.stringify(counts));

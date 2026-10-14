@@ -8,7 +8,7 @@ describe("NotificationPreferencesService", () => {
   let svc: NotificationPreferencesService;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     svc = new NotificationPreferencesService(db);
     await insertUsers(db, ["u1"]);
   });

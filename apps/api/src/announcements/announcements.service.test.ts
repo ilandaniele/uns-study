@@ -10,7 +10,7 @@ describe("AnnouncementsService", () => {
   let roomId: string;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     svc = new AnnouncementsService(db);
     const room = await getRoom(db);
     roomId = room.id;

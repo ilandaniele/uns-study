@@ -1,18 +1,16 @@
 import { createHash } from "node:crypto";
-import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
 import { and, eq } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { LocationInput, PhotoMimeType, PhotoVerificationResultDto } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { PresenceService, type PresenceGrant } from "../presence/presence.service.js";
 import { ApiErrors } from "../common/api-error.js";
 import { stripImageMetadata } from "../common/image-metadata.js";
 import { env } from "../env.js";
-import { SEAT_PHOTO_VERIFIER } from "../verification/seat-photo-verifier.tokens.js";
-import type { SeatPhotoVerifier } from "../verification/seat-photo-verifier.js";
+import { Logger } from "../platform/logger.js";
+import type { SeatPhotoVerifier, SeatPhotoVerifierResult } from "../verification/seat-photo-verifier.js";
 import { toDto } from "./checkins.service.js";
-import { isUniqueViolation } from "../common/pg-errors.js";
+import { isUniqueViolation } from "../common/sqlite-errors.js";
 
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 
@@ -32,27 +30,27 @@ export interface VerifyCheckInPhotoInput {
  * are never persisted or logged — only the verifier's verdict and a SHA-256 hash of the bytes (to
  * block reusing the same photo for a different user's check-in). See docs/SEAT_PHOTO_VERIFIER.md.
  */
-@Injectable()
 export class PhotoVerificationService {
   private readonly logger = new Logger(PhotoVerificationService.name);
 
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(RoomStateService) private readonly roomState: RoomStateService,
-    @Inject(PresenceService) private readonly presence: PresenceService,
-    @Optional() @Inject(SEAT_PHOTO_VERIFIER) private readonly verifier: SeatPhotoVerifier | null,
+    private readonly db: Db,
+    private readonly roomState: RoomStateService,
+    private readonly presence: PresenceService,
+    private readonly verifier: SeatPhotoVerifier | null,
   ) {}
 
   async verify(input: VerifyCheckInPhotoInput): Promise<{ result: PhotoVerificationResultDto; changes: SeatStateChange[] }> {
     if (!this.verifier) throw ApiErrors.verifierUnavailable();
 
-    const [row] = await this.db
+    const row = this.db
       .select({ checkIn: schema.checkIns, seatCode: schema.seats.code, room: schema.rooms })
       .from(schema.checkIns)
       .innerJoin(schema.seats, eq(schema.seats.id, schema.checkIns.seatId))
       .innerJoin(schema.rooms, eq(schema.rooms.id, schema.checkIns.roomId))
       .where(eq(schema.checkIns.id, input.checkInId))
-      .limit(1);
+      .limit(1)
+      .get();
     if (!row || row.checkIn.userId !== input.userId || row.checkIn.status !== "ACTIVE") {
       throw ApiErrors.noActiveCheckIn();
     }
@@ -77,25 +75,27 @@ export class PhotoVerificationService {
 
     // Any prior check-in (this user's or anyone else's) that was verified with the same photo bytes
     // blocks reuse — the same picture cannot verify two different check-ins.
-    const [reused] = await this.db
+    const reused = this.db
       .select({ id: schema.checkIns.id })
       .from(schema.checkIns)
       .where(eq(schema.checkIns.verificationPhotoSha256, hash))
-      .limit(1);
+      .limit(1)
+      .get();
     if (reused) throw ApiErrors.photoReused();
 
-    const seatRows = await this.db
+    const seatRows = this.db
       .select({ code: schema.seats.code, x: schema.seats.x, y: schema.seats.y, tableCode: schema.roomTables.code })
       .from(schema.seats)
       .innerJoin(schema.roomTables, eq(schema.roomTables.id, schema.seats.tableId))
-      .where(and(eq(schema.seats.roomId, row.checkIn.roomId), eq(schema.seats.active, true)));
+      .where(and(eq(schema.seats.roomId, row.checkIn.roomId), eq(schema.seats.active, true)))
+      .all();
 
     const notVerified = (reason: PhotoVerificationResultDto["reason"]): { result: PhotoVerificationResultDto; changes: SeatStateChange[] } => ({
       result: { verified: false, reason, checkIn: toDto(row.checkIn, row.seatCode) },
       changes: [],
     });
 
-    let prediction;
+    let prediction: SeatPhotoVerifierResult;
     try {
       prediction = await this.verifier.verify({
         roomSlug: row.room.slug,
@@ -113,37 +113,53 @@ export class PhotoVerificationService {
     if (prediction.seatCode !== row.seatCode) return notVerified("SEAT_MISMATCH");
     if (prediction.confidence < env.seatVerifierMinConfidence) return notVerified("LOW_CONFIDENCE");
 
+    // The verifier call above awaited real I/O, so the check-in may have ended, been verified, or the
+    // photo reused meanwhile: re-read what the verdict depends on inside the (synchronous) transaction.
     const now = new Date();
-    let updated;
+    let outcome: { updated: typeof schema.checkIns.$inferSelect; changes: SeatStateChange[] };
     try {
-      [updated] = await this.db
-        .update(schema.checkIns)
-        .set({
-          verifiedAt: now,
-          verificationConfidence: prediction.confidence,
-          verifierModel: prediction.modelVersion,
-          verificationPhotoSha256: hash,
-          updatedAt: now,
-        })
-        .where(eq(schema.checkIns.id, row.checkIn.id))
-        .returning();
+      outcome = this.db.transaction((tx) => {
+        const current = tx.select().from(schema.checkIns).where(eq(schema.checkIns.id, row.checkIn.id)).limit(1).get();
+        if (!current || current.userId !== input.userId || current.status !== "ACTIVE") throw ApiErrors.noActiveCheckIn();
+        if (current.verifiedAt) throw ApiErrors.alreadyVerified();
+        const taken = tx
+          .select({ id: schema.checkIns.id })
+          .from(schema.checkIns)
+          .where(eq(schema.checkIns.verificationPhotoSha256, hash))
+          .limit(1)
+          .get();
+        if (taken) throw ApiErrors.photoReused();
+
+        const updated = tx
+          .update(schema.checkIns)
+          .set({
+            verifiedAt: now,
+            verificationConfidence: prediction.confidence,
+            verifierModel: prediction.modelVersion,
+            verificationPhotoSha256: hash,
+            updatedAt: now,
+          })
+          .where(eq(schema.checkIns.id, current.id))
+          .returning()
+          .get();
+        if (!updated) throw new Error("Check-in vanished during verification");
+
+        const changes = this.roomState.recomputeSeats([current.seatId], {
+          roomId: current.roomId,
+          now,
+          eventType: "PHOTO_VERIFIED",
+          actingUserId: input.userId,
+          tx,
+        });
+        return { updated, changes };
+      });
     } catch (err) {
-      // A concurrent request verified a different check-in with the same photo bytes between the
-      // reuse check above and this write — the unique index on verification_photo_sha256 is the
-      // final word on it.
-      if (isUniqueViolation(err)) throw ApiErrors.photoReused();
+      // The unique index on verification_photo_sha256 is the backstop for the reuse check above.
+      if (isUniqueViolation(err, ["check_ins.verification_photo_sha256"])) throw ApiErrors.photoReused();
       throw err;
     }
-    if (!updated) throw new Error("Check-in vanished during verification");
 
-    const changes = await this.roomState.recomputeSeats([row.checkIn.seatId], {
-      roomId: row.checkIn.roomId,
-      now,
-      eventType: "PHOTO_VERIFIED",
-      actingUserId: input.userId,
-    });
-
-    return { result: { verified: true, reason: "VERIFIED", checkIn: toDto(updated, row.seatCode) }, changes };
+    return { result: { verified: true, reason: "VERIFIED", checkIn: toDto(outcome.updated, row.seatCode) }, changes: outcome.changes };
   }
 }
 

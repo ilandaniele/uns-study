@@ -36,7 +36,7 @@ describe("RoomPeopleService", () => {
   let location: { latitude: number; longitude: number; accuracy: number; capturedAt: string };
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     ({ checkIns, study, people } = await build(db));
     const room = await getRoom(db);
     roomId = room.id;

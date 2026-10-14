@@ -1,10 +1,8 @@
-import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, gte } from "drizzle-orm";
-import { schema, type Db } from "@sala/database";
+import { schema, type Db, type Tx } from "@sala/database";
 import type { StudyStatusDto } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
-import { RestrictionService } from "../users/restriction.service.js";
+import type { RestrictionService } from "../users/restriction.service.js";
 import { containsProfanity } from "../table-names/profanity.js";
 
 const RECENT_PRESENCE_WINDOW_MIN = 60;
@@ -18,28 +16,33 @@ export interface StartStudyInput {
 }
 
 /** Study Mode ("Modo Estudio"): a lightweight status row users toggle on top of their check-in. */
-@Injectable()
 export class StudyService {
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(RestrictionService) private readonly restrictions: RestrictionService,
+    private readonly db: Db,
+    private readonly restrictions: RestrictionService,
   ) {}
 
   /** Throws `PRESENCE_REJECTED` unless the user has an active check-in in `roomId`, or started one there in the last hour. */
   async assertRecentPresence(userId: string, roomId: string): Promise<void> {
-    const [activeCheckIn] = await this.db
+    this.assertRecentPresenceSync(this.db, userId, roomId);
+  }
+
+  private assertRecentPresenceSync(db: Db | Tx, userId: string, roomId: string): void {
+    const activeCheckIn = db
       .select({ id: schema.checkIns.id })
       .from(schema.checkIns)
       .where(and(eq(schema.checkIns.userId, userId), eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE")))
-      .limit(1);
+      .limit(1)
+      .get();
     if (activeCheckIn) return;
 
     const windowStart = new Date(Date.now() - RECENT_PRESENCE_WINDOW_MIN * 60_000);
-    const [recentCheckIn] = await this.db
+    const recentCheckIn = db
       .select({ id: schema.checkIns.id })
       .from(schema.checkIns)
       .where(and(eq(schema.checkIns.userId, userId), eq(schema.checkIns.roomId, roomId), gte(schema.checkIns.startedAt, windowStart)))
-      .limit(1);
+      .limit(1)
+      .get();
     if (recentCheckIn) return;
 
     throw ApiErrors.presenceRejected(
@@ -55,46 +58,55 @@ export class StudyService {
       if (URL_PATTERN.test(text)) throw ApiErrors.validation("El estado no puede contener enlaces.");
       if (containsProfanity(text)) throw ApiErrors.validation("Ese texto no está permitido.");
     }
-    await this.assertRecentPresence(userId, roomId);
 
     const now = new Date();
-    const [existing] = await this.db
-      .select()
-      .from(schema.studyStatus)
-      .where(and(eq(schema.studyStatus.userId, userId), eq(schema.studyStatus.roomId, roomId)))
-      .limit(1);
-
-    // Re-starting while already active keeps the original `startedAt` (it isn't a new session).
-    const startedAt = existing?.active ? existing.startedAt : now;
     const subject = input.subject ?? null;
     const message = input.message ?? null;
 
-    await this.db
-      .insert(schema.studyStatus)
-      .values({ userId, roomId, subject, message, lookingForGroup: input.lookingForGroup, active: true, startedAt, updatedAt: now })
-      .onConflictDoUpdate({
-        target: [schema.studyStatus.userId, schema.studyStatus.roomId],
-        set: { subject, message, lookingForGroup: input.lookingForGroup, active: true, startedAt, updatedAt: now },
-      });
+    // Presence check, read of the current row and upsert are one sync transaction.
+    const startedAt = this.db.transaction((tx) => {
+      this.assertRecentPresenceSync(tx, userId, roomId);
+
+      const existing = tx
+        .select()
+        .from(schema.studyStatus)
+        .where(and(eq(schema.studyStatus.userId, userId), eq(schema.studyStatus.roomId, roomId)))
+        .limit(1)
+        .get();
+
+      // Re-starting while already active keeps the original `startedAt` (it isn't a new session).
+      const effectiveStart = existing?.active ? existing.startedAt : now;
+
+      tx.insert(schema.studyStatus)
+        .values({ userId, roomId, subject, message, lookingForGroup: input.lookingForGroup, active: true, startedAt: effectiveStart, updatedAt: now })
+        .onConflictDoUpdate({
+          target: [schema.studyStatus.userId, schema.studyStatus.roomId],
+          set: { subject, message, lookingForGroup: input.lookingForGroup, active: true, startedAt: effectiveStart, updatedAt: now },
+        })
+        .run();
+      return effectiveStart;
+    });
 
     return { subject, message, lookingForGroup: input.lookingForGroup, startedAt: startedAt.toISOString() };
   }
 
   /** Deactivates the caller's active study status, in whichever room it's active (there's at most one). */
   async stop(userId: string): Promise<void> {
-    await this.db
+    this.db
       .update(schema.studyStatus)
       .set({ active: false, updatedAt: new Date() })
-      .where(and(eq(schema.studyStatus.userId, userId), eq(schema.studyStatus.active, true)));
+      .where(and(eq(schema.studyStatus.userId, userId), eq(schema.studyStatus.active, true)))
+      .run();
   }
 
   /** Any room's active study status for this user — used by public profiles (one room in this MVP). */
   async getActiveStatusForUser(userId: string): Promise<StudyStatusDto | null> {
-    const [row] = await this.db
+    const row = this.db
       .select()
       .from(schema.studyStatus)
       .where(and(eq(schema.studyStatus.userId, userId), eq(schema.studyStatus.active, true)))
-      .limit(1);
+      .limit(1)
+      .get();
     return row ? toStudyStatusDto(row) : null;
   }
 }

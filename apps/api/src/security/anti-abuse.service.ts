@@ -1,4 +1,3 @@
-import { Inject, Injectable } from "@nestjs/common";
 import { ApiErrors } from "../common/api-error.js";
 import { RateLimitService } from "./rate-limit.service.js";
 import { SecurityEventService } from "./security-event.service.js";
@@ -17,13 +16,12 @@ export interface RateLimitRule {
  * The anti-abuse decisions the write endpoints share: rate-limit enforcement (with the security
  * event recorded on rejection) and the Turnstile challenge gate. Controllers only call these.
  */
-@Injectable()
 export class AntiAbuseService {
   constructor(
-    @Inject(RateLimitService) private readonly rateLimit: RateLimitService,
-    @Inject(SecurityEventService) private readonly securityEvents: SecurityEventService,
-    @Inject(AbusePolicyService) private readonly abusePolicy: AbusePolicyService,
-    @Inject(TurnstileService) private readonly turnstile: TurnstileService,
+    private readonly rateLimit: RateLimitService,
+    private readonly securityEvents: SecurityEventService,
+    private readonly abusePolicy: AbusePolicyService,
+    private readonly turnstile: TurnstileService,
   ) {}
 
   /** Throws RATE_LIMITED when the bucket is exhausted, recording `rule.event` first if given. */

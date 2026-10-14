@@ -32,7 +32,7 @@ describe("StudyService", () => {
   let location: { latitude: number; longitude: number; accuracy: number; capturedAt: string };
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     ({ study, checkIns } = await build(db));
     const room = await getRoom(db);
     roomId = room.id;

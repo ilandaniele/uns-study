@@ -16,10 +16,10 @@ function fakeStorage(overrides: Partial<StorageService> = {}): StorageService {
       objectKey: `evidence/fake-${Math.random().toString(36).slice(2)}`,
       uploadUrl: "https://signed.example/put",
       headers: { "Content-Type": contentType },
-      expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+      expiresAt: new Date(Date.now() + 5 * 60_000),
     })),
     presignGet: vi.fn(async () => "https://signed.example/get"),
-    head: vi.fn(async () => ({ contentType: "image/jpeg", contentLength: 1000 })),
+    head: vi.fn(async () => ({ contentType: "image/jpeg", size: 1000 })),
     deleteObject: vi.fn(async () => undefined),
     ...overrides,
   } as unknown as StorageService;
@@ -32,7 +32,7 @@ describe("ReportsService", () => {
   let restrictions: RestrictionService;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     await insertUsers(db, ["reporter", "reported", "mod"]);
     rateLimit = new RateLimitService();
     roles = new RolesService(db);

@@ -1,8 +1,6 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
-import { and, eq, gt, gte, or, sql } from "drizzle-orm";
+import { and, eq, gt, gte, or } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import { FREE_OBS_MINUTES, OCCUPIED_OBS_MINUTES, SAVED_OBS_MINUTES, type LocationInput, type SeatDisputeDto } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { PresenceService, type PresenceGrant } from "../presence/presence.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
@@ -13,6 +11,7 @@ import { ApiErrors } from "../common/api-error.js";
 import { RoomCache } from "../common/cache/room-cache.service.js";
 import { isCheckInVerified } from "../checkins/verification.js";
 import { runInBackground } from "../common/background.js";
+import { Logger } from "../platform/logger.js";
 import { NotificationService } from "../notifications/notification.service.js";
 import { DisputeService } from "../disputes/disputes.service.js";
 
@@ -36,21 +35,20 @@ export interface CreateObservationInput {
   limits?: ObservationLimits;
 }
 
-@Injectable()
 export class ObservationService {
   private readonly logger = new Logger(ObservationService.name);
 
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(RoomStateService) private readonly roomState: RoomStateService,
-    @Inject(PresenceService) private readonly presence: PresenceService,
-    @Inject(SecurityEventService) private readonly securityEvents: SecurityEventService,
-    @Inject(AbusePolicyService) private readonly abusePolicy: AbusePolicyService,
-    @Inject(QrService) private readonly qr: QrService,
-    @Inject(ReputationService) private readonly reputation: ReputationService,
-    @Inject(NotificationService) private readonly notifications: NotificationService,
-    @Inject(DisputeService) private readonly disputes: DisputeService,
-    @Inject(RoomCache) private readonly roomCache: RoomCache = new RoomCache(),
+    private readonly db: Db,
+    private readonly roomState: RoomStateService,
+    private readonly presence: PresenceService,
+    private readonly securityEvents: SecurityEventService,
+    private readonly abusePolicy: AbusePolicyService,
+    private readonly qr: QrService,
+    private readonly reputation: ReputationService,
+    private readonly notifications: NotificationService,
+    private readonly disputes: DisputeService,
+    private readonly roomCache: RoomCache = new RoomCache(),
   ) {}
 
   /**
@@ -84,36 +82,39 @@ export class ObservationService {
 
     const now = new Date();
     const windowStart = new Date(now.getTime() - SPREAD_WINDOW_MIN * 60_000);
-    // All the independent reads in one parallel batch; the checks below run in the original order.
-    const [activeCheckIns, limits, qrVerified, reputationWeight, priorStates] = await Promise.all([
-      // The caller's own active check-in and whoever holds this seat, in a single query.
-      this.db
-        .select({
-          userId: schema.checkIns.userId,
-          seatId: schema.checkIns.seatId,
-          verifiedAt: schema.checkIns.verifiedAt,
-          expiresAt: schema.checkIns.expiresAt,
-        })
-        .from(schema.checkIns)
-        .where(
-          and(
-            eq(schema.checkIns.status, "ACTIVE"),
-            or(eq(schema.checkIns.seatId, input.seatId), eq(schema.checkIns.userId, input.userId)),
-          ),
-        ),
+    // The async lookups first, then the database reads right before the checks that use them.
+    const [limits, qrVerified, reputationWeight] = await Promise.all([
       input.limits ?? this.abusePolicy.observationLimits(input.userId),
       this.qr.isValidForTable(input.qrToken, input.roomId, seat.tableId),
       this.reputation.observationWeight(input.userId),
-      // The seat's state before this report: only "Está libre" needs it (to tell whether it
-      // challenges a "guardado" seat or joins a running vote).
+    ]);
+    // The caller's own active check-in and whoever holds this seat, in a single query.
+    const activeCheckIns = this.db
+      .select({
+        userId: schema.checkIns.userId,
+        seatId: schema.checkIns.seatId,
+        verifiedAt: schema.checkIns.verifiedAt,
+        expiresAt: schema.checkIns.expiresAt,
+      })
+      .from(schema.checkIns)
+      .where(
+        and(
+          eq(schema.checkIns.status, "ACTIVE"),
+          or(eq(schema.checkIns.seatId, input.seatId), eq(schema.checkIns.userId, input.userId)),
+        ),
+      )
+      .all();
+    // The seat's state before this report: only "Está libre" needs it (to tell whether it
+    // challenges a "guardado" seat or joins a running vote).
+    const priorStates =
       input.status === "FREE"
         ? this.db
             .select({ status: schema.seatCurrentState.status, sourceSummary: schema.seatCurrentState.sourceSummary })
             .from(schema.seatCurrentState)
             .where(eq(schema.seatCurrentState.seatId, input.seatId))
             .limit(1)
-        : Promise.resolve([]),
-    ]);
+            .all()
+        : [];
 
     if (activeCheckIns.some((c) => c.userId === input.userId && c.seatId === input.seatId)) throw ApiErrors.ownSeatObservation();
 
@@ -128,24 +129,22 @@ export class ObservationService {
     const expiresAt = new Date(now.getTime() + minutes * 60_000);
     const confidenceWeight = reputationWeight * (qrVerified ? QR_VERIFIED_FACTOR : 1);
 
-    // One transaction for the write and the seat-state recompute (a single BEGIN/COMMIT).
-    const outcome = await this.db.transaction(async (tx) => {
-      // Serialises this user's observation writes so the spread cap below (a read-then-insert)
-      // can't be bypassed by concurrent requests that each see a count under the cap.
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`observation-user:${input.userId}`}))`);
-
-      const recentSeats = await tx
+    // One synchronous transaction for the write and the seat-state recompute: it serializes this
+    // user's observation writes, so the spread cap below (a read-then-insert) can't be bypassed by
+    // concurrent requests that each see a count under the cap.
+    const outcome = this.db.transaction((tx) => {
+      const recentSeats = tx
         .select({ seatId: schema.seatObservations.seatId })
         .from(schema.seatObservations)
-        .where(and(eq(schema.seatObservations.userId, input.userId), gte(schema.seatObservations.createdAt, windowStart)));
+        .where(and(eq(schema.seatObservations.userId, input.userId), gte(schema.seatObservations.createdAt, windowStart)))
+        .all();
       const distinctSeats = new Set(recentSeats.map((r) => r.seatId));
       if (distinctSeats.size >= limits.distinctSeatCap && !distinctSeats.has(input.seatId)) {
         return { spread: distinctSeats.size };
       }
 
       // Duplicate observation by the same user on the same seat replaces the previous one.
-      await tx
-        .update(schema.seatObservations)
+      tx.update(schema.seatObservations)
         .set({ expiresAt: now, updatedAt: now })
         .where(
           and(
@@ -153,21 +152,24 @@ export class ObservationService {
             eq(schema.seatObservations.seatId, input.seatId),
             gt(schema.seatObservations.expiresAt, now),
           ),
-        );
+        )
+        .run();
 
-      await tx.insert(schema.seatObservations).values({
-        userId: input.userId,
-        roomId: input.roomId,
-        seatId: input.seatId,
-        observedStatus: input.status,
-        presenceVerified: true,
-        qrVerified,
-        confidenceWeight,
-        observedAt: now,
-        expiresAt,
-      });
+      tx.insert(schema.seatObservations)
+        .values({
+          userId: input.userId,
+          roomId: input.roomId,
+          seatId: input.seatId,
+          observedStatus: input.status,
+          presenceVerified: true,
+          qrVerified,
+          confidenceWeight,
+          observedAt: now,
+          expiresAt,
+        })
+        .run();
 
-      const changes = await this.roomState.recomputeSeats([input.seatId], {
+      const changes = this.roomState.recomputeSeats([input.seatId], {
         roomId: input.roomId,
         now,
         eventType: "OBSERVATION",

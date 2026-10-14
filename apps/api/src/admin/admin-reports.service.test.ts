@@ -12,7 +12,7 @@ describe("AdminReportsService.getAttachmentUrl", () => {
   let reportId: string;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     await insertUsers(db, ["reporter", "reported", "admin", "mod"]);
     await db.insert(schema.userRoles).values([
       { userId: "admin", role: "ADMIN" },

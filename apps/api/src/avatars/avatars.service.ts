@@ -1,9 +1,7 @@
 import { createHash } from "node:crypto";
-import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, or } from "drizzle-orm";
-import { schema, type Db } from "@sala/database";
+import { schema, type Db, type Tx } from "@sala/database";
 import type { AvatarMimeType } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { needsAlias } from "../users/display-name.js";
@@ -62,11 +60,10 @@ function avatarUrlFor(userId: string, sha256: string): string {
  * bytes never leave this service except through `getForOwner`, which the public `/avatars/:userId`
  * route gates on the owner's `show_avatar` privacy setting.
  */
-@Injectable()
 export class AvatarsService {
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(RestrictionService) private readonly restrictions: RestrictionService,
+    private readonly db: Db,
+    private readonly restrictions: RestrictionService,
   ) {}
 
   /** Decodes/validates the upload, strips metadata, stores it, and points `avatar_url` at it. */
@@ -79,8 +76,10 @@ export class AvatarsService {
 
   /** Removes the stored photo (if any) and clears `avatar_url`. */
   async remove(userId: string): Promise<void> {
-    await this.db.delete(schema.userAvatars).where(eq(schema.userAvatars.userId, userId));
-    await this.setProfileAvatarUrl(userId, null);
+    this.db.transaction((tx) => {
+      tx.delete(schema.userAvatars).where(eq(schema.userAvatars.userId, userId)).run();
+      this.setProfileAvatarUrl(tx, userId, null);
+    });
   }
 
   /**
@@ -147,15 +146,16 @@ export class AvatarsService {
     const url = avatarUrlFor(userId, sha256);
     const now = new Date();
 
-    await this.db
-      .insert(schema.userAvatars)
-      .values({ userId, mimeType, bytes, sha256, updatedAt: now })
-      .onConflictDoUpdate({
-        target: schema.userAvatars.userId,
-        set: { mimeType, bytes, sha256, updatedAt: now },
-      });
-
-    await this.setProfileAvatarUrl(userId, url);
+    this.db.transaction((tx) => {
+      tx.insert(schema.userAvatars)
+        .values({ userId, mimeType, bytes, sha256, updatedAt: now })
+        .onConflictDoUpdate({
+          target: schema.userAvatars.userId,
+          set: { mimeType, bytes, sha256, updatedAt: now },
+        })
+        .run();
+      this.setProfileAvatarUrl(tx, userId, url);
+    });
     return url;
   }
 
@@ -193,10 +193,14 @@ export class AvatarsService {
     return { mimeType: row.mimeType, bytes: row.bytes, sha256: row.sha256, updatedAt: row.updatedAt };
   }
 
-  private async setProfileAvatarUrl(userId: string, avatarUrl: string | null): Promise<void> {
-    await this.db.insert(schema.userProfiles).values({ userId, avatarUrl }).onConflictDoUpdate({
-      target: schema.userProfiles.userId,
-      set: { avatarUrl, updatedAt: new Date() },
-    });
+  private setProfileAvatarUrl(exec: Tx, userId: string, avatarUrl: string | null): void {
+    exec
+      .insert(schema.userProfiles)
+      .values({ userId, avatarUrl })
+      .onConflictDoUpdate({
+        target: schema.userProfiles.userId,
+        set: { avatarUrl, updatedAt: new Date() },
+      })
+      .run();
   }
 }

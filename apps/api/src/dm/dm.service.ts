@@ -1,13 +1,12 @@
-import { Inject, Injectable } from "@nestjs/common";
-import { and, count, desc, eq, gt, inArray, isNull, lt, ne, or } from "drizzle-orm";
-import { schema, type Db } from "@sala/database";
+import { and, count, desc, eq, gt, inArray, isNull, ne, or, sql } from "drizzle-orm";
+import { inChunks, schema, type Db } from "@sala/database";
 import type { ConversationDto, DirectMessageDto, Page } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { BlocksService } from "../blocks/blocks.service.js";
 import { displayName, visibleAvatarUrl } from "../users/display-name.js";
 import { AliasService } from "../users/alias.service.js";
+import { formatCursor, newestFirst, olderThan, withRowid } from "../chat/page-cursor.js";
 
 const PAGE_SIZE = 50;
 /** Hard cap on unpaginated list responses. */
@@ -15,13 +14,12 @@ const MAX_LIST_ROWS = 200;
 
 type ConversationRow = typeof schema.directConversations.$inferSelect;
 
-@Injectable()
 export class DmService {
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(RestrictionService) private readonly restrictions: RestrictionService,
-    @Inject(BlocksService) private readonly blocks: BlocksService,
-    @Inject(AliasService) private readonly aliases: AliasService,
+    private readonly db: Db,
+    private readonly restrictions: RestrictionService,
+    private readonly blocks: BlocksService,
+    private readonly aliases: AliasService,
   ) {}
 
   /** `direct_conversations` enforces `user_a < user_b`; this returns the pair in that order. */
@@ -43,24 +41,15 @@ export class DmService {
     if (privacy && !privacy.allowDirectMessages) throw ApiErrors.dmNotAllowed();
 
     const [userA, userB] = this.orderPair(requesterId, targetId);
-    const [existing] = await this.db
-      .select()
-      .from(schema.directConversations)
-      .where(and(eq(schema.directConversations.userA, userA), eq(schema.directConversations.userB, userB)));
-
-    const conversation =
-      existing ??
-      (
-        await this.db
-          .insert(schema.directConversations)
-          .values({ userA, userB })
-          .onConflictDoNothing()
-          .returning()
-      )[0] ??
-      (await this.db
+    const conversation = this.db.transaction((tx) => {
+      const [existing] = tx
         .select()
         .from(schema.directConversations)
-        .where(and(eq(schema.directConversations.userA, userA), eq(schema.directConversations.userB, userB))))[0];
+        .where(and(eq(schema.directConversations.userA, userA), eq(schema.directConversations.userB, userB)))
+        .all();
+      if (existing) return existing;
+      return tx.insert(schema.directConversations).values({ userA, userB }).returning().all()[0];
+    });
 
     if (!conversation) throw new Error("Failed to get or create conversation");
     return this.toConversationDto(conversation, requesterId);
@@ -98,20 +87,19 @@ export class DmService {
     this.assertParticipant(conversation, viewerId);
 
     const conditions = [eq(schema.directMessages.conversationId, conversationId)];
-    if (cursor) {
-      const cursorDate = new Date(cursor);
-      if (!Number.isNaN(cursorDate.getTime())) conditions.push(lt(schema.directMessages.createdAt, cursorDate));
-    }
+    const older = olderThan(schema.directMessages, schema.directMessages.createdAt, cursor);
+    if (older) conditions.push(older);
 
     const rows = await this.db
-      .select()
+      .select(withRowid(schema.directMessages))
       .from(schema.directMessages)
       .where(and(...conditions))
-      .orderBy(desc(schema.directMessages.createdAt))
+      .orderBy(...newestFirst(schema.directMessages, schema.directMessages.createdAt))
       .limit(PAGE_SIZE + 1);
 
     const page = rows.slice(0, PAGE_SIZE);
-    const nextCursor = rows.length > PAGE_SIZE ? page[page.length - 1]!.createdAt.toISOString() : null;
+    const last = page[page.length - 1];
+    const nextCursor = rows.length > PAGE_SIZE && last ? formatCursor(last.createdAt, last.rowid) : null;
 
     return { items: page.map(toMessageDto), nextCursor };
   }
@@ -128,13 +116,12 @@ export class DmService {
     const [recipientPrivacy] = await this.db.select().from(schema.userPrivacySettings).where(eq(schema.userPrivacySettings.userId, recipientId));
     if (recipientPrivacy && !recipientPrivacy.allowDirectMessages) throw ApiErrors.dmNotAllowed();
 
-    const [row] = await this.db.insert(schema.directMessages).values({ conversationId, senderId, content }).returning();
-    if (!row) throw new Error("Failed to insert direct message");
-
-    await this.db
-      .update(schema.directConversations)
-      .set({ lastMessageAt: row.createdAt })
-      .where(eq(schema.directConversations.id, conversationId));
+    const row = this.db.transaction((tx) => {
+      const [inserted] = tx.insert(schema.directMessages).values({ conversationId, senderId, content }).returning().all();
+      if (!inserted) throw new Error("Failed to insert direct message");
+      tx.update(schema.directConversations).set({ lastMessageAt: inserted.createdAt }).where(eq(schema.directConversations.id, conversationId)).run();
+      return inserted;
+    });
 
     return toMessageDto(row);
   }
@@ -179,33 +166,48 @@ export class DmService {
     const conversationIds = conversations.map((c) => c.id);
     const otherIds = [...new Set(conversations.map((c) => this.otherUserId(c, viewerId)))];
 
-    const users = await this.db.select().from(schema.user).where(inArray(schema.user.id, otherIds));
-    const profileRows = await this.db.select().from(schema.userProfiles).where(inArray(schema.userProfiles.userId, otherIds));
+    const users = inChunks(otherIds, (part) => this.db.select().from(schema.user).where(inArray(schema.user.id, part)).all());
+    const profileRows = inChunks(otherIds, (part) =>
+      this.db.select().from(schema.userProfiles).where(inArray(schema.userProfiles.userId, part)).all(),
+    );
     const aliasByUser = await this.aliases.ensureAliasesForProfiles(profileRows);
-    const privacyRows = await this.db.select().from(schema.userPrivacySettings).where(inArray(schema.userPrivacySettings.userId, otherIds));
+    const privacyRows = inChunks(otherIds, (part) =>
+      this.db.select().from(schema.userPrivacySettings).where(inArray(schema.userPrivacySettings.userId, part)).all(),
+    );
 
-    const lastRows = await this.db
-      .selectDistinctOn([schema.directMessages.conversationId])
-      .from(schema.directMessages)
-      .where(inArray(schema.directMessages.conversationId, conversationIds))
-      .orderBy(schema.directMessages.conversationId, desc(schema.directMessages.createdAt));
+    // Latest message per conversation: rank in SQL, then load just the winners.
+    const latestIds = inChunks(conversationIds, (part) => {
+      const ranked = this.db
+        .select({
+          id: schema.directMessages.id,
+          rn: sql<number>`row_number() over (partition by ${schema.directMessages.conversationId} order by ${schema.directMessages.createdAt} desc, ${schema.directMessages.id} desc)`.as("rn"),
+        })
+        .from(schema.directMessages)
+        .where(inArray(schema.directMessages.conversationId, part))
+        .as("ranked");
+      return this.db.select({ id: ranked.id }).from(ranked).where(eq(ranked.rn, 1)).all();
+    }).map((r) => r.id);
+    const lastRows = inChunks(latestIds, (part) => this.db.select().from(schema.directMessages).where(inArray(schema.directMessages.id, part)).all());
 
     // No read row means everything from the other side is unread.
-    const unreadRows = await this.db
-      .select({ conversationId: schema.directMessages.conversationId, count: count() })
-      .from(schema.directMessages)
-      .leftJoin(
-        schema.directConversationReads,
-        and(eq(schema.directConversationReads.conversationId, schema.directMessages.conversationId), eq(schema.directConversationReads.userId, viewerId)),
-      )
-      .where(
-        and(
-          inArray(schema.directMessages.conversationId, conversationIds),
-          ne(schema.directMessages.senderId, viewerId),
-          or(isNull(schema.directConversationReads.lastReadAt), gt(schema.directMessages.createdAt, schema.directConversationReads.lastReadAt)),
-        ),
-      )
-      .groupBy(schema.directMessages.conversationId);
+    const unreadRows = inChunks(conversationIds, (part) =>
+      this.db
+        .select({ conversationId: schema.directMessages.conversationId, count: count() })
+        .from(schema.directMessages)
+        .leftJoin(
+          schema.directConversationReads,
+          and(eq(schema.directConversationReads.conversationId, schema.directMessages.conversationId), eq(schema.directConversationReads.userId, viewerId)),
+        )
+        .where(
+          and(
+            inArray(schema.directMessages.conversationId, part),
+            ne(schema.directMessages.senderId, viewerId),
+            or(isNull(schema.directConversationReads.lastReadAt), gt(schema.directMessages.createdAt, schema.directConversationReads.lastReadAt)),
+          ),
+        )
+        .groupBy(schema.directMessages.conversationId)
+        .all(),
+    );
 
     const userById = new Map(users.map((u) => [u.id, u]));
     const profileByUser = new Map(profileRows.map((p) => [p.userId, { ...p, alias: aliasByUser.get(p.userId) ?? p.alias }]));

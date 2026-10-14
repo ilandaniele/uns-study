@@ -32,7 +32,7 @@ describe("CheckInExpiryReminderJob", () => {
   const setExpiry = (ms: number) => db.update(schema.checkIns).set({ expiresAt: new Date(Date.now() + ms) }).where(eq(schema.checkIns.seatId, seatId));
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     const roomState = new RoomStateService(db);
     const security = new SecurityEventService(db, new ReputationService(db));
     checkIns = new CheckInService(db, roomState, new PresenceService(), security, new StudySessionService(db), new QrService(db), buildDisputeService(db), new RolesService(db));

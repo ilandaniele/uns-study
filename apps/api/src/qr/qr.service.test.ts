@@ -13,7 +13,7 @@ describe("QrService", () => {
   let tableCode: string;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     svc = new QrService(db);
     const room = await getRoom(db);
     roomId = room.id;

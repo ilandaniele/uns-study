@@ -28,7 +28,7 @@ describe("ModerationActionService", () => {
   let location: { latitude: number; longitude: number; accuracy: number; capturedAt: string };
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     checkIns = new CheckInService(
       db,
       new RoomStateService(db),

@@ -31,7 +31,7 @@ describe("DailyResetJob", () => {
   let location: { latitude: number; longitude: number; accuracy: number; capturedAt: string };
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     const roomState = new RoomStateService(db);
     const presence = new PresenceService();
     const security = new SecurityEventService(db, new ReputationService(db));

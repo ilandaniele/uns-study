@@ -1,9 +1,7 @@
-import { Inject, Injectable } from "@nestjs/common";
 import { and, eq } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { CheckInDto, MyProfileDto, PrivacySettingsDto, PublicProfileDto, updateProfileSchema, updatePrivacySchema } from "@sala/contracts";
 import type { z } from "zod";
-import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { displayName, needsAlias, showsAdminBadge, visibleAvatarUrl } from "../users/display-name.js";
 import { AliasService } from "../users/alias.service.js";
@@ -17,14 +15,13 @@ type PrivacyRow = typeof schema.userPrivacySettings.$inferSelect;
 type ProfilePatch = z.infer<typeof updateProfileSchema>;
 type PrivacyPatch = z.infer<typeof updatePrivacySchema>;
 
-@Injectable()
 export class ProfilesService {
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(StudyService) private readonly study: StudyService,
-    @Inject(AliasService) private readonly aliases: AliasService,
-    @Inject(RestrictionService) private readonly restrictions: RestrictionService,
-    @Inject(RolesService) private readonly roles: RolesService,
+    private readonly db: Db,
+    private readonly study: StudyService,
+    private readonly aliases: AliasService,
+    private readonly restrictions: RestrictionService,
+    private readonly roles: RolesService,
   ) {}
 
   /** Rows are created lazily on first read/write — there's no signup-time profile step. Also
@@ -149,9 +146,9 @@ export class ProfilesService {
 
   /** Checks the user out, records an audit trail without PII, then deletes the `user` row (cascades). */
   async deleteAccount(userId: string): Promise<void> {
-    await this.db.transaction(async (tx) => {
-      await tx.insert(schema.moderationActions).values({ actorId: userId, targetUserId: userId, action: "ACCOUNT_DELETED", metadata: {} });
-      await tx.delete(schema.user).where(eq(schema.user.id, userId));
+    this.db.transaction((tx) => {
+      tx.insert(schema.moderationActions).values({ actorId: userId, targetUserId: userId, action: "ACCOUNT_DELETED", metadata: {} }).run();
+      tx.delete(schema.user).where(eq(schema.user.id, userId)).run();
     });
   }
 }

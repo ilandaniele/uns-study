@@ -1,25 +1,22 @@
-import { Inject, Injectable } from "@nestjs/common";
 import { asc, eq } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { RoomDto, RoomMapDto, SeatDto, TableDto } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
 import { RoomStateService } from "./room-state.service.js";
 import { RoomCache } from "../common/cache/room-cache.service.js";
 
-@Injectable()
 export class RoomsService {
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(RoomStateService) private readonly roomState: RoomStateService,
-    @Inject(RoomCache) private readonly roomCache: RoomCache = new RoomCache(),
+    private readonly db: Db,
+    private readonly roomState: RoomStateService,
+    private readonly roomCache: RoomCache = new RoomCache(),
   ) {}
 
   async listRooms(): Promise<RoomDto[]> {
-    const rows = await this.db.select().from(schema.rooms).where(eq(schema.rooms.active, true)).orderBy(asc(schema.rooms.slug));
+    const rows = this.db.select().from(schema.rooms).where(eq(schema.rooms.active, true)).orderBy(asc(schema.rooms.slug)).all();
     return rows.map(toRoomDto);
   }
 
-  /** Cached room row by id or slug (see `RoomCache` — writers must invalidate). */
+  /** Cached room row by id or slug (see `RoomCache`; writers must invalidate). */
   async findRoomRow(idOrSlug: string) {
     return this.roomCache.getRoom(this.db, idOrSlug);
   }

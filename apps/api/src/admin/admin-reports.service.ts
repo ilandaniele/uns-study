@@ -1,8 +1,6 @@
-import { Inject, Injectable } from "@nestjs/common";
 import { and, asc, desc, eq, inArray, lt } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { AdminReportDto, Page } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { StorageService } from "../storage/storage.service.js";
 import { RolesService } from "../users/roles.service.js";
@@ -12,12 +10,11 @@ const PAGE_SIZE = 20;
 
 type ReportStatus = (typeof schema.userReports.$inferSelect)["status"];
 
-@Injectable()
 export class AdminReportsService {
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(StorageService) private readonly storage: StorageService,
-    @Inject(RolesService) private readonly roles: RolesService,
+    private readonly db: Db,
+    private readonly storage: StorageService,
+    private readonly roles: RolesService,
   ) {}
 
   async list(status: string | undefined, cursor: string | undefined, actorId: string): Promise<Page<AdminReportDto>> {
@@ -51,23 +48,30 @@ export class AdminReportsService {
     if (!existing) throw ApiErrors.notFound("Reporte no encontrado.");
 
     const resolved = status === "RESOLVED" || status === "DISMISSED";
-    const [row] = await this.db
-      .update(schema.userReports)
-      .set({
-        status: status as ReportStatus,
-        resolvedAt: resolved ? new Date() : existing.resolvedAt,
-        resolvedBy: resolved ? actorId : existing.resolvedBy,
-      })
-      .where(eq(schema.userReports.id, id))
-      .returning();
-    if (!row) throw new Error("Failed to update report");
+    // The status change and its audit row land together or not at all.
+    const row = this.db.transaction((tx) => {
+      const updated = tx
+        .update(schema.userReports)
+        .set({
+          status: status as ReportStatus,
+          resolvedAt: resolved ? new Date() : existing.resolvedAt,
+          resolvedBy: resolved ? actorId : existing.resolvedBy,
+        })
+        .where(eq(schema.userReports.id, id))
+        .returning()
+        .get();
+      if (!updated) throw new Error("Failed to update report");
 
-    await this.db.insert(schema.moderationActions).values({
-      actorId,
-      targetUserId: row.reportedUserId,
-      reportId: row.id,
-      action: "REPORT_STATUS_CHANGED",
-      metadata: { status },
+      tx.insert(schema.moderationActions)
+        .values({
+          actorId,
+          targetUserId: updated.reportedUserId,
+          reportId: updated.id,
+          action: "REPORT_STATUS_CHANGED",
+          metadata: { status },
+        })
+        .run();
+      return updated;
     });
 
     return this.toDto(row, await this.roles.hasRole(actorId, ["ADMIN"]));

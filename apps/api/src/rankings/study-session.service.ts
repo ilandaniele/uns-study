@@ -1,7 +1,5 @@
-import { Inject, Injectable } from "@nestjs/common";
 import { eq } from "drizzle-orm";
-import { schema, type Db } from "@sala/database";
-import { DB } from "../database/database.module.js";
+import { schema, type Db, type Tx } from "@sala/database";
 import { DEFAULT_TIMEZONE, localDateOf, nextLocalMidnight } from "../common/dates.js";
 
 // A renewed ("Sigo acá") check-in stays one row for its whole stay, so the per-check-in cap is the
@@ -57,24 +55,24 @@ export interface CheckInForSession {
  * Records a completed `study_sessions` row whenever a check-in leaves ACTIVE (checkout, move to
  * another seat, expiration sweep, daily reset, or losing a dispute). Idempotent per check-in via the
  * `study_sessions.check_in_id` unique constraint, so it is safe to call more than once.
+ *
+ * Both writers are synchronous on purpose: callers run them inside a sync `db.transaction`.
  */
-@Injectable()
 export class StudySessionService {
-  constructor(@Inject(DB) _db: Db) {}
+  constructor(_db: Db) {}
 
-  async recordFromCheckIn(tx: Db, checkIn: CheckInForSession, endedAt: Date): Promise<void> {
+  recordFromCheckIn(tx: Db | Tx, checkIn: CheckInForSession, endedAt: Date): void {
     const startedAt = new Date(checkIn.startedAt);
     const expiresAt = new Date(checkIn.expiresAt);
     const effectiveEnd = endedAt.getTime() < expiresAt.getTime() ? endedAt : expiresAt;
     const verifiedMinutes = verifiedMinutesFor(startedAt, expiresAt, endedAt);
     if (verifiedMinutes === 0) return;
 
-    const [room] = await tx.select({ timezone: schema.rooms.timezone }).from(schema.rooms).where(eq(schema.rooms.id, checkIn.roomId)).limit(1);
+    const room = tx.select({ timezone: schema.rooms.timezone }).from(schema.rooms).where(eq(schema.rooms.id, checkIn.roomId)).limit(1).get();
     const timezone = room?.timezone ?? DEFAULT_TIMEZONE;
     const localDate = localDateOf(startedAt, timezone);
 
-    await tx
-      .insert(schema.studySessions)
+    tx.insert(schema.studySessions)
       .values({
         userId: checkIn.userId,
         roomId: checkIn.roomId,
@@ -85,14 +83,15 @@ export class StudySessionService {
         localDate,
         source: "CHECK_IN",
       })
-      .onConflictDoNothing({ target: schema.studySessions.checkInId });
+      .onConflictDoNothing({ target: schema.studySessions.checkInId })
+      .run();
   }
 
   /** Inserts an admin-credited (`MANUAL`) session, not tied to any check-in. Returns its id. */
-  async recordManual(tx: Db, input: ManualStudySessionInput): Promise<string> {
-    const [room] = await tx.select({ timezone: schema.rooms.timezone }).from(schema.rooms).where(eq(schema.rooms.id, input.roomId)).limit(1);
+  recordManual(tx: Db | Tx, input: ManualStudySessionInput): string {
+    const room = tx.select({ timezone: schema.rooms.timezone }).from(schema.rooms).where(eq(schema.rooms.id, input.roomId)).limit(1).get();
     const timezone = room?.timezone ?? DEFAULT_TIMEZONE;
-    const [row] = await tx
+    const row = tx
       .insert(schema.studySessions)
       .values({
         userId: input.userId,
@@ -104,7 +103,8 @@ export class StudySessionService {
         localDate: localDateOf(input.startedAt, timezone),
         source: "MANUAL",
       })
-      .returning({ id: schema.studySessions.id });
+      .returning({ id: schema.studySessions.id })
+      .get();
     if (!row) throw new Error("Failed to insert manual study session");
     return row.id;
   }

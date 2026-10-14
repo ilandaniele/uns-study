@@ -1,8 +1,6 @@
-import { Inject, Injectable } from "@nestjs/common";
 import { desc, lt } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { Page } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
 
 const PAGE_SIZE = 50;
 
@@ -17,9 +15,8 @@ export interface AuditEntryDto {
 }
 
 /** Read-only view over the append-only `moderation_actions` audit log. */
-@Injectable()
 export class AdminAuditService {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(private readonly db: Db) {}
 
   async list(cursor: string | undefined): Promise<Page<AuditEntryDto>> {
     const before = parseCursor(cursor);

@@ -1,7 +1,5 @@
 import { createHash } from "node:crypto";
-import { Inject, Injectable } from "@nestjs/common";
 import { schema, type Db } from "@sala/database";
-import { DB } from "../database/database.module.js";
 import { env } from "../env.js";
 import { ReputationService } from "../reputation/reputation.service.js";
 
@@ -17,11 +15,10 @@ export function hashIp(ip: string): string {
   return createHash("sha256").update(`${ip}${env.ipHashSalt}`).digest("hex");
 }
 
-@Injectable()
 export class SecurityEventService {
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(ReputationService) private readonly reputation: ReputationService,
+    private readonly db: Db,
+    private readonly reputation: ReputationService,
   ) {}
 
   async record(input: RecordSecurityEventInput): Promise<void> {

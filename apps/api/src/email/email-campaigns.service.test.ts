@@ -11,7 +11,7 @@ describe("EmailCampaignsService", () => {
   const saved = { key: env.resendApiKey, from: env.emailFrom };
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     svc = new EmailCampaignsService(db);
     env.resendApiKey = "re_test";
     env.emailFrom = "Sala <hola@example.test>";

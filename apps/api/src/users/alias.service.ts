@@ -1,13 +1,13 @@
-import { Inject, Injectable } from "@nestjs/common";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { animalIdFromAlias } from "@sala/contracts";
 import { schema, type Db } from "@sala/database";
-import { DB } from "../database/database.module.js";
 import { randomAlias } from "./alias-generator.js";
-import { isUniqueViolation } from "../common/pg-errors.js";
+import { isUniqueViolation } from "../common/sqlite-errors.js";
 
 const MAX_ATTEMPTS = 20;
 const MAX_FALLBACK_ATTEMPTS = 20;
+/** Unique-index hit on a live alias (the folded column carries the case-insensitive uniqueness). */
+const ALIAS_UNIQUE_TARGETS = ["user_profiles.alias_lower", "user_profiles_alias_lower_unique"];
 
 /** Minimal shape of a `user_profiles` row this service needs to decide whether an alias is due. */
 interface AliasableProfile {
@@ -28,15 +28,14 @@ interface AliasableProfile {
  * (it drives the map illustration). A legacy alias whose noun isn't in the catalog is retired and
  * replaced by a fresh animal alias the next time it's ensured.
  */
-@Injectable()
 export class AliasService {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(private readonly db: Db) {}
 
   private async isRetired(alias: string): Promise<boolean> {
     const [row] = await this.db
       .select({ id: schema.retiredAliases.id })
       .from(schema.retiredAliases)
-      .where(sql`lower(${schema.retiredAliases.alias}) = lower(${alias})`)
+      .where(eq(schema.retiredAliases.aliasLower, alias.toLowerCase()))
       .limit(1);
     return Boolean(row);
   }
@@ -67,13 +66,13 @@ export class AliasService {
       try {
         const [updated] = await this.db
           .update(schema.userProfiles)
-          .set({ alias: candidate, aliasAnimal: animalIdFromAlias(candidate), updatedAt: new Date() })
+          .set({ alias: candidate, aliasLower: candidate.toLowerCase(), aliasAnimal: animalIdFromAlias(candidate), updatedAt: new Date() })
           .where(eq(schema.userProfiles.userId, userId))
           .returning({ alias: schema.userProfiles.alias });
         if (updated?.alias) return updated.alias;
         throw new Error("user_profiles row missing while assigning alias");
       } catch (err) {
-        if (!isUniqueViolation(err)) throw err;
+        if (!isUniqueViolation(err, ALIAS_UNIQUE_TARGETS)) throw err;
         // Someone else already holds this exact alias — try another candidate.
       }
     }
@@ -86,13 +85,13 @@ export class AliasService {
       try {
         const [updated] = await this.db
           .update(schema.userProfiles)
-          .set({ alias: fallback, aliasAnimal: animalIdFromAlias(fallback), updatedAt: new Date() })
+          .set({ alias: fallback, aliasLower: fallback.toLowerCase(), aliasAnimal: animalIdFromAlias(fallback), updatedAt: new Date() })
           .where(eq(schema.userProfiles.userId, userId))
           .returning({ alias: schema.userProfiles.alias });
         if (updated?.alias) return updated.alias;
         throw new Error("user_profiles row missing while assigning fallback alias");
       } catch (err) {
-        if (!isUniqueViolation(err)) throw err;
+        if (!isUniqueViolation(err, ALIAS_UNIQUE_TARGETS)) throw err;
       }
     }
 
@@ -103,11 +102,16 @@ export class AliasService {
    *  same alias again. Only used to replace a legacy alias whose noun isn't in the animal catalog —
    *  a valid alias is permanent, even after switching to a visible identity. */
   async releaseAlias(userId: string): Promise<void> {
-    const [row] = await this.db.select({ alias: schema.userProfiles.alias }).from(schema.userProfiles).where(eq(schema.userProfiles.userId, userId)).limit(1);
-    await this.db.update(schema.userProfiles).set({ alias: null, aliasAnimal: null, updatedAt: new Date() }).where(eq(schema.userProfiles.userId, userId));
-    if (row?.alias) {
-      await this.db.insert(schema.retiredAliases).values({ alias: row.alias }).onConflictDoNothing();
-    }
+    this.db.transaction((tx) => {
+      const [row] = tx.select({ alias: schema.userProfiles.alias }).from(schema.userProfiles).where(eq(schema.userProfiles.userId, userId)).limit(1).all();
+      tx.update(schema.userProfiles)
+        .set({ alias: null, aliasLower: null, aliasAnimal: null, updatedAt: new Date() })
+        .where(eq(schema.userProfiles.userId, userId))
+        .run();
+      if (row?.alias) {
+        tx.insert(schema.retiredAliases).values({ alias: row.alias, aliasLower: row.alias.toLowerCase() }).onConflictDoNothing().run();
+      }
+    });
   }
 
   /**

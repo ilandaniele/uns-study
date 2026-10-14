@@ -1,7 +1,5 @@
-import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, inArray, or } from "drizzle-orm";
-import { schema, type Db } from "@sala/database";
-import { DB } from "../database/database.module.js";
+import { inChunks, schema, type Db } from "@sala/database";
 import { ApiErrors } from "../common/api-error.js";
 import { displayName, visibleAvatarUrl } from "../users/display-name.js";
 import { AliasService } from "../users/alias.service.js";
@@ -17,11 +15,10 @@ export interface BlockedUserDto {
 }
 
 /** Blocking is one-directional per row; several helpers combine both directions for interaction checks. */
-@Injectable()
 export class BlocksService {
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(AliasService) private readonly aliases: AliasService,
+    private readonly db: Db,
+    private readonly aliases: AliasService,
   ) {}
 
   async block(blockerId: string, blockedId: string): Promise<void> {
@@ -74,10 +71,10 @@ export class BlocksService {
       .limit(MAX_LIST_ROWS);
 
     if (rows.length === 0) return [];
-    const privacyRows = await this.db
-      .select()
-      .from(schema.userPrivacySettings)
-      .where(inArray(schema.userPrivacySettings.userId, rows.map((r) => r.blockedId)));
+    const blockedIds = rows.map((r) => r.blockedId);
+    const privacyRows = inChunks(blockedIds, (part) =>
+      this.db.select().from(schema.userPrivacySettings).where(inArray(schema.userPrivacySettings.userId, part)).all(),
+    );
     const privacyByUser = new Map(privacyRows.map((p) => [p.userId, p]));
     const profiles = rows.map((r) => r.profile).filter((p): p is NonNullable<typeof p> => p !== null);
     const aliasByUser = await this.aliases.ensureAliasesForProfiles(profiles);

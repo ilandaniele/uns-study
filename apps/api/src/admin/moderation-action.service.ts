@@ -1,8 +1,6 @@
-import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, isNull } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { ModerationActionType } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
 import type { RestrictionType } from "../users/restriction.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
@@ -24,44 +22,53 @@ const RESTRICTION_TYPE_BY_ACTION: Partial<Record<ModerationActionType, Restricti
 };
 
 /** Applies moderation decisions: writes `user_restrictions` + an append-only `moderation_actions` audit row. */
-@Injectable()
 export class ModerationActionService {
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(CheckInService) private readonly checkIns: CheckInService,
-    @Inject(RoomRealtimeGateway) private readonly realtime: RoomRealtimeGateway,
+    private readonly db: Db,
+    private readonly checkIns: CheckInService,
+    private readonly realtime: RoomRealtimeGateway,
   ) {}
 
   async apply(input: ApplyActionInput): Promise<void> {
-    if (input.type === "LIFT") {
-      const now = new Date();
-      await this.db
-        .update(schema.userRestrictions)
-        .set({ liftedAt: now })
-        .where(and(eq(schema.userRestrictions.userId, input.targetUserId), isNull(schema.userRestrictions.liftedAt)));
-    } else {
-      const restrictionType = RESTRICTION_TYPE_BY_ACTION[input.type];
-      if (restrictionType) {
-        await this.db.insert(schema.userRestrictions).values({
-          userId: input.targetUserId,
-          type: restrictionType,
-          reason: input.reason,
-          until: input.until ? new Date(input.until) : null,
-          createdBy: input.actorId,
-        });
-      }
-    }
+    const revokesAccess = input.type === "SUSPEND" || input.type === "BAN";
 
-    await this.db.insert(schema.moderationActions).values({
-      actorId: input.actorId,
-      targetUserId: input.targetUserId,
-      reportId: input.reportId ?? null,
-      action: input.type,
-      metadata: { reason: input.reason, until: input.until ?? null },
+    // Restriction, audit row and session revocation land together; sockets and the check-in follow once they are durable.
+    this.db.transaction((tx) => {
+      if (input.type === "LIFT") {
+        const now = new Date();
+        tx.update(schema.userRestrictions)
+          .set({ liftedAt: now })
+          .where(and(eq(schema.userRestrictions.userId, input.targetUserId), isNull(schema.userRestrictions.liftedAt)))
+          .run();
+      } else {
+        const restrictionType = RESTRICTION_TYPE_BY_ACTION[input.type];
+        if (restrictionType) {
+          tx.insert(schema.userRestrictions)
+            .values({
+              userId: input.targetUserId,
+              type: restrictionType,
+              reason: input.reason,
+              until: input.until ? new Date(input.until) : null,
+              createdBy: input.actorId,
+            })
+            .run();
+        }
+      }
+
+      tx.insert(schema.moderationActions)
+        .values({
+          actorId: input.actorId,
+          targetUserId: input.targetUserId,
+          reportId: input.reportId ?? null,
+          action: input.type,
+          metadata: { reason: input.reason, until: input.until ?? null },
+        })
+        .run();
+
+      if (revokesAccess) tx.delete(schema.session).where(eq(schema.session.userId, input.targetUserId)).run();
     });
 
-    if (input.type === "SUSPEND" || input.type === "BAN") {
-      await this.db.delete(schema.session).where(eq(schema.session.userId, input.targetUserId));
+    if (revokesAccess) {
       this.realtime.disconnectUser(input.targetUserId);
 
       const result = await this.checkIns.checkOut(input.targetUserId);

@@ -10,7 +10,7 @@ describe("PushSubscriptionsService", () => {
   let svc: PushSubscriptionsService;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     svc = new PushSubscriptionsService(db);
     await insertUsers(db, ["u1", "u2"]);
   });

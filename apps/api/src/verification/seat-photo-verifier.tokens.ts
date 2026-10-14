@@ -1,1 +1,0 @@
-export const SEAT_PHOTO_VERIFIER = Symbol("SEAT_PHOTO_VERIFIER");

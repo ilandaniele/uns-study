@@ -1,8 +1,6 @@
-import { Inject, Injectable } from "@nestjs/common";
-import { and, desc, eq, inArray, lt, notInArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { ChatHistoryDto, ChatMessageDto } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
 import { ApiErrors } from "../common/api-error.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { RolesService } from "../users/roles.service.js";
@@ -10,18 +8,18 @@ import { BlocksService } from "../blocks/blocks.service.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { displayName, needsAlias, showsAdminBadge, shownAliasAnimal, visibleAvatarUrl } from "../users/display-name.js";
 import { AliasService } from "../users/alias.service.js";
+import { formatCursor, newestFirst, olderThan, withRowid } from "./page-cursor.js";
 
 const PAGE_SIZE = 50;
 
-@Injectable()
 export class ChatService {
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(RoomsService) private readonly rooms: RoomsService,
-    @Inject(RestrictionService) private readonly restrictions: RestrictionService,
-    @Inject(RolesService) private readonly roles: RolesService,
-    @Inject(BlocksService) private readonly blocks: BlocksService,
-    @Inject(AliasService) private readonly aliases: AliasService,
+    private readonly db: Db,
+    private readonly rooms: RoomsService,
+    private readonly restrictions: RestrictionService,
+    private readonly roles: RolesService,
+    private readonly blocks: BlocksService,
+    private readonly aliases: AliasService,
   ) {}
 
   /** Every seeded room has exactly one chat room row; this picks the first one for `idOrSlug`. */
@@ -37,21 +35,23 @@ export class ChatService {
     const blockedByMe = await this.blocks.blockedByMe(viewerId);
 
     const conditions = [eq(schema.chatMessages.chatRoomId, chatRoom.id)];
-    if (blockedByMe.length > 0) conditions.push(notInArray(schema.chatMessages.userId, blockedByMe));
-    if (cursor) {
-      const cursorDate = new Date(cursor);
-      if (!Number.isNaN(cursorDate.getTime())) conditions.push(lt(schema.chatMessages.createdAt, cursorDate));
+    // One bound parameter however long the block list is (SQLite caps bound parameters at 100).
+    if (blockedByMe.length > 0) {
+      conditions.push(sql`${schema.chatMessages.userId} not in (select value from json_each(${JSON.stringify(blockedByMe)}))`);
     }
+    const older = olderThan(schema.chatMessages, schema.chatMessages.createdAt, cursor);
+    if (older) conditions.push(older);
 
     const rows = await this.db
-      .select()
+      .select(withRowid(schema.chatMessages))
       .from(schema.chatMessages)
       .where(and(...conditions))
-      .orderBy(desc(schema.chatMessages.createdAt))
+      .orderBy(...newestFirst(schema.chatMessages, schema.chatMessages.createdAt))
       .limit(PAGE_SIZE + 1);
 
     const page = rows.slice(0, PAGE_SIZE);
-    const nextCursor = rows.length > PAGE_SIZE ? page[page.length - 1]!.createdAt.toISOString() : null;
+    const last = page[page.length - 1];
+    const nextCursor = rows.length > PAGE_SIZE && last ? formatCursor(last.createdAt, last.rowid) : null;
 
     const items = await this.toDtos(page, viewerId);
     return { items, nextCursor, chatRoomId: chatRoom.id };

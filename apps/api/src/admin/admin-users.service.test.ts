@@ -18,7 +18,7 @@ describe("AdminUsersService.applyAction", () => {
   let svc: AdminUsersService;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     roles = new RolesService(db);
     moderation = fakeModeration();
     svc = new AdminUsersService(db, moderation, roles);
@@ -59,7 +59,7 @@ describe("AdminUsersService.search", () => {
   let svc: AdminUsersService;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     svc = new AdminUsersService(db, fakeModeration(), new RolesService(db));
     await insertUsers(db, ["plain"]);
   });
@@ -85,7 +85,7 @@ describe("AdminUsersService email visibility", () => {
   let svc: AdminUsersService;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     svc = new AdminUsersService(db, fakeModeration(), new RolesService(db));
     await insertUsers(db, ["admin", "moderator", "plain"]);
     await db.insert(schema.userRoles).values([
@@ -121,7 +121,7 @@ describe("AdminUsersService.setAdmin", () => {
   let svc: AdminUsersService;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     roles = new RolesService(db);
     svc = new AdminUsersService(db, fakeModeration(), roles);
     await insertUsers(db, ["owner", "admin", "plain"]);

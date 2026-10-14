@@ -1,7 +1,7 @@
-import RedisMock from "ioredis-mock";
 import { describe, expect, it, vi } from "vitest";
-import { createDb, migrate } from "@sala/database";
-import { PostgresWindow, RateLimitService, RedisWindow } from "./rate-limit.service.js";
+import { schema, type Db } from "@sala/database";
+import { freshDb } from "../test-utils.js";
+import { RateLimitService, SqliteWindow } from "./rate-limit.service.js";
 
 describe("RateLimitService (in-memory fallback)", () => {
   it("allows up to the limit within the window, then blocks", async () => {
@@ -23,118 +23,83 @@ describe("RateLimitService (in-memory fallback)", () => {
   });
 });
 
-describe("RedisWindow (standard Redis via REDIS_URL)", () => {
-  // Exercised directly against a `ioredis-mock` client rather than through `RateLimitService`,
-  // since the service resolves its backend from `env` at construction time.
-  async function makeWindow() {
-    const { RedisWindow } = await import("./rate-limit.service.js");
-    return new RedisWindow(new RedisMock());
-  }
-
-  it("allows up to the limit within the window, then blocks", async () => {
-    const window = await makeWindow();
-    const key = "test:redis-user1";
-    for (let i = 0; i < 5; i++) {
-      const result = await window.check(key, 5, 60_000);
-      expect(result.allowed).toBe(true);
-    }
-    const blocked = await window.check(key, 5, 60_000);
-    expect(blocked.allowed).toBe(false);
-  });
-
-  it("expires old entries once the window has elapsed", async () => {
-    const window = await makeWindow();
-    const key = "test:redis-expiry";
-    const start = Date.now();
-    for (let i = 0; i < 3; i++) {
-      expect((await window.check(key, 3, 1_000, start)).allowed).toBe(true);
-    }
-    expect((await window.check(key, 3, 1_000, start)).allowed).toBe(false);
-    expect((await window.check(key, 3, 1_000, start + 1_001)).allowed).toBe(true);
-  });
-
-  it("tracks separate keys independently", async () => {
-    const window = await makeWindow();
-    await window.check("a", 1, 60_000);
-    const resultB = await window.check("b", 1, 60_000);
-    expect(resultB.allowed).toBe(true);
+describe("RateLimitService (SQLite)", () => {
+  it("uses rate_limit_hits when given a db", async () => {
+    const db = freshDb();
+    const svc = new RateLimitService(db);
+    expect((await svc.check("k", 2, 60)).allowed).toBe(true);
+    expect((await svc.check("k", 2, 60)).allowed).toBe(true);
+    expect((await svc.check("k", 2, 60)).allowed).toBe(false);
+    expect(db.select().from(schema.rateLimitHits).all().length).toBeGreaterThan(0);
   });
 });
 
-describe("PostgresWindow (Postgres fallback, no Redis configured)", () => {
-  async function makeWindow() {
-    const db = createDb({ pgliteDir: "memory://" });
-    await migrate(db, "");
-    return new PostgresWindow(db);
+describe("SqliteWindow", () => {
+  function makeWindow(): { window: SqliteWindow; db: Db } {
+    const db = freshDb();
+    return { window: new SqliteWindow(db), db };
   }
 
-  it("allows up to the limit within a fixed window, then blocks", async () => {
-    const window = await makeWindow();
-    const key = "test:pg-user1";
+  it("allows up to the limit within a fixed window, then blocks", () => {
+    const { window } = makeWindow();
     const now = Date.UTC(2026, 0, 1, 0, 0, 0);
     for (let i = 0; i < 5; i++) {
-      const result = await window.check(key, 5, 60_000, now);
-      expect(result.allowed).toBe(true);
+      expect(window.check("test:user1", 5, 60_000, now).allowed).toBe(true);
     }
-    const blocked = await window.check(key, 5, 60_000, now);
-    expect(blocked.allowed).toBe(false);
+    expect(window.check("test:user1", 5, 60_000, now).allowed).toBe(false);
   });
 
-  it("tracks separate keys independently", async () => {
-    const window = await makeWindow();
+  it("tracks separate keys independently", () => {
+    const { window } = makeWindow();
     const now = Date.UTC(2026, 0, 1, 0, 0, 0);
-    await window.check("a", 1, 60_000, now);
-    const resultB = await window.check("b", 1, 60_000, now);
-    expect(resultB.allowed).toBe(true);
+    window.check("a", 1, 60_000, now);
+    expect(window.check("b", 1, 60_000, now).allowed).toBe(true);
   });
 
-  it("weighs the previous window's count by its remaining overlap (sliding window counter)", async () => {
-    const window = await makeWindow();
-    const key = "test:pg-sliding";
+  it("weighs the previous window count by its remaining overlap (sliding window counter)", () => {
+    const { window } = makeWindow();
     const windowMs = 60_000;
     const windowStart = Date.UTC(2026, 0, 1, 0, 0, 0);
-
-    // Fill the first window to the limit.
     for (let i = 0; i < 4; i++) {
-      expect((await window.check(key, 4, windowMs, windowStart + i)).allowed).toBe(true);
+      expect(window.check("k", 4, windowMs, windowStart + i).allowed).toBe(true);
     }
-
-    // Just after the window rolls over, the previous window's hits still weigh heavily (~100%
-    // overlap), so a new hit should be rejected.
-    const justAfterRollover = windowStart + windowMs + 1;
-    expect((await window.check(key, 4, windowMs, justAfterRollover)).allowed).toBe(false);
-
-    // Near the end of the *next* window, the previous window's overlap has decayed to ~0, so
-    // fresh hits in the new window are allowed again up to the limit.
-    const nearEndOfNextWindow = windowStart + windowMs * 2 - 1;
-    expect((await window.check(key, 4, windowMs, nearEndOfNextWindow)).allowed).toBe(true);
+    // Just after rollover the previous window still weighs ~100%, so a new hit is rejected.
+    expect(window.check("k", 4, windowMs, windowStart + windowMs + 1).allowed).toBe(false);
+    // Near the end of the next window the previous overlap has decayed to ~0.
+    expect(window.check("k", 4, windowMs, windowStart + windowMs * 2 - 1).allowed).toBe(true);
   });
 
-  it("fixed windows expire once fully elapsed", async () => {
-    const window = await makeWindow();
-    const key = "test:pg-expiry";
-    const windowMs = 1_000;
+  it("windows expire once fully elapsed", () => {
+    const { window } = makeWindow();
     const start = Date.UTC(2026, 0, 1, 0, 0, 0);
-    for (let i = 0; i < 3; i++) {
-      expect((await window.check(key, 3, windowMs, start)).allowed).toBe(true);
-    }
-    expect((await window.check(key, 3, windowMs, start)).allowed).toBe(false);
-    // Two windows later, the previous window's overlap has fully decayed.
-    expect((await window.check(key, 3, windowMs, start + windowMs * 2)).allowed).toBe(true);
+    for (let i = 0; i < 3; i++) expect(window.check("k", 3, 1_000, start).allowed).toBe(true);
+    expect(window.check("k", 3, 1_000, start).allowed).toBe(false);
+    expect(window.check("k", 3, 1_000, start + 2_000).allowed).toBe(true);
+  });
+
+  it("prunes windows older than a day, at most once per minute", () => {
+    const { window, db } = makeWindow();
+    const t0 = Date.UTC(2026, 0, 1, 0, 0, 0);
+    window.check("old", 5, 1_000, t0);
+    const t1 = t0 + 25 * 60 * 60_000;
+    window.check("new", 5, 1_000, t1); // more than a minute since the last cleanup: prunes "old"
+    expect(db.select().from(schema.rateLimitHits).all().map((r) => r.key)).toEqual(["new"]);
+    db.insert(schema.rateLimitHits).values({ key: "stale", windowStart: new Date(t0), count: 1 }).run();
+    window.check("new", 5, 1_000, t1 + 10_000); // under a minute: no prune
+    expect(db.select().from(schema.rateLimitHits).all().map((r) => r.key)).toContain("stale");
   });
 });
 
 describe("backend failures fail closed and are logged", () => {
-  it("logs rate_limit_backend_error when Redis throws", async () => {
+  it("logs rate_limit_backend_error when the database throws", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const broken = new RedisWindow({
-      multi: () => {
-        throw new Error("redis down");
+    const broken = new SqliteWindow({
+      transaction: () => {
+        throw new Error("db down");
       },
-      zrem: async () => undefined,
-    });
-    expect(await broken.check("k", 5, 1000)).toEqual({ allowed: false, remaining: 0 });
-    expect(JSON.parse(spy.mock.calls[0]![0] as string)).toEqual({ evt: "rate_limit_backend_error", backend: "redis", msg: "redis down" });
+    } as unknown as Db);
+    expect(broken.check("k", 5, 1000)).toEqual({ allowed: false, remaining: 0 });
+    expect(JSON.parse(spy.mock.calls[0]![0] as string)).toEqual({ evt: "rate_limit_backend_error", backend: "sqlite", msg: "db down" });
     spy.mockRestore();
   });
 });

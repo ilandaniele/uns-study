@@ -18,7 +18,7 @@ describe("AliasService", () => {
   let svc: AliasService;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     svc = new AliasService(db);
     mockedRandomAlias.mockReset();
     mockedRandomAlias.mockImplementation(() => "Carpincho Estudioso");
@@ -59,6 +59,26 @@ describe("AliasService", () => {
 
     const alias = await svc.ensureAlias("u2");
     expect(alias).toMatch(/^Carpincho Estudioso \d{2}$/);
+  });
+
+  it("fills alias_lower and treats aliases as case-insensitively unique", async () => {
+    await svc.ensureAlias("u1");
+    const [row] = await db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, "u1"));
+    expect(row?.aliasLower).toBe("carpincho estudioso");
+
+    // u2 draws the same alias in a different case first: the folded unique index rejects it.
+    mockedRandomAlias.mockReset();
+    mockedRandomAlias.mockReturnValueOnce("CARPINCHO ESTUDIOSO").mockReturnValueOnce("Puma Filosófico");
+    expect(await svc.ensureAlias("u2")).toBe("Puma Filosófico");
+  });
+
+  it("clears alias_lower on release and records the folded retired alias", async () => {
+    await svc.ensureAlias("u1");
+    await svc.releaseAlias("u1");
+    const [row] = await db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, "u1"));
+    expect(row?.aliasLower).toBeNull();
+    const [retired] = await db.select().from(schema.retiredAliases);
+    expect(retired?.aliasLower).toBe("carpincho estudioso");
   });
 
   it("produces distinct aliases across many users (spot check, real generator)", async () => {

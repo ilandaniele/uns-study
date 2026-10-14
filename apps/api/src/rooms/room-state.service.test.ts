@@ -12,7 +12,7 @@ describe("RoomStateService.getRoomSummary", () => {
   let seatId: string;
 
   beforeEach(async () => {
-    db = await freshDb();
+    db = freshDb();
     roomState = new RoomStateService(db);
     const room = await getRoom(db);
     roomId = room.id;
@@ -58,7 +58,7 @@ describe("RoomStateService.getRoomSummary", () => {
 
 describe("RoomStateService SAVED seats", () => {
   it("getRoomSummary counts a SAVED seat under `saved`", async () => {
-    const db = await freshDb();
+    const db = freshDb();
     const roomState = new RoomStateService(db);
     const room = await getRoom(db);
     const seatId = (await getSeats(db))[0]!.id;
@@ -84,7 +84,7 @@ describe("RoomStateService SAVED seats", () => {
 
 describe("RoomStateService query counts", () => {
   it("getLiveSeatStates runs its reads as one parallel batch and skips the seats read when pre-loaded", async () => {
-    const db = await freshDb();
+    const db = freshDb();
     const roomState = new RoomStateService(db);
     const room = await getRoom(db);
     const seats = await getSeats(db);
@@ -110,7 +110,7 @@ describe("RoomStateService.recomputeSeats stamp ordering", () => {
     // Regression for the flaky 02-checkin-realtime: the expiration sweep (later `now`) won the
     // seat's advisory lock before a check-in that had captured an earlier `now`, so the check-in's
     // OCCUPIED carried an older stamp than the sweep's UNKNOWN and clients kept UNKNOWN.
-    const db = await freshDb();
+    const db = freshDb();
     const roomState = new RoomStateService(db);
     const room = await getRoom(db);
     const seatId = (await getSeats(db))[0]!.id;

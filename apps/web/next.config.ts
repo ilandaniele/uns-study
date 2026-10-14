@@ -1,28 +1,20 @@
-import path from "node:path";
 import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
-// Server-only build-time env (never `NEXT_PUBLIC_*`; baked in by Dockerfile.web): the Fly.io URL of the API, when web and API are
-// proxied through the same origin so Better Auth's session cookie stays first-party (Safari/iOS
-// block third-party `SameSite=None` cookies). Left unset in local dev, where the web app talks to
-// the API directly via `NEXT_PUBLIC_API_URL`.
+// Local dev only (server-only, never `NEXT_PUBLIC_*`): origin of the local API. When set, web and API
+// are served from the same origin through the rewrites below, so Better Auth's session cookie stays
+// first-party like in production, where Cloudflare routes `/api/*` to the API Worker.
 const API_PROXY_TARGET = process.env.API_PROXY_TARGET ?? "";
 
 // The Content-Security-Policy is built per request in `src/proxy.ts` (nonce), from `src/lib/csp.ts`.
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || API_PROXY_TARGET.replace(/\/+$/, "") || "http://localhost:4000";
+// `NEXT_PUBLIC_SOCKET_URL` (dev only) is inlined by Next; production leaves it unset and the browser
+// opens the realtime WebSocket on the page's own origin.
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  // Dockerfile.web builds the self-contained server; trace files from the monorepo root so the
-  // workspace packages land in the standalone bundle.
-  ...(process.env.NEXT_OUTPUT_STANDALONE
-    ? { output: "standalone" as const, outputFileTracingRoot: path.join(import.meta.dirname, "../..") }
-    : {}),
+  // Cloudflare Images transformations are billed per image; the app serves its images as-is.
+  images: { unoptimized: true },
   transpilePackages: ["@sala/contracts"],
-  // Socket.IO can't go through the rewrites below, so the browser connects to the API host
-  // directly. Default it to the proxy target so one env var configures both.
-  env: {
-    NEXT_PUBLIC_SOCKET_URL: SOCKET_URL,
-  },
   async redirects() {
     // The principal room lives at "/"; old links and push notifications keep their query (?seat=).
     return [{ source: "/sala/principal", destination: "/", permanent: true }];
@@ -60,5 +52,7 @@ const nextConfig: NextConfig = {
     ];
   },
 };
+
+if (process.env.NODE_ENV === "development") initOpenNextCloudflareForDev();
 
 export default nextConfig;
