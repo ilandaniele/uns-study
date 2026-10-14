@@ -58,12 +58,20 @@ jobs:
       - name: Start API
         run: |
           mkdir -p tests/load/results
-          AUTH_SECRET="$(openssl rand -hex 32)"
-          IP_SALT="$(openssl rand -hex 16)"
-          echo "::add-mask::$AUTH_SECRET"
-          echo "::add-mask::$IP_SALT"
           cd apps/api
-          nohup pnpm exec wrangler dev --port 4000 --persist-to "$RUNNER_TEMP/wrangler-state"             --var NODE_ENV:development             --var WEB_ORIGINS:http://localhost:3000             --var BETTER_AUTH_URL:http://localhost:4000             --var PUBLIC_WEB_URL:http://localhost:3000             --var PRESENCE_DEV_BYPASS:false             --var "BETTER_AUTH_SECRET:$AUTH_SECRET"             --var "IP_HASH_SALT:$IP_SALT"             > ../../tests/load/results/api.log 2>&1 &
+          # Written straight to the gitignored .dev.vars that wrangler dev reads: the values never pass
+          # through shell variables, command lines or the log.
+          {
+            printf 'BETTER_AUTH_SECRET=%s\n' "$(openssl rand -hex 32)"
+            printf 'IP_HASH_SALT=%s\n' "$(openssl rand -hex 16)"
+          } > .dev.vars
+          nohup pnpm exec wrangler dev --port 4000 --persist-to "$RUNNER_TEMP/wrangler-state" \
+            --var NODE_ENV:development \
+            --var WEB_ORIGINS:http://localhost:3000 \
+            --var BETTER_AUTH_URL:http://localhost:4000 \
+            --var PUBLIC_WEB_URL:http://localhost:3000 \
+            --var PRESENCE_DEV_BYPASS:false \
+            > ../../tests/load/results/api.log 2>&1 &
           echo "API_PID=$!" >> "$GITHUB_ENV"
           cd ../..
           for i in $(seq 1 120); do
