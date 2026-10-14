@@ -8,6 +8,7 @@ import { shouldShowHowToOnFirstVisit } from "@/features/help/how-to-seen";
 import { useMe } from "@/lib/me-store";
 import { isExcludedPath } from "./ad-config";
 import { useHouseInterstitial } from "./ad-overlay-store";
+import { useOtherPromptOpen, usePublishPrompt } from "./prompt-store";
 import { markPromoShown, nextPromoDelayMs, shouldShowSubscribePromo } from "./subscribe-promo-policy";
 import { useAdFree } from "./useAdFree";
 
@@ -22,7 +23,11 @@ export function SubscribePromo() {
   const pathname = usePathname();
   const [visible, setVisible] = useState(false);
 
-  const eligible = !!me?.subscriptionsEnabled && !hideAds && !interstitialOpen && !isExcludedPath(pathname);
+  const otherPromptOpen = useOtherPromptOpen("subscribe-promo");
+
+  const eligible =
+    !!me?.subscriptionsEnabled && !hideAds && !interstitialOpen && !otherPromptOpen && !isExcludedPath(pathname);
+  usePublishPrompt("subscribe-promo", visible && eligible);
 
   useEffect(() => {
     if (!eligible) return;

@@ -42,6 +42,25 @@ test("a free user eventually sees the Pro promo and can dismiss it", async ({ pa
   await expect(card).toHaveCount(0);
 });
 
+test("on mobile the promo waits until the donation sheet is closed", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await setup(page, { subscriptionsEnabled: true, adFree: false });
+  // A day-old visitor gets the donation sheet a few seconds after load.
+  await page.clock.runFor(5_000);
+  const donate = page.getByRole("dialog", { name: "¿Querés donar?" });
+  await expect(donate).toBeVisible();
+
+  const card = page.getByRole("complementary", { name: "Suscripción Pro" });
+  await page.clock.runFor(160_000);
+  await expect(card).toHaveCount(0);
+
+  await donate.getByRole("button", { name: "Ahora no" }).click();
+  await expect(donate).toHaveCount(0);
+  await page.clock.runFor(160_000);
+  await expect(card.getByText("Pasate a Pro")).toBeVisible();
+  await expect(donate).toHaveCount(0);
+});
+
 test("a subscriber never sees the promo", async ({ page }) => {
   await setup(page, { subscriptionsEnabled: true, adFree: true });
   await page.clock.fastForward(400_000);

@@ -4,6 +4,7 @@ import { CheckIcon, CopyIcon, HeartIcon, XIcon } from "@phosphor-icons/react/dis
 import { useEffect, useRef, useState } from "react";
 import { DONATION_AMOUNTS_ARS, DONATION_MAX_ARS, DONATION_MIN_ARS, donationCheckoutSchema, type DonationCheckoutDto } from "@sala/contracts";
 import { useHouseInterstitial } from "@/features/ads/ad-overlay-store";
+import { useOtherPromptOpen, usePublishPrompt } from "@/features/ads/prompt-store";
 import { apiPost } from "@/lib/api";
 import { FIRST_CHECK_IN_KEY, FIRST_SEEN_KEY } from "@/lib/engagement";
 import { useExitTransition } from "@/lib/useExitTransition";
@@ -231,7 +232,10 @@ export function DonatePrompt({ blocked }: { blocked: boolean }) {
     requestClose();
   }
 
-  const visible = due && !dismissed && !blocked && !adOpen;
+  const otherPromptOpen = useOtherPromptOpen("donate");
+
+  const visible = due && !dismissed && !blocked && !adOpen && !otherPromptOpen;
+  usePublishPrompt("donate", visible);
 
   useFocusTrap(dialogRef, { initialFocus: closeRef, onEscape: close, active: visible });
 
