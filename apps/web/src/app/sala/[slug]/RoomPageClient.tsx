@@ -7,7 +7,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { markHowToSeen, shouldShowHowToOnFirstVisit } from "@/features/help/how-to-seen";
+import { FIRST_VISIT_HOW_TO_CLOSED, markHowToSeen, shouldShowHowToOnFirstVisit } from "@/features/help/how-to-seen";
 import { showPreCheckInAd } from "@/features/ads/ads";
 import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
 import { ActiveCheckInBanner } from "@/features/room/ActiveCheckInBanner";
@@ -248,10 +248,17 @@ export function RoomPageClient({ slug }: { slug: string }) {
     [clearError, signedIn],
   );
 
+  // True while the guide on screen is the one that opened by itself on a first visit.
+  const howToAutoOpen = useRef(false);
   const openHowTo = useCallback(() => setShowHowTo(true), []);
   const closeHowTo = useCallback(() => {
     setShowHowTo(false);
     markHowToSeen();
+    if (howToAutoOpen.current) {
+      howToAutoOpen.current = false;
+      // The app-open ad skipped the first load so the guide could greet the visitor; it shows now.
+      window.dispatchEvent(new Event(FIRST_VISIT_HOW_TO_CLOSED));
+    }
   }, []);
 
   // First visit on this browser (signed in or not): open the guide once, after the app-open ad closes.
@@ -262,6 +269,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
     // The ref is set inside the timer so a cancelled run (ad opening, Strict Mode) can retry.
     const timer = window.setTimeout(() => {
       howToAutoChecked.current = true;
+      howToAutoOpen.current = true;
       setShowHowTo(true);
     }, 600);
     return () => window.clearTimeout(timer);

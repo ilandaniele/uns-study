@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { FIRST_VISIT_HOW_TO_CLOSED } from "@/features/help/how-to-seen";
 import { APP_OPEN_BACKGROUND_MS } from "./ad-config";
 import { openHouseInterstitial } from "./ad-overlay-store";
 import { markShown, shouldShowAppOpen } from "./ad-policy";
@@ -11,7 +12,8 @@ import { useAdFree } from "./useAdFree";
 /**
  * Opens the app-open ad on every app open, when the policy allows: the first client mount, and a
  * return to the foreground after at least `APP_OPEN_BACKGROUND_MS` away (a quick app switch is
- * not a new open). Renders nothing itself.
+ * not a new open). A first-time visitor gets the "Cómo usar la app" guide on the first load
+ * instead, and the ad once that guide is closed. Renders nothing itself.
  */
 export function AppOpenInterstitial() {
   const { hideAds } = useAdFree();
@@ -67,7 +69,11 @@ export function AppOpenInterstitial() {
 
     maybeShow();
     document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
+    window.addEventListener(FIRST_VISIT_HOW_TO_CLOSED, maybeShow);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener(FIRST_VISIT_HOW_TO_CLOSED, maybeShow);
+    };
   }, [hideAds]);
 
   return null;

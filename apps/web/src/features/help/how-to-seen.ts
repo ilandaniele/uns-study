@@ -24,3 +24,6 @@ function safeStorage(): Storage | null {
     return null;
   }
 }
+
+/** Fired on `window` when the guide that opened on its own for a first-time visitor is closed. */
+export const FIRST_VISIT_HOW_TO_CLOSED = "sala:first-visit-how-to-closed";
