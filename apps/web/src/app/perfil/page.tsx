@@ -167,7 +167,7 @@ export default function PerfilPage() {
           <p className="text-sm text-muted">Como parte del equipo de la sala, no ves anuncios.</p>
         ) : adFree ? (
           <div className="flex flex-col items-start gap-3">
-            <p className="text-sm text-muted">Tenés Sala de Estudio sin anuncios. Gracias por apoyar la sala.</p>
+            <p className="text-sm text-muted">Tenés Sala de Estudio Pro. Gracias por apoyar la sala.</p>
             <Link
               href="/suscripcion"
               className="inline-flex min-h-11 items-center rounded-control border border-app px-4 text-sm font-semibold text-main hover:bg-surface-2"

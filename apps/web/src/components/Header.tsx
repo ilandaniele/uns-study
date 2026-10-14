@@ -78,7 +78,7 @@ export function Header() {
             href="/suscripcion"
             className="hidden min-h-11 shrink-0 items-center rounded-control border border-app px-3 py-1.5 font-semibold text-main hover:bg-[var(--surface-2)] lg:inline-flex"
           >
-            Sin anuncios
+            Hacete Pro
           </Link>
         ) : null}
         <FocusHeaderButton />

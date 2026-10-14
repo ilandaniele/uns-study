@@ -9,6 +9,7 @@ import { BackButton } from "@/components/BackButton";
 import { refreshMe, useMe } from "@/lib/me-store";
 import { cancelSubscription, fetchSubscription, startCheckout } from "./api";
 import { CancelSubscriptionDialog } from "./CancelSubscriptionDialog";
+import { PRO_BENEFITS } from "./pro";
 
 const POLL_MS = 3000;
 const POLL_MAX = 10;
@@ -107,12 +108,15 @@ export function SubscriptionPageClient() {
     <main className="mx-auto max-w-prose space-y-6 px-4 py-8 text-main">
       <BackButton fallbackHref="/perfil" />
       <header className="space-y-2">
-        <h1 className="t-heading">Sala de Estudio sin anuncios</h1>
+        <h1 className="t-heading">Sala de Estudio Pro</h1>
+        <p className="text-sm text-muted">Sin anuncios y todo Foco</p>
         {price !== undefined && <p className="text-lg font-semibold text-primary tabular-nums">${price.toLocaleString("es-AR")} por mes</p>}
       </header>
 
       <ul className="list-disc space-y-2 pl-5 text-sm">
-        <li>Sin anuncios en ningún dispositivo</li>
+        {PRO_BENEFITS.map((b) => (
+          <li key={b}>{b}</li>
+        ))}
         <li>Apoyás que la sala siga funcionando</li>
       </ul>
 

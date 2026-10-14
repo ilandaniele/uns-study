@@ -8,6 +8,7 @@ import { NavigationTracker } from "@/components/NavigationTracker";
 import { ChatLauncher } from "@/features/chat/ChatLauncher";
 import { Header } from "@/components/Header";
 import { FocusRuntime } from "@/features/focus/FocusRuntime";
+import { ProUpsellDialog } from "@/features/subscriptions/ProUpsellDialog";
 import { PushPermissionPrompt } from "@/features/notifications/PushPermissionPrompt";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
@@ -68,6 +69,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <BottomNav />
         <NavigationTracker />
         <FocusRuntime />
+        <ProUpsellDialog />
         <PushPermissionPrompt />
         <AdsRoot />
         <ServiceWorkerRegistration />

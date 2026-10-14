@@ -7,6 +7,9 @@ import { focusActions, getFocus, useFocus } from "./focus-store";
 import { noopSubscribe, useMounted } from "./hooks";
 import { LIMITS, PRESETS, presetIdFor, recentDays, streakDays, todayStats, type FocusSettings } from "./pomodoro";
 import { Card, Stepper, Switch } from "./ui";
+import { openProUpsell } from "@/features/subscriptions/pro-upsell-store";
+import { ProBadge } from "@/features/subscriptions/ProBadge";
+import { usePro } from "@/features/subscriptions/usePro";
 
 export function TimesCard() {
   const { settings } = useFocus();
@@ -58,17 +61,22 @@ const AMBIENTS: Ambient[] = ["off", "rain", "brown", "ocean", "fire"];
 
 export function SoundCard() {
   const { ambient, volume, chime } = useFocus();
+  const locked = usePro().lock === "locked";
   return (
-    <Card title="Sonido">
+    <Card title="Sonido" action={locked ? <ProBadge inline /> : null}>
       <div className="grid grid-cols-2 gap-2" role="group" aria-label="Sonido de fondo">
         {AMBIENTS.map((k) => {
-          const on = ambient === k;
+          const on = ambient === k && !(locked && k !== "off");
           return (
             <button
               key={k}
               type="button"
               aria-pressed={on}
               onClick={() => {
+                if (locked && k !== "off") {
+                  openProUpsell("focus_sounds");
+                  return;
+                }
                 primeAudio();
                 focusActions.setAmbient(k);
               }}
@@ -182,6 +190,7 @@ export function StatsCard() {
   const mounted = useMounted();
   const { stats } = useFocus();
   const now = useNow(60_000).getTime();
+  const locked = usePro().lock === "locked";
   if (!mounted) {
     return (
       <Card title="Hoy">
@@ -210,14 +219,27 @@ export function StatsCard() {
         </div>
         <div>
           <dt className="text-xs text-muted">Racha</dt>
-          <dd className="flex items-center gap-1 font-mono text-2xl font-semibold text-main">
+          <dd aria-hidden={locked || undefined} className={`flex items-center gap-1 font-mono text-2xl font-semibold text-main ${locked ? "select-none blur-sm" : ""}`}>
             {streak}
             {streak > 0 ? <FireIcon size={16} weight="fill" className="text-primary" aria-hidden="true" /> : null}
             <span className="sr-only">{streak === 1 ? "día" : "días"}</span>
           </dd>
         </div>
       </dl>
-      <div className="mt-4 border-t border-app pt-3">
+      <div className="relative mt-4 border-t border-app pt-3">
+        {locked ? (
+          <button
+            type="button"
+            onClick={() => openProUpsell("focus_stats")}
+            className="absolute inset-x-0 bottom-0 top-3 z-10 flex items-center justify-center"
+          >
+            <span className="relative rounded-control border border-app bg-surface px-3 py-2 text-sm font-semibold text-main shadow-sm">
+              Ver historial
+              <ProBadge />
+            </span>
+          </button>
+        ) : null}
+        <div aria-hidden={locked || undefined} className={locked ? "select-none blur-sm" : undefined}>
         <div className="mb-2 flex items-baseline justify-between">
           <span className="text-xs text-muted">Últimos 7 días</span>
           <span className="font-mono text-xs text-muted">{formatMinutes(week)}</span>
@@ -241,6 +263,7 @@ export function StatsCard() {
             );
           })}
         </ol>
+        </div>
       </div>
     </Card>
   );

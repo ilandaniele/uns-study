@@ -7,6 +7,9 @@ import { NotifyCard, PresetChips, SoundCard, StatsCard, TasksCard, TimesCard } f
 import { FocusTimer, MiniTimer } from "./FocusTimer";
 import { useFullscreen, usePipWindow, useShortcuts } from "./hooks";
 import { BackButton } from "@/components/BackButton";
+import { openProUpsell } from "@/features/subscriptions/pro-upsell-store";
+import { ProBadge, proLabel } from "@/features/subscriptions/ProBadge";
+import { usePro } from "@/features/subscriptions/usePro";
 
 const iconBtn =
   "flex h-11 w-11 items-center justify-center rounded-lg border border-app text-main transition-[transform,background-color] duration-150 hover:bg-[var(--surface-2)] active:scale-[0.94]";
@@ -15,7 +18,20 @@ export function FocusView() {
   const stageRef = useRef<HTMLElement | null>(null);
   const fs = useFullscreen(stageRef);
   const pip = usePipWindow();
-  useShortcuts(fs.toggle);
+  const { lock } = usePro();
+  const locked = lock === "locked";
+  // Fullscreen is a Pro extra: the F shortcut and the button share the same gate.
+  const toggleFullscreen = () => {
+    if (lock === "unknown") return;
+    if (locked && !fs.on) openProUpsell("focus_fullscreen");
+    else fs.toggle();
+  };
+  const togglePip = () => {
+    if (lock === "unknown") return;
+    if (locked) openProUpsell("focus_pip");
+    else pip.open();
+  };
+  useShortcuts(toggleFullscreen);
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 pb-24 pt-6 md:pb-10">
@@ -29,13 +45,28 @@ export function FocusView() {
         </div>
         <div className="flex shrink-0 gap-2">
           {pip.supported ? (
-            <button type="button" onClick={pip.open} className={iconBtn} aria-label={pip.win ? "Cerrar mini ventana" : "Abrir mini ventana"} title="Mini ventana" aria-pressed={!!pip.win}>
+            <button
+              type="button"
+              onClick={togglePip}
+              className={`${iconBtn} relative`}
+              aria-label={proLabel(pip.win ? "Cerrar mini ventana" : "Abrir mini ventana", locked)}
+              title="Mini ventana"
+              aria-pressed={!!pip.win}
+            >
               <PictureInPictureIcon size={20} aria-hidden="true" />
+              {locked ? <ProBadge /> : null}
             </button>
           ) : null}
           {fs.supported ? (
-            <button type="button" onClick={fs.toggle} className={`${iconBtn} hidden sm:flex`} aria-label="Pantalla completa" title="Pantalla completa (F)">
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className={`${iconBtn} relative hidden sm:flex`}
+              aria-label={proLabel("Pantalla completa", locked)}
+              title="Pantalla completa (F)"
+            >
               <ArrowsOutIcon size={20} aria-hidden="true" />
+              {locked ? <ProBadge /> : null}
             </button>
           ) : null}
         </div>

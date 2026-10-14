@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { usePro } from "@/features/subscriptions/usePro";
 import { playChime, setAmbient, setAmbientVolume, stopAmbient } from "./focus-audio";
 import { showFocusNotification } from "./focus-notify";
 import { focusActions, getFocus, useFocus } from "./focus-store";
@@ -57,7 +58,9 @@ export function FocusRuntime() {
   }, [timer.status, timer.endsAt]);
 
   // Ambient noise plays only during a running focus block; breaks are quiet.
-  const playNoise = ambient !== "off" && timer.status === "running" && timer.phase === "focus";
+  // Ambient sounds are a Pro extra: a saved choice stays silent until the lock is lifted.
+  const { lock } = usePro();
+  const playNoise = lock === "unlocked" && ambient !== "off" && timer.status === "running" && timer.phase === "focus";
   useEffect(() => {
     if (playNoise) setAmbient(ambient, getFocus().volume);
     else stopAmbient();
