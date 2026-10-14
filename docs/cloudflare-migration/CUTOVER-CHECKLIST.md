@@ -55,8 +55,8 @@ powershell -ExecutionPolicy Bypass -File ops\set-worker-secret.ps1 -Name <NOMBRE
 - [x] `GEMINI_API_KEY` y/o `ANTHROPIC_API_KEY` (la misma que usa el verificador hoy)
 - [x] `OPS_IMPORT_TOKEN`: valor random nuevo, p. ej. `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))" | Set-Clipboard`
 
-Vars no secretas que faltan (pasámelas y las pongo en `apps/api/wrangler.jsonc`):
-`VAPID_PUBLIC_KEY`, `R2_ACCOUNT_ID` (= account id), `ADMIN_EMAILS`, `SUBSCRIPTION_PRICE_ARS`, `VERIFIER_MODEL`, `SEAT_VERIFIER_MODE`.
+Vars no secretas: listas. `VAPID_PUBLIC_KEY` y `R2_ACCOUNT_ID` están en `apps/api/wrangler.jsonc`; `ADMIN_EMAILS` es secret;
+`SUBSCRIPTION_PRICE_ARS`, `VERIFIER_MODEL` y `SEAT_VERIFIER_MODE` no estaban en Fly, así que usan los defaults del código.
 
 ## 6. Ventana de cutover (~30 min, ideal cerca de 04:00 ART)
 1. [ ] API en mantenimiento: `pnpm --filter @sala/api exec wrangler deploy --var MAINTENANCE_MODE:1` (desde `cf/migration`).
