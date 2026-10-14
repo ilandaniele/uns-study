@@ -118,11 +118,11 @@ A present user can mark `Estoy acá` and cannot own two seats.
 
 ---
 
-## Phase 6 — Socket.IO realtime
+## Phase 6 — WebSocket realtime
 
 ### Deliverables
 
-- API Socket.IO gateway
+- API WebSocket gateway (Durable Object, Hibernation API)
 - room join/leave
 - seat state events
 - room summary updates
@@ -170,7 +170,7 @@ No stale check-in can survive indefinitely and a new day starts operationally cl
 
 ### Deliverables
 
-- Upstash Redis
+- In-Durable-Object rate-limit counters
 - mutation rate limits
 - suspicious action logging
 - account-age-sensitive limits if useful

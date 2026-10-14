@@ -372,7 +372,7 @@ export class GroupsService {
       const ranked = this.db
         .select({
           id: schema.groupMessages.id,
-          rn: sql<number>`row_number() over (partition by ${schema.groupMessages.groupId} order by ${schema.groupMessages.createdAt} desc, ${schema.groupMessages.id} desc)`.as("rn"),
+          rn: sql<number>`row_number() over (partition by ${schema.groupMessages.groupId} order by ${schema.groupMessages.createdAt} desc, "group_messages"."rowid" desc)`.as("rn"),
         })
         .from(schema.groupMessages)
         .where(inArray(schema.groupMessages.groupId, part))

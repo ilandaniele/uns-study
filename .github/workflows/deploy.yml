@@ -1,7 +1,8 @@
 name: Deploy
 
-# Every push to main: full CI, then migrate the production DB, then deploy API, web and the seat
-# verifier to Fly. Nothing deploys unless every CI job passed.
+# Every push to main: full CI, then deploy the API Worker, then the web Worker, then smoke-test
+# production. Nothing deploys unless every CI job passed. The Durable Object migrates its own
+# SQLite schema on first request, so there is no separate migration job.
 on:
   push:
     branches: [main]
@@ -12,7 +13,7 @@ on:
 permissions:
   contents: read
 
-# Never run two production deploys at once: overlapping bluegreen deploys leave stale machines.
+# Never run two production deploys at once.
 concurrency:
   group: deploy-production
   cancel-in-progress: false
@@ -21,13 +22,13 @@ jobs:
   ci:
     uses: ./.github/workflows/ci.yml
 
-  migrate:
-    name: Migrate production DB
+  api:
+    name: Deploy API
     needs: ci
     # workflow_dispatch can target any branch; only main reaches production.
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -37,51 +38,11 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      # Only what the migrator needs, and no install scripts in a job that holds a production token.
-      - run: pnpm install --frozen-lockfile --ignore-scripts --filter @sala/database...
-      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # 1.6
-        with:
-          version: 0.4.112
-      # Token scoped to the DB app only (fly tokens create deploy -a sala-de-estudio-db).
-      - run: bash ops/migrate-fly-db.sh
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @sala/api exec wrangler deploy
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_TOKEN_DB }}
-      # Safety net: if the job was cancelled or killed mid-run, make sure sala_owner is NOLOGIN.
-      - name: Re-lock sala_owner
-        if: always()
-        run: bash ops/migrate-fly-db.sh lock
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_TOKEN_DB }}
-
-  api:
-    name: Deploy API
-    needs: migrate
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # 1.6
-        with:
-          version: 0.4.112
-      - run: flyctl deploy -c fly.toml --remote-only --wait-timeout 10m
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_TOKEN_API }}
-      - name: Smoke test
-        run: |
-          base=https://uns-study-api.fly.dev/api/v1
-          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors -o /dev/null "$base/health"
-          # Protected routes must still refuse anonymous callers.
-          for path in profiles/me conversations me/blocks notifications/preferences admin/users admin/audit; do
-            code=$(curl -s -o /dev/null -w '%{http_code}' "$base/$path")
-            [ "$code" = 401 ] || { echo "::error::/$path returned $code without auth"; exit 1; }
-          done
-          headers=$(curl -fsS -D - -o /dev/null "$base/health" | tr 'A-Z' 'a-z')
-          for h in strict-transport-security content-security-policy x-content-type-options; do
-            grep -q "^$h:" <<<"$headers" || { echo "::error::API response lacks $h"; exit 1; }
-          done
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   web:
     name: Deploy web
@@ -93,33 +54,61 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # 1.6
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          version: 0.4.112
-      - run: flyctl deploy -c fly.web.toml --remote-only --wait-timeout 10m
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # NEXT_PUBLIC_* are inlined at build time. They are public values kept in repository variables.
+      # Ads: empty = house ads only.
+      - run: pnpm --filter @sala/web exec opennextjs-cloudflare build
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_TOKEN_WEB }}
-      - name: Smoke test
+          NEXT_PUBLIC_GAM_REWARDED_UNIT: ${{ vars.NEXT_PUBLIC_GAM_REWARDED_UNIT }}
+          NEXT_PUBLIC_GAM_INTERSTITIAL_UNIT: ${{ vars.NEXT_PUBLIC_GAM_INTERSTITIAL_UNIT }}
+          NEXT_PUBLIC_ADSENSE_CLIENT: ${{ vars.NEXT_PUBLIC_ADSENSE_CLIENT }}
+          NEXT_PUBLIC_ADSENSE_SLOT_RAIL: ${{ vars.NEXT_PUBLIC_ADSENSE_SLOT_RAIL }}
+          NEXT_PUBLIC_ADSENSE_SLOT_ROOM_BOTTOM: ${{ vars.NEXT_PUBLIC_ADSENSE_SLOT_ROOM_BOTTOM }}
+          NEXT_PUBLIC_ADSENSE_SLOT_COMMUNITY_FEED: ${{ vars.NEXT_PUBLIC_ADSENSE_SLOT_COMMUNITY_FEED }}
+          NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
+          NEXT_PUBLIC_GA_ID: ${{ vars.NEXT_PUBLIC_GA_ID }}
+          NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+      - run: pnpm --filter @sala/web exec opennextjs-cloudflare deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  smoke:
+    name: Smoke test production
+    needs: web
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: API checks
+        run: |
+          base=https://saladeestudio.com.ar/api/v1
+          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors -o /dev/null "$base/health"
+          # Protected routes must still refuse anonymous callers.
+          for path in profiles/me conversations me/blocks notifications/preferences admin/users admin/audit; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$base/$path")
+            [ "$code" = 401 ] || { echo "::error::/$path returned $code without auth"; exit 1; }
+          done
+          headers=$(curl -fsS -D - -o /dev/null "$base/health" | tr 'A-Z' 'a-z')
+          for h in strict-transport-security content-security-policy x-content-type-options; do
+            grep -q "^$h:" <<<"$headers" || { echo "::error::API response lacks $h"; exit 1; }
+          done
+      - name: Web checks
         run: |
           headers=$(curl -fsS --retry 5 --retry-delay 5 --retry-all-errors -D - -o /dev/null https://saladeestudio.com.ar/ | tr 'A-Z' 'a-z')
           for h in strict-transport-security content-security-policy x-content-type-options; do
             grep -q "^$h:" <<<"$headers" || { echo "::error::web response lacks $h"; exit 1; }
           done
-
-  verifier:
-    name: Deploy seat verifier
-    # After migrate: the verifier only ships once the schema it may rely on is in place.
-    needs: [ci, migrate]
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # 1.6
-        with:
-          version: 0.4.112
-      - run: flyctl deploy -c fly.verifier.toml --remote-only --wait-timeout 10m
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_TOKEN_VERIFIER }}
+      - name: End-to-end smoke (read-only)
+        run: node apps/api/scripts/smoke.mjs https://saladeestudio.com.ar

@@ -20,7 +20,7 @@ const STABLE_AFTER_MS = 30_000;
 const PING_INTERVAL_MS = 25_000;
 const PONG_TIMEOUT_MS = 10_000;
 
-/** Minimal socket surface the app uses; mirrors the subset of the old Socket.IO client API. */
+/** Minimal socket surface the app uses; a small event-emitter over the room WebSocket. */
 export interface RealtimeSocket {
   readonly connected: boolean;
   /** Reserved events: "connect", "disconnect" (reason), "connect_error" (err). */

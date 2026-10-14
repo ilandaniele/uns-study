@@ -33,7 +33,7 @@ import {
 //   POST /observations        3/min (account < 24 h) / 6/min  abuse-policy.service.ts:16-17, observations.controller.ts:45
 //                             + 8 (new) / 15 distinct seats per 10 min  observations.service.ts:16,103-113
 //                                                                       -> >= 25 s apart, <= 7 per 10 min
-//   everything under /api/v1        300/min per IP   global-ip-rate-limit.middleware.ts:7 -> per-VU spoofed IP (data.js)
+//   everything under /api/v1        300/min per IP   http/middleware/global-ip-rate-limit.ts -> per-VU spoofed IP (data.js)
 
 const OBSERVATION_MIN_GAP_MS = 25_000;
 const OBSERVATION_MAX_PER_10MIN = 7;
@@ -66,7 +66,7 @@ export function setTags(tags) {
 
 /**
  * setup(): guard, health check, room discovery and test users.
- * Health is mounted under the global prefix (apps/api/src/health.controller.ts + main.ts setGlobalPrefix).
+ * Health is mounted under the global prefix (apps/api/src/http/health.router.ts).
  */
 export function standardSetup(userCount) {
   assertSafeTarget();

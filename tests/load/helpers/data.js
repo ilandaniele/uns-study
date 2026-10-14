@@ -29,9 +29,10 @@ export function location() {
 
 /**
  * Synthetic client IP per VU. The API caps every IP at 300 req/min over /api/v1
- * (apps/api/src/common/global-ip-rate-limit.middleware.ts:7); real students each have their own IP,
- * but k6 sends everything from one. With TRUST_PROXY_HOPS=1 and no PROXY_SHARED_SECRET (local default)
- * the API trusts X-Forwarded-For, so each VU gets its own bucket. Disable with SPOOF_CLIENT_IP=0.
+ * (apps/api/src/http/middleware/global-ip-rate-limit.ts); real students each have their own IP,
+ * but k6 sends everything from one. The API reads the client IP from `CF-Connecting-IP`, which Cloudflare's edge
+ * sets itself; against a local `wrangler dev` nothing overwrites it, so each VU gets its own bucket.
+ * Disable with SPOOF_CLIENT_IP=0.
  */
 export function clientIp(index) {
   const n = index + 1;

@@ -1,7 +1,7 @@
 # Seat photo verification: model contract
 
 After tapping "Estoy acá", a user can optionally take a photo from their seat.
-The API forwards the photo to an external **seat verifier** model. The model
+The API forwards the photo to a **seat verifier** model, run inside the API Worker or at an external HTTP endpoint. The model
 says which seat the photo was taken from. If the model agrees with the seat the
 user checked in to, that check-in becomes **verified**.
 
@@ -23,15 +23,18 @@ back in ("Estoy acá") — that starts a fresh check-in, which can be verified
 again. Protection also ends when the check-in itself ends, whichever comes
 first.
 
-The model is not part of this repository. The API only needs an HTTP endpoint
-that follows the contract below.
+By default the model runs inside the API Worker (see "In-process verifier"
+below). The API can instead call any external HTTP endpoint that follows the
+contract below.
 
 ## Configuration (API env)
 
 | Variable | Meaning |
 |---|---|
-| `SEAT_VERIFIER_URL` | HTTPS endpoint of the model. Unset means the feature is off and the web hides the button. **Must be `https://` in production** — a non-https URL there is treated as unset (feature disabled, loud startup warning) rather than sending photo bytes and the bearer token in the clear. |
-| `SEAT_VERIFIER_TOKEN` | Optional. Sent as `Authorization: Bearer <token>`. |
+| `GEMINI_API_KEY` / `ANTHROPIC_API_KEY` | Worker secrets. When either is set, the verifier runs in-process in the API Worker (Gemini wins when both are set). |
+| `VERIFIER_MODEL` | Optional, default `gemini-2.5-flash` (`claude-sonnet-5-5` with the Anthropic key). Reported as `modelVersion: "sala-seat-v1:<model>"`. |
+| `SEAT_VERIFIER_URL` | HTTPS endpoint of an external model, used only when no in-process key is set. With neither, the feature is off and the web hides the button. **Must be `https://` in production** — a non-https URL there is treated as unset (feature disabled, loud startup warning) rather than sending photo bytes and the bearer token in the clear. |
+| `SEAT_VERIFIER_TOKEN` | Optional, external endpoint only. Sent as `Authorization: Bearer <token>`. |
 | `SEAT_VERIFIER_MIN_CONFIDENCE` | Optional, default `0.8`. |
 | `SEAT_VERIFIER_MODE=mock` | Dev/test only (ignored when `NODE_ENV=production`). Accepts every photo as the claimed seat with confidence 0.9. |
 
@@ -91,38 +94,29 @@ malformed body counts as "could not verify". The user is not penalised for it.
   (windows, entrance, wall bars, columns) to tell sides and rows apart.
 - Return `null` rather than guess when two seats are plausible.
 
-## Reference implementation: apps/verifier
+## In-process verifier
 
-`apps/verifier` (`@sala/verifier`) is a small Node 22 HTTP service that follows
-this contract using Gemini vision (or Claude vision). It sends the model a labelled floor plan, the
-user's photo and a text description of the seat layout, and forces structured JSON output (a
-`report_seat` tool call on Claude) so the answer is strict JSON. A seat code that is not in
-the request's `seats` is turned into `null` with confidence 0, and any model
-error or timeout answers `{ "seatCode": null, "confidence": 0 }` with HTTP 200.
-The static system prompt and the floor plan are prompt-cached.
+The reference implementation is folded into the API Worker
+(`apps/api/src/verification/`). There is no separate app and no extra
+deployment: the standalone `apps/verifier` service (and its Fly app) was
+removed. It follows this contract using Gemini vision (or Claude vision). It
+sends the model a labelled floor plan, the user's photo and a text description
+of the seat layout, and forces structured JSON output (a `report_seat` tool call
+on Claude) so the answer is strict JSON. A seat code that is not in the request's
+`seats` is turned into `null` with confidence 0, and any model error or timeout
+answers `{ "seatCode": null, "confidence": 0 }`. The static system prompt and the
+floor plan are prompt-cached.
 
-Endpoints: `POST /` (the contract above, `Authorization: Bearer`), `GET /health`.
+The model call has a 9 s timeout, under the API's 10 s client timeout, so a slow
+model degrades to "could not verify" and the user can simply try again.
 
-| Variable | Meaning |
-|---|---|
-| `VERIFIER_TOKEN` | Required in production. Must equal the API's `SEAT_VERIFIER_TOKEN`. |
-| `GEMINI_API_KEY` | Required in production (free tier from Google AI Studio). `ANTHROPIC_API_KEY` is used instead when no Gemini key is set. |
-| `VERIFIER_MODEL` | Optional, default `gemini-2.5-flash` (`claude-sonnet-5-5` with the Anthropic key). Reported as `modelVersion: "sala-seat-v1:<model>"`. |
-| `PORT` | Optional, default `8080`. |
-
-Deploy:
+Configure it with Worker secrets from `apps/api`:
 
 ```
-fly deploy -c fly.verifier.toml --remote-only
-fly secrets set -c fly.verifier.toml VERIFIER_TOKEN=... GEMINI_API_KEY=...
-# on the API app:
-fly secrets set SEAT_VERIFIER_URL=https://sala-de-estudio-verifier.fly.dev/ SEAT_VERIFIER_TOKEN=...
+pnpm exec wrangler secret put GEMINI_API_KEY
+# or ANTHROPIC_API_KEY when no Gemini key is set
 ```
 
-The verifier machine stops when idle (`min_machines_running = 0`). A cold start
-plus inference can exceed the API's 10 s timeout; that degrades to "could not
-verify" and the user can simply try again.
-
-No-storage guarantee: the service keeps no database or disk state, never writes
+No-storage guarantee: the verifier keeps no database or disk state, never writes
 the photo anywhere and never logs it. It logs only `{evt, claimed, predicted,
 confidence, ms}`. The photo is sent to the Gemini API (or the Anthropic API). On the Gemini free tier Google may use prompts and images to improve its products; use a paid Gemini key if that is not acceptable.

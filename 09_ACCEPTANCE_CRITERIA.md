@@ -22,7 +22,7 @@
 - [ ] Google login works.
 - [ ] Email/password works.
 - [ ] Logout works.
-- [ ] NestJS API derives authenticated user server-side.
+- [ ] API derives authenticated user server-side.
 
 ### Presence
 - [ ] Browser can request location.

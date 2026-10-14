@@ -32,7 +32,7 @@ export const ROOM_NOT_FOUND = "No encontramos esa sala.";
 const lastSnapshots = new Map<string, RoomMapDto>();
 
 /**
- * Loads the room map + current user, then keeps seat/summary state in sync via Socket.IO.
+ * Loads the room map + current user, then keeps seat/summary state in sync via the room WebSocket.
  * `MY_SEAT` is derived client-side: the seat of the caller's own active check-in.
  *
  * Ordering: the room channel is joined first and the map is re-fetched only after the server

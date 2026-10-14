@@ -6,7 +6,7 @@ if (!target) {
 }
 
 export const BASE_URL = (__ENV.BASE_URL || target.baseUrl).replace(/\/+$/, '');
-// Sent as `Origin` on every state-changing request (csrf.middleware.ts rejects origins not in WEB_ORIGIN).
+// Sent as `Origin` on every state-changing request (http/middleware/csrf.ts rejects origins not in WEB_ORIGINS).
 export const ORIGIN = __ENV.ORIGIN || target.origin || 'http://localhost:3000';
 export const API = `${BASE_URL}/api/v1`;
 export const AUTH_API = `${BASE_URL}/api/auth`;
@@ -14,7 +14,7 @@ export const RESULTS_DIR = (__ENV.RESULTS_DIR || 'tests/load/results').replace(/
 
 const LOCAL_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
 // Never targetable, not even with ALLOW_REMOTE=1.
-const PRODUCTION_HOSTS = [/(^|\.)saladeestudio\.com\.ar$/i, /(^|\.)fly\.dev$/i];
+const PRODUCTION_HOSTS = [/(^|\.)saladeestudio\.com\.ar$/i, /(^|\.)workers\.dev$/i];
 
 /**
  * Host of an http(s) URL, or null when it cannot be determined safely. Userinfo (`user@host`), backslashes and

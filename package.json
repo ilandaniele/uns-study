@@ -12,8 +12,6 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "db:generate": "pnpm --filter @sala/database db:generate",
-    "db:migrate": "pnpm --filter @sala/database db:migrate",
-    "db:seed": "pnpm --filter @sala/database db:seed",
     "load:smoke": "k6 run tests/load/scenarios/smoke.js",
     "load:load": "k6 run tests/load/scenarios/load.js",
     "load:stress": "k6 run tests/load/scenarios/stress.js",
@@ -29,21 +27,13 @@
   },
   "pnpm": {
     "overrides": {
-      "multer": "^2.3.0",
       "qs": "^6.16.0",
       "body-parser@1": "^1.20.6",
       "file-type": "^21.3.2",
       "uuid@11": "^11.1.1",
       "source-map-js": "^1.2.2",
       "sharp": "^0.35.5",
-      "typescript-eslint": "$typescript-eslint",
-      "socket.io": "4.8.4"
-    },
-    "peerDependencyRules": {
-      "allowedVersions": {
-        "ioredis-mock>ioredis": "6",
-        "@types/ioredis-mock>ioredis": "6"
-      }
+      "typescript-eslint": "$typescript-eslint"
     }
   }
 }

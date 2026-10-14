@@ -14,39 +14,38 @@ NEXT_PUBLIC_API_URL=http://localhost:4000
 NEXT_PUBLIC_SOCKET_URL=http://localhost:4000
 ```
 
+In production the web and the API share the origin `saladeestudio.com.ar` (the zone routes `/api/*` to the API Worker), so these point at the same host and the Next rewrites to the API are for local dev only.
+
 Only values intentionally safe for browser exposure should use `NEXT_PUBLIC_`.
 
 ## API variables
 
+Worker vars and secrets (local: `apps/api/.dev.vars`, copied from `apps/api/.dev.vars.example`; production: non-secret values in `apps/api/wrangler.jsonc` `vars`, secrets with `wrangler secret put`). There is no `DATABASE_URL`: the database is the SQLite inside the Durable Object.
+
 ```env
 NODE_ENV=development
-PORT=4000
 
-WEB_ORIGIN=http://localhost:3000
-
-DATABASE_URL=
+WEB_ORIGINS=http://localhost:3000
 
 BETTER_AUTH_SECRET=
 BETTER_AUTH_URL=http://localhost:4000
+IP_HASH_SALT=
 
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 
-UPSTASH_REDIS_REST_URL=
-UPSTASH_REDIS_REST_TOKEN=
-
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
-R2_BUCKET_REPORT_EVIDENCE=
+R2_BUCKET=
 R2_ENDPOINT=
 
 TURNSTILE_SECRET_KEY=
 ```
 
-The daily-reset timezone is not an env var: it comes from each room's `rooms.timezone` column (`America/Argentina/Buenos_Aires` for the initial room).
+The report-evidence bucket is also bound to the Worker as `EVIDENCE` (`r2_buckets` in `apps/api/wrangler.jsonc`).
 
-If BullMQ requires a standard Redis connection instead of REST credentials, use the appropriate Upstash Redis connection URL/configuration for the chosen library.
+The daily-reset timezone is not an env var: it comes from each room's `rooms.timezone` column (`America/Argentina/Buenos_Aires` for the initial room).
 
 ## Better Auth
 
@@ -62,48 +61,29 @@ Configure:
 - trusted origins;
 - backend session validation.
 
-## PostgreSQL (Fly Postgres, previously Neon)
+## Database (Durable Object SQLite)
 
-Since 2026-10-05 the database runs on the self-managed Fly Postgres app `sala-de-estudio-db` (gru, `flyio/postgres-flex:17`, one machine, 1 GB volume with daily snapshots kept 14 days). It was moved from Neon with a one-off script (removed; see git history).
-
-- Database `sala`, reached by the API over Fly's private network at `sala-de-estudio-db.internal:5432` with `sslmode=disable`.
-- The owner role `sala_owner` has no login. `ops/migrate-fly-db.ps1` unlocks it only while migrations run (see "Migrations").
-- `DATABASE_URL` uses the least-privilege role `sala_app` (data access only, grants in `ops/sala-app-grants.sql`).
-- The Neon project `uns-study` was deleted by the owner on 2026-10-05.
-
-### Backups and recovery
-
-- Fly takes a daily snapshot of the volume and keeps it 14 days. Snapshots are free under 10 GB.
-- `ops/backup-fly-db.ps1` downloads a `pg_dump` of `sala` into `backups/` (gitignored) and keeps 30 days of dumps. The Windows scheduled task "Sala DB backup" (registered by `ops/schedule-fly-db-backup.ps1`) runs it every day at 13:00, or at the next start if the PC was off.
-- If the DB machine crashes, Fly restarts it (restart policy `always`) and the data stays on the volume.
-- If the data is lost or bad, `ops/restore-fly-db.ps1` restores the latest dump. Without arguments it restores into the test database `sala_restore_test`. `-Database sala -Force` replaces the live data in one transaction.
-- If the whole volume is lost, create a new volume from a snapshot. The steps are in the header of `ops/restore-fly-db.ps1`.
+Since the Cloudflare migration the database is the SQLite storage of the singleton Durable Object `AppDO` in the `uns-api` Worker, accessed through Drizzle (`drizzle-orm/durable-sqlite`). It replaced the self-managed Fly Postgres app (which had replaced Neon). There is no connection string and no credential to protect: only the Worker code can reach it.
 
 ### Migrations
 
-The API machine only holds `DATABASE_URL` (role `sala_app`, data changes only). It does not hold the owner credential and never changes the schema. On boot it checks that every migration in the repo is already applied; if any is missing it stops with an error listing them, and the Fly bluegreen deploy keeps the previous version running. The seed and the secret/VAPID setup only read and write rows, so they run as `sala_app`.
+Drizzle migrations live in `packages/database/migrations` and are bundled into the Worker. `AppDO` applies the pending ones in its constructor (inside `blockConcurrencyWhile`) and then seeds the initial room, so a deploy migrates the database on the first request. Migrations must stay backward compatible with the code that may still be running during a deploy (add, do not drop or rename).
 
-Migrations are applied from your PC with `powershell -ExecutionPolicy Bypass -File ops\migrate-fly-db.ps1`. The script gives `sala_owner` a random one-time password, opens `fly proxy` to the database, runs `pnpm db:migrate` against it, then closes the proxy and removes the owner's login again (even if the migration failed). The owner has no login between runs. It also lets `sala_app` read the `drizzle` schema, which the boot check needs.
+### Backups and recovery
 
-A commit that changes the schema must run this script before it is pushed. Migrations must stay backward compatible with the code still running (add, do not drop or rename), because the old version keeps serving until the new one boots. `MIGRATION_DATABASE_URL` must not be set as an API secret; if it is, the API migrates with it as before.
+- Durable Object SQLite has point-in-time recovery (30 days) through Cloudflare.
+- `/api/v1/__ops/export` and `/api/v1/__ops/import` (gated by the `OPS_IMPORT_TOKEN` secret; empty means disabled) stream the tables as NDJSON, used for the Fly to Cloudflare data migration and for off-platform backups.
+- `MAINTENANCE_MODE=1` answers every `/api/*` path except `/api/v1/health*` with 503 while data is being imported.
 
-## Infrastructure security on Fly.io
+## Infrastructure security on Cloudflare
 
-There is no VPS. TLS, ports and SSH are handled by Fly:
+There is no VPS. TLS, ports and DDoS protection are handled by Cloudflare:
 
-- TLS terminates at the Fly edge with managed certificates, and `force_https` is on for both apps. nginx and Let's Encrypt are not needed.
-- Only ports 80 and 443 are public. The database has no public IP and is reachable only over the private network.
-- There is no SSH daemon with passwords or root login. `fly ssh console` uses short-lived certificates issued to the Fly account.
-- DNS for `saladeestudio.com.ar` is on Cloudflare (Free plan), delegated from NIC Argentina. The A and AAAA records for `@` and `www` point at the `sala-de-estudio` Fly IPs and are DNS only (grey cloud), so Fly issues and serves the certificates.
-
-## Upstash
-
-Uses:
-
-- rate limits;
-- security counters;
-- ephemeral presence/caches;
-- job infrastructure if compatible with chosen queue setup.
+- TLS terminates at the Cloudflare edge with managed certificates. Only ports 80 and 443 are public; there is no database endpoint to expose.
+- There is no SSH daemon. Deploys use `wrangler` with a scoped API token held in GitHub Actions secrets.
+- DNS for `saladeestudio.com.ar` is on Cloudflare (Free plan), delegated from NIC Argentina. The `@` and `www` records are proxied (orange cloud) and the zone routes `saladeestudio.com.ar/api/*` to `uns-api` and everything else to `uns-web`.
+- The API trusts `cf-connecting-ip` for the client IP; it is set by the edge and cannot be forged by the client. There is no proxy shared secret.
+- Plan: Workers Paid (USD 5/month).
 
 ## Cloudflare R2
 
@@ -118,29 +98,30 @@ Uploads should have:
 - random object names;
 - report/user metadata stored in DB, not exposed in object path when avoidable.
 
-## Web (Fly.io)
+## Web (Cloudflare Workers)
 
-Deploy only `apps/web`.
+Deploy only `apps/web`, as the `uns-web` Worker via OpenNext (`apps/web/wrangler.jsonc`).
 
 Configure:
 
-- public API URL;
-- public socket URL;
+- public API URL (same origin in production);
+- public socket URL (same origin; the browser opens `wss://<host>/api/v1/realtime/ws`);
 - app origin.
 
-## Railway
+## API (Cloudflare Workers)
 
-Deploy `apps/api`.
+Deploy `apps/api` as the `uns-api` Worker (`apps/api/wrangler.jsonc`).
 
-Must support persistent WebSocket connections.
+WebSockets use the Hibernation API inside the Durable Object, so idle connections do not keep the object running.
 
 Configure:
 
-- database;
-- Redis;
+- Worker vars and secrets (database is built in);
 - auth;
-- R2;
-- CORS origins.
+- R2 binding;
+- web origins (`WEB_ORIGINS`).
+
+Deploys run from GitHub Actions with wrangler on push to main.
 
 ## Monetization and email (pending owner accounts)
 
@@ -148,20 +129,20 @@ The code for these features is shipped. Each one turns on when its variables are
 
 | Feature | Variables | App | Status | Blocked on |
 |---|---|---|---|---|
-| Mercado Pago subscriptions | `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` | `uns-study-api` | both set 2026-10-04 (app "Sala de Estudio", 4960911583819408). Production webhook points at `https://uns-study-api.fly.dev/api/v1/webhooks/mercadopago` with the "Planes y suscripciones" event. A signed MP simulation passed signature checks | nothing; move the webhook URL if the API domain changes |
-| Transactional email (Resend) | `RESEND_API_KEY`, `EMAIL_FROM` | `uns-study-api` | `RESEND_API_KEY` set 2026-10-04. `saladeestudio.com.ar` added in Resend (São Paulo) on 2026-10-05, with its DKIM, SPF (`send`, `rsend`) and DMARC records on Cloudflare. `EMAIL_FROM` is `Sala de Estudio <noreply@saladeestudio.com.ar>` in `fly.toml`. The domain was verified in Resend on 2026-10-05 | nothing |
-| AdSense | `NEXT_PUBLIC_ADSENSE_CLIENT`, `NEXT_PUBLIC_ADSENSE_SLOT_ROOM_BOTTOM`, `NEXT_PUBLIC_ADSENSE_SLOT_COMMUNITY_FEED`, `NEXT_PUBLIC_ADSENSE_SLOT_RAIL` | `sala-de-estudio` (build-time) | `NEXT_PUBLIC_ADSENSE_CLIENT` is set in `fly.web.toml`, so the web serves `/ads.txt` and the `google-adsense-account` meta tag. On 2026-10-05 the owner added `saladeestudio.com.ar` in AdSense (`pub-1784864280582108`): ownership was verified, a review was requested, and the Google CMP consent message (3 choices) was chosen for EEA/UK/CH visitors. Ad units `sala-room-bottom`, `sala-community-feed` and `sala-rail` exist and their slot IDs are set in `fly.web.toml` (web v24) | Google approving the site; ads fill after that |
-| Custom domain | Fly certificate plus `BETTER_AUTH_URL` and origin updates | both | `saladeestudio.com.ar` bought 2026-10-05. Fly certificates created for the root and `www`. Google OAuth redirect URI and origin, the Turnstile hostname and the R2 CORS origin were added. `www` and `sala-de-estudio.fly.dev` 308-redirect to the root. DNS is live on Cloudflare (delegated from NIC Argentina 2026-10-05) and both Fly certificates are issued | nothing |
+| Mercado Pago subscriptions | `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` | `uns-api` | both set 2026-10-04 (app "Sala de Estudio", 4960911583819408). Production webhook must point at `https://saladeestudio.com.ar/api/v1/webhooks/mercadopago` with the "Planes y suscripciones" event. A signed MP simulation passed signature checks | nothing; move the webhook URL if the API domain changes |
+| Transactional email (Resend) | `RESEND_API_KEY`, `EMAIL_FROM` | `uns-api` | `RESEND_API_KEY` set 2026-10-04. `saladeestudio.com.ar` added in Resend (São Paulo) on 2026-10-05, with its DKIM, SPF (`send`, `rsend`) and DMARC records on Cloudflare. `EMAIL_FROM` is `Sala de Estudio <noreply@saladeestudio.com.ar>` in `apps/api/wrangler.jsonc`. The domain was verified in Resend on 2026-10-05 | nothing |
+| AdSense | `NEXT_PUBLIC_ADSENSE_CLIENT`, `NEXT_PUBLIC_ADSENSE_SLOT_ROOM_BOTTOM`, `NEXT_PUBLIC_ADSENSE_SLOT_COMMUNITY_FEED`, `NEXT_PUBLIC_ADSENSE_SLOT_RAIL` | `uns-web` (build-time) | `NEXT_PUBLIC_ADSENSE_CLIENT` is set in the web build environment, so the web serves `/ads.txt` and the `google-adsense-account` meta tag. On 2026-10-05 the owner added `saladeestudio.com.ar` in AdSense (`pub-1784864280582108`): ownership was verified, a review was requested, and the Google CMP consent message (3 choices) was chosen for EEA/UK/CH visitors. Ad units `sala-room-bottom`, `sala-community-feed` and `sala-rail` exist and their slot IDs are set in the web build environment | Google approving the site; ads fill after that |
+| Custom domain | Zone routes plus `BETTER_AUTH_URL` and origin updates | both | `saladeestudio.com.ar` bought 2026-10-05. Google OAuth redirect URI and origin, the Turnstile hostname and the R2 CORS origin were added. `www` 308-redirects to the root. DNS is live on Cloudflare (delegated from NIC Argentina 2026-10-05); `/api/*` routes to `uns-api` and the rest to `uns-web` | nothing |
 
-To store an API secret without printing it, copy the value to the clipboard and run:
+To store an API secret without printing it, run the command from `apps/api` and paste the value at the prompt (it is not echoed):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File ops\set-secret-from-clipboard.ps1 mp
-powershell -ExecutionPolicy Bypass -File ops\set-secret-from-clipboard.ps1 mphook
-powershell -ExecutionPolicy Bypass -File ops\set-secret-from-clipboard.ps1 resend
+pnpm exec wrangler secret put MP_ACCESS_TOKEN
+pnpm exec wrangler secret put MP_WEBHOOK_SECRET
+pnpm exec wrangler secret put RESEND_API_KEY
 ```
 
-Secrets are staged. The API applies them on its next deploy. `/ads.txt` is generated from `NEXT_PUBLIC_ADSENSE_CLIENT`.
+Worker secrets apply immediately (a new Worker version is created). `/ads.txt` is generated from `NEXT_PUBLIC_ADSENSE_CLIENT`.
 
 ## Local development
 

@@ -41,16 +41,16 @@ An anonymous visitor is read-only.
 
 - Monorepo: Turborepo + pnpm
 - Frontend/PWA: Next.js + React + TypeScript + Tailwind
-- Backend: NestJS + TypeScript
-- Database: PostgreSQL on Neon
-- ORM/migrations: Drizzle ORM
+- Backend: Hono + TypeScript on a Cloudflare Worker (`uns-api`), forwarding to one singleton Durable Object (`AppDO`)
+- Database: SQLite inside the Durable Object
+- ORM/migrations: Drizzle ORM (`drizzle-orm/durable-sqlite`)
 - Authentication: Better Auth
-- Realtime: Socket.IO from NestJS
-- Redis/rate limiting/jobs: Upstash Redis + BullMQ-compatible queue strategy
+- Realtime: raw WebSocket (Hibernation API) in the Durable Object
+- Rate limiting/jobs: in-DO counters and a persisted job table driven by the Durable Object alarm, plus a cron trigger as safety net
 - Private image storage: Cloudflare R2
 - Bot protection: Cloudflare Turnstile
-- Frontend hosting: Fly.io (Dockerfile.web, fly.web.toml)
-- API/WebSocket hosting: Railway
+- Frontend hosting: Cloudflare Workers via OpenNext (`uns-web`, `apps/web/wrangler.jsonc`)
+- API/WebSocket hosting: Cloudflare Workers (`uns-api`, `apps/api/wrangler.jsonc`); `saladeestudio.com.ar/api/*` routes to the API, everything else to the web
 - Analytics: GA4
 - Monetization later: Google AdSense
 

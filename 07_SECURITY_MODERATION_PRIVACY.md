@@ -108,7 +108,7 @@ For DMs:
 
 Better Auth controls sessions.
 
-NestJS must validate auth/session for protected REST and Socket.IO actions.
+The API must validate auth/session for protected REST and WebSocket actions.
 
 Do not trust `userId` from request body.
 

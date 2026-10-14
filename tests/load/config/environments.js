@@ -3,9 +3,9 @@
 // you provide yourself via STAGING_BASE_URL / STAGING_ORIGIN, which also needs ALLOW_REMOTE=1).
 export const environments = {
   local: {
-    // apps/api/src/env.ts:40 -> PORT defaults to 4000; apps/api/src/main.ts mounts /api/v1 + /api/auth.
+    // `pnpm --filter @sala/api dev` runs `wrangler dev --port 4000`; the Hono app mounts /api/v1 + /api/auth.
     baseUrl: 'http://localhost:4000',
-    // apps/api/src/env.ts:41 -> WEB_ORIGIN defaults to http://localhost:3000 (CSRF + Better Auth trustedOrigins).
+    // WEB_ORIGINS must include http://localhost:3000 (CSRF + Better Auth trustedOrigins).
     origin: 'http://localhost:3000',
   },
   staging: {

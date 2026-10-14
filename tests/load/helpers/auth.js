@@ -13,7 +13,7 @@ function randomHex(bytes) {
 /** Headers for an API call. Writes carry Origin (csrf.middleware.ts) and a JSON body type. */
 export function requestHeaders(ip, { write = false } = {}) {
   const headers = { Accept: 'application/json' };
-  if (SPOOF_CLIENT_IP && ip) headers['X-Forwarded-For'] = ip;
+  if (SPOOF_CLIENT_IP && ip) headers['CF-Connecting-IP'] = ip;
   if (write) {
     headers.Origin = ORIGIN;
     headers['Content-Type'] = 'application/json';

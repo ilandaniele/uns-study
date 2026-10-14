@@ -390,7 +390,7 @@ describe("DisputeService", () => {
     await forceClosed(healthy.id);
 
     const original = roomState.recomputeSeats.bind(roomState);
-    const spy = vi.spyOn(roomState, "recomputeSeats").mockImplementation(async (ids, opts) => {
+    const spy = vi.spyOn(roomState, "recomputeSeats").mockImplementation((ids, opts) => {
       if (ids.includes(seatIds[0]!)) throw new Error("boom");
       return original(ids, opts);
     });

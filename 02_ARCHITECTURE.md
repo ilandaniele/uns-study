@@ -29,26 +29,27 @@ Optimize for:
 - Tailwind CSS
 - PWA
 
-Deploy to Fly.io (`fly deploy -c fly.web.toml --remote-only`).
+Deploy as the `uns-web` Cloudflare Worker via OpenNext (`apps/web/wrangler.jsonc`, `wrangler deploy`).
 
 ### API
 
-- NestJS
+- Hono
 - TypeScript
 - REST for commands/queries
-- Socket.IO for real-time events
+- Raw WebSocket (Hibernation API) for real-time events
 
-Deploy to Railway.
+Deploy as the `uns-api` Cloudflare Worker (`apps/api/wrangler.jsonc`). The Worker forwards every request to one
+singleton Durable Object (`AppDO`), which runs the Hono app, owns the database and holds the sockets.
+`saladeestudio.com.ar/api/*` routes to `uns-api`; every other path goes to `uns-web`, so the browser sees one origin.
 
 ### Database
 
-- PostgreSQL
-- Neon
+- SQLite inside the Durable Object (`AppDO`)
 
 ### ORM
 
-- Drizzle ORM
-- Drizzle migrations
+- Drizzle ORM (`drizzle-orm/durable-sqlite`)
+- Drizzle migrations, applied by the Durable Object on start
 
 ### Authentication
 
@@ -56,24 +57,19 @@ Deploy to Railway.
 - Google OAuth
 - email/password
 
-### Redis
+### Rate limiting and counters
 
-- Upstash Redis
+No external Redis. `AppDO` is the only writer, so:
 
-Uses:
-
-- rate limiting;
-- ephemeral presence;
-- anti-spam counters;
-- distributed coordination;
-- job/queue support where appropriate.
+- rate limiting and anti-spam counters live in the Durable Object (memory for coarse per-IP limits, SQLite for per-user and per-route limits);
+- ephemeral presence is derived from the open sockets;
+- coordination needs no distributed locks: every read-decide-write runs in one synchronous SQLite transaction.
 
 ### Jobs
 
-Prefer:
-
-- BullMQ-style jobs for delayed expiration when operationally practical;
-- recovery cron that periodically reconciles expired check-ins;
+- a persisted `scheduled_jobs` table multiplexes the single Durable Object alarm (delayed expiration, summaries, reminders);
+- a Cron Trigger (`* * * * *`) pings the Durable Object as a safety net and re-arms a lost alarm;
+- recurring reconciliation of expired check-ins;
 - scheduled daily room reset.
 
 Never rely on only one delayed job for correctness. Database timestamps remain the source of truth.
@@ -98,17 +94,22 @@ Cloudflare Turnstile on suspicious/high-risk flows.
 ```text
 Browser / PWA
     |
-    | HTTPS + Socket.IO
+    | HTTPS + WebSocket (one origin: saladeestudio.com.ar)
     |
-    +-------------------------+
-    |                         |
-Fly.io (web)              Railway
-Next.js                   NestJS API
-                              |
-               +--------------+--------------+
-               |              |              |
-             Neon          Upstash           R2
-          PostgreSQL        Redis        private files
+    +---------------------------+
+    |                           |
+ /api/*                    everything else
+    |                           |
+Worker uns-api            Worker uns-web
+(Hono)                    Next.js via OpenNext
+    |
+    v
+Durable Object AppDO (singleton)
+    |
+    +-----------------+------------------+
+    |                 |                  |
+ SQLite           WebSockets             R2
+(canonical)     (Hibernation)       private files
 ```
 
 ## 4. Monorepo structure
@@ -206,7 +207,7 @@ Database transaction
     |
 Commit
     |
-Socket.IO SEAT_STATE_CHANGED
+WebSocket SEAT_STATE_CHANGED
 ```
 
 Server-side validation is authoritative.
@@ -216,13 +217,13 @@ Server-side validation is authoritative.
 The client:
 
 1. loads initial room state once using REST;
-2. connects to Socket.IO;
+2. connects to the WebSocket endpoint (`/api/v1/realtime/ws`);
 3. joins `room:{roomId}`;
 4. receives incremental events.
 
 Do not poll occupancy every second.
 
-Potential Socket.IO rooms later:
+Potential socket rooms later:
 
 - `room:{roomId}`
 - `chat:{roomId}`
@@ -231,9 +232,9 @@ Potential Socket.IO rooms later:
 
 ## 8. State correctness
 
-PostgreSQL is the source of truth.
+SQLite in the Durable Object is the source of truth.
 
-Redis may cache or coordinate but must not be the only authoritative record of occupancy.
+In-memory state (socket attachments, rate-limit counters) may cache or coordinate but must not be the only authoritative record of occupancy.
 
 Delayed jobs may expire sessions, but reads and reconciliation must also treat `expires_at <= now()` as expired even if a worker was late.
 

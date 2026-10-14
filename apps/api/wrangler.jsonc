@@ -15,7 +15,7 @@
   // drizzle-kit bundles each migration as a .sql file imported as text.
   "rules": [{ "type": "Text", "globs": ["**/*.sql"], "fallthrough": true }],
   "observability": { "enabled": true },
-  // Non-secret config only; the values mirror the [env] section of the retired fly.toml.
+  // Non-secret config only.
   "vars": {
     "NODE_ENV": "production",
     "WEB_ORIGINS": "https://saladeestudio.com.ar",
@@ -33,9 +33,9 @@
     // "1" answers every /api/* path except /api/v1/health* with 503 "Mantenimiento en curso." (e.g. during the data import).
     "MAINTENANCE_MODE": "0"
   }
-  // Not set here because their values are not in fly.toml (use `wrangler secret put`, or add to
+  // Not set here because their values are deployment-specific (use `wrangler secret put`, or add to
   // "vars" when public): VAPID_PUBLIC_KEY, R2_ACCOUNT_ID, ADMIN_EMAILS, SUBSCRIPTION_PRICE_ARS,
-  // VERIFIER_MODEL, and SEAT_VERIFIER_MODE (fly.toml did not set it; blueprint 2.3 says keep today's value).
+  // VERIFIER_MODEL, and SEAT_VERIFIER_MODE (blueprint 2.3 says keep the current value).
   //
   // Secrets (`wrangler secret put <NAME>`, never in this file):
   //   BETTER_AUTH_SECRET, IP_HASH_SALT, VAPID_PRIVATE_KEY, GOOGLE_CLIENT_SECRET,

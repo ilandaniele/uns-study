@@ -34,14 +34,14 @@ class PushHttpError extends Error {
 
 type PushOutcome = "delivered" | "gone" | "failed";
 
-export interface PushPayload {
+export type PushPayload = {
   title: string;
   body: string;
   /** Path the notification opens on click, e.g. `/sala/principal?seat=<id>`. */
   url: string;
   /** Replaces any earlier notification of the same tag instead of stacking (per `sw.js`). */
   tag: string;
-}
+};
 
 /** Per-device result counts of one `sendToUser` call. */
 export interface PushSendSummary {

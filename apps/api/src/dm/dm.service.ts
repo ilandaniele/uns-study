@@ -180,7 +180,7 @@ export class DmService {
       const ranked = this.db
         .select({
           id: schema.directMessages.id,
-          rn: sql<number>`row_number() over (partition by ${schema.directMessages.conversationId} order by ${schema.directMessages.createdAt} desc, ${schema.directMessages.id} desc)`.as("rn"),
+          rn: sql<number>`row_number() over (partition by ${schema.directMessages.conversationId} order by ${schema.directMessages.createdAt} desc, "direct_messages"."rowid" desc)`.as("rn"),
         })
         .from(schema.directMessages)
         .where(inArray(schema.directMessages.conversationId, part))

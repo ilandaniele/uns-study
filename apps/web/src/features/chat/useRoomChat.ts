@@ -30,7 +30,7 @@ export interface UseRoomChatResult {
 }
 
 /**
- * Loads + paginates the global room chat and keeps it live via Socket.IO.
+ * Loads + paginates the global room chat and keeps it live via the room WebSocket.
  * `blockedIds` hides messages from authors the caller has blocked (the API only filters
  * blocked authors out of history pages, not realtime broadcasts, so this covers both).
  */

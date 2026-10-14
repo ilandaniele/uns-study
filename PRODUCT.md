@@ -6,7 +6,7 @@
 
 web
 
-Mobile-first PWA (Next.js on Fly.io, installable, push notifications). Desktop is a first-class layout too.
+Mobile-first PWA (Next.js on Cloudflare Workers, installable, push notifications). Desktop is a first-class layout too.
 
 ## Users
 

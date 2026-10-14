@@ -22,8 +22,6 @@ jobs:
     name: Lint, typecheck, test, build
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      PGLITE_DIR: memory://
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -45,7 +43,7 @@ jobs:
           node-version: 22
           cache: pnpm
       # Turbo's local cache: lint/typecheck/test of packages whose inputs did not change since the
-      # last run are replayed instead of re-run (the API suite alone is ~7 min of PGlite work).
+      # last run are replayed instead of re-run (the API suite is the slowest package).
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .turbo/cache
@@ -68,7 +66,7 @@ jobs:
             exit 1
           fi
       - run: pnpm --filter @sala/api build
-      - run: pnpm --filter @sala/web build
+      - run: pnpm --filter @sala/web exec opennextjs-cloudflare build
 
   sast:
     name: Static analysis (semgrep)
@@ -83,4 +81,4 @@ jobs:
       - run: >-
           semgrep scan --error --metrics=off
           --config p/typescript --config p/nodejs --config p/react --config p/nextjs
-          --config p/secrets --config p/github-actions --config p/dockerfile
+          --config p/secrets --config p/github-actions

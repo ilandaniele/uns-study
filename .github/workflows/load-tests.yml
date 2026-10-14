@@ -1,11 +1,12 @@
 name: Load Tests
 
-# k6 load tests against a stack booted INSIDE the runner (Postgres service container + the API built from
-# this commit), reached on localhost. There is deliberately no input for a target URL: this workflow can
-# never point at production (and tests/load/config/base.js refuses *.fly.dev / saladeestudio.com.ar anyway).
+# k6 load tests against a stack booted INSIDE the runner (`wrangler dev` running the API Worker and its
+# Durable Object SQLite from this commit), reached on localhost. There is deliberately no input for a target
+# URL: this workflow can never point at production (and tests/load/config/base.js refuses
+# saladeestudio.com.ar / *.workers.dev anyway).
 #
-# Not wired to pull_request: ci.yml never boots the API (its tests run on in-memory PGlite), and a PR smoke
-# run would add an API build + DB boot to every PR. Run it on demand or on the weekly schedule instead.
+# Not wired to pull_request: ci.yml never boots the API (its tests run on in-memory SQLite), and a PR smoke
+# run would add a `wrangler dev` boot to every PR. Run it on demand or on the weekly schedule instead.
 on:
   workflow_dispatch:
     inputs:
@@ -26,7 +27,7 @@ on:
 permissions:
   contents: read
 
-# One run per scenario: each run boots its own Postgres + API inside its own runner, so scenarios do not share
+# One run per scenario: each run boots its own API + Durable Object inside its own runner, so scenarios do not share
 # state and can run in parallel. (A shared concurrency group would keep only one pending run and silently
 # cancel the rest when several scenarios are dispatched at once.)
 concurrency:
@@ -38,20 +39,6 @@ jobs:
     name: k6 (local stack)
     runs-on: ubuntu-latest
     timeout-minutes: 200
-    services:
-      postgres:
-        image: public.ecr.aws/docker/library/postgres:16 # AWS mirror of the official image; Docker Hub pulls time out on runners
-        env:
-          POSTGRES_USER: loadtest
-          POSTGRES_PASSWORD: loadtest
-          POSTGRES_DB: sala_load
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U loadtest -d sala_load"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     env:
       SCENARIO: ${{ inputs.scenario || 'load' }}
     steps:
@@ -64,28 +51,22 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @sala/api build
 
-      # NODE_ENV stays development: migrations run on boot and Better Auth's per-IP limiter (3 sign-ups/min,
-      # production only) does not throttle the setup() sign-ups. BETTER_AUTH_SECRET / IP_HASH_SALT are
-      # generated and stored in the throwaway DB by the API itself (apps/api/src/secrets.ts).
+      # NODE_ENV is overridden to development: Better Auth's per-IP limiter (3 sign-ups/min, production only)
+      # must not throttle the setup() sign-ups. The auth secret and IP salt are throwaway values generated
+      # for this run; the Durable Object SQLite is local to this runner and migrates + seeds on first request.
       - name: Start API
-        env:
-          NODE_ENV: development
-          PORT: "4000"
-          DATABASE_URL: postgres://loadtest:loadtest@localhost:5432/sala_load
-          BOOT_MIGRATE_SEED: "true"
-          WEB_ORIGIN: http://localhost:3000
-          BETTER_AUTH_URL: http://localhost:4000
-          TRUST_PROXY_HOPS: "1"
-          PRESENCE_DEV_BYPASS: "false"
-          # Same heap cap as production (fly.toml, 256 MB VM), so api-rss.csv is comparable and a heap OOM fails the run.
-          NODE_OPTIONS: --max-old-space-size=200
         run: |
           mkdir -p tests/load/results
-          nohup node apps/api/dist/main.js > tests/load/results/api.log 2>&1 &
+          AUTH_SECRET="$(openssl rand -hex 32)"
+          IP_SALT="$(openssl rand -hex 16)"
+          echo "::add-mask::$AUTH_SECRET"
+          echo "::add-mask::$IP_SALT"
+          cd apps/api
+          nohup pnpm exec wrangler dev --port 4000 --persist-to "$RUNNER_TEMP/wrangler-state"             --var NODE_ENV:development             --var WEB_ORIGINS:http://localhost:3000             --var BETTER_AUTH_URL:http://localhost:4000             --var PUBLIC_WEB_URL:http://localhost:3000             --var PRESENCE_DEV_BYPASS:false             --var "BETTER_AUTH_SECRET:$AUTH_SECRET"             --var "IP_HASH_SALT:$IP_SALT"             > ../../tests/load/results/api.log 2>&1 &
           echo "API_PID=$!" >> "$GITHUB_ENV"
-          for i in $(seq 1 60); do
+          cd ../..
+          for i in $(seq 1 120); do
             if curl -fsS http://localhost:4000/api/v1/health > /dev/null; then echo "API up after ${i}s"; exit 0; fi
             sleep 1
           done
@@ -93,10 +74,11 @@ jobs:
           tail -n 50 tests/load/results/api.log
           exit 1
 
-      # k6 cannot see server memory; sample the API process RSS so soak runs can show growth.
+      # k6 cannot see server memory; sample the total RSS of the local workerd processes (the Worker and its
+      # Durable Object run there) so soak runs can show growth.
       - name: Sample API memory
         run: |
-          nohup bash -c 'echo "ts,rss_kb" > tests/load/results/api-rss.csv; while kill -0 "$API_PID" 2>/dev/null; do echo "$(date +%s),$(awk "/VmRSS/{print \$2}" /proc/$API_PID/status)" >> tests/load/results/api-rss.csv; sleep 30; done' > /dev/null 2>&1 &
+          nohup bash -c 'echo "ts,rss_kb" > tests/load/results/api-rss.csv; while kill -0 "$API_PID" 2>/dev/null; do echo "$(date +%s),$(ps -C workerd -o rss= | awk "{s+=\$1} END {print s+0}")" >> tests/load/results/api-rss.csv; sleep 30; done' > /dev/null 2>&1 &
 
       - uses: grafana/setup-k6-action@43b9fc21641a76002687994433dd586f56e791b1 # v1
 
@@ -110,11 +92,11 @@ jobs:
       - name: Check API survived
         run: |
           if ! kill -0 "$API_PID" 2>/dev/null; then
-            echo "::error::API process exited during the run (OOM or crash)"
+            echo "::error::API process exited during the run (crash)"
             tail -n 50 tests/load/results/api.log
             exit 1
           fi
-          echo "API alive, RSS $(awk '/VmRSS/{print $2}' /proc/$API_PID/status) kB"
+          echo "API alive, workerd RSS $(ps -C workerd -o rss= | awk '{s+=$1} END {print s+0}') kB"
 
       - name: Upload results
         if: always()

@@ -2,26 +2,25 @@
 
 Shared contract for all agents. Specs live in `00_*.md`..`10_*.md` and `CLAUDE.md`. Do NOT change contracts below without telling the orchestrator.
 
+> Platform note: the app now runs on Cloudflare Workers (API `uns-api` = Hono + singleton Durable Object `AppDO` with SQLite via Drizzle, WebSocket Hibernation for realtime; web `uns-web` = Next.js via OpenNext). The sections below were written for the original Nest/Express + Postgres build; the product behavior, REST contracts, error codes and business rules still hold, but where a section names the old framework, database, socket library or Redis, read the Cloudflare equivalent. See `README.md` "Deploy" and `10_ENVIRONMENT_AND_SERVICES.md` for the current setup.
+
 ## Environment facts
 - Windows 11, Node 24, pnpm 9.15.9, Git Bash available. Docker daemon NOT running.
-- Production runs on Fly.io (web, API, and Postgres app `sala-de-estudio-db`); local dev and tests still run without credentials (PGlite + in-memory rate limiting).
-- Package manager: pnpm workspaces + Turborepo. Test runner: Vitest everywhere (API included; domain services are plain classes, testable without Nest DI).
+- Production runs on Cloudflare Workers (`uns-web`, `uns-api`); local dev (`wrangler dev`) and tests run without credentials (local Durable Object SQLite, in-memory rate limiting).
+- Package manager: pnpm workspaces + Turborepo. Test runner: Vitest everywhere (API included; domain services are plain classes, testable without a framework container).
 
 ## Layout
 ```
 apps/web        Next.js (App Router, TS, Tailwind v4), port 3000
-apps/api        NestJS (TS, Express platform), port 4000, prefix /api/v1
+apps/api        Hono on a Cloudflare Worker + Durable Object (TS), port 4000 in `wrangler dev`, prefix /api/v1
 packages/contracts   @sala/contracts   — shared TS types + zod schemas + constants
 packages/database    @sala/database    — Drizzle schema, client factory, migrations, seed, layout generator
 ```
-Root scripts: `dev`, `build`, `lint`, `typecheck`, `test`, `db:generate`, `db:migrate`, `db:seed` (turbo / filter). Packages export TS source directly (`"main": "./src/index.ts"`, `"types"` same) — no build step for internal packages; API compiles them via its bundler/ts path (use `tsx`/`swc` for dev; for Nest build use `tsup` or nest-cli with webpack? → decision: API runs with `tsx watch src/main.ts` in dev and `tsup` for build, NOT nest-cli, so workspace TS sources resolve cleanly).
+Root scripts: `dev`, `build`, `lint`, `typecheck`, `test`, `db:generate`, `db:migrate`, `db:seed` (turbo / filter). Packages export TS source directly (`"main": "./src/index.ts"`, `"types"` same) — no build step for internal packages; the API's wrangler/esbuild bundle compiles them (decision: API runs with `wrangler dev` and builds with `wrangler deploy --dry-run`, which bundles the workspace TS sources).
 
 ## Database
-- Client factory `createDb()` in `@sala/database`:
-  - if `DATABASE_URL` set → `drizzle-orm/node-postgres` with `pg` Pool (ssl when url has sslmode).
-  - else → `drizzle-orm/pglite` with `@electric-sql/pglite` persisted at `<repo>/.data/pglite` (env `PGLITE_DIR` overrides; `memory://` for tests).
-  - Export type `Db` usable by both (use the common `PgDatabase` base type).
-- Migrations: drizzle-kit generates SQL into `packages/database/migrations`. `migrate()` helper applies them for both drivers (`drizzle-orm/node-postgres/migrator` / `drizzle-orm/pglite/migrator`).
+- `createDoDb(ctx.storage)` in `@sala/database/do` wraps the Durable Object SQLite with `drizzle-orm/durable-sqlite`; tests use `createTestDb()` (`@sala/database/testing`, `better-sqlite3` in memory). Export type `Db` usable by both.
+- Migrations: drizzle-kit generates SQL into `packages/database/migrations`. `AppDO` applies them in its constructor (`migrateDo`). Every read-decide-write runs inside one synchronous `db.transaction`.
 - Tables (snake_case columns, uuid PK `defaultRandom()` for domain tables, timestamptz):
   - Better Auth tables `user`, `session`, `account`, `verification` (text ids) — schema in `src/schema/auth.ts` matching Better Auth drizzle adapter (generate with `@better-auth/cli generate` against apps/api auth config if possible, else follow installed version docs). Domain FKs reference `user.id` (text).
   - `rooms` (id, slug unique, name, description, latitude double, longitude double, geofence_radius_m int, timezone text, daily_reset_time text 'HH:MM', active bool, last_reset_at timestamptz null, created_at, updated_at)
@@ -35,7 +34,7 @@ Root scripts: `dev`, `build`, `lint`, `typecheck`, `test`, `db:generate`, `db:mi
   - `user_room_presence` (user_id, room_id, presence_verified, first_seen_at, last_seen_at, active) PK(user_id, room_id)
   - `study_status` (user_id, room_id, subject, message, looking_for_group, active, started_at, updated_at) PK(user_id, room_id) — scaffold only.
   - Later tables (profiles, privacy, reputation, qr, blocks, reports, chat) NOT now.
-- Seed (`pnpm db:seed`, idempotent upsert by slug/code): room slug `principal`, name `Sala de Estudio`, lat `-38.70138372483678`, lng `-62.270139753196005` (confirmed), radius 120 m, tz `America/Argentina/Buenos_Aires`, reset `04:00`. Geometry from `generateRoomLayout()` (pure, in `src/layout.ts`, unit-tested: 12 MAIN_TABLE, 4 WALL_BAR, 108 seats, codes `M01-S01`..`M12-S08`, `B01-S01`..`B04-S03`). viewBox `0 0 1000 1600`: back/windows at top y≈0, entrance at bottom. M01..M06 left column bottom→top (M01 near entrance), M07..M12 right column bottom→top. Tables horizontal ~300x90; seats 1-4 above table left→right, 5-8 below right→left. Bars vertical against side walls: B01 left-bottom, B02 right-bottom, B03 left-top, B04 right-top, 3 seats each stacked vertically. One `seat_current_state` row per seat, UNKNOWN, confidence 0.
+- Seed (`seedInitialRoom`, run by `AppDO` on start; idempotent upsert by slug/code): room slug `principal`, name `Sala de Estudio`, lat `-38.70138372483678`, lng `-62.270139753196005` (confirmed), radius 120 m, tz `America/Argentina/Buenos_Aires`, reset `04:00`. Geometry from `generateRoomLayout()` (pure, in `src/layout.ts`, unit-tested: 12 MAIN_TABLE, 4 WALL_BAR, 108 seats, codes `M01-S01`..`M12-S08`, `B01-S01`..`B04-S03`). viewBox `0 0 1000 1600`: back/windows at top y≈0, entrance at bottom. M01..M06 left column bottom→top (M01 near entrance), M07..M12 right column bottom→top. Tables horizontal ~300x90; seats 1-4 above table left→right, 5-8 below right→left. Bars vertical against side walls: B01 left-bottom, B02 right-bottom, B03 left-top, B04 right-top, 3 seats each stacked vertically. One `seat_current_state` row per seat, UNKNOWN, confidence 0.
 
 ## Contracts package (`@sala/contracts`)
 ```ts
@@ -65,16 +64,16 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 - `POST /presence/validate` (auth).
 - `POST /checkins` (auth, rate limit 5/min, presence), `DELETE /checkins/current`, `POST /checkins/current/extend` (fresh presence, +60 min from now).
 - `POST /observations` (auth, rate limit 6/min + max 15 distinct seats / 10 min, presence). Cannot observe a seat where caller has own active check-in (just use check-in). Duplicate observation by same user same seat replaces (expire previous).
-- Better Auth mounted at `/api/auth/*` (Express handler BEFORE body parser), email/password enabled, Google enabled only when `GOOGLE_CLIENT_ID` set. `trustedOrigins=[WEB_ORIGIN]`. Guard `AuthGuard` resolves session via `auth.api.getSession({headers})` → `req.user`. Never trust body userId.
+- Better Auth mounted at `/api/auth/*` (Hono route, before the JSON body limits), email/password enabled, Google enabled only when `GOOGLE_CLIENT_ID` set. `trustedOrigins=[WEB_ORIGIN]`. Guards in `http/guards.ts` resolve session via `auth.api.getSession({headers})` → `c.var.user`. Never trust body userId.
 - Dev-only presence bypass: env `PRESENCE_DEV_BYPASS=true` (rejected when NODE_ENV=production) makes presence always valid — for local testing away from the room. Thresholds env: `PRESENCE_MAX_AGE_S=120`, `PRESENCE_MAX_ACCURACY_M=100`.
-- Domain services (pure-ish, no controller logic): `PresenceService` (haversine, validate), `SeatStateCalculator` (pure fn), `CheckInService`, `ObservationService`, `RoomStateService` (recompute seat state + summary, write seat_current_state + events), `RateLimitService` (Upstash REST if env set, else in-memory sliding window), `SecurityEventService`, `RoomRealtimeGateway` (Socket.IO, CORS WEB_ORIGIN, anonymous join allowed), `ExpirationJob` (@nestjs/schedule, every 30 s: expire ACTIVE check-ins with expires_at<=now, recompute seats with just-expired observations, emit), `DailyResetJob` (every minute check: if room local time ≥ reset time and last_reset_at < today's reset instant → run reset txn per spec §7 + set last_reset_at; idempotent; emit room:daily-reset).
+- Domain services (pure-ish, no controller logic): `PresenceService` (haversine, validate), `SeatStateCalculator` (pure fn), `CheckInService`, `ObservationService`, `RoomStateService` (recompute seat state + summary, write seat_current_state + events), `RateLimitService` (in-memory and SQLite-backed windows), `SecurityEventService`, `RoomRealtimeGateway` (WebSocket hub in the Durable Object, Origin check against `WEB_ORIGINS`, anonymous join allowed), `ExpirationJob` (scheduled-jobs table on the Durable Object alarm, every 30 s: expire ACTIVE check-ins with expires_at<=now, recompute seats with just-expired observations, emit), `DailyResetJob` (every minute check: if room local time ≥ reset time and last_reset_at < today's reset instant → run reset txn per spec §7 + set last_reset_at; idempotent; emit room:daily-reset).
 - SeatStateCalculator rules (deterministic): active check-in → OCCUPIED 0.98 source `CHECK_IN`; else active obs: only FREE → FREE conf min(0.5+0.15·(n-1),0.9); only OCCUPIED → OCCUPIED same formula; both → compare weighted counts: if one side ≥ 2× other and newest obs is that side → that side conf 0.5, else UNCERTAIN 0.4; none → UNKNOWN 0. Distinct users count once (latest per user).
 - Concurrency: check-in in a transaction; rely on partial unique index; catch unique violation (23505) → SEAT_TAKEN. Moving = mark previous ACTIVE → COMPLETED in same txn before insert.
 - After commit emit `seat:state-changed` for each changed seat + `room:summary-changed`.
 
 ## Web (apps/web)
 - `/` redirects to `/sala/principal`. `/sala/[slug]`: summary counters, `RoomMap` (SVG, components `StudyTable`, `WallBar`, `Seat`), legend, freshness, seat detail bottom sheet (mobile) / side panel (desktop). Spanish copy per `06_UI_UX_SPEC.md`. Colors: FREE green, OCCUPIED red, UNCERTAIN amber, UNKNOWN gray, MY_SEAT blue (+ icon/pattern). Pinch/zoom via simple pan/zoom (e.g. `react-zoom-pan-pinch`) on mobile.
-- Data: REST fetch `NEXT_PUBLIC_API_URL/api/v1/rooms/:slug/map` (credentials include) → socket.io-client join `room:join` → apply events; on reconnect refetch map.
+- Data: REST fetch `NEXT_PUBLIC_API_URL/api/v1/rooms/:slug/map` (credentials include) → WebSocket (`src/lib/socket.ts`) join `room:join` → apply events; on reconnect refetch map.
 - Auth: `better-auth/react` client with `baseURL = NEXT_PUBLIC_API_URL`. `/login` page: email/password sign in/up + Google button. Header shows user + logout.
 - Geolocation helper `getFreshLocation()` returning LocationInput or typed error (permission denied / timeout / unavailable). Actions `Estoy acá`, `Está libre`, `Está ocupado`, `Salir` (checkout), `Seguir acá` (extend). Show friendly errors per spec. After first check-in ask identity visibility (store choice only locally for now; default private).
 
@@ -83,7 +82,7 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 - `src/lib/api.ts` — `apiFetch`/`apiPost`/`apiDelete`, `credentials: "include"`, throws `ApiRequestError { code, reason?, status }` parsed from the `{error:{code,message}}` shape (reads an optional `reason` defensively even though it's not in the `ApiError` TS type — API should include it for `PRESENCE_REJECTED` per handoff prose).
 - `src/lib/auth-client.ts` — `better-auth/react` client, `baseURL = NEXT_PUBLIC_API_URL` (default session/social endpoints under `/api/auth/*`).
 - `src/lib/geolocation.ts` — `getFreshLocation()`, `enableHighAccuracy/maximumAge:0/timeout:15s`, throws `GeolocationRequestError` with codes `PERMISSION_DENIED|TIMEOUT|UNAVAILABLE`.
-- `src/lib/socket.ts` — singleton `socket.io-client`, `withCredentials: true`, base `NEXT_PUBLIC_SOCKET_URL`.
+- `src/lib/socket.ts` — singleton WebSocket facade (same `on/off/emit` surface as the old socket client), connects to `/api/v1/realtime/ws` on the same origin (or `NEXT_PUBLIC_SOCKET_URL`).
 - `src/lib/errors.ts` — maps geolocation/API errors to the exact Spanish copy from `06_UI_UX_SPEC.md` §6 + `SEAT_TAKEN`/`RATE_LIMITED` copy from the work item.
 - `src/features/room/` — `useRoomState` (map + `/me` fetch, socket join/reconnect/refetch, applies `seat:state-changed`/`room:summary-changed`/`room:daily-reset`), `useSeatActions` (check-in/observation/extend/checkout, presence-aware error mapping), `RoomMap`/`StudyTable`/`WallBar`/`Seat` (pure SVG from `RoomMapDto`, no hardcoded geometry; `MY_SEAT` is a client-only overlay computed from `me.activeCheckIn.seatId`), `SeatDetail`, `SummaryCounters`, `Legend`, `IdentityPrompt`, `format.ts` (status label / confidence wording / recency — unit tested).
 - `/sala/[slug]/page.tsx` uses `useParams()` (not the async `params` prop) since it's a client component; mobile wraps `RoomMap` in `react-zoom-pan-pinch`, desktop uses a 3-column grid (counters/legend | map | seat panel) per the mockup, with a mobile bottom-sheet duplicate of `SeatDetail`.
@@ -94,21 +93,18 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 
 ## Status log
 - [x] P0 scaffold  - [x] P1 DB/seed  - [x] P2 map  - [x] P3 auth  - [x] P4 presence  - [x] P5 check-in  - [x] P6 realtime  - [x] P7 observations  - [x] P8 expiry/reset  - [x] P9 anti-abuse
-- [x] Security review (Fable) findings fixed  - [x] Playwright E2E 4/4  - [x] API dist bundles workspace packages  - [x] PGlite single-process lock
+- [x] Security review (Fable) findings fixed  - [x] Playwright E2E 4/4  - [x] API dist bundles workspace packages  - [x] Local DB single-process lock (obsolete with Durable Object SQLite)
 
-## Deployment state (2026-09-27, updated for the Render -> Fly.io move)
-> Historical. Since then Postgres moved from Neon to the Fly Postgres app `sala-de-estudio-db` (least-privilege grants in `ops/sala-app-grants.sql`); see `10_ENVIRONMENT_AND_SERVICES.md` for current state.
+## Deployment state
+> Current: the web (`uns-web`) and API (`uns-api`) run as Cloudflare Workers behind one origin, `saladeestudio.com.ar` (`/api/*` routes to the API). The database is SQLite in the singleton Durable Object; deploys come from GitHub Actions with wrangler on push to main. See `README.md` "Deploy" and `10_ENVIRONMENT_AND_SERVICES.md`. The earlier Render, Fly and Neon setups are retired (see git history).
 - GitHub: private repo `ilandaniele/uns-study`, CI green.
-- Web: Fly.io app `sala-de-estudio`, https://sala-de-estudio.fly.dev (`fly deploy -c fly.web.toml --remote-only`; the old https://uns-study.vercel.app host 308-redirects there via `apps/web/src/proxy.ts`). `/api/auth/*` and `/api/v1/*` are rewritten to the API (`API_PROXY_TARGET`), so auth cookies are first-party. Socket.IO connects straight to the API host (defaults to `API_PROXY_TARGET` at build, see next.config.ts). `API_PROXY_TARGET` is a build arg in `fly.web.toml`.
-- API: moving from Render to **Fly.io** (`fly.toml` + `Dockerfile.api` at repo root; `render.yaml`/`apps/api/railway.json` removed). App name `uns-study-api`, region `gru`, `https://uns-study-api.fly.dev`, scale-to-zero (`min_machines_running = 0`). Postgres stays on Neon project `sala-estudio-uns` (id purple-paper-17024644, AWS us-east-1) — same `DATABASE_URL`, now set via `fly secrets set` instead of the Render dashboard. `GOOGLE_CLIENT_SECRET` is also a Fly secret (see README "Deploy"). `BETTER_AUTH_SECRET` and `IP_HASH_SALT` are **not** Fly secrets anymore — the API auto-generates and persists them in the new `app_secrets` table on first boot (`apps/api/src/secrets.ts`), so deploying needs no hand-typed generated secrets; rotating one = delete its row + restart (rotating `BETTER_AUTH_SECRET` logs everyone out). No Redis/Upstash needed anymore in production: `RateLimitService` now falls back to a Postgres-backed limiter (`rate_limit_hits` table, migration `0003_colorful_quicksilver.sql`) when neither is configured, since `DATABASE_URL` is already required — the Render Key Value instance `uns-study-kv` is no longer used. **Not yet pushed** — this work item builds the Fly config only; the orchestrator deploys (`fly launch`/`fly deploy`, `fly secrets set`) and pushes once Fly is confirmed working, since pushing also affects the now-decommissioned Render service.
 - Admin: `ADMIN_EMAILS=ilan.daniele@gmail.com`; the ADMIN role is granted on the first `/me` after that account signs up.
 - Room coordinates confirmed: -38.7018942, -62.2702852, radius 120 m, max accuracy 100 m.
-- Unused but created (safe to delete): Neon project `uns-study` (Sao Paulo), Upstash Redis `uns-study` (Sao Paulo), Render Postgres `uns-study-db`, and once the Fly deploy is confirmed: the Render `uns-study-api` service itself and Render Key Value `uns-study-kv`.
 
 ## Next
-- Production credentials are set as Fly secrets. Upstash Redis is not needed (Postgres-backed rate limiting covers production). `BETTER_AUTH_SECRET`/`IP_HASH_SALT` are auto-generated into `app_secrets` on first boot.
+- Production credentials are Worker secrets (`wrangler secret put`). No Redis is needed; `BETTER_AUTH_SECRET` and `IP_HASH_SALT` are Worker secrets too.
 - Room coordinates confirmed (2026-09-27). Geofence radius 120 m — tune after real-device tests.
-- Deploy: Fly.io (apps/web via fly.web.toml, apps/api via fly.toml); GitHub Actions deploys on push to main. See README "Deploy".
+- Deploy: Cloudflare Workers (apps/web via `apps/web/wrangler.jsonc`, apps/api via `apps/api/wrangler.jsonc`); GitHub Actions deploys on push to main. See README "Deploy".
 - Beta launch point reached per 08_IMPLEMENTATION_PLAN.md; later phases (profiles, chat, reports, rankings, QR, ads) not started.
 
 (apps/api backend complete per the API contract above; apps/web is a separate work item.)
@@ -116,13 +112,13 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 ## API notes (apps/api)
 
 **Run**
-- Dev: `pnpm --filter @sala/api dev` (`tsx watch src/main.ts`, loads root `.env` via `dotenv`). Set `PRESENCE_DEV_BYPASS=true` to test away from the room.
-- Seed local data: `pnpm db:seed` (writes to `.data/pglite` when `DATABASE_URL` is unset — **stop the API before seeding and restart after**, PGlite does not support two processes writing the same on-disk store concurrently).
-- Build: `pnpm --filter @sala/api build` (tsup → `dist/main.js`, ESM). Start: `pnpm --filter @sala/api start`.
-- Tests: `pnpm --filter @sala/api test` (vitest, pglite `memory://`, 40 tests, all green). `typecheck` / `lint` also green.
-- `DB_AUTO_MIGRATE` (default `true` outside production) runs `migrate()` on boot; it does **not** seed — run `pnpm db:seed` once against the same store.
+- Dev: `pnpm --filter @sala/api dev` (`wrangler dev --port 4000`, reads `apps/api/.dev.vars`). Set `PRESENCE_DEV_BYPASS=true` to test away from the room.
+- Local data: the Durable Object migrates and seeds the initial room on its first request; delete `apps/api/.wrangler/state` (API stopped) to start clean.
+- Build: `pnpm --filter @sala/api build` (`wrangler deploy --dry-run`). Deploy: `pnpm --filter @sala/api deploy`.
+- Tests: `pnpm --filter @sala/api test` (vitest, in-memory `better-sqlite3`).
 
-**Env** — see root `.env.example`; new API-only var: `DB_AUTO_MIGRATE` (bool, default true in dev). `IP_HASH_SALT` was added (not previously in the example) for `security_events.ip_hash`; defaults to an insecure dev value with no runtime warning — set it for anything beyond local dev.
+
+**Env** — see root `.env.example` and `apps/api/.dev.vars.example`. `IP_HASH_SALT` was added (not previously in the example) for `security_events.ip_hash`; defaults to an insecure dev value with no runtime warning — set it for anything beyond local dev.
 
 `TURNSTILE_SECRET_KEY` (Phase 9): unset by default, which fully disables the anti-abuse challenge (`TurnstileService.isEnabled()` false, `AbusePolicyService.requiresChallenge()` always false, no `POST /checkins`/`POST /observations` requests are ever challenged) — matches local dev with no credentials. Set it to enable server-side verification against Cloudflare's `siteverify` endpoint; the web app then needs `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (added to `.env.example`, web-side widget wiring is `apps/web`'s responsibility) to actually render a challenge and produce a token for the `turnstileToken` field.
 
@@ -131,7 +127,7 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 - `AUTH` DI token lives in `src/auth/auth.tokens.ts` (not `auth.module.ts`) to break an import cycle between `AuthModule` → `MeController` → `AuthGuard` → (token).
 - Map reads (`GET /rooms/:idOrSlug/map`) recompute seat status live from active check-ins + non-expired observations rather than trusting the persisted `seat_current_state` row, so a stale row (not yet swept by `ExpirationJob`, which runs every 30s) never leaks to clients; the persisted row is only used as a `lastUpdatedAt` fallback when nothing changed.
 - `SeatStateCalculator` conflict rule interpreted as: dominant side needs both `weightSum >= 2x` the other side's `weightSum` **and** the single newest observation must belong to that side; otherwise `UNCERTAIN`/0.4. Verified in `src/rooms/seat-state-calculator.test.ts`.
-- `RateLimitService`: four backends, tried in order — Upstash Redis (REST, lazily-created/cached limiters per `(limit, windowSeconds)` pair) when `UPSTASH_REDIS_REST_URL`/`TOKEN` are set; otherwise a standard Redis server via `REDIS_URL` (`ioredis`, sliding-window-log per key using a `MULTI` of `ZREMRANGEBYSCORE`/`ZADD`/`ZCARD`/`PEXPIRE`, keyed `rl:<key>`, fails closed on Redis errors); otherwise, **in production only**, Postgres (`PostgresWindow`, table `rate_limit_hits` — migration `0003_colorful_quicksilver.sql`, schema `packages/database/src/schema/rate-limit.ts`): a fixed-window counter incremented atomically via `INSERT ... ON CONFLICT (key, window_start) DO UPDATE SET count = count + 1 RETURNING count`, approximating a sliding window by blending in the previous window's count weighted by its remaining time-overlap (classic "sliding window counter"), plus an opportunistic `DELETE ... WHERE window_start < now() - 1 day` capped to once per 10 minutes per process; otherwise an in-memory sliding window (dev/test only). Production **no longer throws** at construction when neither Redis backend is configured — Postgres is always available there since `DATABASE_URL` is mandatory. Local dev has none of Upstash/Redis set and isn't production, so it falls all the way to in-memory — verified via `rate-limit.service.test.ts` (in-memory, a `ioredis-mock`-backed test of the Redis window, and a `PostgresWindow` suite against `createDb({ pgliteDir: "memory://" })`, including a test of the sliding-window-counter overlap weighting).
+- `RateLimitService`: in-memory sliding window plus a SQLite-backed fixed-window counter (table `rate_limit_hits`, schema `packages/database/src/schema/rate-limit.ts`) blended with the previous window by remaining overlap ("sliding window counter"), with an opportunistic delete of rows older than a day. The original Redis backends (REST and standard Redis) were removed with the Cloudflare migration. Covered by `rate-limit.service.test.ts`.
 - Better Auth 1.7.6 drizzle adapter mounted at `/api/auth/*` on the raw Express instance (`bodyParser: false` on the Nest app, `toNodeHandler(auth)` mounted before `express.json()`). Verified live: sign-up, cookie session, and `GET /api/v1/me` all work end-to-end.
 - `POST /observations` rejects observing the seat where the caller has their own active check-in with a generic `VALIDATION_ERROR` (no dedicated `ApiErrorCode` exists for this in the contract) — flagged here since it's the one place the contract's fixed `ApiErrorCode` union felt incomplete; not changed unilaterally.
 - Phase 9 anti-abuse: `security/turnstile.service.ts` (Cloudflare `siteverify`, fail-closed, disabled unless `TURNSTILE_SECRET_KEY` set) + `security/abuse-policy.service.ts` (`requiresChallenge(userId)`: true iff Turnstile enabled AND user has a `SEAT_TOGGLE_RAPID`/`OBSERVATION_SPREAD`/`RATE_LIMITED` `security_events` row in the last 30 min; `observationLimits(userId)`/`isNewAccount(userId)`: accounts younger than 24h get 3 observations/min + an 8-distinct-seat/10-min cap instead of 6/15, numbers live in `OBSERVATION_LIMITS`). Both checks live in `CheckInsController`/`ObservationsController` right after the existing rate-limit check (which now also records a `RATE_LIMITED` security event on the 429 path, since that's one of the three challenge triggers); `ObservationService` itself now asks `AbusePolicyService` for the distinct-seat cap instead of a hardcoded constant. A hit records `TURNSTILE_FAILED` only when a token was actually submitted and rejected (a *missing* token when challenged is not itself logged as a failure).
@@ -143,11 +139,11 @@ export interface SeatStateChangedEvent { roomId; seatId; status: SeatStatus; con
 - `POST /api/auth/sign-up/email` (test@example.test) → session cookie set.
 - `GET /api/v1/me` (with cookie) → real user, `activeCheckIn: null`.
 - `POST /api/v1/checkins` on a seat → 201, seat becomes `OCCUPIED` (confidence 0.98, `sourceSummary: "CHECK_IN"`) on the very next map read; `summary.occupied === 1`.
-- Server stopped cleanly after verification; `.data/pglite` removed so the repo is left clean for the next run/seed.
+- Server stopped cleanly after verification (historical run on the original stack).
 
 **Open issues / left for other agents**
 - `apps/web` not touched (per scope).
-- No real Neon/Upstash/Google credentials configured — everything above ran against local PGlite + in-memory rate limiting, as expected for this stage.
+- No real Google credentials configured — everything above ran against a local store + in-memory rate limiting, as expected for this stage.
 
 ## API notes — seat disputes (apps/api/src/disputes/)
 
@@ -158,7 +154,7 @@ Migration `packages/database/migrations/0005_zippy_silver_sable.sql` adds `seat_
 - `POST /api/v1/disputes/:id/votes` (auth, presence-validated, not the incumbent, 20/10min) — upserts the caller's vote.
 - `POST /api/v1/disputes/:id/respond` (auth, incumbent only) — `STILL_HERE` (presence-validated) casts a PRESENT vote; `LEFT` ends the incumbent's check-in and resolves RESOLVED_ABSENT immediately, regardless of the live tally.
 - `GET /api/v1/rooms/:idOrSlug/disputes` (public list of OPEN disputes; `OptionalAuthGuard` adds `myVote`/`iAm*`), `GET /api/v1/disputes/:id` (same, lazily resolves if past `closesAt`).
-- `DisputeResolutionJob` (`apps/api/src/jobs/dispute-resolution.job.ts`) calls `DisputeService.resolveDue()` every 15s; resolution is also idempotent under concurrency via an `pg_advisory_xact_lock(hashtext(disputeId))` + conditional `WHERE status='OPEN'` update inside the resolution transaction (same technique as `RoomStateService.recomputeSeatsLocked`, verified under PGlite).
+- `DisputeResolutionJob` (`apps/api/src/jobs/dispute-resolution.job.ts`) calls `DisputeService.resolveDue()` every 15s; resolution is also idempotent under concurrency via a single synchronous SQLite transaction with a conditional `WHERE status='OPEN'` update inside the resolution transaction (same technique as `RoomStateService.recomputeSeatsLocked`).
 
 **Resolution rules implemented**
 - `absent > present` → RESOLVED_ABSENT: incumbent check-in (if any) → `CANCELLED` + study session recorded; CLAIM additionally creates the opener's check-in on the seat (closing their other ACTIVE check-in first, move semantics reusing `CheckInService`'s pattern) *unless* the opener is currently SUSPENDED/BANNED, in which case the seat is just left free; SAVED expires active OCCUPIED observations and writes a system FREE observation (weight 2, 15 min), then `finalizeResolution` overrides `seat_current_state.source_summary` to `"SAVED"`.

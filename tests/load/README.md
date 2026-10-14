@@ -5,12 +5,12 @@ writes (check-in "Estoy acá", observations "Está libre / Está ocupado"). Loca
 
 ## Safety
 
-- `BASE_URL` defaults to `http://localhost:4000` (API `PORT` default, `apps/api/src/env.ts`).
+- `BASE_URL` defaults to `http://localhost:4000` (`pnpm --filter @sala/api dev` runs `wrangler dev --port 4000`).
 - Every script throws at init if the host is not `localhost` / `127.0.0.1` / `[::1]`, unless `ALLOW_REMOTE=1`
   (for a private test stack you own).
-- `saladeestudio.com.ar`, `*.saladeestudio.com.ar` and `*.fly.dev` are refused even with `ALLOW_REMOTE=1`
+- `saladeestudio.com.ar`, `*.saladeestudio.com.ar` and `*.workers.dev` are refused even with `ALLOW_REMOTE=1`
   (`config/base.js`). URLs with userinfo (`http://localhost@host`), percent-encoding or whitespace in the authority
-  are refused outright, and trailing dots (`fly.dev.`) are normalised before the check.
+  are refused outright, and trailing dots (`workers.dev.`) are normalised before the check.
 - Test users (`loadtest+<runId>.<n>@example.test`) get a random password per run; nothing is stored in the repo.
   They stay in the target database, so use a disposable one.
 
@@ -19,8 +19,10 @@ writes (check-in "Estoy acá", observations "Está libre / Está ocupado"). Loca
 Start the API locally (real geofence, not `PRESENCE_DEV_BYPASS`), then:
 
 ```bash
-pnpm --filter @sala/api dev          # PORT 4000, WEB_ORIGIN http://localhost:3000, auto-migrates (PGlite or DATABASE_URL)
-# seed: BOOT_MIGRATE_SEED=true on first boot, or `pnpm db:seed`
+# wrangler dev on port 4000; needs apps/api/.dev.vars (copy .dev.vars.example): NODE_ENV=development,
+# WEB_ORIGINS=http://localhost:3000, BETTER_AUTH_URL=http://localhost:4000, BETTER_AUTH_SECRET, IP_HASH_SALT.
+# The Durable Object SQLite migrates and seeds the initial room on first request.
+pnpm --filter @sala/api dev
 
 pnpm load:smoke    # 1 VU, 30 s: every verified route once, writes included
 pnpm load:load     # 60 VUs, ~10 min: normal day
@@ -32,15 +34,9 @@ pnpm load:peak     # 300 VUs, 15 min: 08:00 exam-season rush
 
 Run from the repo root (results are written relative to the working directory).
 
-Use a real PostgreSQL (`DATABASE_URL`) for stress, spike and peak. PGlite is in-process and single-connection:
-around 300 VUs its queries fail with `stack depth limit exceeded` and the API stops answering while still holding
-the port. smoke and load are fine on PGlite. A throwaway local cluster needs no credentials:
+`wrangler dev` runs the Worker and the Durable Object in a single local `workerd` process, so one Durable Object
+serves every VU, as in production. Local numbers are a regression trend, not production capacity.
 
-```bash
-initdb -D ./pgdata -U loadtest --auth=trust && pg_ctl -D ./pgdata -o "-p 5499 -c listen_addresses=localhost" start
-createdb -h localhost -p 5499 -U loadtest sala_load
-DATABASE_URL=postgres://loadtest@localhost:5499/sala_load BOOT_MIGRATE_SEED=true pnpm --filter @sala/api dev
-```
 Install k6: <https://grafana.com/docs/k6/latest/set-up/install-k6/>. The HTML report and summary helpers are
 fetched from `raw.githubusercontent.com` / `jslib.k6.io` at start, so a network connection is required.
 
@@ -49,13 +45,13 @@ fetched from `raw.githubusercontent.com` / `jslib.k6.io` at start, so a network 
 | Variable | Default | Purpose |
 |---|---|---|
 | `BASE_URL` | `http://localhost:4000` | API origin (guarded) |
-| `ORIGIN` | `http://localhost:3000` | `Origin` header on writes (CSRF check, must be in the API's `WEB_ORIGIN`) |
+| `ORIGIN` | `http://localhost:3000` | `Origin` header on writes (CSRF check, must be in the API's `WEB_ORIGINS`) |
 | `ALLOW_REMOTE` | unset | `1` to allow a non-local, non-production host |
 | `ROOM_SLUG` / `ROOM_LAT` / `ROOM_LNG` | `principal` / `-38.7018942` / `-62.2702852` | Room + geofence centre (seed: `packages/database/src/seed.ts`; recalibrated DBs need overrides) |
 | `USERS` | per scenario (60 / 300 / 80 / 150) | Test accounts created in `setup()`; extra VUs are anonymous (read-only) |
 | `MAX_VUS` (stress), `PEAK_VUS` (spike) | 400 / 500 | Upper bound of the ramp |
 | `SOAK_HOLD` | `2h` | Soak plateau length |
-| `SPOOF_CLIENT_IP` | on | `0` to stop sending a per-VU `X-Forwarded-For` (see below) |
+| `SPOOF_CLIENT_IP` | on | `0` to stop sending a per-VU `CF-Connecting-IP` (see below) |
 | `RESULTS_DIR` | `tests/load/results` | Where `handleSummary` writes |
 | `TARGET_ENV`, `STAGING_BASE_URL`, `STAGING_ORIGIN` | `local` | Placeholder staging profile (`config/environments.js`) |
 
@@ -76,13 +72,13 @@ Writes are paced under the limits the API enforces, so any `429` is a finding, n
 
 | Limit | Where | Pacing |
 |---|---|---|
-| 300 req/min per IP over `/api/v1` | `common/global-ip-rate-limit.middleware.ts` | Each VU sends its own `X-Forwarded-For` (`10.x.y.z`). k6 would otherwise look like one IP and hit 429 beyond ~30 VUs. Works only when the API runs with `TRUST_PROXY_HOPS>=1` (default 1: Express takes the last XFF entry as `req.ip`) **and an empty `PROXY_SHARED_SECRET`**. With the secret set, `proxyTrustMiddleware` replaces XFF with `Fly-Client-IP` (or drops it), every VU shares one bucket and the run fills with 429s. CI sets neither. |
-| `presence:<user>` 10/min | `presence.controller.ts` | one per check-in batch |
-| `checkin:<user>` 5/min (counted after the presence pre-check) | `checkins.controller.ts` | <= 3 attempts per batch, batches >= 70 s apart |
-| `extend:<user>` 5/min | `checkins.controller.ts` | >= 20 s apart |
-| `observation:<user>` 3/min while the account is < 24 h old (6/min later) | `observations.controller.ts`, `abuse-policy.service.ts` | >= 25 s apart |
+| 300 req/min per IP over `/api/v1` | `http/middleware/global-ip-rate-limit.ts` | Each VU sends its own `CF-Connecting-IP` (`10.x.y.z`). k6 would otherwise look like one IP and hit 429 beyond ~30 VUs. The API reads the client IP from that header; Cloudflare's edge overwrites it, but nothing does against a local `wrangler dev`, so the spoof works only on a local stack (one more reason production is refused). |
+| `presence:<user>` 10/min | `presence.router.ts` | one per check-in batch |
+| `checkin:<user>` 5/min (counted after the presence pre-check) | `checkins.router.ts` | <= 3 attempts per batch, batches >= 70 s apart |
+| `extend:<user>` 5/min | `checkins.router.ts` | >= 20 s apart |
+| `observation:<user>` 3/min while the account is < 24 h old (6/min later) | `observations.router.ts`, `abuse-policy.service.ts` | >= 25 s apart |
 | distinct observed seats 8 per 10 min (new account) | `observations.service.ts` | <= 7 observations per 10 min |
-| sign-up 5/email/hour | `common/auth-rate-limit.middleware.ts` | unique email per user and per run |
+| sign-up 5/email/hour | `http/middleware/auth-rate-limit.ts` | unique email per user and per run |
 
 Better Auth's own limiter (3 sign-ups/min) is `production`-only (`auth.instance.ts`), so run the API with
 `NODE_ENV` != `production` or `setup()` will 429 beyond three users.
@@ -124,14 +120,15 @@ Outputs per scenario in `tests/load/results/` (git-ignored): `<scenario>-summary
 
 ## Memory growth (soak)
 
-k6 only sees the client side. For server memory, sample the API process while soaking (the CI workflow writes
-`api-rss.csv` every 30 s), or watch `fly machine status` / `docker stats` on your own test stack.
+k6 only sees the client side. For server memory, sample the local `workerd` processes while soaking (the CI workflow writes
+their total RSS to `api-rss.csv` every 30 s). For the deployed Worker use the Cloudflare dashboard metrics.
 
 ## CI
 
-`.github/workflows/load-tests.yml`: manual dispatch (choose a scenario) and a weekly run of `load`. It boots Postgres
-and the API from the checked-out commit inside the runner and targets `localhost`; it has no target-URL input.
-It does not run on pull requests because `ci.yml` never starts the API (its tests use in-memory PGlite).
+`.github/workflows/load-tests.yml`: manual dispatch (choose a scenario) and a weekly run of `load`. It boots
+`wrangler dev` (API Worker + Durable Object SQLite) from the checked-out commit inside the runner and targets
+`localhost`; it has no target-URL input. It does not run on pull requests because `ci.yml` never starts the API
+(its tests use in-memory SQLite).
 GitHub-hosted runners are small and share CPU with the API: treat their numbers as a regression trend, not capacity.
 
 ## Notes

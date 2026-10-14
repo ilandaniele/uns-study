@@ -208,7 +208,9 @@ Block rules and DM privacy must be enforced server-side.
 
 ---
 
-# Socket.IO
+# WebSocket
+
+Raw WebSocket (Hibernation API in the Durable Object) at `GET /api/v1/realtime/ws`. Frames are JSON `{ e, d, id? }` (client to server) and `{ e, d }` / `{ ack, d }` (server to client); event names are the same as before.
 
 ## Authentication
 
