@@ -1,5 +1,6 @@
 "use client";
 
+import { XIcon } from "@phosphor-icons/react/dist/ssr";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSession } from "@/lib/auth-client";
@@ -106,7 +107,18 @@ export function PushPermissionPrompt() {
       className={`${POSITION} flex flex-col gap-3 rounded-float border border-app bg-surface p-4 shadow-lg`}
     >
       <div className="flex flex-col gap-1">
-        <h2 id="push-prompt-title" className="text-sm font-semibold text-main">¿Activamos las notificaciones?</h2>
+        <div className="flex items-start justify-between gap-2">
+          <h2 id="push-prompt-title" className="text-sm font-semibold text-main">¿Activamos las notificaciones?</h2>
+          <button
+            type="button"
+            onClick={() => snooze(SNOOZE_LATER_MS)}
+            disabled={busy}
+            aria-label="Cerrar"
+            className="-mr-2 -mt-2 grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted hover:bg-[var(--surface-2)] hover:text-main disabled:opacity-50"
+          >
+            <XIcon aria-hidden="true" size={16} weight="bold" />
+          </button>
+        </div>
         <p id="push-prompt-body" className="text-xs text-muted">
           Te avisamos si te escriben por privado, si alguien reclama tu lugar o si se libera un asiento.
         </p>
