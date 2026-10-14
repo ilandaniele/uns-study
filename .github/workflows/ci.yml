@@ -3,7 +3,9 @@ name: CI
 on:
   push:
     branches-ignore: [main]
+    paths-ignore: ["**/*.md", "docs/**", "reference-images/**", "design-options/**"]
   pull_request:
+    paths-ignore: ["**/*.md", "docs/**", "reference-images/**", "design-options/**"]
   # Pushes to main run this through deploy.yml, which only ships a commit that passed every check.
   # Jobs are few on purpose: every job is billed at least one minute.
   workflow_call:

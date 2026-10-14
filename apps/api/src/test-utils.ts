@@ -1,5 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
-import { createDb, migrate, schema, seedInitialRoom, type Db } from "@sala/database";
+import { readFile } from "node:fs/promises";
+import { inject } from "vitest";
+import { createDb, schema, type Db } from "@sala/database";
 import { PresenceService } from "./presence/presence.service.js";
 import { RoomStateService } from "./rooms/room-state.service.js";
 import { SecurityEventService } from "./security/security-event.service.js";
@@ -17,24 +19,11 @@ import type { SeatPhotoVerifier } from "./verification/seat-photo-verifier.js";
 import { NotificationService } from "./notifications/notification.service.js";
 import { PushService } from "./notifications/push.service.js";
 
-/**
- * Migrating PGlite takes over a second, so it happens once per test worker: the migrated and
- * seeded data directory is dumped, and every `freshDb()` boots its own database from that dump.
- */
-let template: Promise<File | Blob> | undefined;
-
-async function buildTemplate(): Promise<File | Blob> {
-  const pglite = new PGlite("memory://");
-  const db = createDb({ pglite });
-  await migrate(db, "");
-  await seedInitialRoom(db);
-  const dump = await pglite.dumpDataDir("none");
-  await pglite.close();
-  return dump;
-}
+/** The migrated and seeded template that src/test-global-setup.ts dumps once per run. */
+let template: Promise<Blob> | undefined;
 
 export async function freshDb(): Promise<Db> {
-  template ??= buildTemplate();
+  template ??= readFile(inject("pgliteTemplate")).then((bytes) => new Blob([bytes]));
   return createDb({ pglite: await PGlite.create({ loadDataDir: await template }) });
 }
 

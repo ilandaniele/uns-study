@@ -5,6 +5,8 @@ name: Deploy
 on:
   push:
     branches: [main]
+    # Docs-only pushes ship nothing, so they spend no Actions minutes.
+    paths-ignore: ["**/*.md", "docs/**", "reference-images/**", "design-options/**"]
   workflow_dispatch:
 
 permissions:
