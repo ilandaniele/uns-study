@@ -5,7 +5,6 @@ import { env } from "../env.js";
 import type { AppEnv } from "../http/context.js";
 import { reply } from "../http/reply.js";
 import { zBody } from "../http/validate.js";
-import type { MercadoPagoClient } from "./mercadopago.client.js";
 
 const LIMIT = 10;
 const WINDOW_S = 3600;
@@ -19,7 +18,7 @@ export const donationsRouter = new Hono<AppEnv>();
 
 donationsRouter.post("/donations/checkout", zBody(donationCheckoutSchema), async (c) => {
   // `null` (feature disabled) until MP_ACCESS_TOKEN is set.
-  const mp = c.var.services.mercadoPago as MercadoPagoClient | null;
+  const mp = c.var.services.mercadoPago;
   if (!mp) throw ApiErrors.featureDisabled();
   const limit = await c.var.services.rateLimit.check(`donations:checkout:${c.var.ip}`, LIMIT, WINDOW_S);
   if (!limit.allowed) throw ApiErrors.rateLimited();

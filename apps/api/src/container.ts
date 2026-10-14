@@ -1,0 +1,178 @@
+// Service graph, wired by hand (no DI container). Order matters: leaves first, then the services
+// that depend on them, then the realtime gateway and the jobs.
+//
+//   buildServices(deps: ContainerDeps): Services
+//
+//   deps.db         the shared sync SQLite handle (`createDoDb(ctx.storage)` in the Worker, `freshDb()` in tests)
+//   deps.hub        the realtime hub (`DoRealtimeHub` in the Worker, `RecordingHub` in tests)
+//   deps.scheduler  `SqliteScheduler` in the Worker, `ManualScheduler` in tests
+//   deps.evidence   the `EVIDENCE` R2 binding, or null when absent
+//   deps.clock      `systemClock` in the Worker, `FixedClock` in tests
+//   deps.env        optional config override; defaults to the mutable `env` singleton
+//
+// The caller then does `createApp({ services, auth: buildAuth(db) })`.
+import type { Db } from "@sala/database";
+import { env as defaultEnv, type Env } from "./env.js";
+import type { Clock } from "./platform/clock.js";
+import type { Scheduler } from "./platform/scheduler.js";
+import type { RealtimeHub } from "./realtime/realtime-hub.js";
+import type { Services } from "./services.js";
+import { RoomCache } from "./common/cache/room-cache.service.js";
+import { RoomsService } from "./rooms/rooms.service.js";
+import { RoomStateService } from "./rooms/room-state.service.js";
+import { RoomStatsService } from "./rooms/room-stats.service.js";
+import { PresenceService } from "./presence/presence.service.js";
+import { CheckInService } from "./checkins/checkins.service.js";
+import { PhotoVerificationService } from "./checkins/photo-verification.service.js";
+import { ObservationService } from "./observations/observations.service.js";
+import { DisputeService } from "./disputes/disputes.service.js";
+import { TableNamesService } from "./table-names/table-names.service.js";
+import { ReputationService } from "./reputation/reputation.service.js";
+import { RankingsService } from "./rankings/rankings.service.js";
+import { StudySessionService } from "./rankings/study-session.service.js";
+import { StudyService } from "./study/study.service.js";
+import { RoomPeopleService } from "./study/room-people.service.js";
+import { ChatService } from "./chat/chat.service.js";
+import { DmService } from "./dm/dm.service.js";
+import { GroupsService } from "./groups/groups.service.js";
+import { BlocksService } from "./blocks/blocks.service.js";
+import { ProfilesService } from "./profiles/profiles.service.js";
+import { AvatarsService } from "./avatars/avatars.service.js";
+import { AliasService } from "./users/alias.service.js";
+import { RolesService } from "./users/roles.service.js";
+import { RestrictionService } from "./users/restriction.service.js";
+import { AdminUsersService } from "./admin/admin-users.service.js";
+import { AdminReportsService } from "./admin/admin-reports.service.js";
+import { AdminRoomsService } from "./admin/admin-rooms.service.js";
+import { AdminAuditService } from "./admin/admin-audit.service.js";
+import { AdminStudySessionsService } from "./admin/admin-study-sessions.service.js";
+import { ModerationActionService } from "./admin/moderation-action.service.js";
+import { AnnouncementsService } from "./announcements/announcements.service.js";
+import { ReportsService } from "./reports/reports.service.js";
+import { QrService } from "./qr/qr.service.js";
+import { NotificationService } from "./notifications/notification.service.js";
+import { PushService } from "./notifications/push.service.js";
+import { PushSubscriptionsService } from "./notifications/push-subscriptions.service.js";
+import { NotificationPreferencesService } from "./notifications/notification-preferences.service.js";
+import { EmailCampaignsService } from "./email/email-campaigns.service.js";
+import { ResendClient } from "./email/resend.client.js";
+import { SubscriptionsService } from "./subscriptions/subscriptions.service.js";
+import { MercadoPagoClient } from "./subscriptions/mercadopago.client.js";
+import { RateLimitService } from "./security/rate-limit.service.js";
+import { AntiAbuseService } from "./security/anti-abuse.service.js";
+import { SecurityEventService } from "./security/security-event.service.js";
+import { AbusePolicyService } from "./security/abuse-policy.service.js";
+import { TurnstileService } from "./security/turnstile.service.js";
+import { StorageService } from "./storage/storage.service.js";
+import { createSeatPhotoVerifier } from "./verification/seat-photo-verifier.factory.js";
+import { RoomRealtimeGateway } from "./realtime/room-realtime.gateway.js";
+import { ExpirationJob } from "./jobs/expiration.job.js";
+import { DisputeResolutionJob } from "./jobs/dispute-resolution.job.js";
+import { DailyResetJob } from "./jobs/daily-reset.job.js";
+import { AttachmentSweepJob } from "./jobs/attachment-sweep.job.js";
+import { CheckInExpiryReminderJob } from "./jobs/checkin-expiry-reminder.job.js";
+import { EmailSendJob } from "./email/email-send.job.js";
+
+export interface ContainerDeps {
+  db: Db;
+  hub: RealtimeHub;
+  scheduler: Scheduler;
+  /** The `EVIDENCE` R2 binding; null when absent (report evidence uploads are then disabled). */
+  evidence: R2Bucket | null;
+  clock: Clock;
+  /** Config override for tests; defaults to the `env` singleton. */
+  env?: Env;
+}
+
+export function buildServices(deps: ContainerDeps): Services {
+  const { db, hub, scheduler, clock } = deps;
+  const cfg = deps.env ?? defaultEnv;
+
+  // Leaves.
+  const roomCache = new RoomCache();
+  const roomState = new RoomStateService(db);
+  const presence = new PresenceService();
+  const roles = new RolesService(db);
+  const restriction = new RestrictionService(db);
+  const alias = new AliasService(db);
+  const reputation = new ReputationService(db);
+  const studySessions = new StudySessionService(db);
+  const securityEvents = new SecurityEventService(db, reputation);
+  const rateLimit = new RateLimitService(db);
+  const turnstile = new TurnstileService();
+  const abusePolicy = new AbusePolicyService(db, turnstile);
+  const antiAbuse = new AntiAbuseService(rateLimit, securityEvents, abusePolicy, turnstile);
+  const storage = new StorageService(deps.evidence, cfg);
+  const qr = new QrService(db);
+  const resend = cfg.resendApiKey && cfg.emailFrom ? new ResendClient(cfg.resendApiKey) : null;
+  const mercadoPago = cfg.mpAccessToken ? new MercadoPagoClient(cfg.mpAccessToken) : null;
+  const seatPhotoVerifier = createSeatPhotoVerifier(cfg);
+
+  // Notifications and the realtime gateway (roomState -> notifications -> realtime).
+  const push = new PushService(db);
+  const notifications = new NotificationService(db, push, roomState, scheduler);
+  const realtime = new RoomRealtimeGateway(hub, roomState, notifications, scheduler);
+
+  // Rooms and social.
+  const rooms = new RoomsService(db, roomState, roomCache);
+  const roomStats = new RoomStatsService(db, rooms);
+  const blocks = new BlocksService(db, alias);
+  const study = new StudyService(db, restriction);
+  const profiles = new ProfilesService(db, study, alias, restriction, roles);
+  const avatars = new AvatarsService(db, restriction);
+  const chat = new ChatService(db, rooms, restriction, roles, blocks, alias);
+  const dm = new DmService(db, restriction, blocks, alias);
+  const groups = new GroupsService(db, restriction, blocks, alias);
+  const roomPeople = new RoomPeopleService(db, alias, roles);
+  const rankings = new RankingsService(db, rooms, alias, roles);
+  const tableNames = new TableNamesService(db, restriction, realtime, roomCache);
+
+  // Presence-sensitive domain.
+  const disputes = new DisputeService(
+    db, roomState, presence, securityEvents, studySessions, reputation, restriction, realtime, rateLimit, abusePolicy, notifications,
+  );
+  const checkIns = new CheckInService(db, roomState, presence, securityEvents, studySessions, qr, disputes, roles, roomCache);
+  const photoVerification = new PhotoVerificationService(db, roomState, presence, seatPhotoVerifier);
+  const observations = new ObservationService(
+    db, roomState, presence, securityEvents, abusePolicy, qr, reputation, notifications, disputes, roomCache,
+  );
+
+  // Admin and moderation.
+  const moderation = new ModerationActionService(db, checkIns, realtime);
+  const adminUsers = new AdminUsersService(db, moderation, roles);
+  const adminReports = new AdminReportsService(db, storage, roles);
+  const adminRooms = new AdminRoomsService(db, rooms, roomState, presence, roles, roomCache);
+  const adminAudit = new AdminAuditService(db);
+  const adminStudySessions = new AdminStudySessionsService(db, roles, rooms, studySessions);
+  const announcements = new AnnouncementsService(db);
+  const reports = new ReportsService(db, rateLimit, restriction, roles, storage);
+
+  // Notifications / email / subscriptions.
+  const pushSubscriptions = new PushSubscriptionsService(db);
+  const notificationPreferences = new NotificationPreferencesService(db);
+  const emailCampaigns = new EmailCampaignsService(db);
+  const subscriptions = new SubscriptionsService(db, mercadoPago);
+
+  const jobs = {
+    expiration: new ExpirationJob(db, roomState, realtime, studySessions, disputes),
+    disputeResolution: new DisputeResolutionJob(disputes),
+    dailyReset: new DailyResetJob(db, realtime, studySessions),
+    attachmentSweep: new AttachmentSweepJob(db, storage),
+    checkInExpiryReminder: new CheckInExpiryReminderJob(db, realtime, push),
+    emailSend: new EmailSendJob(db, resend),
+  };
+
+  return {
+    db,
+    rooms, roomState, roomStats, roomCache, presence, checkIns, photoVerification, observations,
+    disputes, tableNames, reputation, rankings, studySessions, study, roomPeople,
+    chat, dm, groups, blocks, profiles, avatars, alias, roles, restriction,
+    adminUsers, adminReports, adminRooms, adminAudit, adminStudySessions, moderation,
+    announcements, reports, qr,
+    notifications, push, pushSubscriptions, notificationPreferences, emailCampaigns, resend,
+    subscriptions, mercadoPago, rateLimit, antiAbuse, securityEvents, abusePolicy, turnstile,
+    storage, seatPhotoVerifier,
+    realtime, scheduler, clock,
+    jobs,
+  };
+}

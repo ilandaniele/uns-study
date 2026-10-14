@@ -1,24 +1,5 @@
-import "reflect-metadata";
-
-import type { AddressInfo } from "node:net";
-import express from "express";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import type { INestApplication } from "@nestjs/common";
-import { seedInitialRoom } from "@sala/database";
-
-// Must run before `env.ts` is first evaluated (it captures process.env at import time): an
-// in-memory PGlite, no Redis/Resend, and no real DATABASE_URL leaking in from a local `.env`.
-vi.hoisted(() => {
-  process.env.DATABASE_URL = "";
-  process.env.PGLITE_DIR = "memory://";
-  process.env.UPSTASH_REDIS_REST_URL = "";
-  process.env.UPSTASH_REDIS_REST_TOKEN = "";
-  process.env.REDIS_URL = "";
-  process.env.RESEND_API_KEY = "";
-  process.env.EMAIL_FROM = "";
-  process.env.MIGRATION_DATABASE_URL = "";
-  process.env.E2E_TEST_HOOKS = "";
-});
+import { beforeAll, describe, expect, it } from "vitest";
+import { baseHeaders, buildTestApp } from "../http/test-app.js";
 
 /**
  * Routes reachable without a session on purpose. Everything else under /api/v1 must answer 401
@@ -48,54 +29,25 @@ const PUBLIC_ROUTES: Record<string, string> = {
   "POST /api/v1/email/unsubscribe": "token-authenticated RFC 8058 one-click unsubscribe",
   "POST /api/v1/webhooks/mercadopago": "authenticated by Mercado Pago signature, not session",
   "POST /api/v1/donations/checkout": "anonymous one-time donation; bounded amount, rate limited per IP, stores nothing",
-  "POST /api/v1/__e2e/expire-checkin": "only mounted with E2E_TEST_HOOKS, never in production",
+  "POST /api/v1/__e2e/expire-checkin": "answers 403 unless E2E_TEST_HOOKS is set, which is forced off in production",
 };
 
-const ORIGIN = "http://localhost:3000";
 const UUID_NONE = "00000000-0000-4000-8000-000000000000";
 const PREFIX = "/api/v1";
 
-interface RouteLayer {
-  route?: { path: string; methods: Record<string, boolean> };
-}
-
 describe("route auth coverage", () => {
-  let app: INestApplication;
-  let base: string;
+  let app: ReturnType<typeof buildTestApp>["app"];
   let routes: string[] = [];
 
-  beforeAll(async () => {
-    const { NestFactory } = await import("@nestjs/core");
-    const { toNodeHandler } = await import("better-auth/node");
-    const { AppModule } = await import("../app.module.js");
-    const { AUTH } = await import("../auth/auth.tokens.js");
-    const { DB } = await import("../database/database.module.js");
-    const { ApiExceptionFilter } = await import("../common/api-exception.filter.js");
-
-    app = await NestFactory.create(AppModule, { bodyParser: false, logger: false });
-    const http = app.getHttpAdapter().getInstance();
-    http.all("/api/auth/*splat", toNodeHandler(app.get(AUTH)));
-    app.use(express.json());
-    app.setGlobalPrefix("api/v1");
-    app.useGlobalFilters(new ApiExceptionFilter());
-    await app.listen(0, "127.0.0.1");
-    base = `http://127.0.0.1:${(app.getHttpServer().address() as AddressInfo).port}`;
-
-    await seedInitialRoom(app.get(DB));
-
-    const stack = ((http as { router?: { stack: RouteLayer[] } }).router?.stack ?? []) as RouteLayer[];
+  beforeAll(() => {
+    ({ app } = buildTestApp());
+    // `app.routes` lists every registered handler and middleware; middleware entries use method ALL.
     const found = new Set<string>();
-    for (const layer of stack) {
-      if (!layer.route || !layer.route.path.startsWith(`${PREFIX}/`)) continue;
-      for (const [method, on] of Object.entries(layer.route.methods)) {
-        if (on) found.add(`${method.toUpperCase()} ${layer.route.path}`);
-      }
+    for (const r of app.routes) {
+      if (r.method === "ALL" || !r.path.startsWith(`${PREFIX}/`)) continue;
+      found.add(`${r.method.toUpperCase()} ${r.path}`);
     }
     routes = [...found].sort();
-  }, 60_000);
-
-  afterAll(async () => {
-    await app?.close();
   });
 
   it("enumerates the registered routes", () => {
@@ -110,12 +62,9 @@ describe("route auth coverage", () => {
     for (const route of routes) {
       if (route in PUBLIC_ROUTES) continue;
       const [method, path] = route.split(" ") as [string, string];
-      const res = await fetch(`${base}${path.replace(/:[A-Za-z]+/g, UUID_NONE)}`, {
+      const res = await app.request(path.replace(/:[A-Za-z]+/g, UUID_NONE), {
         method,
-        headers: {
-          origin: ORIGIN,
-          ...(["POST", "PUT", "PATCH"].includes(method) ? { "content-type": "application/json" } : {}),
-        },
+        headers: baseHeaders(["POST", "PUT", "PATCH"].includes(method) ? { "content-type": "application/json" } : {}),
         body: ["POST", "PUT", "PATCH"].includes(method) ? "{}" : undefined,
       });
       // Must be the session guard's 401, not e.g. a bad-signature 401 from a public handler.
@@ -126,8 +75,7 @@ describe("route auth coverage", () => {
   }, 120_000);
 
   it("only lists public routes that exist", () => {
-    // The e2e hook controller is only mounted when E2E_TEST_HOOKS is set.
-    const stale = Object.keys(PUBLIC_ROUTES).filter((r) => !routes.includes(r) && !r.includes("/__e2e/"));
+    const stale = Object.keys(PUBLIC_ROUTES).filter((r) => !routes.includes(r));
     expect(stale).toEqual([]);
   });
 });

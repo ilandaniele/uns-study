@@ -18,6 +18,7 @@ import { CheckInService } from "../checkins/checkins.service.js";
 import { ObservationService } from "../observations/observations.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { RecordingHub } from "../realtime/realtime-hub.js";
+import { ManualScheduler } from "../platform/scheduler.js";
 import { DailyResetJob, resetInstantFor } from "../jobs/daily-reset.job.js";
 import { NotificationService } from "../notifications/notification.service.js";
 import { PushService } from "../notifications/push.service.js";
@@ -38,7 +39,7 @@ async function build(db: Db) {
   const abusePolicy = new AbusePolicyService(db, new TurnstileService());
   const push = new PushService(db);
   const send = vi.spyOn(push, "sendToUser").mockResolvedValue(null);
-  const notifications = new NotificationService(db, push, roomState);
+  const notifications = new NotificationService(db, push, roomState, new ManualScheduler());
   const disputes = new DisputeService(db, roomState, presence, security, studySessions, reputation, restrictions, gateway, rateLimit, abusePolicy, notifications);
   const checkIns = new CheckInService(db, roomState, presence, security, studySessions, qr, disputes, new RolesService(db));
   const observations = new ObservationService(db, roomState, presence, security, abusePolicy, qr, reputation, notifications, disputes);

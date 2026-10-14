@@ -1,14 +1,11 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
-import { Interval } from "@nestjs/schedule";
 import { and, eq, gt, isNull, lte } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import { seatLabel } from "@sala/contracts";
-import { DB } from "../database/database.module.js";
-import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
-import { PushService } from "../notifications/push.service.js";
+import { Logger } from "../platform/logger.js";
+import type { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
+import type { PushService } from "../notifications/push.service.js";
 import { mapWithConcurrency } from "../notifications/concurrency.js";
 
-const SWEEP_INTERVAL_MS = 60_000;
 /** A check-in is reminded once it has this long or less left. */
 const REMINDER_LEAD_MS = 10 * 60_000;
 /** At most this many reminders are delivered concurrently per sweep. */
@@ -20,17 +17,16 @@ const SEND_CONCURRENCY = 10;
  * `expiry_reminder_sent_at`, so overlapping sweeps/instances never double-send; `extend()` resets
  * the flag so the extended check-in gets its own reminder.
  */
-@Injectable()
 export class CheckInExpiryReminderJob {
   private readonly logger = new Logger(CheckInExpiryReminderJob.name);
 
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(RoomRealtimeGateway) private readonly realtime: RoomRealtimeGateway,
-    @Inject(PushService) private readonly push: PushService,
+    private readonly db: Db,
+    private readonly realtime: RoomRealtimeGateway,
+    private readonly push: PushService,
   ) {}
 
-  @Interval(SWEEP_INTERVAL_MS)
+  /** Scheduler entry point (`checkin-expiry-reminder`, every 60 s). */
   async tick(): Promise<void> {
     try {
       await this.runSweep(new Date());
@@ -42,7 +38,7 @@ export class CheckInExpiryReminderJob {
   /** Exposed for tests: claims and notifies every due check-in; returns the number claimed. */
   async runSweep(now: Date = new Date()): Promise<number> {
     const horizon = new Date(now.getTime() + REMINDER_LEAD_MS);
-    const due = await this.db
+    const due = this.db
       .select({ id: schema.checkIns.id })
       .from(schema.checkIns)
       .where(
@@ -52,11 +48,13 @@ export class CheckInExpiryReminderJob {
           lte(schema.checkIns.expiresAt, horizon),
           isNull(schema.checkIns.expiryReminderSentAt),
         ),
-      );
+      )
+      .all();
 
-    const claimed = (
-      await mapWithConcurrency(due, SEND_CONCURRENCY, async ({ id }) => {
-        const [row] = await this.db
+    // Each claim is one atomic conditional UPDATE (sync), so claiming needs no concurrency pool.
+    const claimed = due
+      .map(({ id }) => {
+        const [row] = this.db
           .update(schema.checkIns)
           .set({ expiryReminderSentAt: now })
           .where(
@@ -67,10 +65,11 @@ export class CheckInExpiryReminderJob {
               isNull(schema.checkIns.expiryReminderSentAt),
             ),
           )
-          .returning({ id: schema.checkIns.id, userId: schema.checkIns.userId, seatId: schema.checkIns.seatId, expiresAt: schema.checkIns.expiresAt });
+          .returning({ id: schema.checkIns.id, userId: schema.checkIns.userId, seatId: schema.checkIns.seatId, expiresAt: schema.checkIns.expiresAt })
+          .all();
         return row ?? null;
       })
-    ).filter((row): row is NonNullable<typeof row> => row !== null);
+      .filter((row): row is NonNullable<typeof row> => row !== null);
 
     await mapWithConcurrency(claimed, SEND_CONCURRENCY, async (row) => {
       try {
@@ -79,8 +78,8 @@ export class CheckInExpiryReminderJob {
           seatId: row.seatId,
           expiresAt: new Date(row.expiresAt).toISOString(),
         });
-        if (await this.pushEnabled(row.userId)) {
-          const { label, slug } = await this.describe(row.seatId);
+        if (this.pushEnabled(row.userId)) {
+          const { label, slug } = this.describe(row.seatId);
           await this.push.sendToUser(row.userId, {
             title: "Tu lugar vence en 10 min",
             body: `${label} — tocá para seguir acá o liberarlo.`,
@@ -96,17 +95,18 @@ export class CheckInExpiryReminderJob {
   }
 
   /** On by default: a user without a preferences row hasn't opted out. */
-  private async pushEnabled(userId: string): Promise<boolean> {
-    const [pref] = await this.db
+  private pushEnabled(userId: string): boolean {
+    const [pref] = this.db
       .select({ on: schema.notificationPreferences.checkinExpiry })
       .from(schema.notificationPreferences)
       .where(eq(schema.notificationPreferences.userId, userId))
-      .limit(1);
+      .limit(1)
+      .all();
     return pref?.on ?? true;
   }
 
-  private async describe(seatId: string): Promise<{ label: string; slug: string }> {
-    const [row] = await this.db
+  private describe(seatId: string): { label: string; slug: string } {
+    const [row] = this.db
       .select({
         seatNumber: schema.seats.seatNumber,
         tableCode: schema.roomTables.code,
@@ -117,7 +117,8 @@ export class CheckInExpiryReminderJob {
       .innerJoin(schema.roomTables, eq(schema.roomTables.id, schema.seats.tableId))
       .innerJoin(schema.rooms, eq(schema.rooms.id, schema.seats.roomId))
       .where(eq(schema.seats.id, seatId))
-      .limit(1);
+      .limit(1)
+      .all();
     if (!row) return { label: "Tu lugar", slug: "principal" };
     return { label: seatLabel(row.tableCode, row.tableType, row.seatNumber), slug: row.slug };
   }

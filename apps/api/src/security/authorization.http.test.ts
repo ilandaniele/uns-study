@@ -1,45 +1,24 @@
-import "reflect-metadata";
-
-import type { AddressInfo } from "node:net";
-import express from "express";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import type { INestApplication } from "@nestjs/common";
+import { beforeAll, describe, expect, it } from "vitest";
 import { and, eq } from "drizzle-orm";
-import { schema, seedInitialRoom, type Db } from "@sala/database";
+import { schema, type Db } from "@sala/database";
+import { baseHeaders, buildTestApp } from "../http/test-app.js";
 
-// Must run before `env.ts` is first evaluated (it captures process.env at import time): an
-// in-memory PGlite, no Redis/Resend, and no real DATABASE_URL leaking in from a local `.env`.
-vi.hoisted(() => {
-  process.env.DATABASE_URL = "";
-  process.env.PGLITE_DIR = "memory://";
-  process.env.UPSTASH_REDIS_REST_URL = "";
-  process.env.UPSTASH_REDIS_REST_TOKEN = "";
-  process.env.REDIS_URL = "";
-  process.env.RESEND_API_KEY = "";
-  process.env.EMAIL_FROM = "";
-  process.env.MIGRATION_DATABASE_URL = "";
-  process.env.E2E_TEST_HOOKS = "";
-});
-
-const ORIGIN = "http://localhost:3000";
 const UUID_NONE = "00000000-0000-4000-8000-000000000000";
 
 /**
- * HTTP-level IDOR checks: the real AppModule (real guards, controllers, services, Better Auth)
- * on an in-memory database, driven with real session cookies for several users. Mirrors the
- * middleware/pipeline wiring of `main.ts` that matters for authorization.
+ * HTTP-level IDOR checks: the real `createApp` (real guards, routers, services, Better Auth) on an
+ * in-memory SQLite database, driven with real session cookies for several users.
  */
 describe("authorization over HTTP (IDOR)", () => {
-  let app: INestApplication;
+  let app: ReturnType<typeof buildTestApp>["app"];
   let db: Db;
-  let base: string;
   const cookies: Record<string, string> = {};
   const ids: Record<string, string> = {};
 
   async function signUp(key: string) {
-    const res = await fetch(`${base}/api/auth/sign-up/email`, {
+    const res = await app.request("/api/auth/sign-up/email", {
       method: "POST",
-      headers: { "content-type": "application/json", origin: ORIGIN },
+      headers: baseHeaders({ "content-type": "application/json" }),
       body: JSON.stringify({ email: `${key}@example.test`, password: "correct-horse-battery", name: key }),
     });
     expect(res.status).toBe(200);
@@ -53,42 +32,20 @@ describe("authorization over HTTP (IDOR)", () => {
   }
 
   function call(who: string | null, method: string, path: string, body?: unknown) {
-    return fetch(`${base}/api/v1${path}`, {
+    return app.request(`/api/v1${path}`, {
       method,
-      headers: {
-        origin: ORIGIN,
+      headers: baseHeaders({
         ...(who ? { cookie: cookies[who]! } : {}),
         ...(body !== undefined ? { "content-type": "application/json" } : {}),
-      },
+      }),
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   }
 
   beforeAll(async () => {
-    const { NestFactory } = await import("@nestjs/core");
-    const { toNodeHandler } = await import("better-auth/node");
-    const { AppModule } = await import("../app.module.js");
-    const { AUTH } = await import("../auth/auth.tokens.js");
-    const { DB } = await import("../database/database.module.js");
-    const { ApiExceptionFilter } = await import("../common/api-exception.filter.js");
-
-    app = await NestFactory.create(AppModule, { bodyParser: false, logger: false });
-    const http = app.getHttpAdapter().getInstance();
-    http.all("/api/auth/*splat", toNodeHandler(app.get(AUTH)));
-    app.use(express.json());
-    app.setGlobalPrefix("api/v1");
-    app.useGlobalFilters(new ApiExceptionFilter());
-    await app.listen(0, "127.0.0.1");
-    base = `http://127.0.0.1:${(app.getHttpServer().address() as AddressInfo).port}`;
-
-    db = app.get(DB);
-    await seedInitialRoom(db);
+    ({ app, db } = buildTestApp());
     for (const key of ["alice", "bob", "carol"]) await signUp(key);
   }, 60_000);
-
-  afterAll(async () => {
-    await app?.close();
-  });
 
   it("rejects an unauthenticated request to protected routes with 401", async () => {
     for (const [method, path] of [

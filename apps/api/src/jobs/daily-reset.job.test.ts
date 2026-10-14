@@ -13,12 +13,9 @@ import { CheckInService } from "../checkins/checkins.service.js";
 import { DisputeService } from "../disputes/disputes.service.js";
 import { RolesService } from "../users/roles.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
-import { RestrictionService } from "../users/restriction.service.js";
-import type { Auth } from "../auth/auth.instance.js";
+import { RecordingHub } from "../realtime/realtime-hub.js";
 import { localDateOf } from "../common/dates.js";
 import { DailyResetJob, resetInstantFor } from "./daily-reset.job.js";
-
-const mockAuth = { api: { getSession: async () => null } } as unknown as Auth;
 
 describe("DailyResetJob", () => {
   let db: Db;
@@ -38,7 +35,7 @@ describe("DailyResetJob", () => {
     const studySessions = new StudySessionService(db);
     disputes = buildDisputeService(db);
     checkIns = new CheckInService(db, roomState, presence, security, studySessions, new QrService(db), disputes, new RolesService(db));
-    gateway = new RoomRealtimeGateway(roomState, mockAuth, buildNotificationService(db), new RestrictionService(db));
+    gateway = new RoomRealtimeGateway(new RecordingHub(), roomState, buildNotificationService(db), null);
     job = new DailyResetJob(db, gateway, studySessions);
 
     const room = await getRoom(db);
@@ -292,5 +289,28 @@ describe("DailyResetJob", () => {
 
     const events = await db.select().from(schema.seatStateEvents).where(eq(schema.seatStateEvents.eventType, "DAILY_RESET"));
     expect(events).toHaveLength(108); // one batch, not two
+  });
+});
+
+describe("resetInstantFor (America/Argentina/Buenos_Aires, 04:00)", () => {
+  const room = { timezone: "America/Argentina/Buenos_Aires", dailyResetTime: "04:00" };
+
+  it("fires at 07:00 UTC", () => {
+    expect(resetInstantFor(room, new Date("2026-03-10T12:00:00Z")).toISOString()).toBe("2026-03-10T07:00:00.000Z");
+  });
+
+  it("around midnight UTC the local day is still the previous one", () => {
+    // 00:30 UTC on the 11th is 21:30 ART on the 10th: today's reset is still the 10th's 07:00 UTC.
+    expect(resetInstantFor(room, new Date("2026-03-11T00:30:00Z")).toISOString()).toBe("2026-03-10T07:00:00.000Z");
+    // 02:59 UTC on the 11th is 23:59 ART on the 10th; 03:00 UTC is local midnight, now the 11th.
+    expect(resetInstantFor(room, new Date("2026-03-11T02:59:00Z")).toISOString()).toBe("2026-03-10T07:00:00.000Z");
+    expect(resetInstantFor(room, new Date("2026-03-11T03:00:00Z")).toISOString()).toBe("2026-03-11T07:00:00.000Z");
+  });
+
+  it("one minute before 04:00 ART is before that day's reset, one minute after is past it", () => {
+    const now = new Date("2026-03-11T06:59:00Z");
+    expect(now.getTime()).toBeLessThan(resetInstantFor(room, now).getTime());
+    const later = new Date("2026-03-11T07:01:00Z");
+    expect(later.getTime()).toBeGreaterThan(resetInstantFor(room, later).getTime());
   });
 });

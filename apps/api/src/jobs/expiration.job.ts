@@ -1,39 +1,35 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
-import { Interval } from "@nestjs/schedule";
 import { and, eq, inArray, lte } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
-import { DB } from "../database/database.module.js";
+import { Logger } from "../platform/logger.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
 import { DisputeService } from "../disputes/disputes.service.js";
 
-const SWEEP_INTERVAL_MS = 30_000;
-
 /** Periodically expires ACTIVE check-ins and recomputes seats whose signals just expired. */
-@Injectable()
 export class ExpirationJob {
   private readonly logger = new Logger(ExpirationJob.name);
 
   constructor(
-    @Inject(DB) private readonly db: Db,
-    @Inject(RoomStateService) private readonly roomState: RoomStateService,
-    @Inject(RoomRealtimeGateway) private readonly realtime: RoomRealtimeGateway,
-    @Inject(StudySessionService) private readonly studySessions: StudySessionService,
-    @Inject(DisputeService) private readonly disputes: DisputeService,
+    private readonly db: Db,
+    private readonly roomState: RoomStateService,
+    private readonly realtime: RoomRealtimeGateway,
+    private readonly studySessions: StudySessionService,
+    private readonly disputes: DisputeService,
   ) {}
 
-  @Interval(SWEEP_INTERVAL_MS)
+  /** Scheduler entry point (`expiration`, every 30 s). */
   async tick(): Promise<void> {
     await this.runSweep(new Date());
   }
 
   /** Exposed for tests: runs one sweep against `now` and returns the seats it changed, by room. */
   async runSweep(now: Date = new Date()): Promise<Map<string, SeatStateChange[]>> {
-    const candidates = await this.db
+    const candidates = this.db
       .select({ id: schema.checkIns.id })
       .from(schema.checkIns)
-      .where(and(eq(schema.checkIns.status, "ACTIVE"), lte(schema.checkIns.expiresAt, now)));
+      .where(and(eq(schema.checkIns.status, "ACTIVE"), lte(schema.checkIns.expiresAt, now)))
+      .all();
 
     // Expire (and only then act on) the candidates with one conditional update — a concurrent
     // `extend()` may have pushed `expires_at` into the future or moved the check-in off ACTIVE
@@ -48,8 +44,8 @@ export class ExpirationJob {
       expiresAt: Date;
     }[] = [];
     if (candidates.length > 0) {
-      await this.db.transaction(async (tx) => {
-        const expiredRows = await tx
+      this.db.transaction((tx) => {
+        const expiredRows = tx
           .update(schema.checkIns)
           .set({ status: "EXPIRED", endedAt: now, updatedAt: now })
           .where(
@@ -69,7 +65,8 @@ export class ExpirationJob {
             userId: schema.checkIns.userId,
             startedAt: schema.checkIns.startedAt,
             expiresAt: schema.checkIns.expiresAt,
-          });
+          })
+          .all();
         for (const expired of expiredRows) {
           expiredCheckIns.push({
             id: expired.id,
@@ -79,7 +76,7 @@ export class ExpirationJob {
             startedAt: new Date(expired.startedAt),
             expiresAt: new Date(expired.expiresAt),
           });
-          await this.studySessions.recordFromCheckIn(tx, expired, now);
+          this.studySessions.recordFromCheckIn(tx, expired, now);
         }
       });
     }
@@ -105,7 +102,7 @@ export class ExpirationJob {
     // so instead of guessing a lookback window — which silently misses anything that expired while
     // the job wasn't running — reconcile every active room against what the live map would show
     // right now and recompute exactly the seats that disagree.
-    const rooms = await this.db.select({ id: schema.rooms.id }).from(schema.rooms).where(eq(schema.rooms.active, true));
+    const rooms = this.db.select({ id: schema.rooms.id }).from(schema.rooms).where(eq(schema.rooms.active, true)).all();
     for (const room of rooms) {
       const mismatched = await this.roomState.findMismatchedSeats(room.id, now);
       if (mismatched.length === 0) continue;
@@ -116,7 +113,7 @@ export class ExpirationJob {
 
     const changesByRoom = new Map<string, SeatStateChange[]>();
     for (const [roomId, seatIds] of seatsByRoom) {
-      const changes = await this.roomState.recomputeSeats([...seatIds], {
+      const changes = this.roomState.recomputeSeats([...seatIds], {
         roomId,
         now,
         eventType: "EXPIRATION_SWEEP",

@@ -154,7 +154,7 @@ export class AdminRoomsService {
         ),
       )
       .groupBy(schema.seatObservations.userId, sql`${schema.seatObservations.createdAt} / ${HOUR_MS}`);
-    const rows = [...checkInRows, ...observationRows];
+    const rows: Array<{ userId: string; at: number }> = [...checkInRows, ...observationRows];
 
     const fold = (from: Date) => {
       const daysByUser = new Map<string, Set<string>>();

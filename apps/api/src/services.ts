@@ -1,6 +1,7 @@
 // Type-only registry of the service graph; the implementation is `container.ts` (buildServices).
 // The value type of each key is the class exported by the imported file. A Wave 2 owner who renames
 // a class updates the matching `import type` line here.
+import type { Db } from "@sala/database";
 import type { RoomsService } from "./rooms/rooms.service.js";
 import type { RoomStateService } from "./rooms/room-state.service.js";
 import type { RoomStatsService } from "./rooms/room-stats.service.js";
@@ -60,6 +61,8 @@ import type { CheckInExpiryReminderJob } from "./jobs/checkin-expiry-reminder.jo
 import type { EmailSendJob } from "./email/email-send.job.js";
 
 export interface Services {
+  /** The shared sync SQLite handle, for the few routers that touch it directly (health, e2e hooks). */
+  db: Db;
   // W2-A
   rooms: RoomsService;
   roomState: RoomStateService;
@@ -103,9 +106,11 @@ export interface Services {
   pushSubscriptions: PushSubscriptionsService;
   notificationPreferences: NotificationPreferencesService;
   emailCampaigns: EmailCampaignsService;
-  resend: ResendClient;
+  /** `null` (feature disabled) until both RESEND_API_KEY and EMAIL_FROM are set. */
+  resend: ResendClient | null;
   subscriptions: SubscriptionsService;
-  mercadoPago: MercadoPagoClient;
+  /** `null` (subscriptions disabled) when MP_ACCESS_TOKEN is unset. */
+  mercadoPago: MercadoPagoClient | null;
   rateLimit: RateLimitService;
   antiAbuse: AntiAbuseService;
   securityEvents: SecurityEventService;

@@ -12,11 +12,8 @@ import { QrService } from "../qr/qr.service.js";
 import { CheckInService } from "../checkins/checkins.service.js";
 import { RolesService } from "../users/roles.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
-import { RestrictionService } from "../users/restriction.service.js";
-import type { Auth } from "../auth/auth.instance.js";
+import { RecordingHub } from "../realtime/realtime-hub.js";
 import { ExpirationJob } from "./expiration.job.js";
-
-const mockAuth = { api: { getSession: async () => null } } as unknown as Auth;
 
 describe("ExpirationJob", () => {
   let db: Db;
@@ -33,7 +30,7 @@ describe("ExpirationJob", () => {
     const security = new SecurityEventService(db, new ReputationService(db));
     const studySessions = new StudySessionService(db);
     checkIns = new CheckInService(db, roomState, presence, security, studySessions, new QrService(db), buildDisputeService(db), new RolesService(db));
-    const gateway = new RoomRealtimeGateway(roomState, mockAuth, buildNotificationService(db), new RestrictionService(db)); // no @WebSocketServer() attached — emits are no-ops in tests
+    const gateway = new RoomRealtimeGateway(new RecordingHub(), roomState, buildNotificationService(db), null);
     job = new ExpirationJob(db, roomState, gateway, studySessions, buildDisputeService(db));
 
     const room = await getRoom(db);
@@ -89,15 +86,15 @@ describe("ExpirationJob", () => {
     await db.update(schema.checkIns).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.checkIns.id, checkIn.id));
 
     const originalTransaction = db.transaction.bind(db);
-    const spy = vi.spyOn(db, "transaction").mockImplementationOnce(async (cb: Parameters<typeof db.transaction>[0]) => {
+    const spy = vi.spyOn(db, "transaction").mockImplementationOnce(((cb: Parameters<typeof db.transaction>[0]) => {
       // Simulates a concurrent `extend()` committing its renewal after the sweep already selected
       // this check-in as an expiry candidate, but before the sweep's own transaction runs.
-      await db
-        .update(schema.checkIns)
+      db.update(schema.checkIns)
         .set({ status: "ACTIVE", expiresAt: new Date(Date.now() + 60 * 60_000), updatedAt: new Date() })
-        .where(eq(schema.checkIns.id, checkIn.id));
+        .where(eq(schema.checkIns.id, checkIn.id))
+        .run();
       return originalTransaction(cb);
-    });
+    }) as typeof db.transaction);
 
     await job.runSweep(new Date());
     spy.mockRestore();
@@ -115,15 +112,15 @@ describe("ExpirationJob", () => {
     await db.update(schema.checkIns).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.checkIns.id, checkIn.id));
 
     const originalTransaction = db.transaction.bind(db);
-    const spy = vi.spyOn(db, "transaction").mockImplementationOnce(async (cb: Parameters<typeof db.transaction>[0]) => {
+    const spy = vi.spyOn(db, "transaction").mockImplementationOnce(((cb: Parameters<typeof db.transaction>[0]) => {
       // Simulates the user checking out (COMPLETED) right after the sweep selected this row as an
       // expiry candidate but before the sweep's own transaction runs.
-      await db
-        .update(schema.checkIns)
+      db.update(schema.checkIns)
         .set({ status: "COMPLETED", endedAt: new Date(), updatedAt: new Date() })
-        .where(eq(schema.checkIns.id, checkIn.id));
+        .where(eq(schema.checkIns.id, checkIn.id))
+        .run();
       return originalTransaction(cb);
-    });
+    }) as typeof db.transaction);
 
     await job.runSweep(new Date());
     spy.mockRestore();

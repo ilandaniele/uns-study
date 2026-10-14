@@ -1,0 +1,45 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "uns-api",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  // Same-origin API: /api/* on the zone goes here, everything else to uns-web (see apps/web/wrangler.jsonc).
+  "routes": [{ "pattern": "saladeestudio.com.ar/api/*", "zone_name": "saladeestudio.com.ar" }],
+  "durable_objects": { "bindings": [{ "name": "APP", "class_name": "AppDO" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AppDO"] }],
+  // Safety net: pings AppDO.tick() so a lost alarm is re-armed within a minute.
+  "triggers": { "crons": ["* * * * *"] },
+  "r2_buckets": [{ "binding": "EVIDENCE", "bucket_name": "uns-study-report-evidence" }],
+  // drizzle-kit bundles each migration as a .sql file imported as text.
+  "rules": [{ "type": "Text", "globs": ["**/*.sql"], "fallthrough": true }],
+  "observability": { "enabled": true },
+  // Non-secret config only; the values mirror the [env] section of the retired fly.toml.
+  "vars": {
+    "NODE_ENV": "production",
+    "WEB_ORIGINS": "https://saladeestudio.com.ar",
+    "BETTER_AUTH_URL": "https://saladeestudio.com.ar",
+    "PUBLIC_WEB_URL": "https://saladeestudio.com.ar",
+    // Only this verified account can grant/revoke the ADMIN role.
+    "OWNER_EMAIL": "ilan.daniele@gmail.com",
+    // https://saladeestudio.com.ar/api/auth/callback/google is an authorized redirect URI in Google Cloud.
+    "GOOGLE_CLIENT_ID": "1032351199989-q4i4g9vsn7unkemt09in1md9omp4hh0o.apps.googleusercontent.com",
+    "PRESENCE_DEV_BYPASS": "false",
+    "VAPID_SUBJECT": "https://saladeestudio.com.ar",
+    // Sender for auth and campaign emails; the domain is verified in Resend.
+    "EMAIL_FROM": "Sala de Estudio <noreply@saladeestudio.com.ar>",
+    "R2_BUCKET": "uns-study-report-evidence",
+    // "1" answers every /api/* path except /api/v1/health* with 503 "Mantenimiento en curso." (e.g. during the data import).
+    "MAINTENANCE_MODE": "0"
+  }
+  // Not set here because their values are not in fly.toml (use `wrangler secret put`, or add to
+  // "vars" when public): VAPID_PUBLIC_KEY, R2_ACCOUNT_ID, ADMIN_EMAILS, SUBSCRIPTION_PRICE_ARS,
+  // VERIFIER_MODEL, and SEAT_VERIFIER_MODE (fly.toml did not set it; blueprint 2.3 says keep today's value).
+  //
+  // Secrets (`wrangler secret put <NAME>`, never in this file):
+  //   BETTER_AUTH_SECRET, IP_HASH_SALT, VAPID_PRIVATE_KEY, GOOGLE_CLIENT_SECRET,
+  //   TURNSTILE_SECRET_KEY, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, MP_ACCESS_TOKEN,
+  //   MP_WEBHOOK_SECRET, RESEND_API_KEY, GEMINI_API_KEY and/or ANTHROPIC_API_KEY,
+  //   SEAT_VERIFIER_TOKEN (only if the HTTP verifier stays), OPS_IMPORT_TOKEN.
+}

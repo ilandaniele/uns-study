@@ -31,9 +31,8 @@ export async function hasActiveBan(db: Db, userId: string): Promise<boolean> {
 /** Builds the Better Auth instance against the shared Drizzle db. Called once at boot. */
 export function buildAuth(db: Db) {
   if (!env.betterAuthSecret) {
-    // `resolveAppSecrets()` (see `secrets.ts`) resolves/generates this into `process.env` before
-    // `env.ts` is ever imported in `main.ts`'s boot path, so this only fires for entry points that
-    // skip that step (e.g. a test building `Auth` directly without a DB).
+    // The Worker secret `BETTER_AUTH_SECRET` is always set in production; this only fires for
+    // tests and local runs that build `Auth` without it.
     if (env.isProduction) throw new Error("BETTER_AUTH_SECRET is not set; refusing to start with an insecure fallback secret in production.");
     console.warn("[auth] BETTER_AUTH_SECRET not set — using an insecure dev-only fallback secret.");
   }
@@ -52,8 +51,10 @@ export function buildAuth(db: Db) {
 
   return betterAuth({
     database: drizzleAdapter(db, {
-      provider: "pg",
+      provider: "sqlite",
       schema: { user: schema.user, session: schema.session, account: schema.account, verification: schema.verification },
+      // The Durable Object SQLite driver is synchronous: no async transaction callbacks.
+      transaction: false,
     }),
     baseURL: env.betterAuthUrl,
     secret: env.betterAuthSecret || "dev-only-insecure-secret-change-me",
@@ -73,8 +74,8 @@ export function buildAuth(db: Db) {
           },
         }
       : {}),
-    // In-memory per-instance limiter: a cheap first layer. The distributed (Upstash-backed) layer is
-    // `authRateLimitMiddleware`, mounted before this handler in main.ts.
+    // In-memory per-instance limiter: a cheap first layer. The per-email/IP layer (SQLite-backed) is
+    // `authRateLimit`, mounted before this handler in `createApp`.
     rateLimit: {
       enabled: env.isProduction,
       window: 60,
@@ -90,7 +91,7 @@ export function buildAuth(db: Db) {
     // Signed cookie cache: most requests skip the session+user DB lookup. Bans/restrictions are
     // enforced from the restrictions table (not the session), so the 60 s staleness is harmless.
     session: { cookieCache: { enabled: true, maxAge: 60 } },
-    // A banned user must not be able to log in again (AuthGuard also rejects their requests).
+    // A banned user must not be able to log in again (`requireAuth` also rejects their requests).
     databaseHooks: {
       session: {
         create: {
@@ -105,20 +106,16 @@ export function buildAuth(db: Db) {
     socialProviders: useGoogle
       ? { google: { clientId: env.googleClientId, clientSecret: env.googleClientSecret } }
       : undefined,
-    // In production the web app proxies /api/auth + /api/v1 to this API (see apps/web/next.config.ts
-    // + API_PROXY_TARGET), so the session cookie is first-party from the browser's point of view —
-    // `Lax` is enough and avoids Safari/iOS blocking third-party `SameSite=None` cookies. Set
-    // CROSS_SITE_COOKIES=true to fall back to the old cross-site behaviour when web/API aren't proxied.
-    advanced: env.isProduction
-      ? {
-          defaultCookieAttributes: env.crossSiteCookies
-            ? { sameSite: "none", secure: true }
-            : { sameSite: "lax", secure: true },
-          // main.ts copies Express's proxy-resolved client IP into this header right before the
-          // Better Auth handler (any client-sent value is overwritten), so rate limits are per
-          // visitor instead of one bucket shared by everyone.
-          ipAddress: { ipAddressHeaders: ["x-sala-client-ip"] },
-        }
-      : undefined,
+    // In production the Cloudflare zone routes /api/* to this Worker on the same host as the web app,
+    // so the session cookie is first-party — `Lax` is enough and avoids Safari/iOS blocking
+    // third-party `SameSite=None` cookies. Set CROSS_SITE_COOKIES=true for a cross-site deployment.
+    advanced: {
+      // Cloudflare sets this header at the edge (a client-sent value is overwritten), so rate
+      // limits are per visitor instead of one bucket shared by everyone.
+      ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] },
+      ...(env.isProduction
+        ? { defaultCookieAttributes: env.crossSiteCookies ? { sameSite: "none" as const, secure: true } : { sameSite: "lax" as const, secure: true } }
+        : {}),
+    },
   });
 }

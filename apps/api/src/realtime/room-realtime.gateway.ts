@@ -234,6 +234,12 @@ export class RoomRealtimeGateway {
     this.hub.publishToRoom(roomId, SocketEvents.TableNicknameChanged, payload);
   }
 
+  /** Announcement banner changed: sockets in the announcement's room, or everyone when it is global (`roomId` null). */
+  emitAnnouncementChanged(roomId: string | null, payload: unknown): void {
+    if (roomId) this.hub.publishToRoom(roomId, SocketEvents.AnnouncementChanged, payload);
+    else this.hub.broadcast(SocketEvents.AnnouncementChanged, payload);
+  }
+
   /** Forcibly disconnects every live socket for a user, used on SUSPEND/BAN so the session revocation takes effect immediately. */
   disconnectUser(userId: string): void {
     this.hub.disconnectUser(userId);
