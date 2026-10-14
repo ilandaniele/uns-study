@@ -1,14 +1,23 @@
 "use client";
 
 import { XIcon } from "@phosphor-icons/react/dist/ssr";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { useExitTransition } from "@/lib/useExitTransition";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import { CLOSE_COUNTDOWN_S } from "./ad-config";
-import { closeHouseInterstitial, useHouseInterstitial } from "./ad-overlay-store";
+import {
+  closeHouseInterstitial,
+  dropSuspendedHouseInterstitial,
+  resumeSuspendedHouseInterstitial,
+  suspendHouseInterstitial,
+  useHouseInterstitial,
+} from "./ad-overlay-store";
+import { isExcludedPath } from "./ad-config";
 import { HouseAd } from "./HouseAd";
 import { RewardedAdButton } from "./RewardedAdButton";
+import { useAdFree } from "./useAdFree";
 
 const RING_R = 14;
 const RING_C = 2 * Math.PI * RING_R;
@@ -18,13 +27,31 @@ const RING_C = 2 * Math.PI * RING_R;
  * It sits on top of the screen but never gates anything: the check-in runs underneath.
  */
 export function HouseInterstitial() {
-  const { open, placement } = useHouseInterstitial();
+  const { open, placement, resumeRemaining } = useHouseInterstitial();
+  const { hideAds, adFree } = useAdFree();
+  const pathname = usePathname();
+
+  // Back from the ad's CTA (e.g. "Ingresá" without subscribing): the ad returns with the countdown
+  // where it was left. A visitor who subscribed meanwhile never sees it again.
+  useEffect(() => {
+    if (adFree) dropSuspendedHouseInterstitial();
+    if (hideAds || !pathname || isExcludedPath(pathname)) return;
+    resumeSuspendedHouseInterstitial(pathname);
+  }, [pathname, hideAds, adFree]);
+
   if (!open || !placement) return null;
-  return <Overlay placement={placement} />;
+  return <Overlay placement={placement} startAt={resumeRemaining} />;
 }
 
-function Overlay({ placement }: { placement: NonNullable<ReturnType<typeof useHouseInterstitial>["placement"]> }) {
-  const [remaining, setRemaining] = useState(CLOSE_COUNTDOWN_S);
+function Overlay({
+  placement,
+  startAt,
+}: {
+  placement: NonNullable<ReturnType<typeof useHouseInterstitial>["placement"]>;
+  startAt?: number;
+}) {
+  const initial = startAt ?? CLOSE_COUNTDOWN_S;
+  const [remaining, setRemaining] = useState(initial);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const [filling, setFilling] = useState(false);
   const canClose = remaining <= 0;
@@ -42,8 +69,14 @@ function Overlay({ placement }: { placement: NonNullable<ReturnType<typeof useHo
   }, []);
 
   useEffect(() => {
-    trackEvent("ad_impression", { placement, provider: "house" });
-  }, [placement]);
+    if (startAt === undefined) trackEvent("ad_impression", { placement, provider: "house" });
+  }, [placement, startAt]);
+
+  // The CTA leaves the page: mid-countdown the ad is only put aside, to come back on return.
+  const onNavigate = useCallback(() => {
+    if (remaining > 0) suspendHouseInterstitial(remaining, window.location.pathname);
+    else close();
+  }, [remaining, close]);
 
   useEffect(() => {
     if (remaining <= 0) return;
@@ -98,8 +131,8 @@ function Overlay({ placement }: { placement: NonNullable<ReturnType<typeof useHo
                   className="stroke-[var(--primary)] motion-reduce:hidden"
                   strokeDasharray={RING_C}
                   style={{
-                    strokeDashoffset: filling ? 0 : RING_C,
-                    transition: `stroke-dashoffset ${CLOSE_COUNTDOWN_S}s linear`,
+                    strokeDashoffset: filling ? 0 : (RING_C * initial) / CLOSE_COUNTDOWN_S,
+                    transition: `stroke-dashoffset ${initial}s linear`,
                   }}
                 />
               </svg>
@@ -110,7 +143,7 @@ function Overlay({ placement }: { placement: NonNullable<ReturnType<typeof useHo
           )}
         </div>
         <div className="flex flex-1 flex-col justify-center py-6 sm:py-4">
-          <HouseAd variant="interstitial" onNavigate={close} />
+          <HouseAd variant="interstitial" onNavigate={onNavigate} />
           <div className="mt-3 empty:hidden">
             <RewardedAdButton />
           </div>
