@@ -27,9 +27,9 @@ Fly sigue en prod hasta el paso 6. No borrar Fly hasta 7 días estables.
   `NEXT_PUBLIC_ADSENSE_SLOT_COMMUNITY_FEED`, `NEXT_PUBLIC_GAM_REWARDED_UNIT`, `NEXT_PUBLIC_GAM_INTERSTITIAL_UNIT`.
 
 ## 4. DNS (browser)
-- [ ] DNS > Records: apex `saladeestudio.com.ar` y `www` en Proxied (nube naranja), los 4 registros (A y AAAA de cada uno).
+- [x] DNS > Records: apex `saladeestudio.com.ar` y `www` en Proxied (nube naranja), los 4 registros (A y AAAA de cada uno).
   Las routes del Worker solo corren sobre registros proxied. Hacerlo en la ventana de cutover (paso 6).
-  Hoy (2026-10-14) los 4 están en DNS only apuntando a Fly (66.241.124.65 / 2a09:8280:1::1a6:3a1:0).
+  Hecho 2026-10-15: los 4 en Proxied (siguen apuntando a Fly 66.241.124.65 / 2a09:8280:1::1a6:3a1:0 para la web hasta el deploy de uns-web).
 - No tocar `send`, `rsend`, `_dmarc`, `resend._domainkey`: son de Resend y quedan DNS only.
 - SSL/TLS: modo Full (verificado 2026-10-14). Sirve para Fly como origen y para Workers.
 
@@ -59,18 +59,16 @@ Vars no secretas: listas. `VAPID_PUBLIC_KEY` y `R2_ACCOUNT_ID` están en `apps/a
 `SUBSCRIPTION_PRICE_ARS`, `VERIFIER_MODEL` y `SEAT_VERIFIER_MODE` no estaban en Fly, así que usan los defaults del código.
 
 ## 6. Ventana de cutover (~30 min, ideal cerca de 04:00 ART)
-Hasta el paso 6 el dominio sigue yendo a Fly: el Worker se usa por su URL `https://uns-api.<subdominio>.workers.dev`.
-1. [ ] API en mantenimiento: `pnpm --filter @sala/api exec wrangler deploy --var MAINTENANCE_MODE:1` (desde `cf/migration`). Anotar la URL workers.dev que imprime.
-2. [ ] Cortar escrituras en Fly: `fly scale count 0 -a uns-study-api`.
-3. [ ] Export (sin psql): en otra terminal `fly proxy 15432:5432 -a sala-de-estudio-db`; después
-   `$env:SOURCE_DATABASE_URL="<url de Fly con host localhost:15432>"; node ops/export-fly-pg.mjs --out C:\uns-export`.
-4. [ ] Import: `$env:OPS_IMPORT_TOKEN="<token>"; node ops/import-to-do.mjs --base <url workers.dev> --dir C:\uns-export` (tiene que salir 0).
-   `/api/v1/__ops/*` lo atiende el DO antes del gate de mantenimiento.
-5. [ ] API sin mantenimiento: `pnpm --filter @sala/api exec wrangler deploy`.
-6. [ ] DNS: los 4 registros apex/www a Proxied (paso 4). Desde acá `/api/*` va al Worker; la web sigue en Fly hasta el deploy.
+Hecho 2026-10-15 con `powershell -ExecutionPolicy Bypass -File ops\cutover.ps1` (pasos 1-5: mantenimiento, token de import nuevo,
+Fly API frenado con autostart off, export + import con conteos iguales, deploy sin mantenimiento). Export local en `%TEMP%\uns-export-20261015-002450`.
+1. [x] API en mantenimiento.
+2. [x] Fly API frenado (`fly machine update --autostart=false` + `fly machine stop`, no destruido).
+3. [x] Export de Fly Postgres.
+4. [x] Import al DO, todos los conteos iguales.
+5. [x] API sin mantenimiento.
+6. [x] DNS: los 4 registros apex/www a Proxied. `/api/v1/health` 200 y `auth-providers` con `"passwordReset":true` por el dominio.
 7. [ ] Merge `cf/migration` a `main` y push: deploy.yml deploya API + web (OpenNext solo buildea en Linux) y corre el smoke.
 8. [ ] Smoke manual: login, check-in, realtime en dos pestañas.
-   `https://saladeestudio.com.ar/api/v1/auth-providers` tiene que dar `"passwordReset":true` (si da false, `RESEND_API_KEY` está vacío).
 
 ## 7. Callbacks de terceros (mismo dominio, solo verificar)
 - [x] Google OAuth redirect: `https://saladeestudio.com.ar/api/auth/callback/google` (verificado 2026-10-14)
@@ -79,5 +77,5 @@ Hasta el paso 6 el dominio sigue yendo a Fly: el Worker se usa por su URL `https
 - [x] Resend: dominio verificado (2026-10-14).
 
 ## 8. Rollback (7 días) y baja de Fly
-- Rollback: borrar las routes de los Workers y escalar Fly de nuevo. Lo escrito en Cloudflare se pierde salvo backup con `ops/backup-do.ps1`.
+- Rollback: borrar las routes de los Workers y prender Fly (`fly machine update <id> --autostart=true -a uns-study-api` + `fly machine start <id> -a uns-study-api`). Lo escrito en Cloudflare se pierde salvo backup con `ops/backup-do.ps1`.
 - Tras 7 días estables: backup final (`ops/backup-do.ps1`), borrar apps Fly + Postgres + certificados, borrar secret `FLY_API_TOKEN` en GitHub, cancelar Upstash.
