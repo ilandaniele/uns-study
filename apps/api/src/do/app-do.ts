@@ -28,14 +28,24 @@ export class AppDO extends DurableObject<WorkerEnv> {
     super(ctx, workerEnv);
     initEnv(workerEnv);
     this.db = createDoDb(ctx.storage);
+    // Boot writes are best-effort: when the daily rows_written cap is hit, every write throws, and a throw
+    // here would reset the object on every request. Staying up keeps reads working until the cap resets.
     ctx.blockConcurrencyWhile(async () => {
-      await migrateDo(this.db);
-      await seedInitialRoom(this.db);
+      await this.bootStep("migrate", () => migrateDo(this.db));
+      await this.bootStep("seed", () => seedInitialRoom(this.db));
       this.runtime = buildRuntime({ db: this.db, ctx, env: workerEnv });
-      this.runtime.scheduler.ensureRecurring();
-      await armAlarm(ctx.storage, this.runtime.scheduler.nextOneShotDueAt());
+      await this.bootStep("ensureRecurring", () => this.runtime.scheduler.ensureRecurring());
+      await this.bootStep("armAlarm", () => armAlarm(ctx.storage, this.runtime.scheduler.nextOneShotDueAt()));
     });
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
+  }
+
+  private async bootStep(name: string, step: () => unknown): Promise<void> {
+    try {
+      await step();
+    } catch (err) {
+      this.logger.error(`Boot step failed: ${name}`, err instanceof Error ? (err.stack ?? err.message) : String(err));
+    }
   }
 
   async fetch(req: Request): Promise<Response> {
