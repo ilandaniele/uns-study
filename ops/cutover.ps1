@@ -30,12 +30,16 @@ function Status([string]$url) {
   try { (Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 20).StatusCode }
   catch { if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 0 } }
 }
+# Retries: a network blip during the upload ("fetch failed") must not abort the cutover.
 function Wrangler([string]$argLine) {
-  Push-Location $apiDir
-  try { $out = cmd /c "pnpm exec wrangler $argLine 2>&1"; $code = $LASTEXITCODE } finally { Pop-Location }
-  $out | ForEach-Object { Write-Host $_ }
-  if ($code -ne 0) { Fail "wrangler $argLine failed." }
-  ($out -join "`n")
+  for ($try = 1; $try -le 4; $try++) {
+    Push-Location $apiDir
+    try { $out = cmd /c "pnpm exec wrangler $argLine 2>&1"; $code = $LASTEXITCODE } finally { Pop-Location }
+    $out | ForEach-Object { Write-Host $_ }
+    if ($code -eq 0) { return ($out -join "`n") }
+    if ($try -lt 4) { Write-Host "wrangler failed, retry $try of 3 in 10s..." -ForegroundColor Yellow; Start-Sleep -Seconds 10 }
+  }
+  Fail "wrangler $argLine failed."
 }
 
 $machines = @()
@@ -74,7 +78,13 @@ try {
   $secretFile = Join-Path $env:TEMP ("uns-ops-" + [guid]::NewGuid().ToString("N") + ".json")
   [IO.File]::WriteAllText($secretFile, "{""OPS_IMPORT_TOKEN"":""$token""}", (New-Object System.Text.UTF8Encoding $false))
   Push-Location $apiDir
-  try { $null = cmd /c "pnpm exec wrangler secret bulk ""$secretFile"" --name $Worker 2>&1"; $code = $LASTEXITCODE }
+  try {
+    for ($try = 1; $try -le 4; $try++) {
+      $null = cmd /c "pnpm exec wrangler secret bulk ""$secretFile"" --name $Worker 2>&1"; $code = $LASTEXITCODE
+      if ($code -eq 0) { break }
+      Start-Sleep -Seconds 10
+    }
+  }
   finally { Pop-Location; Remove-Item $secretFile -Force -ErrorAction SilentlyContinue }
   if ($code -ne 0) { Fail "Setting OPS_IMPORT_TOKEN failed (Fly untouched)." }
   Write-Host "Set."
