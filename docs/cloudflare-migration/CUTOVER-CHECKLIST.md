@@ -83,6 +83,9 @@ Fly API frenado con autostart off, export + import con conteos iguales, deploy s
   (hoy la web de Fly lo reenvía a la API de Fly; tras el DNS llega al Worker). Simulación llegó y pasó la firma.
 - [x] Resend: dominio verificado (2026-10-14).
 
-## 8. Rollback (7 días) y baja de Fly
-- Rollback: borrar las routes de los Workers y prender Fly (`fly machine update <id> --autostart=true -a uns-study-api` + `fly machine start <id> -a uns-study-api`). Lo escrito en Cloudflare se pierde salvo backup con `ops/backup-do.ps1`.
-- Tras 7 días estables: backup final (`ops/backup-do.ps1`), borrar apps Fly + Postgres + certificados, borrar secret `FLY_API_TOKEN` en GitHub, cancelar Upstash.
+## 8. Baja de Fly (2026-10-15)
+- [x] Secrets `FLY_TOKEN_API`, `FLY_TOKEN_DB`, `FLY_TOKEN_WEB`, `FLY_TOKEN_VERIFIER` borrados de GitHub.
+- [x] Scripts de Fly borrados del repo (`export-fly-pg`, `copy-app-secrets`, `cutover`); quedan en el historial de git.
+- [ ] Borrar las apps `uns-study-api`, `sala-de-estudio`, `sala-de-estudio-db`, `sala-de-estudio-verifier` (vos, `fly apps destroy`).
+  Sin rollback a Fly después de esto. Backup del DO: `ops/backup-do.ps1`; restaurar con `ops/import-to-do.mjs`.
+- [ ] Después: secret viejo de Google OAuth y token viejo de R2 `uns-study-api-report-evidence`.

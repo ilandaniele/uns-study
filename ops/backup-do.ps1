@@ -3,8 +3,8 @@
 # Usage:
 #   $env:OPS_IMPORT_TOKEN = "<token>"
 #   powershell -ExecutionPolicy Bypass -File ops\backup-do.ps1 -OutDir backups\do-20260101 [-Base https://saladeestudio.com.ar]
-# The token is never printed. The output has the same shape as ops\export-fly-pg.ps1, except blobs
-# are { "$b64": "..." }; ops\import-to-do.mjs reads both.
+# The token is never printed. Output: one <table>.ndjson per table, blobs as { "$b64": "..." };
+# ops\import-to-do.mjs restores it.
 param(
   [Parameter(Mandatory = $true)][string]$OutDir,
   [string]$Base = "https://saladeestudio.com.ar"

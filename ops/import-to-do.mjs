@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Imports NDJSON exported by ops/export-fly-pg.ps1 (or ops/backup-do.ps1) into the Durable Object
+// Imports NDJSON exported by ops/backup-do.ps1 into the Durable Object
 // through /api/v1/__ops/import, in FK order, then compares row counts. Exits 1 on any mismatch.
 // OPS_IMPORT_TOKEN is read from the environment and never printed.
 import { createReadStream, existsSync } from "node:fs";
