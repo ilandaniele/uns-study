@@ -11,7 +11,7 @@ Fly sigue en prod hasta el paso 6. No borrar Fly hasta 7 días estables.
 
 ## 2. R2 (browser)
 - [x] R2 > crear bucket `uns-study-report-evidence` (si no existe).
-- [ ] CORS del bucket: `PUT` y `GET` desde `https://saladeestudio.com.ar`.
+- [x] CORS del bucket: `PUT` y `GET` desde `https://saladeestudio.com.ar` (ya estaba, header `content-type`).
 - [x] R2 > Manage API tokens > token Object Read & Write sobre ese bucket. Guardar Access Key ID y Secret en el gestor de contraseñas.
 
 ## 3. API token para GitHub Actions (browser)
@@ -66,13 +66,14 @@ Vars no secretas: listas. `VAPID_PUBLIC_KEY` y `R2_ACCOUNT_ID` están en `apps/a
 5. [ ] API sin mantenimiento: `pnpm --filter @sala/api exec wrangler deploy`.
 6. [ ] Web: `pnpm --filter @sala/web exec opennextjs-cloudflare build` y después `pnpm --filter @sala/web exec opennextjs-cloudflare deploy`.
 7. [ ] Smoke: `node apps/api/scripts/smoke.mjs https://saladeestudio.com.ar`. Login a mano, check-in, realtime en dos pestañas.
+   `https://saladeestudio.com.ar/api/v1/auth-providers` tiene que dar `"passwordReset":true` (si da false, `RESEND_API_KEY` está vacío).
 8. [ ] Merge `cf/migration` a `main`: desde acá deploya GitHub Actions.
 
 ## 7. Callbacks de terceros (mismo dominio, solo verificar)
-- [ ] Google OAuth redirect: `https://saladeestudio.com.ar/api/auth/callback/google`
+- [x] Google OAuth redirect: `https://saladeestudio.com.ar/api/auth/callback/google` (verificado 2026-10-14)
 - [x] Mercado Pago webhook: cambiado 2026-10-14 de `uns-study-api.fly.dev` a `https://saladeestudio.com.ar/api/v1/webhooks/mercadopago`
   (hoy la web de Fly lo reenvía a la API de Fly; tras el DNS llega al Worker). Simulación llegó y pasó la firma.
-- [ ] Resend: dominio verificado.
+- [x] Resend: dominio verificado (2026-10-14).
 
 ## 8. Rollback (7 días) y baja de Fly
 - Rollback: borrar las routes de los Workers y escalar Fly de nuevo. Lo escrito en Cloudflare se pierde salvo backup con `ops/backup-do.ps1`.
