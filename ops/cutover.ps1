@@ -3,8 +3,8 @@
 # Needs `fly` logged in to the account that owns the apps and `wrangler login` done.
 # Does, in order:
 #   1. reads DATABASE_URL from the running Fly API (fly ssh, kept in memory only);
-#   2. sets a fresh random OPS_IMPORT_TOKEN on the Worker;
-#   3. deploys uns-api with MAINTENANCE_MODE=1 and checks it on its workers.dev URL;
+#   2. deploys uns-api with MAINTENANCE_MODE=1 and checks it on its workers.dev URL;
+#   3. sets a fresh random OPS_IMPORT_TOKEN on the Worker and waits until it is accepted;
 #   4. freezes the Fly API: autostart off, machines stopped (not destroyed);
 #   5. exports Fly Postgres through `fly proxy` and imports it into the Durable Object (replace mode);
 #   6. deploys uns-api without maintenance and checks health.
@@ -41,6 +41,7 @@ function Wrangler([string]$argLine) {
 $machines = @()
 $frozen = $false
 $proxy = $null
+$secretFile = $null
 try {
   Step "Preflight"
   $machines = @(& fly machine list -a $FlyApi --json | ConvertFrom-Json | Where-Object { $_.state -eq "started" } | ForEach-Object { $_.id })
@@ -54,16 +55,7 @@ try {
   $localUrl = $dbUrl -replace '@[^@/]+/', "@localhost:$ProxyPort/"
   Write-Host "Read (length $($dbUrl.Length))."
 
-  Step "2. Fresh OPS_IMPORT_TOKEN on $Worker"
-  $bytes = New-Object byte[] 32
-  [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
-  $token = -join ($bytes | ForEach-Object { $_.ToString("x2") })
-  Push-Location $apiDir
-  try { $token | pnpm exec wrangler secret put OPS_IMPORT_TOKEN --name $Worker | Out-Null; $code = $LASTEXITCODE } finally { Pop-Location }
-  if ($code -ne 0) { Fail "Setting OPS_IMPORT_TOKEN failed." }
-  Write-Host "Set."
-
-  Step "3. Deploy $Worker in maintenance"
+  Step "2. Deploy $Worker in maintenance"
   $out = Wrangler "deploy --var MAINTENANCE_MODE:1"
   $m = [regex]::Match($out, "https://$Worker\.[a-z0-9-]+\.workers\.dev")
   if (-not $m.Success) { Fail "workers.dev URL not found in the deploy output." }
@@ -73,6 +65,32 @@ try {
   $h = Status "$base/api/v1/health"; $p = Status "$base/api/v1/auth-providers"
   Write-Host "health=$h auth-providers=$p (expect 200 / 503)"
   if ($h -ne 200 -or $p -ne 503) { Fail "Worker is not healthy and in maintenance." }
+
+  Step "3. Fresh OPS_IMPORT_TOKEN on $Worker"
+  $bytes = New-Object byte[] 32
+  [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+  $token = -join ($bytes | ForEach-Object { $_.ToString("x2") })
+  # No stdin pipe: a short-lived JSON file (UTF-8, no BOM) fed to `secret bulk`, deleted right after.
+  $secretFile = Join-Path $env:TEMP ("uns-ops-" + [guid]::NewGuid().ToString("N") + ".json")
+  [IO.File]::WriteAllText($secretFile, "{""OPS_IMPORT_TOKEN"":""$token""}", (New-Object System.Text.UTF8Encoding $false))
+  Push-Location $apiDir
+  try { $null = cmd /c "pnpm exec wrangler secret bulk ""$secretFile"" --name $Worker 2>&1"; $code = $LASTEXITCODE }
+  finally { Pop-Location; Remove-Item $secretFile -Force -ErrorAction SilentlyContinue }
+  if ($code -ne 0) { Fail "Setting OPS_IMPORT_TOKEN failed (Fly untouched)." }
+  Write-Host "Set."
+
+  # The secret change rolls out a new version; wait until the Durable Object accepts the token.
+  $ok = $false; $last = 0
+  for ($i = 0; $i -lt 30 -and -not $ok; $i++) {
+    Start-Sleep -Seconds 3
+    try {
+      $r = Invoke-WebRequest -Uri "$base/api/v1/__ops/tables" -Headers @{ authorization = "Bearer $token" } -UseBasicParsing -TimeoutSec 20
+      $last = $r.StatusCode; $ok = $last -eq 200
+    } catch { if ($_.Exception.Response) { $last = [int]$_.Exception.Response.StatusCode } }
+  }
+  if (-not $ok) { Fail "Worker does not accept the new OPS_IMPORT_TOKEN, last status $last (Fly untouched)." }
+  if ((Status "$base/api/v1/auth-providers") -ne 503) { Fail "Worker left maintenance after the secret change (Fly untouched)." }
+  Write-Host "Token accepted, still in maintenance."
 
   Step "4. Freeze Fly API (autostart off, stop)"
   $frozen = $true
@@ -132,5 +150,6 @@ try {
   exit 1
 } finally {
   if ($proxy -and -not $proxy.HasExited) { Stop-Process -Id $proxy.Id -Force -ErrorAction SilentlyContinue }
+  if ($secretFile) { Remove-Item $secretFile -Force -ErrorAction SilentlyContinue }
   $dbUrl = $null; $localUrl = $null; $token = $null
 }
