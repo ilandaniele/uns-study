@@ -89,7 +89,7 @@ try {
     } catch {
       if ($_.Exception.Response) {
         $last = [int]$_.Exception.Response.StatusCode
-        try { $diag = (New-Object IO.StreamReader($_.Exception.Response.GetResponseStream())).ReadToEnd() } catch {}
+        if ($_.ErrorDetails -and $_.ErrorDetails.Message) { $diag = $_.ErrorDetails.Message }
       }
     }
   }

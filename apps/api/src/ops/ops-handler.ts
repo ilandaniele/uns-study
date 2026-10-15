@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash } from "node:crypto";
 import { getTableColumns, getTableName, is, sql } from "drizzle-orm";
 import { SQLiteTable, getTableConfig, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 import { chunk, rowsPerInsert, schema, type Db } from "@sala/database";
@@ -63,12 +63,22 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
 }
 
+/** Constant-time over equal lengths (the length of a random 256-bit token is not a secret). */
 function tokenMatches(header: string | null, expected: string): boolean {
-  const match = /^Bearer (.+)$/.exec(header ?? "");
-  if (!match) return false;
-  const a = createHash("sha256").update(match[1]!.trim()).digest();
-  const b = createHash("sha256").update(expected.trim()).digest();
-  return timingSafeEqual(a, b);
+  const presented = bearerOf(header);
+  const want = expected.trim();
+  if (!presented || !want || presented.length !== want.length) return false;
+  let diff = 0;
+  for (let i = 0; i < want.length; i++) diff |= presented.charCodeAt(i) ^ want.charCodeAt(i);
+  return diff === 0;
+}
+
+function bearerOf(header: string | null): string {
+  return /^Bearer\s+(.+)$/i.exec((header ?? "").trim())?.[1]?.trim() ?? "";
+}
+
+function sha8(value: string): string {
+  return createHash("sha256").update(value).digest("hex").slice(0, 8);
 }
 
 function bytesOf(value: unknown): Uint8Array {
@@ -267,7 +277,13 @@ export async function handleOps(req: Request, db: Db, e: Pick<Env, "opsImportTok
     // Length and a 32-bit hash prefix of the configured token let the cutover script tell a stale
     // value from a malformed one without revealing anything usable about a 256-bit token.
     const expected = e.opsImportToken.trim();
-    const diag = { expectedLength: expected.length, expectedSha8: createHash("sha256").update(expected).digest("hex").slice(0, 8) };
+    const presented = bearerOf(req.headers.get("authorization"));
+    const diag = {
+      expectedLength: expected.length,
+      expectedSha8: sha8(expected),
+      presentedLength: presented.length,
+      presentedSha8: presented ? sha8(presented) : "",
+    };
     return json({ error: { code: "UNAUTHENTICATED", message: "Token inválido." }, diag }, 401);
   }
 
