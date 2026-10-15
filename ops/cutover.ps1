@@ -80,15 +80,24 @@ try {
   Write-Host "Set."
 
   # The secret change rolls out a new version; wait until the Durable Object accepts the token.
-  $ok = $false; $last = 0
+  $ok = $false; $last = 0; $diag = ""
   for ($i = 0; $i -lt 30 -and -not $ok; $i++) {
     Start-Sleep -Seconds 3
     try {
       $r = Invoke-WebRequest -Uri "$base/api/v1/__ops/tables" -Headers @{ authorization = "Bearer $token" } -UseBasicParsing -TimeoutSec 20
       $last = $r.StatusCode; $ok = $last -eq 200
-    } catch { if ($_.Exception.Response) { $last = [int]$_.Exception.Response.StatusCode } }
+    } catch {
+      if ($_.Exception.Response) {
+        $last = [int]$_.Exception.Response.StatusCode
+        try { $diag = (New-Object IO.StreamReader($_.Exception.Response.GetResponseStream())).ReadToEnd() } catch {}
+      }
+    }
   }
-  if (-not $ok) { Fail "Worker does not accept the new OPS_IMPORT_TOKEN, last status $last (Fly untouched)." }
+  if (-not $ok) {
+    $mine = -join ([Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($token))[0..3] | ForEach-Object { $_.ToString("x2") })
+    Write-Host "Sent token: length $($token.Length) sha8 $mine. Worker said: $diag"
+    Fail "Worker does not accept the new OPS_IMPORT_TOKEN, last status $last (Fly untouched)."
+  }
   if ((Status "$base/api/v1/auth-providers") -ne 503) { Fail "Worker left maintenance after the secret change (Fly untouched)." }
   Write-Host "Token accepted, still in maintenance."
 

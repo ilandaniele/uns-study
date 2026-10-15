@@ -44,7 +44,9 @@ export class AppDO extends DurableObject<WorkerEnv> {
       return this.runtime.sockets.accept(req);
     }
     if (url.pathname.startsWith(OPS_PREFIX)) {
-      const res = await handleOps(req, this.db, env);
+      // Live binding first: it is what the current version was deployed with.
+      const live = this.env.OPS_IMPORT_TOKEN;
+      const res = await handleOps(req, this.db, { opsImportToken: typeof live === "string" ? live : env.opsImportToken });
       if (res) return res;
     }
     const executionCtx = { waitUntil: (p: Promise<unknown>) => this.ctx.waitUntil(p), passThroughOnException: () => {}, props: {} };

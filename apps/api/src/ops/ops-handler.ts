@@ -66,8 +66,8 @@ function json(body: unknown, status = 200): Response {
 function tokenMatches(header: string | null, expected: string): boolean {
   const match = /^Bearer (.+)$/.exec(header ?? "");
   if (!match) return false;
-  const a = createHash("sha256").update(match[1]!).digest();
-  const b = createHash("sha256").update(expected).digest();
+  const a = createHash("sha256").update(match[1]!.trim()).digest();
+  const b = createHash("sha256").update(expected.trim()).digest();
   return timingSafeEqual(a, b);
 }
 
@@ -264,7 +264,11 @@ export async function handleOps(req: Request, db: Db, e: Pick<Env, "opsImportTok
   const notFound = () => json({ error: { code: "NOT_FOUND", message: "No encontrado." } }, 404);
   if (!e.opsImportToken) return notFound();
   if (!tokenMatches(req.headers.get("authorization"), e.opsImportToken)) {
-    return json({ error: { code: "UNAUTHENTICATED", message: "Token inválido." } }, 401);
+    // Length and a 32-bit hash prefix of the configured token let the cutover script tell a stale
+    // value from a malformed one without revealing anything usable about a 256-bit token.
+    const expected = e.opsImportToken.trim();
+    const diag = { expectedLength: expected.length, expectedSha8: createHash("sha256").update(expected).digest("hex").slice(0, 8) };
+    return json({ error: { code: "UNAUTHENTICATED", message: "Token inválido." }, diag }, 401);
   }
 
   const route = url.pathname.slice(OPS_PREFIX.length);
