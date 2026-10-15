@@ -8,6 +8,9 @@ Fly sigue en prod hasta el paso 6. No borrar Fly hasta 7 días estables.
   worker de 3 MB comprimido (la web puede no entrar), 100k requests/día sumando web + API,
   DO 100k filas escritas/día.
 - Señales para pasar a Paid (USD 5/mes): deploy de web falla por tamaño, error 1102 en logs, o 429/límite diario.
+- 2026-10-15: se pasó el límite de filas escritas del DO (import del cutover + escrituras en reposo). Arreglado en c3fb672
+  (jobs recurrentes en memoria, seed sin escrituras si ya está, debounce con setTimeout, límite de avatares en memoria).
+  Si vuelve a pasar: Workers Paid.
 
 ## 2. R2 (browser)
 - [x] R2 > crear bucket `uns-study-report-evidence` (si no existe).
