@@ -67,7 +67,11 @@ Fly API frenado con autostart off, export + import con conteos iguales, deploy s
 4. [x] Import al DO, todos los conteos iguales.
 5. [x] API sin mantenimiento.
 6. [x] DNS: los 4 registros apex/www a Proxied. `/api/v1/health` 200 y `auth-providers` con `"passwordReset":true` por el dominio.
-7. [ ] Merge `cf/migration` a `main` y push: deploy.yml deploya API + web (OpenNext solo buildea en Linux) y corre el smoke.
+7. [x] Merge `cf/migration` a `main` y push: deploy.yml deploya API + web (OpenNext solo buildea en Linux) y corre el smoke.
+   Hecho 2026-10-15 (250aec6). El primer deploy de web daba 500 en todas las páginas: Next 16.4 carga
+   `server/preview-props.json` con `loadManifest` y OpenNext 1.20.11 no lo incluye en el bundle
+   ("Unexpected loadManifest(...) call!"). Arreglado con `patches/@opennextjs__cloudflare@1.20.11.patch`;
+   al subir OpenNext, revisar si ya lo trae y borrar el patch. Si aparece otro manifest, `wrangler tail uns-web` y extender el patch.
 8. [ ] Smoke manual: login, check-in, realtime en dos pestañas.
 
 ## 7. Callbacks de terceros (mismo dominio, solo verificar)
