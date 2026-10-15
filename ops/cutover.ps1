@@ -82,8 +82,14 @@ try {
     & fly machine stop $id -a $FlyApi | Out-Null
     if ($LASTEXITCODE -ne 0) { Fail "Stopping $id failed." }
   }
-  $still = @(& fly machine list -a $FlyApi --json | ConvertFrom-Json | Where-Object { $_.state -ne "stopped" })
-  if ($still.Count -gt 0) { Fail "Fly API machines not all stopped." }
+  # `fly machine stop` returns while the machine is still "stopping"; wait for the final state.
+  $still = @()
+  for ($i = 0; $i -lt 30; $i++) {
+    $still = @(& fly machine list -a $FlyApi --json | ConvertFrom-Json | Where-Object { $_.state -ne "stopped" })
+    if ($still.Count -eq 0) { break }
+    Start-Sleep -Seconds 3
+  }
+  if ($still.Count -gt 0) { Fail "Fly API machines not all stopped: $(($still | ForEach-Object { "$($_.id)=$($_.state)" }) -join ', ')." }
   Write-Host "Fly API stopped. No more writes to Postgres."
 
   Step "5. Export Fly Postgres and import into the Durable Object"
