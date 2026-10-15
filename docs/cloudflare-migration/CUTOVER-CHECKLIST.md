@@ -59,15 +59,18 @@ Vars no secretas: listas. `VAPID_PUBLIC_KEY` y `R2_ACCOUNT_ID` están en `apps/a
 `SUBSCRIPTION_PRICE_ARS`, `VERIFIER_MODEL` y `SEAT_VERIFIER_MODE` no estaban en Fly, así que usan los defaults del código.
 
 ## 6. Ventana de cutover (~30 min, ideal cerca de 04:00 ART)
-1. [ ] API en mantenimiento: `pnpm --filter @sala/api exec wrangler deploy --var MAINTENANCE_MODE:1` (desde `cf/migration`).
-2. [ ] Cortar escrituras en Fly: `fly scale count 0` en la app API.
-3. [ ] Export: `powershell -ExecutionPolicy Bypass -File ops\export-fly-pg.ps1 -OutDir C:\uns-export` (con `SOURCE_DATABASE_URL`).
-4. [ ] Import: `$env:OPS_IMPORT_TOKEN="<token>"; node ops/import-to-do.mjs --base https://saladeestudio.com.ar --dir C:\uns-export` (tiene que salir 0).
+Hasta el paso 6 el dominio sigue yendo a Fly: el Worker se usa por su URL `https://uns-api.<subdominio>.workers.dev`.
+1. [ ] API en mantenimiento: `pnpm --filter @sala/api exec wrangler deploy --var MAINTENANCE_MODE:1` (desde `cf/migration`). Anotar la URL workers.dev que imprime.
+2. [ ] Cortar escrituras en Fly: `fly scale count 0 -a uns-study-api`.
+3. [ ] Export (sin psql): en otra terminal `fly proxy 15432:5432 -a sala-de-estudio-db`; después
+   `$env:SOURCE_DATABASE_URL="<url de Fly con host localhost:15432>"; node ops/export-fly-pg.mjs --out C:\uns-export`.
+4. [ ] Import: `$env:OPS_IMPORT_TOKEN="<token>"; node ops/import-to-do.mjs --base <url workers.dev> --dir C:\uns-export` (tiene que salir 0).
+   `/api/v1/__ops/*` lo atiende el DO antes del gate de mantenimiento.
 5. [ ] API sin mantenimiento: `pnpm --filter @sala/api exec wrangler deploy`.
-6. [ ] Web: `pnpm --filter @sala/web exec opennextjs-cloudflare build` y después `pnpm --filter @sala/web exec opennextjs-cloudflare deploy`.
-7. [ ] Smoke: `node apps/api/scripts/smoke.mjs https://saladeestudio.com.ar`. Login a mano, check-in, realtime en dos pestañas.
+6. [ ] DNS: los 4 registros apex/www a Proxied (paso 4). Desde acá `/api/*` va al Worker; la web sigue en Fly hasta el deploy.
+7. [ ] Merge `cf/migration` a `main` y push: deploy.yml deploya API + web (OpenNext solo buildea en Linux) y corre el smoke.
+8. [ ] Smoke manual: login, check-in, realtime en dos pestañas.
    `https://saladeestudio.com.ar/api/v1/auth-providers` tiene que dar `"passwordReset":true` (si da false, `RESEND_API_KEY` está vacío).
-8. [ ] Merge `cf/migration` a `main`: desde acá deploya GitHub Actions.
 
 ## 7. Callbacks de terceros (mismo dominio, solo verificar)
 - [x] Google OAuth redirect: `https://saladeestudio.com.ar/api/auth/callback/google` (verificado 2026-10-14)
