@@ -86,6 +86,6 @@ Fly API frenado con autostart off, export + import con conteos iguales, deploy s
 ## 8. Baja de Fly (2026-10-15)
 - [x] Secrets `FLY_TOKEN_API`, `FLY_TOKEN_DB`, `FLY_TOKEN_WEB`, `FLY_TOKEN_VERIFIER` borrados de GitHub.
 - [x] Scripts de Fly borrados del repo (`export-fly-pg`, `copy-app-secrets`, `cutover`); quedan en el historial de git.
-- [ ] Borrar las apps `uns-study-api`, `sala-de-estudio`, `sala-de-estudio-db`, `sala-de-estudio-verifier` (vos, `fly apps destroy`).
-  Sin rollback a Fly después de esto. Backup del DO: `ops/backup-do.ps1`; restaurar con `ops/import-to-do.mjs`.
-- [ ] Después: secret viejo de Google OAuth y token viejo de R2 `uns-study-api-report-evidence`.
+- [x] Apps `uns-study-api`, `sala-de-estudio`, `sala-de-estudio-db`, `sala-de-estudio-verifier` destruidas (2026-10-15).
+  Ya no hay rollback a Fly. Backup del DO: `ops/backup-do.ps1`; restaurar con `ops/import-to-do.mjs`.
+- [x] Secret viejo de Google OAuth borrado y token viejo de R2 `uns-study-api-report-evidence` revocado (2026-10-15).
