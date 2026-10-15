@@ -30,6 +30,17 @@ function Status([string]$url) {
   try { (Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 20).StatusCode }
   catch { if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 0 } }
 }
+# A new version reaches the running Durable Object only after it restarts, which can take minutes.
+function WaitStatus([string]$url, [int]$want, [int]$seconds = 600) {
+  $deadline = (Get-Date).AddSeconds($seconds); $got = 0
+  while ((Get-Date) -lt $deadline) {
+    $got = Status $url
+    if ($got -eq $want) { return $got }
+    Start-Sleep -Seconds 5
+  }
+  $got
+}
+
 # Retries: a network blip during the upload ("fetch failed") must not abort the cutover.
 function Wrangler([string]$argLine) {
   for ($try = 1; $try -le 4; $try++) {
@@ -65,8 +76,7 @@ try {
   if (-not $m.Success) { Fail "workers.dev URL not found in the deploy output." }
   $base = $m.Value
   Write-Host "Worker: $base"
-  Start-Sleep -Seconds 5
-  $h = Status "$base/api/v1/health"; $p = Status "$base/api/v1/auth-providers"
+  $h = WaitStatus "$base/api/v1/health" 200; $p = WaitStatus "$base/api/v1/auth-providers" 503
   Write-Host "health=$h auth-providers=$p (expect 200 / 503)"
   if ($h -ne 200 -or $p -ne 503) { Fail "Worker is not healthy and in maintenance." }
 
@@ -91,8 +101,9 @@ try {
 
   # The secret change rolls out a new version; wait until the Durable Object accepts the token.
   $ok = $false; $last = 0; $diag = ""
-  for ($i = 0; $i -lt 30 -and -not $ok; $i++) {
-    Start-Sleep -Seconds 3
+  Write-Host "Waiting for the Durable Object to pick up the new token (up to 10 min)..."
+  for ($i = 0; $i -lt 120 -and -not $ok; $i++) {
+    Start-Sleep -Seconds 5
     try {
       $r = Invoke-WebRequest -Uri "$base/api/v1/__ops/tables" -Headers @{ authorization = "Bearer $token" } -UseBasicParsing -TimeoutSec 20
       $last = $r.StatusCode; $ok = $last -eq 200
@@ -149,8 +160,7 @@ try {
 
   Step "6. Deploy $Worker without maintenance"
   Wrangler "deploy" | Out-Null
-  Start-Sleep -Seconds 5
-  $h = Status "$base/api/v1/health"; $p = Status "$base/api/v1/auth-providers"
+  $h = WaitStatus "$base/api/v1/health" 200; $p = WaitStatus "$base/api/v1/auth-providers" 200
   Write-Host "health=$h auth-providers=$p (expect 200 / 200)"
   if ($h -ne 200 -or $p -ne 200) { Fail "Worker not serving after the final deploy." }
 
