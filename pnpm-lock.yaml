@@ -14,6 +14,11 @@ overrides:
   sharp: ^0.35.5
   typescript-eslint: ~8.71.1
 
+patchedDependencies:
+  '@opennextjs/cloudflare@1.20.11':
+    hash: pcblcdakaz62cacchoetvkst7u
+    path: patches/@opennextjs__cloudflare@1.20.11.patch
+
 importers:
 
   .:
@@ -96,7 +101,7 @@ importers:
     dependencies:
       '@opennextjs/cloudflare':
         specifier: 1.20.11
-        version: 1.20.11(next@16.4.0(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@26.6.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(wrangler@4.151.0(@cloudflare/workers-types@5.20261014.1)(@types/node@26.6.2))
+        version: 1.20.11(patch_hash=pcblcdakaz62cacchoetvkst7u)(next@16.4.0(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@26.6.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(wrangler@4.151.0(@cloudflare/workers-types@5.20261014.1)(@types/node@26.6.2))
       '@phosphor-icons/react':
         specifier: ^2.1.10
         version: 2.1.10(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -6067,7 +6072,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@opennextjs/cloudflare@1.20.11(next@16.4.0(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@26.6.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(wrangler@4.151.0(@cloudflare/workers-types@5.20261014.1)(@types/node@26.6.2))':
+  '@opennextjs/cloudflare@1.20.11(patch_hash=pcblcdakaz62cacchoetvkst7u)(next@16.4.0(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@26.6.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(wrangler@4.151.0(@cloudflare/workers-types@5.20261014.1)(@types/node@26.6.2))':
     dependencies:
       '@ast-grep/napi': 0.45.3
       '@dotenvx/dotenvx': 2.35.0
