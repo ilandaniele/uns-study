@@ -84,6 +84,9 @@ export default function PerfilPage() {
             Ingresar
           </Link>
         ) : null}
+        <Link href="/sugerencias" className="text-sm font-semibold text-primary underline underline-offset-2">
+          Sugerencias y contacto
+        </Link>
       </main>
     );
   }
@@ -200,9 +203,14 @@ export default function PerfilPage() {
 
       <section className="border-t border-app py-6 first:border-t-0">
         <h2 className="mb-2 t-title">Ayuda</h2>
-        <Link href="/como-usar" className="text-sm font-semibold text-primary underline underline-offset-2">
-          Cómo usar la app
-        </Link>
+        <div className="flex flex-col items-start gap-2">
+          <Link href="/como-usar" className="text-sm font-semibold text-primary underline underline-offset-2">
+            Cómo usar la app
+          </Link>
+          <Link href="/sugerencias" className="text-sm font-semibold text-primary underline underline-offset-2">
+            Sugerencias y contacto
+          </Link>
+        </div>
       </section>
 
       <section className="border-t border-red-200 pt-6">

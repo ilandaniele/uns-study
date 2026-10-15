@@ -50,6 +50,7 @@ import { ModerationActionService } from "./admin/moderation-action.service.js";
 import { AnnouncementsService } from "./announcements/announcements.service.js";
 import { ReportsService } from "./reports/reports.service.js";
 import { QrService } from "./qr/qr.service.js";
+import { FeedbackService } from "./feedback/feedback.service.js";
 import { NotificationService } from "./notifications/notification.service.js";
 import { PushService } from "./notifications/push.service.js";
 import { PushSubscriptionsService } from "./notifications/push-subscriptions.service.js";
@@ -148,6 +149,7 @@ export function buildServices(deps: ContainerDeps): Services {
   const adminStudySessions = new AdminStudySessionsService(db, roles, rooms, studySessions);
   const announcements = new AnnouncementsService(db);
   const reports = new ReportsService(db, rateLimit, restriction, roles, storage);
+  const feedback = new FeedbackService(db, clock, resend, { adminEmails: cfg.adminEmails, ownerEmail: cfg.ownerEmail, emailFrom: cfg.emailFrom });
 
   // Notifications / email / subscriptions.
   const pushSubscriptions = new PushSubscriptionsService(db);
@@ -170,7 +172,7 @@ export function buildServices(deps: ContainerDeps): Services {
     disputes, tableNames, reputation, rankings, studySessions, study, roomPeople,
     chat, dm, groups, blocks, profiles, avatars, alias, roles, restriction,
     adminUsers, adminReports, adminRooms, adminAudit, adminStudySessions, moderation,
-    announcements, reports, qr,
+    announcements, reports, qr, feedback,
     notifications, push, pushSubscriptions, notificationPreferences, emailCampaigns, resend,
     subscriptions, mercadoPago, rateLimit, antiAbuse, securityEvents, abusePolicy, turnstile,
     storage, seatPhotoVerifier,

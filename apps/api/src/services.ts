@@ -35,6 +35,7 @@ import type { ModerationActionService } from "./admin/moderation-action.service.
 import type { AnnouncementsService } from "./announcements/announcements.service.js";
 import type { ReportsService } from "./reports/reports.service.js";
 import type { QrService } from "./qr/qr.service.js";
+import type { FeedbackService } from "./feedback/feedback.service.js";
 import type { NotificationService } from "./notifications/notification.service.js";
 import type { PushService } from "./notifications/push.service.js";
 import type { PushSubscriptionsService } from "./notifications/push-subscriptions.service.js";
@@ -100,6 +101,7 @@ export interface Services {
   announcements: AnnouncementsService;
   reports: ReportsService;
   qr: QrService;
+  feedback: FeedbackService;
   // W2-E
   notifications: NotificationService;
   push: PushService;

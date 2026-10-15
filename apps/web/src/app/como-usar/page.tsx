@@ -52,6 +52,12 @@ export default function HowToUsePage() {
       >
         Ir a la sala
       </Link>
+      <p className="text-center text-muted">
+        ¿Algo no anda o tenés una idea?{" "}
+        <Link href="/sugerencias" className="font-semibold text-primary underline underline-offset-2">
+          Sugerencias y contacto
+        </Link>
+      </p>
     </main>
   );
 }

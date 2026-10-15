@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { BackButton } from "@/components/BackButton";
 
 export const metadata: Metadata = { title: "Política de privacidad" };
@@ -57,6 +58,10 @@ export default function PrivacyPage() {
         <a className="text-primary underline" href="mailto:ilan.daniele@gmail.com">
           ilan.daniele@gmail.com
         </a>
+        . También podés usar el formulario de{" "}
+        <Link className="text-primary underline" href="/sugerencias">
+          sugerencias y contacto
+        </Link>
         .
       </p>
     </main>

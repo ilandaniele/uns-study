@@ -40,6 +40,7 @@ import { checkinIdentityRouter } from "../profiles/checkin-identity.router.js";
 import { avatarsRouter } from "../avatars/avatars.router.js";
 import { adminUsersRouter } from "../admin/admin-users.router.js";
 import { adminReportsRouter } from "../admin/admin-reports.router.js";
+import { adminFeedbackRouter } from "../admin/admin-feedback.router.js";
 import { adminRoomsRouter } from "../admin/admin-rooms.router.js";
 import { adminAuditRouter } from "../admin/admin-audit.router.js";
 import { adminNamesRouter } from "../admin/admin-names.router.js";
@@ -48,6 +49,7 @@ import { adminStudySessionsRouter } from "../admin/admin-study-sessions.router.j
 import { announcementsRouter } from "../announcements/announcements.router.js";
 import { qrRouter } from "../qr/qr.router.js";
 import { reportsRouter } from "../reports/reports.router.js";
+import { feedbackRouter } from "../feedback/feedback.router.js";
 import { pushSubscriptionsRouter } from "../notifications/push-subscriptions.router.js";
 import { notificationPreferencesRouter } from "../notifications/notification-preferences.router.js";
 import { adminEmailRouter } from "../email/admin-email.router.js";
@@ -117,6 +119,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
     avatarsRouter,
     adminUsersRouter,
     adminReportsRouter,
+    adminFeedbackRouter,
     adminRoomsRouter,
     adminAuditRouter,
     adminNamesRouter,
@@ -125,6 +128,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
     announcementsRouter,
     qrRouter,
     reportsRouter,
+    feedbackRouter,
     pushSubscriptionsRouter,
     notificationPreferencesRouter,
     adminEmailRouter,
