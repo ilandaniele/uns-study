@@ -1,6 +1,6 @@
 import { fromZonedTime } from "date-fns-tz";
-import { and, eq, gt, gte, isNull, lt, or } from "drizzle-orm";
-import { schema, type Db, type Tx } from "@sala/database";
+import { and, eq, gt, gte, inArray, isNull, lt, or } from "drizzle-orm";
+import { inChunks, schema, type Db, type Tx } from "@sala/database";
 import type { SeatDisputeLiteDto } from "@sala/contracts";
 import type { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { localDateOf } from "../common/dates.js";
@@ -178,8 +178,20 @@ export class DailyResetJob {
         .all();
       const keep = new Set([...survivingCheckIns, ...survivingObservations].map((r) => r.seatId));
 
+      // Workers Free caps rows_written, so seats already at the reset values (UNKNOWN, 0) are skipped:
+      // no upsert, no event. A seat with no row yet still gets one.
+      const resetSeatIds = seatRows.filter((s) => !keep.has(s.id)).map((s) => s.id);
+      const currentRows = inChunks(resetSeatIds, (part) =>
+        tx
+          .select({ seatId: schema.seatCurrentState.seatId, status: schema.seatCurrentState.status, confidence: schema.seatCurrentState.confidence })
+          .from(schema.seatCurrentState)
+          .where(inArray(schema.seatCurrentState.seatId, part))
+          .all(),
+      );
+      const alreadyReset = new Set(currentRows.filter((r) => r.status === "UNKNOWN" && r.confidence === 0).map((r) => r.seatId));
+
       for (const seat of seatRows) {
-        if (keep.has(seat.id)) continue;
+        if (keep.has(seat.id) || alreadyReset.has(seat.id)) continue;
         tx.insert(schema.seatCurrentState)
           .values({ seatId: seat.id, status: "UNKNOWN", confidence: 0, sourceSummary: "DAILY_RESET", lastUpdatedAt: now, updatedAt: now })
           .onConflictDoUpdate({

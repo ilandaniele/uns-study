@@ -6,7 +6,7 @@ import { env, initEnv } from "../env.js";
 import { handleOps } from "../ops/ops-handler.js";
 import { Logger } from "../platform/logger.js";
 import type { WsLike } from "../realtime/do-realtime-hub.js";
-import { armAlarm, shouldRunOnTick } from "./alarm.js";
+import { armAlarm } from "./alarm.js";
 import { buildRuntime, type Runtime } from "./runtime.js";
 
 export interface WorkerEnv {
@@ -18,7 +18,7 @@ export interface WorkerEnv {
 const WS_PATH = "/api/v1/realtime/ws";
 const OPS_PREFIX = "/api/v1/__ops/";
 
-/** The singleton Durable Object: owns the SQLite database, the HTTP app, the hibernating sockets and the job alarm. */
+/** The singleton Durable Object: owns the SQLite database, the HTTP app, the hibernating sockets and the one-shot job alarm. */
 export class AppDO extends DurableObject<WorkerEnv> {
   private readonly logger = new Logger(AppDO.name);
   private readonly db: Db;
@@ -33,7 +33,7 @@ export class AppDO extends DurableObject<WorkerEnv> {
       await seedInitialRoom(this.db);
       this.runtime = buildRuntime({ db: this.db, ctx, env: workerEnv });
       this.runtime.scheduler.ensureRecurring();
-      await armAlarm(ctx.storage, this.runtime.scheduler.nextDueAt());
+      await armAlarm(ctx.storage, this.runtime.scheduler.nextOneShotDueAt());
     });
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
   }
@@ -57,13 +57,13 @@ export class AppDO extends DurableObject<WorkerEnv> {
     try {
       await this.runtime.scheduler.runDue();
     } finally {
-      await armAlarm(this.ctx.storage, this.runtime.scheduler.nextDueAt());
+      await armAlarm(this.ctx.storage, this.runtime.scheduler.nextOneShotDueAt());
     }
   }
 
-  /** RPC from the Cron Trigger: runs the scheduler when the alarm is missing or overdue. */
+  /** RPC from the Cron Trigger (every minute): drives the recurring jobs and is the safety net for overdue one-shots. */
   async tick(): Promise<void> {
-    if (shouldRunOnTick(await this.ctx.storage.getAlarm(), Date.now())) await this.alarm();
+    await this.alarm();
   }
 
   async webSocketMessage(ws: WebSocket, msg: string | ArrayBuffer): Promise<void> {

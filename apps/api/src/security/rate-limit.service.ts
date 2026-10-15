@@ -3,6 +3,16 @@ import { schema, type Db } from "@sala/database";
 
 const CLEANUP_INTERVAL_MS = 60 * 1000;
 const CLEANUP_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const MEMORY_PRUNE_INTERVAL_MS = 60 * 1000;
+const MEMORY_MAX_ENTRIES = 50_000;
+
+/**
+ * Windows up to this long are counted in memory. The API is one Durable Object, and a SQLite upsert
+ * per check (3 rows written with indexes) burned the Workers Free `rows_written` budget. Counts
+ * reset when the DO is evicted, which is acceptable for short windows; longer (hourly/daily) limits
+ * stay in SQLite so they survive eviction.
+ */
+export const IN_MEMORY_MAX_WINDOW_SECONDS = 600;
 
 /** One JSON line per backend failure (no keys/IPs) so a fail-closed outage is visible in the logs. */
 function logBackendError(backend: "sqlite" | "sqlite_cleanup", err: unknown): void {
@@ -102,11 +112,59 @@ export class SqliteWindow {
 }
 
 /**
+ * Same sliding-window-counter algorithm as `SqliteWindow` (current fixed-window count blended with
+ * the previous window's), held in a Map so short windows never touch SQLite. Expired entries are
+ * pruned at most once a minute and the map is capped so memory can't grow unbounded.
+ */
+export class MemoryWindowCounter {
+  private readonly counts = new Map<string, { windowStart: number; windowMs: number; count: number }>();
+  private lastPruneAt = 0;
+
+  check(key: string, limit: number, windowMs: number, now = Date.now()): RateLimitResult {
+    const windowStartMs = Math.floor(now / windowMs) * windowMs;
+    this.prune(now);
+
+    const currentId = `${key}|${windowStartMs}`;
+    const current = this.counts.get(currentId);
+    const currentCount = (current?.count ?? 0) + 1;
+    if (current) current.count = currentCount;
+    else this.counts.set(currentId, { windowStart: windowStartMs, windowMs, count: 1 });
+    const previousCount = this.counts.get(`${key}|${windowStartMs - windowMs}`)?.count ?? 0;
+
+    const overlap = Math.max(0, 1 - (now - windowStartMs) / windowMs);
+    const weighted = currentCount + previousCount * overlap;
+    if (weighted > limit) return { allowed: false, remaining: 0 };
+    return { allowed: true, remaining: Math.max(0, Math.floor(limit - weighted)) };
+  }
+
+  /** A window is dead once the next one has also ended (it is no longer the "previous" window). */
+  private isExpired(e: { windowStart: number; windowMs: number }, now: number): boolean {
+    return e.windowStart + 2 * e.windowMs <= now;
+  }
+
+  private prune(now: number): void {
+    const overCap = this.counts.size >= MEMORY_MAX_ENTRIES;
+    if (!overCap && now - this.lastPruneAt < MEMORY_PRUNE_INTERVAL_MS) return;
+    this.lastPruneAt = now;
+    for (const [id, e] of this.counts) if (this.isExpired(e, now)) this.counts.delete(id);
+    // Still full of live entries: drop the oldest (Map keeps insertion order) down to 90% of the cap.
+    let excess = this.counts.size - Math.floor(MEMORY_MAX_ENTRIES * 0.9);
+    if (excess <= 0 || !overCap) return;
+    for (const id of this.counts.keys()) {
+      this.counts.delete(id);
+      if (--excess <= 0) break;
+    }
+  }
+}
+
+/**
  * Sliding-window rate limiting. With a database (always, in the Worker) it uses the SQLite
- * `rate_limit_hits` table; without one it falls back to an in-process window (unit tests).
+ * `rate_limit_hits` table for windows longer than `IN_MEMORY_MAX_WINDOW_SECONDS`, and counts shorter
+ * ones in memory; without a database everything uses an in-process window (unit tests).
  */
 export class RateLimitService {
   private readonly memory = new MemoryWindow();
+  private readonly shortWindows = new MemoryWindowCounter();
   private readonly sqliteWindow: SqliteWindow | null;
 
   constructor(db?: Db) {
@@ -116,6 +174,9 @@ export class RateLimitService {
   /** `key` should already include the bucket name, e.g. `checkin:<userId>`. */
   async check(key: string, limit: number, windowSeconds: number): Promise<RateLimitResult> {
     if (this.sqliteWindow) {
+      if (windowSeconds <= IN_MEMORY_MAX_WINDOW_SECONDS) {
+        return this.shortWindows.check(key, limit, windowSeconds * 1000);
+      }
       return this.sqliteWindow.check(key, limit, windowSeconds * 1000);
     }
 

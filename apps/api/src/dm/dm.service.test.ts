@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { eq } from "drizzle-orm";
 import type { Db } from "@sala/database";
 import { schema } from "@sala/database";
 import { freshDb, insertUsers } from "../test-utils.js";
@@ -96,6 +97,23 @@ describe("DmService", () => {
     await svc.markRead(conversation.id, "u2");
     const afterRead = await svc.listConversations("u2");
     expect(afterRead[0]?.unread).toBe(0);
+  });
+
+  it("does not rewrite the read marker when already read up to the latest message", async () => {
+    const conversation = await svc.getOrCreateConversation("u1", "u2");
+    await svc.sendMessage(conversation.id, "u1", "uno");
+    await svc.markRead(conversation.id, "u2");
+    const readRows = () => db.select().from(schema.directConversationReads).where(eq(schema.directConversationReads.userId, "u2"));
+    const [first] = await readRows();
+
+    await new Promise((r) => setTimeout(r, 5));
+    await svc.markRead(conversation.id, "u2");
+    expect((await readRows())[0]?.lastReadAt).toEqual(first?.lastReadAt);
+
+    await new Promise((r) => setTimeout(r, 5));
+    await svc.sendMessage(conversation.id, "u1", "dos");
+    await svc.markRead(conversation.id, "u2");
+    expect((await readRows())[0]!.lastReadAt.getTime()).toBeGreaterThan(first!.lastReadAt.getTime());
   });
 
   it("paginates messages with a cursor", async () => {

@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { schema } from "@sala/database";
 import { createTestDb } from "@sala/database/testing";
 import { FixedClock } from "./clock.js";
-import { ManualScheduler, RECURRING_JOBS, SqliteScheduler, type JobHandler } from "./scheduler.js";
+import { ManualScheduler, RECURRING_JOBS, RECURRING_SLACK_MS, SqliteScheduler, type JobHandler } from "./scheduler.js";
 
 // Not test-utils.ts: that imports the whole service graph, which this unit does not need.
 const freshDb = () => createTestDb({ template: readFileSync(process.env.SALA_TEST_TEMPLATE ?? "") });
@@ -161,6 +161,38 @@ describe("SqliteScheduler specifics", () => {
     expect(changes).toEqual([at(5), at(1), at(5), null]);
   });
 
+  it("notifies only the one-shot due time, never a recurring one", async () => {
+    const changes: Array<Date | null> = [];
+    const s = new SqliteScheduler(freshDb(), new FixedClock(T0), (n) => changes.push(n));
+    s.ensureRecurring();
+    expect(s.nextOneShotDueAt()).toBeNull();
+    expect(s.nextDueAt()).toEqual(at(60_000));
+    s.schedule("job", at(900_000));
+    s.register("job", () => undefined);
+    await s.runDue(at(60_000));
+    expect(changes.every((c) => c === null || c.getTime() === at(900_000).getTime())).toBe(true);
+    expect(changes.at(-1)).toEqual(at(900_000));
+  });
+
+  it("runs a recurring job due within the cron slack, and keeps now + interval as next due", async () => {
+    const s = new SqliteScheduler(freshDb(), new FixedClock(T0), () => undefined);
+    const ran: string[] = [];
+    s.register("tick", () => {
+      ran.push("tick");
+    });
+    s.every("tick", 60_000);
+    expect((await s.runDue(at(60_000 - RECURRING_SLACK_MS - 1))).ran).toEqual([]);
+    const now = at(60_000 - RECURRING_SLACK_MS);
+    expect((await s.runDue(now)).ran).toEqual(["tick"]);
+    expect(s.nextDueAt()).toEqual(new Date(now.getTime() + 60_000));
+  });
+
+  it("does not run a one-shot before it is due, even within the slack", async () => {
+    const s = new SqliteScheduler(freshDb(), new FixedClock(T0), () => undefined);
+    s.schedule("job", at(1_000));
+    expect((await s.runDue(at(1_000 - 1))).ran).toEqual([]);
+  });
+
   it("ensureRecurring registers every recurring job and is idempotent", () => {
     const s = new SqliteScheduler(freshDb(), new FixedClock(T0), () => undefined);
     s.ensureRecurring();
@@ -180,9 +212,10 @@ describe("SqliteScheduler specifics", () => {
     s.register("tick", () => {
       ran.push("tick");
     });
+    const gap = RECURRING_SLACK_MS + 1000;
     await s.runDue(at(1000));
-    await s.runDue(at(1500));
-    await s.runDue(at(2000));
+    await s.runDue(at(1000 + 1000 - RECURRING_SLACK_MS - 1));
+    await s.runDue(at(1000 + gap));
     expect(ran).toEqual(["tick", "tick"]);
     expect(db.select().from(schema.scheduledJobs).all()).toEqual([]);
   });

@@ -130,6 +130,13 @@ export class DmService {
     const conversation = await this.getConversationRow(conversationId);
     this.assertParticipant(conversation, userId);
 
+    // Already read up to the latest message: nothing to change, and a write costs rows_written.
+    const [existing] = await this.db
+      .select({ lastReadAt: schema.directConversationReads.lastReadAt })
+      .from(schema.directConversationReads)
+      .where(and(eq(schema.directConversationReads.conversationId, conversationId), eq(schema.directConversationReads.userId, userId)));
+    if (existing && existing.lastReadAt.getTime() >= conversation.lastMessageAt.getTime()) return;
+
     await this.db
       .insert(schema.directConversationReads)
       .values({ conversationId, userId, lastReadAt: new Date() })

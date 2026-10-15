@@ -171,26 +171,31 @@ export class RoomStateService {
       const changed =
         !previous || previous.status !== result.status || previous.confidence !== result.confidence || opts.eventType === "PHOTO_VERIFIED";
 
-      db.insert(schema.seatCurrentState)
-        .values({
-          seatId,
-          status: result.status,
-          confidence: result.confidence,
-          sourceSummary: result.sourceSummary,
-          lastUpdatedAt: stamp,
-          updatedAt: stamp,
-        })
-        .onConflictDoUpdate({
-          target: schema.seatCurrentState.seatId,
-          set: {
+      // Workers Free caps rows_written: an unchanged row (same status, confidence and source) is
+      // not rewritten. `lastUpdatedAt` is the client merge stamp for the *state*, so it correctly
+      // stays put when the state didn't change.
+      if (changed || previous!.sourceSummary !== result.sourceSummary) {
+        db.insert(schema.seatCurrentState)
+          .values({
+            seatId,
             status: result.status,
             confidence: result.confidence,
             sourceSummary: result.sourceSummary,
             lastUpdatedAt: stamp,
             updatedAt: stamp,
-          },
-        })
-        .run();
+          })
+          .onConflictDoUpdate({
+            target: schema.seatCurrentState.seatId,
+            set: {
+              status: result.status,
+              confidence: result.confidence,
+              sourceSummary: result.sourceSummary,
+              lastUpdatedAt: stamp,
+              updatedAt: stamp,
+            },
+          })
+          .run();
+      }
 
       if (changed) {
         db.insert(schema.seatStateEvents)

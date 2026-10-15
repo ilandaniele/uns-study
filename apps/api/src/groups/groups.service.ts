@@ -246,7 +246,15 @@ export class GroupsService {
   }
 
   async markRead(groupId: string, userId: string): Promise<void> {
-    this.assertMember(groupId, userId);
+    const membership = this.assertMember(groupId, userId);
+
+    // Already read up to the latest message: nothing to change, and a write costs rows_written.
+    const [group] = await this.db
+      .select({ lastMessageAt: schema.groupConversations.lastMessageAt })
+      .from(schema.groupConversations)
+      .where(eq(schema.groupConversations.id, groupId));
+    if (membership.lastReadAt && (!group?.lastMessageAt || membership.lastReadAt.getTime() >= group.lastMessageAt.getTime())) return;
+
     await this.db
       .update(schema.groupMembers)
       .set({ lastReadAt: new Date() })

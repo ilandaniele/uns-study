@@ -41,7 +41,6 @@ export const seatDisputes = sqliteTable(
     index("idx_seat_disputes_closes_at")
       .on(table.closesAt)
       .where(sql`status = 'OPEN'`),
-    index("idx_seat_disputes_room").on(table.roomId),
     index("idx_seat_disputes_room_status").on(table.roomId, table.status),
     index("idx_seat_disputes_check_in").on(table.checkInId),
     index("idx_seat_disputes_seat_resolved").on(table.seatId, table.resolvedAt),

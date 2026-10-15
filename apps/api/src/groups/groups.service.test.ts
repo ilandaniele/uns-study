@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Db } from "@sala/database";
 import { schema } from "@sala/database";
 import { countQueries, freshDb, insertUsers } from "../test-utils.js";
@@ -177,6 +177,25 @@ describe("GroupsService", () => {
       await svc.markRead(group.id, "u2");
       expect((await svc.getGroup(group.id, "u2")).unread).toBe(0);
       expect((await svc.getGroup(group.id, "u3")).unread).toBe(2);
+    });
+
+    it("does not rewrite lastReadAt when already read up to the latest message", async () => {
+      const group = await newGroup();
+      await svc.sendMessage(group.id, "u1", "uno");
+      await svc.markRead(group.id, "u2");
+      const readAt = async () =>
+        (await db.select().from(schema.groupMembers).where(and(eq(schema.groupMembers.groupId, group.id), eq(schema.groupMembers.userId, "u2"))))[0]?.lastReadAt;
+      const first = await readAt();
+      expect(first).toBeTruthy();
+
+      await new Promise((r) => setTimeout(r, 5));
+      await svc.markRead(group.id, "u2");
+      expect(await readAt()).toEqual(first);
+
+      await new Promise((r) => setTimeout(r, 5));
+      await svc.sendMessage(group.id, "u1", "dos");
+      await svc.markRead(group.id, "u2");
+      expect((await readAt())!.getTime()).toBeGreaterThan(first!.getTime());
     });
 
     it("updates last_message_at on send", async () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { schema, type Db } from "@sala/database";
 import { freshDb } from "../test-utils.js";
-import { RateLimitService, SqliteWindow } from "./rate-limit.service.js";
+import { IN_MEMORY_MAX_WINDOW_SECONDS, MemoryWindowCounter, RateLimitService, SqliteWindow } from "./rate-limit.service.js";
 
 describe("RateLimitService (in-memory fallback)", () => {
   it("allows up to the limit within the window, then blocks", async () => {
@@ -24,13 +24,42 @@ describe("RateLimitService (in-memory fallback)", () => {
 });
 
 describe("RateLimitService (SQLite)", () => {
-  it("uses rate_limit_hits when given a db", async () => {
+  it("persists long windows in rate_limit_hits", async () => {
+    const db = freshDb();
+    const svc = new RateLimitService(db);
+    const long = IN_MEMORY_MAX_WINDOW_SECONDS + 1;
+    expect((await svc.check("k", 2, long)).allowed).toBe(true);
+    expect((await svc.check("k", 2, long)).allowed).toBe(true);
+    expect((await svc.check("k", 2, long)).allowed).toBe(false);
+    expect(db.select().from(schema.rateLimitHits).all().length).toBeGreaterThan(0);
+  });
+
+  it("counts short windows in memory without writing rate_limit_hits", async () => {
     const db = freshDb();
     const svc = new RateLimitService(db);
     expect((await svc.check("k", 2, 60)).allowed).toBe(true);
     expect((await svc.check("k", 2, 60)).allowed).toBe(true);
     expect((await svc.check("k", 2, 60)).allowed).toBe(false);
-    expect(db.select().from(schema.rateLimitHits).all().length).toBeGreaterThan(0);
+    expect((await svc.check("other", 2, IN_MEMORY_MAX_WINDOW_SECONDS)).allowed).toBe(true);
+    expect(db.select().from(schema.rateLimitHits).all()).toHaveLength(0);
+  });
+});
+
+describe("MemoryWindowCounter", () => {
+  it("enforces the limit and rolls over once windows elapse", () => {
+    const counter = new MemoryWindowCounter();
+    const t = Date.UTC(2026, 0, 1, 0, 0, 0);
+    for (let i = 0; i < 3; i++) expect(counter.check("k", 3, 1_000, t).allowed).toBe(true);
+    expect(counter.check("k", 3, 1_000, t).allowed).toBe(false);
+    expect(counter.check("k", 3, 1_000, t + 2_000).allowed).toBe(true);
+  });
+
+  it("weighs the previous window like the SQLite version", () => {
+    const counter = new MemoryWindowCounter();
+    const t = Date.UTC(2026, 0, 1, 0, 0, 0);
+    for (let i = 0; i < 4; i++) expect(counter.check("k", 4, 60_000, t + i).allowed).toBe(true);
+    expect(counter.check("k", 4, 60_000, t + 60_001).allowed).toBe(false);
+    expect(counter.check("k", 4, 60_000, t + 120_000 - 1).allowed).toBe(true);
   });
 });
 

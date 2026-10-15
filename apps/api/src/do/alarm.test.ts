@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { ALARM_OVERDUE_GRACE_MS, armAlarm, rearmIfEarlier, shouldRunOnTick, type AlarmStorage } from "./alarm.js";
+import { armAlarm, rearmIfEarlier, type AlarmStorage } from "./alarm.js";
 
-function storage(current: number | null): AlarmStorage & { setAlarm: ReturnType<typeof vi.fn> } {
-  return { getAlarm: vi.fn(async () => current), setAlarm: vi.fn(async () => undefined) };
+function storage(current: number | null): AlarmStorage & { setAlarm: ReturnType<typeof vi.fn>; deleteAlarm: ReturnType<typeof vi.fn> } {
+  return { getAlarm: vi.fn(async () => current), setAlarm: vi.fn(async () => undefined), deleteAlarm: vi.fn(async () => undefined) };
 }
 
 describe("alarm helpers", () => {
@@ -23,19 +23,28 @@ describe("alarm helpers", () => {
     expect(s.setAlarm).not.toHaveBeenCalled();
   });
 
-  it("armAlarm sets the exact time, or nothing when no job is pending", async () => {
+  it("armAlarm sets the exact time when it differs from the pending alarm", async () => {
     const s = storage(1_000);
     await armAlarm(s, new Date(9_000));
     expect(s.setAlarm).toHaveBeenCalledWith(9_000);
-    await armAlarm(s, null);
-    expect(s.setAlarm).toHaveBeenCalledTimes(1);
   });
 
-  it("shouldRunOnTick fires when the alarm is missing or overdue past the grace period", () => {
-    const now = 1_000_000;
-    expect(shouldRunOnTick(null, now)).toBe(true);
-    expect(shouldRunOnTick(now - ALARM_OVERDUE_GRACE_MS - 1, now)).toBe(true);
-    expect(shouldRunOnTick(now - 1_000, now)).toBe(false);
-    expect(shouldRunOnTick(now + 30_000, now)).toBe(false);
+  it("armAlarm skips setAlarm when the alarm is already at that time", async () => {
+    const s = storage(9_000);
+    await armAlarm(s, new Date(9_000));
+    expect(s.setAlarm).not.toHaveBeenCalled();
+    expect(s.deleteAlarm).not.toHaveBeenCalled();
+  });
+
+  it("armAlarm clears a pending alarm when no one-shot is due, and does nothing without one", async () => {
+    const pending = storage(1_000);
+    await armAlarm(pending, null);
+    expect(pending.deleteAlarm).toHaveBeenCalledTimes(1);
+    expect(pending.setAlarm).not.toHaveBeenCalled();
+
+    const none = storage(null);
+    await armAlarm(none, null);
+    expect(none.deleteAlarm).not.toHaveBeenCalled();
+    expect(none.setAlarm).not.toHaveBeenCalled();
   });
 });

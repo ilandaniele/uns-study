@@ -277,6 +277,23 @@ describe("DailyResetJob", () => {
     expect(await job.runReset(roomId, new Date(after.getTime() + 5 * 60_000))).toBe(false);
   });
 
+  it("writes no seat_current_state rows or events for seats already UNKNOWN, but still emits daily-reset", async () => {
+    const room = await getRoom(db);
+    const reset = resetInstantFor(room, new Date());
+    // A fresh room has every seat UNKNOWN/0 already, so there is nothing to reset.
+    const statesBefore = await db.select().from(schema.seatCurrentState);
+    expect(statesBefore.every((s) => s.status === "UNKNOWN" && s.confidence === 0)).toBe(true);
+
+    const spy = vi.spyOn(gateway, "emitDailyReset");
+    expect(await job.runReset(roomId, new Date(reset.getTime() + 60_000))).toBe(true);
+    expect(spy).toHaveBeenCalledWith(roomId);
+    spy.mockRestore();
+
+    const statesAfter = await db.select().from(schema.seatCurrentState);
+    expect(statesAfter.map((s) => new Date(s.updatedAt).getTime())).toEqual(statesBefore.map((s) => new Date(s.updatedAt).getTime()));
+    expect(await db.select().from(schema.seatStateEvents).where(eq(schema.seatStateEvents.eventType, "DAILY_RESET"))).toHaveLength(0);
+  });
+
   it("two concurrent runs (simulating separate instances) only apply the reset once", async () => {
     await checkIns.checkIn({ userId: "u1", roomId, seatId, location, showIdentity: false });
 
@@ -288,7 +305,7 @@ describe("DailyResetJob", () => {
     expect(results.filter(Boolean)).toHaveLength(1);
 
     const events = await db.select().from(schema.seatStateEvents).where(eq(schema.seatStateEvents.eventType, "DAILY_RESET"));
-    expect(events).toHaveLength(108); // one batch, not two
+    expect(events).toHaveLength(1); // one batch, not two; only the checked-in seat was not already UNKNOWN
   });
 });
 

@@ -19,7 +19,8 @@ export interface Scheduler {
 /**
  * Recurring jobs that `ensureRecurring()` keeps registered. Handlers are attached by `jobs/register-jobs.ts`.
  * Every handler is an idempotent sweep and seat state / disputes are also resolved lazily on read, so
- * one minute is enough. Same interval for all = one alarm per minute (each `setAlarm` is a row written).
+ * one minute is enough. They run from the per-minute Cron Trigger (`AppDO.tick`), never from the alarm:
+ * re-arming it every minute would cost a row written each time, which the DO Free plan caps per day.
  */
 export const RECURRING_JOBS: ReadonlyArray<{ key: string; intervalMs: number }> = [
   { key: "daily-reset", intervalMs: 60_000 },
@@ -30,6 +31,9 @@ export const RECURRING_JOBS: ReadonlyArray<{ key: string; intervalMs: number }> 
   { key: "email-send", intervalMs: 60_000 },
   { key: "realtime-session-sweep", intervalMs: 60_000 },
 ];
+
+/** Cron fires a few seconds off the minute; a recurring job due this soon runs now instead of waiting a whole tick. */
+export const RECURRING_SLACK_MS = 5_000;
 
 const logger = new Logger("Scheduler");
 
@@ -55,8 +59,8 @@ async function runHandler(handlers: Map<string, JobHandler>, key: string, payloa
 }
 
 /**
- * Multiplexes the single Durable Object alarm over one-shot jobs persisted in `scheduled_jobs` and
- * recurring jobs kept in memory. Recurring jobs are re-registered on every boot, so persisting them only
+ * Runs one-shot jobs persisted in `scheduled_jobs` (armed on the single Durable Object alarm) and
+ * recurring jobs kept in memory (driven by the Cron tick). Recurring jobs are re-registered on every boot, so persisting them only
  * cost a row written (plus its due_at index entry) on every run, which the DO Free plan caps per day.
  */
 export class SqliteScheduler implements Scheduler {
@@ -135,13 +139,13 @@ export class SqliteScheduler implements Scheduler {
         .from(schema.scheduledJobs)
         .where(lte(schema.scheduledJobs.dueAt, now))
         .all();
-      for (const [key, job] of this.recurring) if (job.dueAt <= now) due.push({ key, dueAt: job.dueAt });
+      for (const [key, job] of this.recurring) if (job.dueAt.getTime() <= now.getTime() + RECURRING_SLACK_MS) due.push({ key, dueAt: job.dueAt });
       due.sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime() || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
       for (const { key } of due) {
         const rec = this.recurring.get(key);
         if (rec) {
           // Re-check: an earlier handler in this pass may have cancelled it.
-          if (rec.dueAt > now) continue;
+          if (rec.dueAt.getTime() > now.getTime() + RECURRING_SLACK_MS) continue;
           rec.dueAt = new Date(now.getTime() + rec.intervalMs);
           ran.push(key);
           await runHandler(this.handlers, key, null, now);
@@ -173,14 +177,19 @@ export class SqliteScheduler implements Scheduler {
     return { ran };
   }
 
-  nextDueAt(): Date | null {
+  /** Earliest SQL one-shot: the only thing the alarm is armed for. */
+  nextOneShotDueAt(): Date | null {
     const row = this.db
       .select({ dueAt: schema.scheduledJobs.dueAt })
       .from(schema.scheduledJobs)
       .orderBy(asc(schema.scheduledJobs.dueAt))
       .limit(1)
       .get();
-    let next = row?.dueAt ?? null;
+    return row?.dueAt ?? null;
+  }
+
+  nextDueAt(): Date | null {
+    let next = this.nextOneShotDueAt();
     for (const job of this.recurring.values()) if (!next || job.dueAt < next) next = job.dueAt;
     return next;
   }
@@ -192,7 +201,7 @@ export class SqliteScheduler implements Scheduler {
   }
 
   private notify(): void {
-    this.onNextDueChanged(this.nextDueAt());
+    this.onNextDueChanged(this.nextOneShotDueAt());
   }
 }
 

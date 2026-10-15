@@ -140,6 +140,14 @@ describe("PushService", () => {
     expect(row?.failureCount).toBe(0);
   });
 
+  it("does not write to a healthy subscription on success", async () => {
+    sendNotification.mockResolvedValue(undefined);
+    await svc.sendToUser("u1", { title: "t", body: "b", url: "/", tag: "tag" });
+    const [row] = await db.select().from(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.userId, "u1"));
+    expect(row?.failureCount).toBe(0);
+    expect(row?.lastSuccessAt).toBeNull();
+  });
+
   it("logs one summary line per send with counts only, never the endpoint", async () => {
     const log = vi.spyOn((svc as unknown as { logger: { log: (m: string) => void } }).logger, "log").mockImplementation(() => undefined);
     await svc.sendToUser("u1", { title: "t", body: "b", url: "/", tag: "dm-1" });

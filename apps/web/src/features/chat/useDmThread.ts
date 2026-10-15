@@ -7,8 +7,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch, apiPost, ApiRequestError } from "@/lib/api";
 import { DataPaths } from "@/lib/prefetch";
 import { fetchCached, peekCached } from "@/lib/query-cache";
+import { useSession } from "@/lib/auth-client";
 import { getSocket } from "@/lib/socket";
 import { mergeMessages } from "./grouping";
+
+const READ_DEBOUNCE_MS = 2000;
 
 export interface UseDmThreadResult {
   /** Ascending (oldest first). */
@@ -50,6 +53,31 @@ export function useDmThread(conversationId: string, options?: { onRead?: () => v
         // best-effort; unread counts will just settle on the next successful call
       });
   }, [conversationId]);
+
+  // Socket bursts collapse into one trailing read request; messages from this user are never unread.
+  const selfIdRef = useRef<string | undefined>(undefined);
+  const { data: session } = useSession();
+  const selfId = session?.user?.id;
+  useEffect(() => {
+    selfIdRef.current = selfId;
+  });
+  const readTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleRead = useCallback(() => {
+    if (readTimerRef.current) clearTimeout(readTimerRef.current);
+    readTimerRef.current = setTimeout(() => {
+      readTimerRef.current = null;
+      markRead();
+    }, READ_DEBOUNCE_MS);
+  }, [markRead]);
+  useEffect(
+    () => () => {
+      if (!readTimerRef.current) return;
+      clearTimeout(readTimerRef.current);
+      readTimerRef.current = null;
+      markRead();
+    },
+    [markRead],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -98,13 +126,13 @@ export function useDmThread(conversationId: string, options?: { onRead?: () => v
     const onDm = (message: DirectMessageDto) => {
       if (message.conversationId !== conversationId) return;
       setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
-      markRead();
+      if (message.senderId !== selfIdRef.current) scheduleRead();
     };
     socket.on(SocketEvents.DmMessageCreated, onDm);
     return () => {
       socket.off(SocketEvents.DmMessageCreated, onDm);
     };
-  }, [conversationId, markRead]);
+  }, [conversationId, scheduleRead]);
 
   const send = useCallback(
     async (content: string) => {

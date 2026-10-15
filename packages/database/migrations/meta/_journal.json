@@ -8,6 +8,13 @@
       "when": 1792004094612,
       "tag": "0000_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1792038988471,
+      "tag": "0001_drop_redundant_indexes",
+      "breakpoints": true
     }
   ]
 }

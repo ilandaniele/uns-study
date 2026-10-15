@@ -139,3 +139,29 @@ describe("RoomStateService.recomputeSeats stamp ordering", () => {
     expect(new Date(stored!.lastUpdatedAt).getTime()).toBe(checkIn[0]!.lastUpdatedAt.getTime());
   });
 });
+
+describe("RoomStateService.recomputeSeats unchanged seats", () => {
+  it("does not rewrite seat_current_state (or log an event) when nothing changed, but still does for PHOTO_VERIFIED", async () => {
+    const db = freshDb();
+    const roomState = new RoomStateService(db);
+    const room = await getRoom(db);
+    const seatId = (await getSeats(db))[0]!.id;
+
+    const first = new Date(Date.now() + 60 * 60_000);
+    await roomState.recomputeSeats([seatId], { roomId: room.id, now: first, eventType: "EXPIRATION_SWEEP" });
+    const [before] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatId));
+    const eventsBefore = await db.select().from(schema.seatStateEvents);
+
+    const changes = await roomState.recomputeSeats([seatId], { roomId: room.id, now: new Date(first.getTime() + 5_000), eventType: "EXPIRATION_SWEEP" });
+    expect(changes).toEqual([]);
+    const [after] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatId));
+    expect(new Date(after!.updatedAt).getTime()).toBe(new Date(before!.updatedAt).getTime());
+    expect(new Date(after!.lastUpdatedAt).getTime()).toBe(new Date(before!.lastUpdatedAt).getTime());
+    expect(await db.select().from(schema.seatStateEvents)).toHaveLength(eventsBefore.length);
+
+    const verified = await roomState.recomputeSeats([seatId], { roomId: room.id, now: new Date(first.getTime() + 10_000), eventType: "PHOTO_VERIFIED" });
+    expect(verified).toHaveLength(1);
+    const [rewritten] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatId));
+    expect(new Date(rewritten!.updatedAt).getTime()).toBeGreaterThan(new Date(before!.updatedAt).getTime());
+  });
+});

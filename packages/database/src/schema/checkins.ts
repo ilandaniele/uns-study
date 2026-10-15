@@ -47,10 +47,8 @@ export const checkIns = sqliteTable(
     uniqueIndex("uq_checkin_active_seat")
       .on(table.seatId)
       .where(sql`status = 'ACTIVE'`),
-    index("idx_check_ins_user_status").on(table.userId, table.status),
     index("idx_check_ins_seat_status").on(table.seatId, table.status),
     index("idx_check_ins_room_status").on(table.roomId, table.status),
-    index("idx_check_ins_expires_at").on(table.expiresAt),
     index("idx_check_ins_room_created").on(table.roomId, table.createdAt),
     index("idx_check_ins_active_expires")
       .on(table.expiresAt)

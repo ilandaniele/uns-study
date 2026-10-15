@@ -1,5 +1,5 @@
 import { randomInt } from "node:crypto";
-import { and, eq, gt, lt, ne, notExists, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, lt, ne, notExists, sql } from "drizzle-orm";
 import { chunk, rowsPerInsert, schema, type Db } from "@sala/database";
 import { DISPUTE_MINUTES, seatLabel } from "@sala/contracts";
 import { Logger } from "../platform/logger.js";
@@ -143,7 +143,7 @@ export class NotificationService {
     if (subscribers.length === 0) return;
 
     const toNotify = await this.claimThrottle(
-      subscribers.map((s) => s.userId),
+      await this.withPushSubscription(subscribers.map((s) => s.userId)),
       "ADMIN_PRESENT",
       ADMIN_PRESENT_THROTTLE_MIN,
     );
@@ -237,7 +237,7 @@ export class NotificationService {
   }
 
   private async sendSeatFreedPush(roomId: string, freedSeatIds: string[], recipients: string[], knownSummary?: { free: number }): Promise<void> {
-    const toNotify = await this.claimThrottle(recipients, "SEAT_FREED", SEAT_FREED_THROTTLE_MIN);
+    const toNotify = await this.claimThrottle(await this.withPushSubscription(recipients), "SEAT_FREED", SEAT_FREED_THROTTLE_MIN);
     if (toNotify.length === 0) return;
 
     const [slug, summary] = await Promise.all([this.roomSlug(roomId), knownSummary ?? this.roomState.getRoomSummary(roomId)]);
@@ -268,6 +268,20 @@ export class NotificationService {
 
   private async roomUrl(roomId: string): Promise<string> {
     return `/sala/${await this.roomSlug(roomId)}`;
+  }
+
+  /** `userIds` that have at least one push subscription — claiming a throttle for anyone else is a wasted write. */
+  private async withPushSubscription(userIds: string[]): Promise<string[]> {
+    if (userIds.length === 0) return [];
+    const withSub = new Set<string>();
+    for (const part of chunk(userIds, 90)) {
+      const rows = await this.db
+        .selectDistinct({ userId: schema.pushSubscriptions.userId })
+        .from(schema.pushSubscriptions)
+        .where(inArray(schema.pushSubscriptions.userId, part));
+      for (const r of rows) withSub.add(r.userId);
+    }
+    return userIds.filter((id) => withSub.has(id));
   }
 
   /**

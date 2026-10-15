@@ -103,10 +103,10 @@ export class PushService {
         signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
       });
       if (!res.ok) throw new PushHttpError(res.status);
-      await this.db
-        .update(schema.pushSubscriptions)
-        .set({ lastSuccessAt: new Date(), failureCount: 0 })
-        .where(eq(schema.pushSubscriptions.id, sub.id));
+      // Only touch the row to clear a failure streak; a healthy subscription needs no write.
+      if (sub.failureCount > 0) {
+        await this.db.update(schema.pushSubscriptions).set({ failureCount: 0 }).where(eq(schema.pushSubscriptions.id, sub.id));
+      }
       return "delivered";
     } catch (err) {
       const statusCode = (err as { statusCode?: number }).statusCode;

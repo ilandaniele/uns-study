@@ -127,6 +127,12 @@ describe("NotificationService", () => {
       expect(sendNotification).not.toHaveBeenCalled(); // no subscribed user has a push subscription in this test
     });
 
+    it("claims no throttle row for an opted-in user without a push subscription", async () => {
+      const recipients = await svc.handleSeatFreed(roomId, [change(seatIds[0]!, "FREE", "OCCUPIED")]);
+      expect(recipients.map((r) => r.userId)).toContain("subscriber"); // still gets the in-app alert
+      expect(await db.select().from(schema.notificationThrottles)).toHaveLength(0);
+    });
+
     it("batches several seats freeing in the same tick into one push with a combined message", async () => {
       await addPushSubscription("subscriber");
       await svc.handleSeatFreed(roomId, [change(seatIds[0]!, "FREE", "OCCUPIED"), change(seatIds[1]!, "FREE", "UNCERTAIN")]);
