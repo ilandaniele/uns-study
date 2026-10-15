@@ -29,7 +29,7 @@ export class AppDO extends DurableObject<WorkerEnv> {
     initEnv(workerEnv);
     this.db = createDoDb(ctx.storage);
     // Boot writes are best-effort: when the daily rows_written cap is hit, every write throws, and a throw
-    // here would reset the object on every request. Staying up keeps reads working until the cap resets.
+    // here would reset the object on every request (error 1101). Staying up keeps /health answering until the cap resets.
     ctx.blockConcurrencyWhile(async () => {
       await this.bootStep("migrate", () => migrateDo(this.db));
       await this.bootStep("seed", () => seedInitialRoom(this.db));
