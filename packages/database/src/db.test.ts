@@ -1,5 +1,5 @@
 import { count, eq, inArray } from "drizzle-orm";
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { chunk, inChunks, rowsPerInsert, SQLITE_MAX_PARAMS, type Db } from "./client.js";
 import { seedInitialRoom } from "./seed.js";
 import { buildTemplate, createTestDb } from "./testing.js";
@@ -49,6 +49,18 @@ describe("migrate + seed", () => {
     expect(chats).toHaveLength(1);
     expect(chats[0]?.slug).toBe("sala-principal");
     expect(chats[0]?.name).toBe("#sala-principal");
+  });
+
+  it("writes nothing when the room is already seeded (DO rows-written budget)", async () => {
+    const insert = vi.spyOn(db, "insert");
+    const update = vi.spyOn(db, "update");
+    const del = vi.spyOn(db, "delete");
+    const tx = vi.spyOn(db, "transaction");
+    await seedInitialRoom(db);
+    expect(insert).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+    expect(del).not.toHaveBeenCalled();
+    expect(tx).not.toHaveBeenCalled();
   });
 
   it("keeps a calibrated geofence across re-seeds (seed runs on every boot)", async () => {

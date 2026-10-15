@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
+import { schema } from "@sala/database";
 import { createTestDb } from "@sala/database/testing";
 import { FixedClock } from "./clock.js";
 import { ManualScheduler, RECURRING_JOBS, SqliteScheduler, type JobHandler } from "./scheduler.js";
@@ -165,7 +166,25 @@ describe("SqliteScheduler specifics", () => {
     s.ensureRecurring();
     s.ensureRecurring();
     for (const job of RECURRING_JOBS) expect(s.has(job.key)).toBe(true);
-    expect(s.nextDueAt()).toEqual(at(15_000));
+    expect(s.nextDueAt()).toEqual(at(60_000));
+  });
+
+  it("keeps recurring jobs in memory and drops legacy recurring rows", async () => {
+    const db = freshDb();
+    db.insert(schema.scheduledJobs).values({ key: "legacy", dueAt: at(0), intervalMs: 1000 }).run();
+    const s = new SqliteScheduler(db, new FixedClock(T0), () => undefined);
+    s.ensureRecurring();
+    s.every("tick", 1000);
+    expect(db.select().from(schema.scheduledJobs).all()).toEqual([]);
+    const ran: string[] = [];
+    s.register("tick", () => {
+      ran.push("tick");
+    });
+    await s.runDue(at(1000));
+    await s.runDue(at(1500));
+    await s.runDue(at(2000));
+    expect(ran).toEqual(["tick", "tick"]);
+    expect(db.select().from(schema.scheduledJobs).all()).toEqual([]);
   });
 
   it("persists across scheduler instances over the same db", async () => {

@@ -5,14 +5,16 @@ import { currentUser, type AppEnv } from "../http/context.js";
 import { optionalAuth, requireAuth } from "../http/guards.js";
 import { reply } from "../http/reply.js";
 import { zBody } from "../http/validate.js";
-import { hashIp } from "../security/security-event.service.js";
+import { IpWindowCounter } from "../http/middleware/global-ip-rate-limit.js";
 
 // Shared with the upload/Google/delete actions below — they all touch the same avatar row, so a
 // single per-user bucket is enough to stop abuse across all three.
 const AVATAR_WRITE_BUCKET_LIMIT = 10;
 const AVATAR_WRITE_BUCKET_WINDOW_S = 3600;
 const AVATAR_READ_LIMIT_PER_IP = 300;
-const AVATAR_READ_WINDOW_S = 60;
+const AVATAR_READ_WINDOW_MS = 60_000;
+// Counted in memory (the API is one Durable Object): a database-backed counter wrote a row on every avatar GET.
+const avatarReadCounter = new IpWindowCounter(AVATAR_READ_LIMIT_PER_IP, AVATAR_READ_WINDOW_MS);
 
 export const avatarsRouter = new Hono<AppEnv>();
 
@@ -49,9 +51,8 @@ avatarsRouter.post("/profiles/me/avatar/google", requireAuth(), async (c) => {
 // `GET /avatars/:userId` — public; gated on the owner's `show_avatar` privacy, except that the owner
 // themself always gets their own photo (so the /perfil preview works while it is still hidden).
 avatarsRouter.get("/avatars/:userId", optionalAuth, async (c) => {
-  const { rateLimit, avatars } = c.var.services;
-  const limit = await rateLimit.check(`avatar-read-ip:${hashIp(c.var.ip)}`, AVATAR_READ_LIMIT_PER_IP, AVATAR_READ_WINDOW_S);
-  if (!limit.allowed) throw ApiErrors.rateLimited();
+  const { avatars } = c.var.services;
+  if (!avatarReadCounter.hit(c.var.ip)) throw ApiErrors.rateLimited();
 
   const userId = c.req.param("userId");
   const viewer = c.var.user;

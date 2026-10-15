@@ -1,4 +1,4 @@
-import { getTableColumns, sql } from "drizzle-orm";
+import { and, eq, getTableColumns, sql } from "drizzle-orm";
 import { chunk, rowsPerInsert, type Db } from "./client.js";
 import { generateRoomLayout } from "./layout.js";
 import { roomTables, rooms, seatCurrentState, seats } from "./schema/rooms.js";
@@ -26,12 +26,82 @@ function batch(table: Parameters<typeof getTableColumns>[0], extraParams = 0): n
   return rowsPerInsert(Object.keys(getTableColumns(table)).length, extraParams);
 }
 
+type Layout = ReturnType<typeof generateRoomLayout>;
+
+/**
+ * True when the stored room already equals what the upsert below would write. Reads only: the seed runs
+ * on every Durable Object start, and rewriting ~130 unchanged rows each time burned the daily rows-written cap.
+ */
+function alreadySeeded(db: Db, layout: Layout): boolean {
+  const room = db.select().from(rooms).where(eq(rooms.slug, INITIAL_ROOM.slug)).get();
+  if (
+    !room ||
+    room.name !== INITIAL_ROOM.name ||
+    room.description !== INITIAL_ROOM.description ||
+    room.timezone !== INITIAL_ROOM.timezone ||
+    room.dailyResetTime !== INITIAL_ROOM.dailyResetTime ||
+    !room.active
+  ) {
+    return false;
+  }
+
+  const tables = db.select().from(roomTables).where(eq(roomTables.roomId, room.id)).all();
+  const tableByCode = new Map(tables.map((t) => [t.code, t]));
+  for (const t of layout.tables) {
+    const row = tableByCode.get(t.code);
+    if (
+      !row ||
+      row.label !== t.label ||
+      row.type !== t.type ||
+      row.x !== t.x ||
+      row.y !== t.y ||
+      row.width !== t.width ||
+      row.height !== t.height ||
+      row.rotation !== t.rotation
+    ) {
+      return false;
+    }
+  }
+
+  const seatRows = db
+    .select({ seat: seats, stateSeatId: seatCurrentState.seatId })
+    .from(seats)
+    .leftJoin(seatCurrentState, eq(seatCurrentState.seatId, seats.id))
+    .where(eq(seats.roomId, room.id))
+    .all();
+  const seatByCode = new Map(seatRows.map((r) => [r.seat.code, r]));
+  for (const s of layout.seats) {
+    const r = seatByCode.get(s.code);
+    if (
+      !r ||
+      !r.stateSeatId ||
+      r.seat.tableId !== tableByCode.get(s.tableCode)?.id ||
+      r.seat.seatNumber !== s.seatNumber ||
+      r.seat.x !== s.x ||
+      r.seat.y !== s.y ||
+      r.seat.rotation !== s.rotation ||
+      !r.seat.active
+    ) {
+      return false;
+    }
+  }
+
+  const chat = db
+    .select({ name: chatRooms.name })
+    .from(chatRooms)
+    .where(and(eq(chatRooms.roomId, room.id), eq(chatRooms.slug, INITIAL_CHAT_ROOM.slug)))
+    .get();
+  return chat?.name === INITIAL_CHAT_ROOM.name;
+}
+
 /**
  * Idempotent: upserts the initial room, its tables and seats, keyed by slug/code, in one synchronous
- * transaction. Multi-row inserts are chunked to stay under SQLite's bound-parameter limit.
+ * transaction. Multi-row inserts are chunked to stay under SQLite's bound-parameter limit. Skips the
+ * writes entirely when nothing would change.
  */
 export async function seedInitialRoom(db: Db): Promise<void> {
   const layout = generateRoomLayout();
+  if (alreadySeeded(db, layout)) return;
 
   db.transaction((tx) => {
     const [room] = tx

@@ -111,7 +111,9 @@ export function buildServices(deps: ContainerDeps): Services {
   // Notifications and the realtime gateway (roomState -> notifications -> realtime).
   const push = new PushService(db);
   const notifications = new NotificationService(db, push, roomState, scheduler);
-  const realtime = new RoomRealtimeGateway(hub, roomState, notifications, scheduler);
+  // No scheduler: the 250 ms summary debounce uses setTimeout. Pending changes live in memory anyway,
+  // and a SQL job cost ~6 rows written per seat change (DO Free plan caps rows written per day).
+  const realtime = new RoomRealtimeGateway(hub, roomState, notifications, null);
 
   // Rooms and social.
   const rooms = new RoomsService(db, roomState, roomCache);
