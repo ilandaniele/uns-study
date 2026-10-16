@@ -3,18 +3,19 @@
 import { usePathname } from "next/navigation";
 import Script from "next/script";
 import { useEffect, useRef } from "react";
-import { isAdSenseContentPath } from "@/features/ads/ad-config";
+import { type AdPlacement, isAdSenseAllowed } from "@/features/ads/ad-config";
 import { useAdFree } from "@/features/ads/useAdFree";
 
 const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
 
-export type AdPlacement = "community-feed" | "rail" | "article";
+export type { AdPlacement };
 
 const SLOT_BY_PLACEMENT: Record<AdPlacement, string | undefined> = {
   "community-feed": process.env.NEXT_PUBLIC_ADSENSE_SLOT_COMMUNITY_FEED,
   rail: process.env.NEXT_PUBLIC_ADSENSE_SLOT_RAIL,
   // No dedicated unit yet: articles reuse the community display unit until one is created.
   article: process.env.NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE || process.env.NEXT_PUBLIC_ADSENSE_SLOT_COMMUNITY_FEED,
+  "room-bottom": process.env.NEXT_PUBLIC_ADSENSE_SLOT_ROOM_BOTTOM,
 };
 
 declare global {
@@ -33,7 +34,7 @@ export function AdSlot({ placement }: { placement: AdPlacement }) {
   const { hideAds: adFree } = useAdFree();
   // Defense in depth for AdSense policy: never render a unit outside a publisher-content route.
   const pathname = usePathname();
-  const hideAds = adFree || !isAdSenseContentPath(pathname);
+  const hideAds = adFree || !isAdSenseAllowed(placement, pathname);
   const insRef = useRef<HTMLModElement | null>(null);
   const pushed = useRef(false);
 

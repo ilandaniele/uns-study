@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { AdSlot } from "@/components/AdSlot";
 import { useMediaQuery } from "@/lib/use-media-query";
-import { ADSENSE_CLIENT, ADSENSE_SLOT_RAIL, RAIL_MIN_VIEWPORT_PX, isAdSenseContentPath, isExcludedPath } from "./ad-config";
+import { ADSENSE_CLIENT, ADSENSE_SLOT_RAIL, RAIL_MIN_VIEWPORT_PX, isAdSenseAllowed, isExcludedPath } from "./ad-config";
 import { HouseAd } from "./HouseAd";
 import { useAdFree } from "./useAdFree";
 
@@ -16,8 +16,8 @@ export function SideRails() {
 
   if (hideAds || !wide || isExcludedPath(pathname)) return null;
 
-  // Google ads only beside real publisher content; app screens (the map) get house ads.
-  const useAdSense = !!ADSENSE_CLIENT && !!ADSENSE_SLOT_RAIL && isAdSenseContentPath(pathname);
+  // Google ads beside publisher content and the room home; other app screens get house ads.
+  const useAdSense = !!ADSENSE_CLIENT && !!ADSENSE_SLOT_RAIL && isAdSenseAllowed("rail", pathname);
   const content = useAdSense ? <AdSlot placement="rail" /> : <HouseAd variant="rail" />;
 
   return (

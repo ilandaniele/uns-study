@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { AdSlot } from "@/components/AdSlot";
 import { GUIDES } from "@/features/guides/guides";
 import { RoomSkeleton } from "@/features/room/RoomSkeleton";
 import { RoomPageClient } from "./sala/[slug]/RoomPageClient";
@@ -18,6 +19,9 @@ export default function HomePage() {
         <RoomPageClient slug="principal" />
       </Suspense>
       <AboutSection />
+      <div className="mx-auto max-w-7xl px-4 pb-10">
+        <AdSlot placement="room-bottom" />
+      </div>
     </>
   );
 }

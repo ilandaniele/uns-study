@@ -37,6 +37,23 @@ export function isAdSenseContentPath(pathname: string | null | undefined): boole
   return ADSENSE_CONTENT_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
+/**
+ * The home is the room map plus a server-rendered "Sobre Sala de Estudio" text block. Units there
+ * sit only beside the map (rails) or below that text, never next to the seats or buttons.
+ */
+export function isAdSenseRoomPath(pathname: string | null | undefined): boolean {
+  return pathname === "/";
+}
+
+export type AdPlacement = "community-feed" | "rail" | "article" | "room-bottom";
+
+/** Placements allowed on the room home: beside the map or below its text, never among the seats. */
+const ROOM_PLACEMENTS: ReadonlySet<AdPlacement> = new Set(["rail", "room-bottom"]);
+
+export function isAdSenseAllowed(placement: AdPlacement, pathname: string | null | undefined): boolean {
+  return isAdSenseContentPath(pathname) || (ROOM_PLACEMENTS.has(placement) && isAdSenseRoomPath(pathname));
+}
+
 export function isExcludedPath(pathname: string | null | undefined): boolean {
   if (!pathname) return false;
   return EXCLUDED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
