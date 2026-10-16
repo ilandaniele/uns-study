@@ -2,27 +2,47 @@ import type { MeDto } from "@sala/contracts";
 
 export type ProLock = "unlocked" | "locked" | "unknown";
 
-/** Pro = paying subscriber (same as ad-free). Nothing is locked while there is nothing to sell. */
-export function proLockState(me: Pick<MeDto, "adFree" | "subscriptionsEnabled"> | null, loading: boolean): ProLock {
+/** `me.pro` is the server's isPro(): a subscriber, staff, or everyone while there is nothing to sell. */
+export function proLockState(me: Pick<MeDto, "pro"> | null, loading: boolean): ProLock {
   // Without `me` we cannot know whether anything is on sale, so never lock (loading or failed fetch).
   if (!me || loading) return "unknown";
-  if (me.adFree || !me.subscriptionsEnabled) return "unlocked";
-  return "locked";
+  return me.pro ? "unlocked" : "locked";
 }
 
-export type ProFeatureId = "focus_pip" | "focus_fullscreen" | "focus_sounds" | "focus_stats";
+export type ProFeatureId =
+  | "focus_pip" | "focus_fullscreen" | "focus_sounds" | "focus_stats"
+  | "focus_custom" | "seat_watch" | "study_history" | "forecast" | "favorites"
+  | "group_study" | "weekly_goal" | "streak_freeze" | "exams" | "auto_extend" | "themes";
 
 export const PRO_FEATURES: Record<ProFeatureId, { title: string; description: string }> = {
   focus_pip: { title: "Ventana flotante", description: "Tené el temporizador siempre a la vista mientras estudiás en otra pestaña." },
   focus_fullscreen: { title: "Pantalla completa", description: "Un temporizador grande y sin distracciones para concentrarte de verdad." },
   focus_sounds: { title: "Sonidos ambiente", description: "Lluvia, océano o fuego de fondo mientras corre cada bloque de foco." },
   focus_stats: { title: "Historial y racha", description: "Mirá tus últimos 7 días y tu racha para mantener el ritmo de estudio." },
+  focus_custom: { title: "Temporizador a medida", description: "Armá tus propios bloques de foco y descanso con la duración que te sirva." },
+  seat_watch: { title: "Aviso de lugar libre", description: "Te avisamos cuando se libere el lugar que querés. Solo avisa: no te lo guarda." },
+  study_history: { title: "Historial de estudio", description: "Mirá cuánto estudiaste en los últimos 30 o 90 días, a qué hora rendís más y exportalo." },
+  forecast: { title: "Pronóstico de la sala", description: "Mirá a qué hora suele estar más llena o más vacía la sala según los últimos días." },
+  favorites: { title: "Lugares favoritos", description: "Guardá hasta 3 lugares favoritos por sala y encontralos al toque en el mapa." },
+  group_study: { title: "Estudio en grupo", description: "Mirá dónde se sentó cada integrante de tu grupo y compartan un temporizador de foco." },
+  weekly_goal: { title: "Meta semanal", description: "Fijate una meta de horas por semana y seguí tu avance, con un recordatorio opcional." },
+  streak_freeze: { title: "Congelar la racha", description: "Una vez por mes podés congelar un día sin estudio para no perder tu racha." },
+  exams: { title: "Plan de exámenes", description: "Cargá tus fechas de examen y mirá cuántas horas por día te faltan para llegar." },
+  auto_extend: { title: "Sigo acá automático", description: "Renovamos tu check-in solo cuando estás en la sala, así no te quedás sin lugar." },
+  themes: { title: "Paletas de color", description: "Cambiá los colores de la app y elegí la paleta que más te guste." },
 };
 
 export const PRO_BENEFITS: string[] = [
   "Sin anuncios en toda la app",
-  "Ventana flotante del temporizador",
-  "Pantalla completa en Foco",
-  "Sonidos ambiente",
-  "Historial y racha de estudio",
+  "Avisos de lugar: te avisamos cuando se libera el que esperás",
+  "Historial de estudio de 30 y 90 días, con exportación",
+  "Pronóstico de ocupación de la sala por hora",
+  "Hasta 3 lugares favoritos por sala",
+  "Estudio en grupo: ubicación del grupo y foco compartido",
+  "Meta semanal de horas con recordatorio",
+  "Congelar la racha una vez por mes",
+  "Temporizador a medida, ventana flotante, pantalla completa y sonidos ambiente",
+  "Plan de exámenes con horas por día",
+  "Sigo acá automático",
+  "Paletas de color",
 ];

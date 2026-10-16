@@ -9,6 +9,7 @@ import { RolesService } from "../users/roles.service.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { StudyService } from "../study/study.service.js";
 import { toDto as toCheckInDto } from "../checkins/checkins.service.js";
+import type { ProService } from "../subscriptions/pro.js";
 
 type ProfileRow = typeof schema.userProfiles.$inferSelect;
 type PrivacyRow = typeof schema.userPrivacySettings.$inferSelect;
@@ -22,6 +23,8 @@ export class ProfilesService {
     private readonly aliases: AliasService,
     private readonly restrictions: RestrictionService,
     private readonly roles: RolesService,
+    /** Pro badge lookups; null in tests that construct the service directly. */
+    private readonly pro: ProService | null = null,
   ) {}
 
   /** Rows are created lazily on first read/write — there's no signup-time profile step. Also
@@ -113,6 +116,7 @@ export class ProfilesService {
 
     // Anyone shown as alias (HIDDEN, or a visible mode with empty name fields) leaks nothing real.
     const showsIdentity = Boolean(profile) && !needsAlias(profile!);
+    const proBadge = showsIdentity && this.pro ? (await this.pro.badgeIds([targetUserId])).has(targetUserId) : false;
     return {
       userId: targetUserId,
       displayName: name,
@@ -128,6 +132,7 @@ export class ProfilesService {
       allowsDirectMessages: privacy?.allowDirectMessages ?? true,
       blockedByMe: Boolean(blockedByMe),
       adminBadge: showsAdminBadge(isAdmin, profile ?? null, privacy ?? null),
+      proBadge,
     };
   }
 

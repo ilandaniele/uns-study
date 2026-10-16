@@ -20,9 +20,11 @@ export interface RoomMapProps {
   adminBadgeSeatIds?: ReadonlySet<string>;
   /** "Solo libres": fade every seat that isn't FREE (the viewer's own and selected seat stay visible). */
   onlyFree?: boolean;
-  /** The viewer's favorite seat, drawn with a small star. */
-  favoriteSeatId?: string | null;
+  /** The viewer's favorite seats, each drawn with a small star. */
+  favoriteSeatIds?: readonly string[];
 }
+
+const NO_FAVORITES: readonly string[] = [];
 
 // Seat status keys that get a shared radial-gradient "glossy sphere" fill, defined once below
 // and referenced by id from Seat.tsx — avoids per-seat gradients/filters across 108 seats.
@@ -33,7 +35,7 @@ const BACK_WINDOWS = 6;
 const SIDE_WINDOW_LENGTH = 220;
 const SIDE_WINDOW_Y = [130, 400, 670, 940, 1210];
 
-export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlightTableCode = null, avatarBySeatId, adminBadgeSeatIds, onlyFree = false, favoriteSeatId = null }: RoomMapProps) {
+export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlightTableCode = null, avatarBySeatId, adminBadgeSeatIds, onlyFree = false, favoriteSeatIds = NO_FAVORITES }: RoomMapProps) {
   // Photo of the real room when one matches this layout; the drawn room otherwise.
   const skin = useMemo(() => photoSkinFor(map), [map]);
   const { width, height } = skin?.viewBox ?? map.viewBox;
@@ -97,7 +99,7 @@ export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, on
             avatar={avatarBySeatId?.get(seat.id) ?? null}
             adminBadge={adminBadgeSeatIds?.has(seat.id) ?? false}
             dimmed={onlyFree && seat.status !== "FREE" && seat.id !== mySeatId && seat.id !== selectedSeatId}
-            isFavorite={seat.id === favoriteSeatId}
+            isFavorite={favoriteSeatIds.includes(seat.id)}
             photo={skin !== null}
           />
         );

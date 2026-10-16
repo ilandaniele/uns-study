@@ -45,3 +45,44 @@ export function isForeignKeyViolation(err: unknown): boolean {
 export function isCheckViolation(err: unknown): boolean {
   return find(err, ["SQLITE_CONSTRAINT_CHECK"], "CHECK constraint failed") !== undefined;
 }
+
+const MISSING_SCHEMA_TEXTS = ["no such table", "no such column", "has no column named"];
+
+/** True for "no such table", "no such column", "has no column named" anywhere in the err/.cause chain. */
+export function isMissingSchemaError(err: unknown): boolean {
+  return chain(err).some((e) => {
+    const message = typeof e.message === "string" ? e.message : "";
+    return MISSING_SCHEMA_TEXTS.some((text) => message.includes(text));
+  });
+}
+
+const loggedMissingSchema = new Set<string>();
+
+function noteMissingSchema(err: unknown): void {
+  const message = err instanceof Error ? err.message : String(err);
+  if (loggedMissingSchema.has(message)) return;
+  loggedMissingSchema.add(message);
+  console.warn(JSON.stringify({ evt: "missing_schema", msg: message }));
+}
+
+/** Runs fn; on a missing-schema error returns fallback (and logs once per process per message). Rethrows anything else. */
+export async function orDefault<T>(fn: () => Promise<T> | T, fallback: T): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    if (!isMissingSchemaError(err)) throw err;
+    noteMissingSchema(err);
+    return fallback;
+  }
+}
+
+/** Sync variant for use inside db.transaction callbacks. */
+export function orDefaultSync<T>(fn: () => T, fallback: T): T {
+  try {
+    return fn();
+  } catch (err) {
+    if (!isMissingSchemaError(err)) throw err;
+    noteMissingSchema(err);
+    return fallback;
+  }
+}

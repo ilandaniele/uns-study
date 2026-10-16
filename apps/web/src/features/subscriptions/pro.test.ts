@@ -5,15 +5,13 @@ describe("proLockState", () => {
   it("is unknown while there is no data", () => {
     expect(proLockState(null, true)).toBe("unknown");
     expect(proLockState(null, false)).toBe("unknown");
+    expect(proLockState({ pro: true }, true)).toBe("unknown");
   });
-  it("unlocks for subscribers", () => {
-    expect(proLockState({ adFree: true, subscriptionsEnabled: true }, false)).toBe("unlocked");
+  it("unlocks when the server says pro", () => {
+    expect(proLockState({ pro: true }, false)).toBe("unlocked");
   });
-  it("does not lock when subscriptions are not on sale", () => {
-    expect(proLockState({ adFree: false, subscriptionsEnabled: false }, false)).toBe("unlocked");
-  });
-  it("locks free users when subscriptions are enabled", () => {
-    expect(proLockState({ adFree: false, subscriptionsEnabled: true }, false)).toBe("locked");
+  it("locks when the server says not pro", () => {
+    expect(proLockState({ pro: false }, false)).toBe("locked");
   });
 });
 
@@ -24,5 +22,12 @@ describe("pro copy", () => {
       expect(f.description).not.toBe("");
     }
     expect(PRO_BENEFITS.length).toBeGreaterThan(0);
+  });
+  it("lists a benefit for each of the 11 new features", () => {
+    const text = PRO_BENEFITS.join(" | ").toLowerCase();
+    for (const word of ["avisos de lugar", "historial", "pronóstico", "favoritos", "grupo", "meta semanal", "racha", "temporizador", "exámenes", "sigo acá", "paletas"]) {
+      expect(text).toContain(word);
+    }
+    expect(new Set(PRO_BENEFITS).size).toBe(PRO_BENEFITS.length);
   });
 });

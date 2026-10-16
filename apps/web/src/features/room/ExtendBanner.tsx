@@ -1,5 +1,8 @@
 "use client";
 
+import { useAutoExtendEnabled } from "@/features/auto-extend/useAutoExtendPrefs";
+import { usePro } from "@/features/subscriptions/usePro";
+
 export interface ExtendBannerProps {
   minutesLeft: number;
   pending: boolean;
@@ -14,12 +17,18 @@ export interface ExtendBannerProps {
  * caller's active check-in has 5 minutes or less remaining.
  */
 export function ExtendBanner({ minutesLeft, pending, onExtend, onCheckOut, locating = false }: ExtendBannerProps) {
+  const { lock } = usePro();
+  const [autoExtend] = useAutoExtendEnabled();
+  const autoActive = autoExtend && lock === "unlocked";
   return (
     <div
       role="status"
       className="flex flex-col gap-2 rounded-control border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between"
     >
-      <p className="font-medium">¿Seguís acá? Tu lugar se libera en {minutesLeft} min.</p>
+      <div>
+        <p className="font-medium">¿Seguís acá? Tu lugar se libera en {minutesLeft} min.</p>
+        {autoActive ? <p className="text-xs">Sigo acá automático activo: lo intentamos con tu ubicación mientras tengas la app abierta.</p> : null}
+      </div>
       <div className="flex gap-2">
         <button
           type="button"

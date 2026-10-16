@@ -5,6 +5,7 @@ import { primeLocation } from "@/lib/geolocation";
 import type { SeatAvatarDto, SeatDto } from "@sala/contracts";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { ForecastCard } from "@/features/forecast/ForecastCard";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FIRST_VISIT_HOW_TO_CLOSED, markHowToSeen, shouldShowHowToOnFirstVisit } from "@/features/help/how-to-seen";
@@ -19,7 +20,9 @@ import { RoomMap } from "@/features/room/RoomMap";
 import { RoomQuickActions } from "@/features/room/RoomQuickActions";
 import { RoomSocialProof, UpdatedAgo } from "@/features/room/RoomSocialProof";
 import { useRoomTodayStats } from "@/features/room/useRoomTodayStats";
-import { useFavoriteSeat } from "@/features/room/useFavoriteSeat";
+import { useFavoriteSeats } from "@/features/room/useFavoriteSeat";
+import { dueFavoriteToasts, freedFavorites } from "@/features/room/favorite-seats";
+import { usePro } from "@/features/subscriptions/usePro";
 import { RightPanelEmptyState } from "@/features/room/RightPanelEmptyState";
 import { SummaryCounters } from "@/features/room/SummaryCounters";
 import { freedSeatsToastMessage, seatDisplayLabel, todayLabel } from "@/features/room/format";
@@ -148,7 +151,8 @@ export function RoomPageClient({ slug }: { slug: string }) {
   // Seat the viewer just marked "Está guardado" — SeatDetail offers to report / ask to free it.
   const [savedPromptSeatId, setSavedPromptSeatId] = useState<string | null>(null);
   const [onlyFree, setOnlyFree] = useState(false);
-  const { favoriteSeatId, toggleFavorite } = useFavoriteSeat(slug);
+  const { favoriteSeatIds, isFavorite, toggleFavorite, notice: favoriteNotice } = useFavoriteSeats(slug);
+  const { lock: proLock } = usePro();
 
   // Deep link (?seat=<id>, e.g. from a "seat freed" push notification): select it once the map has
   // loaded and confirms the seat actually exists. Only runs once per landing — after that, seat
@@ -177,6 +181,27 @@ export function RoomPageClient({ slug }: { slug: string }) {
   }, [occupantsBySeatId]);
   const seatById = useMemo(() => new Map((map?.seats ?? []).map((seat) => [seat.id, seat])), [map]);
   const tableById = useMemo(() => new Map((map?.tables ?? []).map((table) => [table.id, table])), [map]);
+  // Pro: tell the viewer when one of their favorites frees up (client-only; at most once per seat per 10 min).
+  const [favoriteToast, setFavoriteToast] = useState<{ seatId: string; message: string } | null>(null);
+  const prevMapRef = useRef<typeof map>(null);
+  const favoriteToastShownAt = useRef(new Map<string, number>());
+  useEffect(() => {
+    const prev = prevMapRef.current;
+    prevMapRef.current = map;
+    if (!map || proLock !== "unlocked" || activeCheckIn) return;
+    const now = Date.now();
+    const due = dueFavoriteToasts(freedFavorites(prev, map, favoriteSeatIds), favoriteToastShownAt.current, now);
+    const seat = due.length > 0 ? map.seats.find((s) => s.id === due[0]) : undefined;
+    if (!seat) return;
+    for (const id of due) favoriteToastShownAt.current.set(id, now);
+    const table = map.tables.find((t) => t.id === seat.tableId) ?? null;
+    setFavoriteToast({ seatId: seat.id, message: `Tu lugar favorito ${seatDisplayLabel(table, seat.code, seat.seatNumber)} está libre` });
+  }, [map, proLock, activeCheckIn, favoriteSeatIds]);
+  useEffect(() => {
+    if (!favoriteToast) return;
+    const id = window.setTimeout(() => setFavoriteToast(null), 8000);
+    return () => window.clearTimeout(id);
+  }, [favoriteToast]);
   const selectedSeat = (selectedSeatId ? seatById.get(selectedSeatId) : null) ?? null;
   const selectedTable = (selectedSeat ? tableById.get(selectedSeat.tableId) : null) ?? null;
   // Mobile seat sheet: short "peek" by default; collapses again whenever another seat is picked.
@@ -409,11 +434,12 @@ export function RoomPageClient({ slug }: { slug: string }) {
       avatarBySeatId={avatarBySeatId}
       adminBadgeSeatIds={adminBadgeSeatIds}
       onlyFree={onlyFree}
-      favoriteSeatId={favoriteSeatId}
+      favoriteSeatIds={favoriteSeatIds}
     />
   );
 
-  const favoriteSeat = (favoriteSeatId ? seatById.get(favoriteSeatId) : null) ?? null;
+  const favoriteSeats = favoriteSeatIds.map((id) => seatById.get(id)).filter((seat): seat is SeatDto => seat !== undefined);
+  const favoriteSeat = favoriteSeats.find((seat) => seat.status === "FREE") ?? favoriteSeats[0] ?? null;
   const quickActions = (
     <>
       <RoomQuickActions
@@ -421,6 +447,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
         onlyFree={onlyFree}
         onToggleOnlyFree={() => setOnlyFree((value) => !value)}
         favoriteSeat={favoriteSeat}
+        favoriteSeatIds={favoriteSeatIds}
         favoriteTable={favoriteSeat ? tableById.get(favoriteSeat.tableId) ?? null : null}
         onSelectSeat={openSeat}
       />
@@ -458,9 +485,10 @@ export function RoomPageClient({ slug }: { slug: string }) {
       nearbyOccupants={nearbyOccupants}
       viewBoxWidth={map.viewBox.width}
       roomId={map.room.id}
+      roomSlug={slug}
       showSavedPrompt={savedPromptSeatId === selectedSeat.id}
       onDismissSavedPrompt={() => setSavedPromptSeatId(null)}
-      isFavorite={favoriteSeatId === selectedSeat.id}
+      isFavorite={isFavorite(selectedSeat.id)}
       onToggleFavorite={() => toggleFavorite(selectedSeat.id)}
       tableSeats={selectedTableSeats}
       mySeatId={mySeatId}
@@ -475,6 +503,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
     <>
       {isAdmin ? <MarkAllOccupiedCard roomSlug={slug} seats={map.seats} onDone={handleChanged} /> : null}
       {map.summary.free === 0 ? <EnableSeatFreedCta /> : null}
+      <ForecastCard roomSlug={slug} />
       <AnnouncementsBanner roomSlug={slug} socket={socket} />
     </>
   );
@@ -666,6 +695,20 @@ export function RoomPageClient({ slug }: { slug: string }) {
           pending={pending}
           onConfirm={() => void performCheckIn(confirmMove.seatId, confirmMove.fromDisputeWon, confirmMove.durationMinutes)}
           onCancel={() => setConfirmMove(null)}
+        />
+      ) : null}
+      {!toast && (favoriteToast || favoriteNotice) ? (
+        <SeatFreedToast
+          message={favoriteNotice ?? favoriteToast!.message}
+          onView={
+            !favoriteNotice && favoriteToast
+              ? () => {
+                  setSelectedSeatId(favoriteToast.seatId);
+                  setFavoriteToast(null);
+                }
+              : undefined
+          }
+          onDismiss={() => setFavoriteToast(null)}
         />
       ) : null}
       {toast ? (

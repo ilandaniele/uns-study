@@ -59,6 +59,7 @@ function Podium({ entries, format }: { entries: RankingEntryDto[]; format: (valu
                 aliasAnimal={entry.aliasAnimal}
                 size={entry.rank === 1 ? 64 : 52}
                 ringColor={MEDAL[entry.rank]}
+                proBadge={entry.proBadge}
               />
               {entry.adminBadge ? <AdminBadge size={entry.rank === 1 ? 64 : 52} edge="top" /> : null}
               <span
@@ -104,7 +105,7 @@ function PodiumAvatarLink({ userId, children }: { userId: string | null; childre
 
 function RankingRow({ entry, value, highlighted }: { entry: RankingEntryDto; value: string; highlighted?: boolean }) {
   const rowAvatar = (
-    <Avatar userId={entry.userId ?? entry.displayName} name={entry.displayName} url={entry.avatarUrl} aliasAnimal={entry.aliasAnimal} size={40} adminBadge={entry.adminBadge} />
+    <Avatar userId={entry.userId ?? entry.displayName} name={entry.displayName} url={entry.avatarUrl} aliasAnimal={entry.aliasAnimal} size={40} adminBadge={entry.adminBadge} proBadge={entry.proBadge} />
   );
   return (
     <li className={`flex items-center gap-3 px-4 py-3 ${highlighted ? "bg-primary/10" : ""}`}>

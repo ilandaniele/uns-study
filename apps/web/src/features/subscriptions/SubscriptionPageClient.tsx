@@ -109,7 +109,7 @@ export function SubscriptionPageClient() {
       <BackButton fallbackHref="/perfil" />
       <header className="space-y-2">
         <h1 className="t-heading">Sala de Estudio Pro</h1>
-        <p className="text-sm text-muted">Sin anuncios y todo Foco</p>
+        <p className="text-sm text-muted">Sin anuncios y todas las herramientas de estudio</p>
         {price !== undefined && <p className="text-lg font-semibold text-primary tabular-nums">${price.toLocaleString("es-AR")} por mes</p>}
       </header>
 

@@ -1,12 +1,15 @@
 import { randomInt } from "node:crypto";
-import { and, eq, gt, inArray, lt, ne, notExists, sql } from "drizzle-orm";
-import { chunk, rowsPerInsert, schema, type Db } from "@sala/database";
+import { and, eq, gt, inArray, ne, notExists, sql } from "drizzle-orm";
+import { chunk, schema, type Db } from "@sala/database";
 import { DISPUTE_MINUTES, seatLabel } from "@sala/contracts";
+import { isMissingSchemaError } from "../common/sqlite-errors.js";
 import { Logger } from "../platform/logger.js";
 import type { Scheduler } from "../platform/scheduler.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { PushService } from "./push.service.js";
 import { mapWithConcurrency } from "./concurrency.js";
+import { claimNotificationThrottle } from "./throttle.js";
+import type { SeatWatchService } from "../seat-watch/seat-watch.service.js";
 
 /** At most one "seat freed" push per user per this many minutes. */
 const SEAT_FREED_THROTTLE_MIN = 10;
@@ -66,6 +69,8 @@ export class NotificationService {
     private readonly push: PushService,
     private readonly roomState: RoomStateService,
     private readonly scheduler: Scheduler,
+    /** Pro seat watches; null in tests that construct the service directly. */
+    private readonly seatWatch: SeatWatchService | null = null,
   ) {}
 
   /**
@@ -121,16 +126,62 @@ export class NotificationService {
     ];
     if (freedSeatIds.length === 0) return [];
 
+    // Pro seat watches get their own, more specific push; those users are left out of the generic one.
+    const watchers = await this.notifySeatWatchers(roomId, freedSeatIds);
+
     const eligible = await this.eligibleSubscribers(roomId, "seatFreed");
     if (eligible.length === 0) return [];
 
     try {
-      await this.sendSeatFreedPush(roomId, freedSeatIds, eligible, summary);
+      await this.sendSeatFreedPush(
+        roomId,
+        freedSeatIds,
+        eligible.filter((userId) => !watchers.has(userId)),
+        summary,
+      );
     } catch (err) {
       this.logger.error("Failed to send seat-freed push batch", err instanceof Error ? err.stack : String(err));
     }
 
     return eligible.map((userId) => ({ userId, seatIds: freedSeatIds }));
+  }
+
+  /**
+   * Claims (and deletes) the seat watches matching `freedSeatIds` and pushes each watcher who has a
+   * push subscription and isn't checked into the room. Never throws: a missing table or a failed
+   * push must not break the seat-freed flow. Returns every matched user, so the caller can keep them
+   * out of the generic push.
+   */
+  private async notifySeatWatchers(roomId: string, freedSeatIds: string[]): Promise<Set<string>> {
+    if (!this.seatWatch) return new Set();
+    try {
+      const matches = await this.seatWatch.claimMatches(roomId, freedSeatIds, new Date());
+      if (matches.length === 0) return new Set();
+
+      const toPush: typeof matches = [];
+      for (const match of matches) {
+        if (!(await this.hasActiveCheckIn(match.userId, roomId))) toPush.push(match);
+      }
+      const subscribed = new Set(await this.withPushSubscription(toPush.map((m) => m.userId)));
+      const slug = await this.roomSlug(roomId);
+      await mapWithConcurrency(
+        toPush.filter((m) => subscribed.has(m.userId)),
+        SEND_CONCURRENCY,
+        async (match) =>
+          this.push.sendToUser(match.userId, {
+            title: "Se liberó un lugar que estabas esperando",
+            body: await this.describeSeat(match.seatId),
+            url: `/sala/${slug}?seat=${match.seatId}`,
+            tag: "seat-watch",
+          }),
+      );
+      return new Set(matches.map((m) => m.userId));
+    } catch (err) {
+      if (!isMissingSchemaError(err)) {
+        this.logger.error("Failed to notify seat watchers", err instanceof Error ? err.stack : String(err));
+      }
+      return new Set();
+    }
   }
 
   /** Called when a fresh (not moved/extended) check-in is created by an ADMIN/MODERATOR. Push-only
@@ -292,25 +343,6 @@ export class NotificationService {
    * and both send. Callers must only send to the ids this returns.
    */
   private async claimThrottle(userIds: string[], type: string, minutes: number): Promise<string[]> {
-    if (userIds.length === 0) return [];
-    const now = new Date();
-    const cutoff = new Date(now.getTime() - minutes * 60_000);
-    const claimed: string[] = [];
-    this.db.transaction((tx) => {
-      for (const part of chunk(userIds, rowsPerInsert(3, 2))) {
-        const rows = tx
-          .insert(schema.notificationThrottles)
-          .values(part.map((userId) => ({ userId, type, lastNotifiedAt: now })))
-          .onConflictDoUpdate({
-            target: [schema.notificationThrottles.userId, schema.notificationThrottles.type],
-            set: { lastNotifiedAt: now },
-            setWhere: lt(schema.notificationThrottles.lastNotifiedAt, cutoff),
-          })
-          .returning({ userId: schema.notificationThrottles.userId })
-          .all();
-        claimed.push(...rows.map((r) => r.userId));
-      }
-    });
-    return claimed;
+    return claimNotificationThrottle(this.db, userIds, type, minutes, new Date());
   }
 }

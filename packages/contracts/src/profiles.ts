@@ -63,6 +63,8 @@ export interface PublicProfileDto {
   blockedByMe: boolean;
   /** Draw the gold "Admin" badge: an admin with a visible identity who kept the badge on. */
   adminBadge: boolean;
+  /** Draw the Pro ring: a paid subscription (staff do not get it). */
+  proBadge?: boolean;
 }
 
 export interface RoomPersonDto {
@@ -77,6 +79,8 @@ export interface RoomPersonDto {
   aliasAnimal?: string;
   /** Draw the gold "Admin" badge (visible identities only). */
   adminBadge?: boolean;
+  /** Draw the Pro ring: a paid subscription (staff do not get it). */
+  proBadge?: boolean;
 }
 
 /** What to draw on an occupied seat: the person's photo, their alias animal, or a generic silhouette. */
@@ -92,6 +96,8 @@ export interface SeatOccupantDto {
   avatar: SeatAvatarDto;
   /** Draw the gold "Admin" badge (visible identities only). */
   adminBadge?: boolean;
+  /** Draw the Pro ring: a paid subscription (staff do not get it). */
+  proBadge?: boolean;
 }
 
 /** A seat that reads OCCUPIED ("Está ocupado") or SAVED ("Está guardado") only because someone marked it; nobody is checked in. */

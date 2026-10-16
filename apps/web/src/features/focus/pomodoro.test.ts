@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  CUSTOM_PRESETS_MAX,
   DEFAULT_SETTINGS,
   advance,
+  customPresetIdFor,
+  customPresetSettings,
+  sanitizeCustomPreset,
+  sanitizeCustomPresets,
+  upsertCustomPreset,
   applySettings,
   formatClock,
   initialState,
@@ -165,5 +171,58 @@ describe("stats", () => {
     expect(days).toHaveLength(7);
     expect(days[6].minutes).toBe(25);
     expect(days[0].minutes).toBe(0);
+  });
+});
+
+describe("90/20 preset", () => {
+  it("is recognized by presetIdFor", () => {
+    expect(presetIdFor({ ...DEFAULT_SETTINGS, focusMin: 90, shortMin: 20, longMin: 30 })).toBe("90-20");
+    expect(presetIdFor({ ...DEFAULT_SETTINGS, focusMin: 25, shortMin: 5, longMin: 15 })).toBe("25-5");
+  });
+});
+
+describe("custom presets", () => {
+  const mk = (i: number) => ({ id: `p${i}`, name: `P${i}`, focusMin: 30 + i, shortMin: 5 });
+
+  it("clamps durations to the allowed bounds", () => {
+    expect(sanitizeCustomPreset({ id: "a", name: "x", focusMin: 1, shortMin: 99, longMin: 500 })).toEqual({
+      id: "a",
+      name: "x",
+      focusMin: 5,
+      shortMin: 60,
+      longMin: 90,
+    });
+    expect(sanitizeCustomPreset({ id: "a", name: "x", focusMin: 999, shortMin: 0 })).toMatchObject({ focusMin: 180, shortMin: 1 });
+  });
+
+  it("rejects unusable entries and names an unnamed one after its times", () => {
+    expect(sanitizeCustomPreset(null)).toBeNull();
+    expect(sanitizeCustomPreset({ name: "x", focusMin: 25, shortMin: 5 })).toBeNull();
+    expect(sanitizeCustomPreset({ id: "a", focusMin: "abc", shortMin: 5 })).toBeNull();
+    expect(sanitizeCustomPreset({ id: "a", name: "  ", focusMin: 25, shortMin: 5 })?.name).toBe("25 / 5");
+  });
+
+  it("caps the list at CUSTOM_PRESETS_MAX and drops duplicate ids", () => {
+    const raw = Array.from({ length: 9 }, (_, i) => mk(i));
+    expect(sanitizeCustomPresets(raw)).toHaveLength(CUSTOM_PRESETS_MAX);
+    expect(sanitizeCustomPresets([mk(1), mk(1)])).toHaveLength(1);
+    expect(sanitizeCustomPresets("x")).toEqual([]);
+  });
+
+  it("upsert replaces by id and ignores a new one past the cap", () => {
+    let list = Array.from({ length: CUSTOM_PRESETS_MAX }, (_, i) => mk(i));
+    expect(upsertCustomPreset(list, mk(99))).toHaveLength(CUSTOM_PRESETS_MAX);
+    list = upsertCustomPreset(list, { ...mk(2), name: "Nuevo" });
+    expect(list).toHaveLength(CUSTOM_PRESETS_MAX);
+    expect(list[2].name).toBe("Nuevo");
+    expect(upsertCustomPreset([], mk(0))).toHaveLength(1);
+  });
+
+  it("matches the current settings, falling back to the current long break", () => {
+    const list = [{ id: "a", name: "A", focusMin: 35, shortMin: 7 }];
+    const s = { ...DEFAULT_SETTINGS, focusMin: 35, shortMin: 7 };
+    expect(customPresetIdFor(s, list)).toBe("a");
+    expect(customPresetSettings(list[0], s).longMin).toBe(s.longMin);
+    expect(customPresetIdFor({ ...s, shortMin: 8 }, list)).toBeNull();
   });
 });

@@ -14,6 +14,8 @@ import { StudyService } from "../study/study.service.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { AliasService } from "../users/alias.service.js";
 import { RolesService } from "../users/roles.service.js";
+import { ProService } from "../subscriptions/pro.js";
+import { FixedClock } from "../platform/clock.js";
 import { ProfilesService } from "./profiles.service.js";
 
 async function build(db: Db) {
@@ -107,6 +109,19 @@ describe("ProfilesService", () => {
       expect(pub.career).toBeNull(); // showCareer defaults to false
       expect(pub.avatarUrl).toBeNull(); // showAvatar defaults to false
       expect(pub.blockedByMe).toBe(false);
+    });
+
+    it("proBadge is true only for a paid user with a visible identity", async () => {
+      const roles = new RolesService(db);
+      const pro = new ProService(db, roles, { subscriptionsEnabled: true, clock: new FixedClock(new Date()) });
+      const proProfiles = new ProfilesService(db, new StudyService(db, new RestrictionService(db)), new AliasService(db), new RestrictionService(db), roles, pro);
+      await profiles.updateMyProfile("u1", "u1@example.test", { firstName: "Ana", identityMode: "FIRST_NAME" });
+      await profiles.updateMyProfile("u2", "u2@example.test", { firstName: "Beto", identityMode: "FIRST_NAME" });
+      await db.insert(schema.userSubscriptions).values({ userId: "u1", providerSubscriptionId: "sub-u1", status: "authorized" });
+
+      expect((await proProfiles.getPublicProfile("viewer", "u1")).proBadge).toBe(true);
+      expect((await proProfiles.getPublicProfile("viewer", "u2")).proBadge).toBe(false);
+      expect((await profiles.getPublicProfile("viewer", "u1")).proBadge).toBe(false); // no ProService wired
     });
 
     it("exposes fields once the owner opts in via privacy settings", async () => {

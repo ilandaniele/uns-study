@@ -15,6 +15,11 @@ import { PrivacyToggles } from "@/features/profile/PrivacyToggles";
 import { ProfileForm } from "@/features/profile/ProfileForm";
 import { StudyModeControl } from "@/features/profile/StudyModeControl";
 import { useMyProfile } from "@/features/profile/useMyProfile";
+import { AutoExtendSetting } from "@/features/auto-extend/AutoExtendSetting";
+import { BadgesSection } from "@/features/badges/BadgesSection";
+import { ExamsSection } from "@/features/exams/ExamsSection";
+import { PaletteSection } from "@/features/theme/PaletteSection";
+import { WeeklyGoalCard } from "@/features/weekly-goal/WeeklyGoalCard";
 import { apiFetch, apiPost } from "@/lib/api";
 import { authClient, signOut, useSession } from "@/lib/auth-client";
 import { invalidateMe } from "@/lib/me-store";
@@ -162,6 +167,22 @@ export default function PerfilPage() {
         <h2 className="mb-1 t-title">Notificaciones</h2>
         <p className="mb-2 text-xs text-muted">Avisos puntuales, nunca spam. Los podés apagar cuando quieras.</p>
         <NotificationSettings />
+      </section>
+
+      <section className="border-t border-app py-6 first:border-t-0">
+        <h2 className="mb-3 t-title">Tu estudio</h2>
+        <WeeklyGoalCard />
+        <BadgesSection userId={session.user.id} />
+        <ExamsSection />
+        <AutoExtendSetting />
+        <Link href="/perfil/historial" className="text-sm underline">
+          Historial de estudio
+        </Link>
+      </section>
+
+      <section className="border-t border-app py-6 first:border-t-0">
+        <h2 className="mb-3 t-title">Apariencia</h2>
+        <PaletteSection />
       </section>
 
       <section className="border-t border-app py-6 first:border-t-0">

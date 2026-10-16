@@ -12,6 +12,8 @@ export interface RankingEntryDto {
   aliasAnimal?: string | null;
   /** Draw the gold "Admin" badge (visible identities only). */
   adminBadge?: boolean;
+  /** Draw the Pro ring: a paid subscription (staff do not get it). */
+  proBadge?: boolean;
   /** True for the viewer's own row, so the UI can highlight it even when `userId` is `null`. */
   isMe: boolean;
   /** minutes | days | points, depending on `category`. */

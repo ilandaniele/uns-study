@@ -42,6 +42,8 @@ declare global {
 }
 
 let loadPromise: Promise<boolean> | null = null;
+// Registered once per page session. A user who subscribes mid-session can still see an interstitial that was
+// already registered before upgrading, until the next reload; accepted (ad-free gating applies to new ads).
 let interstitialRegistered = false;
 
 function gt(): GoogleTag {

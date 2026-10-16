@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { usePro } from "@/features/subscriptions/usePro";
-import { playChime, setAmbient, setAmbientVolume, stopAmbient } from "./focus-audio";
+import { playChime, playableLayers, setLayers, stopAmbient } from "./focus-audio";
 import { showFocusNotification } from "./focus-notify";
 import { focusActions, getFocus, useFocus } from "./focus-store";
 import { PHASE_LABEL, formatClock, remainingMs, type Completion, type FocusSettings } from "./pomodoro";
@@ -35,7 +35,7 @@ function announce(last: Completion, s: FocusSettings) {
  */
 export function FocusRuntime() {
   const focus = useFocus();
-  const { timer, ambient, volume } = focus;
+  const { timer, layers, volume } = focus;
   const titleRef = useRef<{ base: string; set: string } | null>(null);
 
   // Settle finished phases on a short interval while running, and right away when the tab returns.
@@ -58,16 +58,15 @@ export function FocusRuntime() {
   }, [timer.status, timer.endsAt]);
 
   // Ambient noise plays only during a running focus block; breaks are quiet.
-  // Ambient sounds are a Pro extra: a saved choice stays silent until the lock is lifted.
+  // Ambient sounds are a Pro extra: saved layers are kept, but a lapsed plan only plays the first
+  // classic one (see playableLayers).
   const { lock } = usePro();
-  const playNoise = lock === "unlocked" && ambient !== "off" && timer.status === "running" && timer.phase === "focus";
+  const running = timer.status === "running" && timer.phase === "focus";
+  const playing = useMemo(() => (running ? playableLayers(layers, lock) : []), [running, layers, lock]);
   useEffect(() => {
-    if (playNoise) setAmbient(ambient, getFocus().volume);
+    if (playing.length > 0) setLayers(playing, volume);
     else stopAmbient();
-  }, [playNoise, ambient]);
-  useEffect(() => {
-    setAmbientVolume(volume);
-  }, [volume]);
+  }, [playing, volume]);
   useEffect(() => () => stopAmbient(), []);
 
   // Countdown in the tab title, so it reads from another tab or the taskbar.

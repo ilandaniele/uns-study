@@ -60,6 +60,16 @@ import type { DailyResetJob } from "./jobs/daily-reset.job.js";
 import type { AttachmentSweepJob } from "./jobs/attachment-sweep.job.js";
 import type { CheckInExpiryReminderJob } from "./jobs/checkin-expiry-reminder.job.js";
 import type { EmailSendJob } from "./email/email-send.job.js";
+import type { WeeklyGoalReminderJob } from "./jobs/weekly-goal-reminder.job.js";
+import type { ProService } from "./subscriptions/pro.js";
+import type { SeatWatchService } from "./seat-watch/seat-watch.service.js";
+import type { StudyHistoryService } from "./study-history/study-history.service.js";
+import type { ForecastService } from "./forecast/forecast.service.js";
+import type { FavoriteSeatsService } from "./favorites/favorites.service.js";
+import type { GroupStudyService } from "./group-study/group-study.service.js";
+import type { WeeklyGoalService } from "./weekly-goal/weekly-goal.service.js";
+import type { StreakBadgesService } from "./badges/streak-badges.service.js";
+import type { ExamsService } from "./exams/exams.service.js";
 
 export interface Services {
   /** The shared sync SQLite handle, for the few routers that touch it directly (health, e2e hooks). */
@@ -121,6 +131,16 @@ export interface Services {
   // W2-F
   storage: StorageService;
   seatPhotoVerifier: SeatPhotoVerifier | null;
+  // Pro
+  pro: ProService;
+  seatWatch: SeatWatchService;
+  studyHistory: StudyHistoryService;
+  forecast: ForecastService;
+  favoriteSeats: FavoriteSeatsService;
+  groupStudy: GroupStudyService;
+  weeklyGoal: WeeklyGoalService;
+  streakBadges: StreakBadgesService;
+  exams: ExamsService;
   // W1-C
   realtime: RoomRealtimeGateway;
   scheduler: Scheduler;
@@ -132,5 +152,6 @@ export interface Services {
     attachmentSweep: AttachmentSweepJob;
     checkInExpiryReminder: CheckInExpiryReminderJob;
     emailSend: EmailSendJob;
+    weeklyGoalReminder: WeeklyGoalReminderJob;
   };
 }

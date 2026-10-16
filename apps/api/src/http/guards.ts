@@ -73,3 +73,13 @@ export const requireAdmin: MiddlewareHandler<AppEnv> = roleGuard(["ADMIN", "MODE
 
 /** Requires an authenticated session with role ADMIN — for role-sensitive actions (bans, QR, announcements). */
 export const requireAdminOnly: MiddlewareHandler<AppEnv> = roleGuard(["ADMIN"]);
+
+/** Use after requireAuth(). 403 PRO_REQUIRED unless services.pro.isProUser(c.var.user.id). */
+export function requirePro(): MiddlewareHandler<AppEnv> {
+  return async (c, next) => {
+    const user = c.var.user;
+    if (!user) throw ApiErrors.unauthenticated();
+    if (!(await c.var.services.pro.isProUser(user.id))) throw ApiErrors.proRequired();
+    await next();
+  };
+}

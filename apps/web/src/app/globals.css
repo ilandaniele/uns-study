@@ -781,6 +781,50 @@ summary:focus-visible,
   }
 }
 
+/* Pro accent palettes (data-palette on <html>, see features/theme/palette.ts). Only the brand accent
+   changes; seat status colors never do. Filled buttons use --color-primary (white text, >= 5.6:1 in both
+   themes, so the dark block leaves it alone); --primary is the text/ring tint (>= 5.4:1 on the light
+   surface, >= 7.9:1 on the dark one). */
+html[data-palette="violeta"] {
+  --primary: #6a3fc0;
+  --primary-dark: #4f2a99;
+  --seat-mine: #6a3fc0;
+  --color-my-seat: #6a3fc0;
+  --color-primary: #6a3fc0;
+  --color-primary-dark: #4f2a99;
+}
+html.dark[data-palette="violeta"] {
+  --primary: #b9a0f7;
+  --primary-dark: #d3c2fb;
+  --seat-mine: #b9a0f7;
+}
+html[data-palette="bosque"] {
+  --primary: #2e7340;
+  --primary-dark: #1f5a2e;
+  --seat-mine: #2e7340;
+  --color-my-seat: #2e7340;
+  --color-primary: #2e7340;
+  --color-primary-dark: #1f5a2e;
+}
+html.dark[data-palette="bosque"] {
+  --primary: #7fd18f;
+  --primary-dark: #a6e3b1;
+  --seat-mine: #7fd18f;
+}
+html[data-palette="atardecer"] {
+  --primary: #b1432a;
+  --primary-dark: #8f3320;
+  --seat-mine: #b1432a;
+  --color-my-seat: #b1432a;
+  --color-primary: #b1432a;
+  --color-primary-dark: #8f3320;
+}
+html.dark[data-palette="atardecer"] {
+  --primary: #f2a283;
+  --primary-dark: #f7bfa8;
+  --seat-mine: #f2a283;
+}
+
 /* QR codes admin page (/admin/qr): printable table cards. Scoped to the `.qr-print-page`
    wrapper via :has() so the site header (rendered outside that subtree) and the rest of the
    app's print output are unaffected. `.qr-print-hide` marks in-page chrome (nav, buttons). */

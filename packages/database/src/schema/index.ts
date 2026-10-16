@@ -18,3 +18,4 @@ export * from "./email.js";
 export * from "./groups.js";
 export * from "./scheduled-jobs.js";
 export * from "./feedback.js";
+export * from "./pro.js";

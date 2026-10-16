@@ -1,12 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@sala/database";
 import { schema } from "@sala/database";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { createECDH } from "node:crypto";
 import { env } from "../env.js";
 import { freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { ManualScheduler } from "../platform/scheduler.js";
+import { FixedClock } from "../platform/clock.js";
+import { RoomsService } from "../rooms/rooms.service.js";
+import { SeatWatchService } from "../seat-watch/seat-watch.service.js";
 import { PushService } from "./push.service.js";
 import { NotificationService } from "./notification.service.js";
 
@@ -161,6 +164,77 @@ describe("NotificationService", () => {
 
       const rows = await db.select().from(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.userId, "subscriber"));
       expect(rows).toHaveLength(0);
+    });
+  });
+
+  describe("handleSeatFreed with seat watches", () => {
+    let watches: SeatWatchService;
+
+    beforeEach(async () => {
+      const roomState = new RoomStateService(db);
+      watches = new SeatWatchService(db, new RoomsService(db, roomState), new FixedClock(new Date()));
+      svc = new NotificationService(db, new PushService(db), roomState, scheduler, watches);
+      await insertUsers(db, ["watcher"]);
+    });
+
+    async function addWatch(userId: string, ids: string[]) {
+      await db.insert(schema.seatWatches).values({ userId, roomId, seatIds: JSON.stringify(ids), expiresAt: new Date(Date.now() + 3_600_000) });
+    }
+
+    it("pushes the watch copy once and skips the generic push for that user", async () => {
+      await db.insert(schema.notificationPreferences).values({ userId: "watcher", seatFreed: true });
+      await addPushSubscription("watcher");
+      await addWatch("watcher", [seatIds[0]!]);
+
+      await svc.handleSeatFreed(roomId, [change(seatIds[0]!, "FREE", "OCCUPIED")]);
+
+      expect(sendNotification).toHaveBeenCalledTimes(1);
+      const payload = JSON.parse(sendNotification.mock.calls[0]![1] as string);
+      expect(payload.title).toBe("Se liberó un lugar que estabas esperando");
+      expect(payload.tag).toBe("seat-watch");
+      expect(payload.url).toContain(`?seat=${seatIds[0]}`);
+      expect(await db.select().from(schema.seatWatches)).toHaveLength(0);
+    });
+
+    it("still sends the generic push to other subscribers", async () => {
+      await addPushSubscription("subscriber");
+      await addPushSubscription("watcher");
+      await addWatch("watcher", [seatIds[0]!]);
+
+      await svc.handleSeatFreed(roomId, [change(seatIds[0]!, "FREE", "OCCUPIED")]);
+
+      expect(sendNotification).toHaveBeenCalledTimes(2);
+      const tags = sendNotification.mock.calls.map((c) => JSON.parse(c[1] as string).tag).sort();
+      expect(tags).toEqual(["seat-freed", "seat-watch"]);
+    });
+
+    it("does not push a watcher checked into the room, but still deletes the fulfilled watch", async () => {
+      await addPushSubscription("watcher");
+      await addActiveCheckIn("watcher", seatIds[1]!);
+      await addWatch("watcher", [seatIds[0]!]);
+
+      await svc.handleSeatFreed(roomId, [change(seatIds[0]!, "FREE", "OCCUPIED")]);
+
+      expect(sendNotification).not.toHaveBeenCalled();
+      expect(await db.select().from(schema.seatWatches)).toHaveLength(0);
+    });
+
+    it("keeps a watch whose seats did not free up", async () => {
+      await addPushSubscription("watcher");
+      await addWatch("watcher", [seatIds[2]!]);
+      await svc.handleSeatFreed(roomId, [change(seatIds[0]!, "FREE", "OCCUPIED")]);
+      expect(sendNotification).not.toHaveBeenCalled();
+      expect(await db.select().from(schema.seatWatches)).toHaveLength(1);
+    });
+
+    it("still sends generic pushes without throwing when the table is missing", async () => {
+      await db.run(sql`DROP TABLE seat_watches`);
+      await addPushSubscription("subscriber");
+
+      await expect(svc.handleSeatFreed(roomId, [change(seatIds[0]!, "FREE", "OCCUPIED")])).resolves.toBeDefined();
+
+      expect(sendNotification).toHaveBeenCalledTimes(1);
+      expect(JSON.parse(sendNotification.mock.calls[0]![1] as string).tag).toBe("seat-freed");
     });
   });
 

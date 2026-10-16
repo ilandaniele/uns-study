@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@sala/database";
 import { schema } from "@sala/database";
 import { eq } from "drizzle-orm";
@@ -307,6 +307,88 @@ describe("DailyResetJob", () => {
     const events = await db.select().from(schema.seatStateEvents).where(eq(schema.seatStateEvents.eventType, "DAILY_RESET"));
     expect(events).toHaveLength(1); // one batch, not two; only the checked-in seat was not already UNKNOWN
   });
+
+  describe("Pro hooks", () => {
+    const forecastCalls = (recompute: (id: string, now: Date) => Promise<boolean>) => ({ recomputeRoom: vi.fn(recompute) });
+
+    async function afterReset(): Promise<Date> {
+      const room = await getRoom(db);
+      return new Date(resetInstantFor(room, new Date()).getTime() + 60_000);
+    }
+
+    function jobWith(forecast: { recomputeRoom: ReturnType<typeof vi.fn> }, seatWatch: { deleteExpired: ReturnType<typeof vi.fn> }) {
+      return new DailyResetJob(
+        db,
+        gateway,
+        new StudySessionService(db),
+        forecast as unknown as ConstructorParameters<typeof DailyResetJob>[3],
+        seatWatch as unknown as ConstructorParameters<typeof DailyResetJob>[4],
+      );
+    }
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("recomputes the forecast once per reset room and drops expired seat watches", async () => {
+      const forecast = forecastCalls(async () => true);
+      const seatWatch = { deleteExpired: vi.fn(async () => 0) };
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(await afterReset());
+      const resetJob = jobWith(forecast, seatWatch);
+
+      await resetJob.tick();
+      expect(forecast.recomputeRoom).toHaveBeenCalledTimes(1);
+      expect(forecast.recomputeRoom).toHaveBeenCalledWith(roomId, expect.any(Date));
+      expect(seatWatch.deleteExpired).toHaveBeenCalledTimes(1);
+
+      // Same day again: the reset is a no-op, so neither hook fires.
+      await resetJob.tick();
+      expect(forecast.recomputeRoom).toHaveBeenCalledTimes(1);
+      expect(seatWatch.deleteExpired).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not touch the hooks before the reset time", async () => {
+      const forecast = forecastCalls(async () => true);
+      const seatWatch = { deleteExpired: vi.fn(async () => 0) };
+      const room = await getRoom(db);
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date(resetInstantFor(room, new Date()).getTime() - 60_000));
+      await jobWith(forecast, seatWatch).tick();
+      expect(forecast.recomputeRoom).not.toHaveBeenCalled();
+      expect(seatWatch.deleteExpired).not.toHaveBeenCalled();
+    });
+
+    it("keeps the reset when the forecast or the cleanup throws", async () => {
+      const forecast = forecastCalls(async () => {
+        throw new Error("boom");
+      });
+      const seatWatch = {
+        deleteExpired: vi.fn(async () => {
+          throw new Error("no such table: seat_watches");
+        }),
+      };
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(await afterReset());
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+      await expect(jobWith(forecast, seatWatch).tick()).resolves.toBeUndefined();
+      const room = await getRoom(db);
+      expect(room.lastResetAt).not.toBeNull();
+      expect(forecast.recomputeRoom).toHaveBeenCalledTimes(1);
+    });
+
+    it("writes one forecast row per room with the real service", async () => {
+      const { ForecastService } = await import("../forecast/forecast.service.js");
+      const { RoomsService } = await import("../rooms/rooms.service.js");
+      const now = await afterReset();
+      const forecast = new ForecastService(db, new RoomsService(db, new RoomStateService(db)), { now: () => now });
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(now);
+      await new DailyResetJob(db, gateway, new StudySessionService(db), forecast, null).tick();
+      expect(await db.select().from(schema.roomOccupancyForecast)).toHaveLength(1);
+    });
+  });
 });
 
 describe("resetInstantFor (America/Argentina/Buenos_Aires, 04:00)", () => {
@@ -330,4 +412,5 @@ describe("resetInstantFor (America/Argentina/Buenos_Aires, 04:00)", () => {
     const later = new Date("2026-03-11T07:01:00Z");
     expect(later.getTime()).toBeGreaterThan(resetInstantFor(room, later).getTime());
   });
+
 });

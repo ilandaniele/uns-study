@@ -1,5 +1,7 @@
 export type ThemePreference = "light" | "dark" | "system";
 
+import { parsePalette, PALETTE_STORAGE_KEY, type Palette } from "@/features/theme/palette";
+
 const STORAGE_KEY = "sala-theme";
 
 /** Reads the stored theme preference, defaulting to `"system"` when unset or unavailable. */
@@ -37,6 +39,27 @@ export function applyTheme(theme: ThemePreference) {
   if (meta) meta.setAttribute("content", isDark ? "#0d1110" : "#eceee9");
 }
 
+/** Reads the stored accent palette; unknown or missing values are `"default"`. */
+export function getStoredPalette(): Palette {
+  try {
+    return parsePalette(window.localStorage.getItem(PALETTE_STORAGE_KEY));
+  } catch {
+    return "default";
+  }
+}
+
+/** Sets (or, for the default, removes) `data-palette` on `<html>` and persists the choice. */
+export function applyPalette(palette: Palette) {
+  if (palette === "default") document.documentElement.removeAttribute("data-palette");
+  else document.documentElement.dataset.palette = palette;
+  try {
+    if (palette === "default") window.localStorage.removeItem(PALETTE_STORAGE_KEY);
+    else window.localStorage.setItem(PALETTE_STORAGE_KEY, palette);
+  } catch {
+    // Ignore write failures; the palette just won't survive a reload.
+  }
+}
+
 /**
  * Inline script source injected in `<head>` (before hydration) so the correct theme applies
  * before first paint — avoids a light-mode flash for users who prefer dark. Kept as a plain
@@ -48,6 +71,8 @@ export const THEME_INIT_SCRIPT = `
     var stored = window.localStorage.getItem("${STORAGE_KEY}");
     var isDark = stored === "dark" || ((stored === "system" || !stored) && window.matchMedia("(prefers-color-scheme: dark)").matches);
     if (isDark) document.documentElement.classList.add("dark");
+    var palette = window.localStorage.getItem("${PALETTE_STORAGE_KEY}");
+    if (palette === "violeta" || palette === "bosque" || palette === "atardecer") document.documentElement.dataset.palette = palette;
   } catch (e) {}
 })();
 `;

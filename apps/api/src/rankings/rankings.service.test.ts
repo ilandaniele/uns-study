@@ -7,6 +7,8 @@ import { RoomsService } from "../rooms/rooms.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
 import { AliasService } from "../users/alias.service.js";
 import { RolesService } from "../users/roles.service.js";
+import { ProService } from "../subscriptions/pro.js";
+import { FixedClock } from "../platform/clock.js";
 import { RankingsService } from "./rankings.service.js";
 
 // Buenos Aires is UTC-3 with no DST: 15:00Z is always mid-afternoon local, well clear of midnight.
@@ -327,5 +329,46 @@ describe("RankingsService", () => {
     await insertActiveCheckIn("m5", new Date("2026-01-15T11:00:00Z"), new Date("2026-01-15T14:00:00Z"));
 
     expect((await svc.getRankings(roomSlug, "today", "study_time", null, TODAY)).entries[0]?.value).toBe(180);
+  });
+
+  it("a Pro streak freeze bridges a missed day in the streak ranking", async () => {
+    await insertUsers(db, ["fz1"]);
+    await makeVisible("fz1");
+    await insertStudySession("fz1", "2026-01-13", 40, "a1111111-1111-1111-1111-111111111111");
+    await insertStudySession("fz1", "2026-01-15", 40, "a2222222-2222-2222-2222-222222222222");
+    expect((await svc.getRankings(roomSlug, "all", "streak", null, TODAY)).entries[0]?.value).toBe(1);
+
+    await db.insert(schema.streakFreezes).values({ userId: "fz1", localDate: "2026-01-14" });
+    expect((await svc.getRankings(roomSlug, "all", "streak", null, TODAY)).entries[0]?.value).toBe(3);
+  });
+
+  it("proBadge is true only for a paid user with a visible identity, never for staff", async () => {
+    await insertUsers(db, ["pp", "ps", "pf", "ph"]);
+    const roles = new RolesService(db);
+    const pro = new ProService(db, roles, { subscriptionsEnabled: true, clock: new FixedClock(TODAY) });
+    const proSvc = new RankingsService(db, new RoomsService(db, new RoomStateService(db)), new AliasService(db), roles, pro);
+    await db.insert(schema.userProfiles).values([
+      { userId: "pp", identityMode: "FIRST_NAME", firstName: "Paga" },
+      { userId: "ps", identityMode: "FIRST_NAME", firstName: "Staff" },
+      { userId: "pf", identityMode: "FIRST_NAME", firstName: "Gratis" },
+      { userId: "ph" }, // paid but shown under an alias
+    ]);
+    await db.insert(schema.userSubscriptions).values([
+      { userId: "pp", providerSubscriptionId: "sub-pp", status: "authorized" },
+      { userId: "ph", providerSubscriptionId: "sub-ph", status: "authorized" },
+    ]);
+    await db.insert(schema.userRoles).values({ userId: "ps", role: "ADMIN" });
+    await insertStudySession("pp", "2026-01-15", 50, "b1111111-1111-1111-1111-111111111111");
+    await insertStudySession("ps", "2026-01-15", 40, "b2222222-2222-2222-2222-222222222222");
+    await insertStudySession("pf", "2026-01-15", 30, "b3333333-3333-3333-3333-333333333333");
+    await insertStudySession("ph", "2026-01-15", 20, "b4444444-4444-4444-4444-444444444444");
+
+    const ranking = await proSvc.getRankings(roomSlug, "today", "study_time", "pp", TODAY);
+    const byName = new Map(ranking.entries.map((e) => [e.displayName, e.proBadge]));
+    expect(byName.get("Paga")).toBe(true);
+    expect(byName.get("Staff")).toBe(false);
+    expect(byName.get("Gratis")).toBe(false);
+    expect(ranking.entries.find((e) => e.userId === null)?.proBadge).toBe(false);
+    expect(ranking.me?.proBadge).toBe(true);
   });
 });

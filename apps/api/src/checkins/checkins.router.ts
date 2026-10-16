@@ -8,6 +8,9 @@ import { reply } from "../http/reply.js";
 import { uuidParam, zBody } from "../http/validate.js";
 import { hashIp } from "../security/security-event.service.js";
 
+/** Automatic "Sigo acá" is only accepted with this much time (or less) left on the check-in. */
+const AUTO_EXTEND_WINDOW_MS = 15 * 60_000;
+
 export const checkinsRouter = new Hono<AppEnv>();
 
 checkinsRouter.post("/checkins", requireAuth(), zBody(checkInRequestSchema), async (c) => {
@@ -64,9 +67,19 @@ checkinsRouter.post("/checkins/current/extend", requireAuth(), zBody(extendReque
     services.checkIns.getActiveCheckIn(user.id),
   );
   if (!active) throw ApiErrors.noActiveCheckIn();
+  if (body.auto) {
+    // Pro-only, and only inside the renewal window, so `auto` can't stretch a check-in forever.
+    if (!(await services.pro.isProUser(user.id))) throw ApiErrors.proRequired();
+    // The schema already requires it; the server never renews automatically on a stored grant.
+    if (!body.location) throw ApiErrors.validation("La renovación automática necesita tu ubicación.");
+    if (new Date(active.expiresAt).getTime() - Date.now() > AUTO_EXTEND_WINDOW_MS) throw ApiErrors.validation("Todavía falta para renovar.");
+  }
+  // With a location, `requirePresence` validates that fix against the geofence and never reads a grant.
   const presence = await services.checkIns.assertPresence(user.id, active.roomId, body.location);
 
   await services.antiAbuse.enforceRateLimit({ key: `extend:${user.id}`, limit: 5, windowSeconds: 60 });
+  // 240 s window: stays in memory (no DO writes). Checked after the fix so a rejected one doesn't spend it.
+  if (body.auto) await services.antiAbuse.enforceRateLimit({ key: `extend-auto:${user.id}`, limit: 1, windowSeconds: 240 });
 
   return reply(c, await services.checkIns.extend(user.id, body.location, active, body.durationMinutes, presence), 201);
 });

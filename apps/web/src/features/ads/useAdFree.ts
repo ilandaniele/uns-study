@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useMe } from "@/lib/me-store";
 import { subscribeSnooze } from "./ad-overlay-store";
-import { getSnoozedUntil } from "./ad-policy";
+import { getSnoozedUntil, shouldHideAds } from "./ad-policy";
 
 export interface AdFreeState {
   /** True while ads must not render: `/me` still loading, subscriber, or reward snooze active. */
@@ -45,5 +45,5 @@ export function useAdFree(): AdFreeState {
   }, [snoozedUntil]);
 
   const adFree = me?.adFree === true;
-  return { hideAds: loading || adFree || snoozedUntil !== null, adFree, snoozedUntil, loading };
+  return { hideAds: shouldHideAds({ loading, adFree, snoozedUntil }), adFree, snoozedUntil, loading };
 }

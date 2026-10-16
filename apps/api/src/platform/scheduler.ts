@@ -30,6 +30,7 @@ export const RECURRING_JOBS: ReadonlyArray<{ key: string; intervalMs: number }> 
   { key: "attachment-sweep", intervalMs: 3_600_000 },
   { key: "email-send", intervalMs: 60_000 },
   { key: "realtime-session-sweep", intervalMs: 60_000 },
+  { key: "weekly-goal-reminder", intervalMs: 300_000 },
 ];
 
 /** Cron fires a few seconds off the minute; a recurring job due this soon runs now instead of waiting a whole tick. */

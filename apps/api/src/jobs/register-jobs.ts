@@ -25,6 +25,7 @@ export function registerJobs(scheduler: Pick<SqliteScheduler, "register">, servi
   scheduler.register("dispute-resolution", () => jobs.disputeResolution.tick());
   scheduler.register("attachment-sweep", () => jobs.attachmentSweep.tick());
   scheduler.register("email-send", () => jobs.emailSend.tick());
+  scheduler.register("weekly-goal-reminder", () => jobs.weeklyGoalReminder.tick());
   scheduler.register("realtime-session-sweep", () => sockets.sweepSessions());
 
   // `summary:<roomId>` — the coalesced room summary flush scheduled by the realtime gateway.

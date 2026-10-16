@@ -4,17 +4,17 @@ import { inChunks, schema, type Db } from "@sala/database";
 import type { RankingCategory, RankingDto, RankingEntryDto, RankingPeriod } from "@sala/contracts";
 import { minutesByLocalDay, verifiedMinutesFor } from "./study-session.service.js";
 import { localDateOf } from "../common/dates.js";
+import { STREAK_LOOKBACK_DAYS, STREAK_MIN_MINUTES } from "../study-history/streak.js";
+import { loadFrozenDates } from "../study-history/frozen-dates.js";
 import type { RoomsService } from "../rooms/rooms.service.js";
 import { displayName, needsAlias, showsAdminBadge, shownAliasAnimal, visibleAvatarUrl } from "../users/display-name.js";
 import type { RolesService } from "../users/roles.service.js";
 import type { AliasService } from "../users/alias.service.js";
+import type { ProService } from "../subscriptions/pro.js";
 
 const STUDY_TIME_DAILY_CAP_MIN = 720;
 const CONTRIBUTION_OBSERVATION_DAILY_CAP = 20;
 const CONTRIBUTION_CHECKIN_DAILY_CAP = 5;
-const STREAK_MIN_MINUTES = 30;
-/** Streaks only look back this many days (longer streaks are capped at what the window can prove). */
-const STREAK_LOOKBACK_DAYS = 400;
 const RAW_CACHE_TTL_MS = 60_000;
 
 function addDaysToLocal(dateStr: string, days: number): string {
@@ -73,6 +73,8 @@ interface VisibilityInfo {
   avatarUrl: string | null;
   aliasAnimal: string | undefined;
   adminBadge: boolean;
+  /** Paid Pro subscription, shown only next to a visible identity. */
+  proBadge: boolean;
   /** `false` whenever the entry must not be linkable: not opted into room visibility, or the shown
    *  name is the random alias rather than a chosen identity. */
   linkable: boolean;
@@ -91,6 +93,8 @@ export class RankingsService {
     private readonly rooms: RoomsService,
     private readonly aliases: AliasService,
     private readonly roles: RolesService,
+    /** Pro badge lookups; null in tests that construct the service directly. */
+    private readonly pro: ProService | null = null,
   ) {}
 
   /** Raw (viewer-independent) ranking values per `roomId|period|category`, invalidated by TTL only. */
@@ -143,6 +147,7 @@ export class RankingsService {
           avatarUrl: info.avatarUrl,
           aliasAnimal: info.aliasAnimal,
           adminBadge: info.adminBadge,
+          proBadge: info.proBadge,
           isMe: userId === viewerUserId,
           value,
           realUserId: userId,
@@ -170,6 +175,7 @@ export class RankingsService {
           avatarUrl: info.avatarUrl,
           aliasAnimal: info.aliasAnimal,
           adminBadge: info.adminBadge,
+          proBadge: info.proBadge,
           isMe: true,
           value: myValue,
         };
@@ -189,6 +195,7 @@ export class RankingsService {
     );
     const aliasByUser = await this.aliases.ensureAliasesForProfiles(profiles);
     const admins = await this.roles.adminIds(userIds);
+    const proIds = this.pro ? await this.pro.badgeIds(userIds) : new Set<string>();
     const profileByUser = new Map(profiles.map((p) => [p.userId, { ...p, alias: aliasByUser.get(p.userId) ?? p.alias }]));
     const privacyByUser = new Map(privacyRows.map((p) => [p.userId, p]));
 
@@ -209,6 +216,7 @@ export class RankingsService {
         avatarUrl: profile && !needsAlias(profile) ? visibleAvatarUrl(profile, privacy) : null,
         aliasAnimal: shownAliasAnimal(profile) ?? undefined,
         adminBadge: showsAdminBadge(admins.has(userId), profile, privacy),
+        proBadge: !shownAsAlias && proIds.has(userId),
         linkable,
       });
     }
@@ -295,14 +303,16 @@ export class RankingsService {
 
   private async streakValues(room: { id: string; timezone: string }, now: Date): Promise<Map<string, number>> {
     const today = localDateOf(now, room.timezone);
-    const perUserDay = await this.studyMinutesByUserDay(room, addDaysToLocal(today, -STREAK_LOOKBACK_DAYS), null, now);
+    const since = addDaysToLocal(today, -STREAK_LOOKBACK_DAYS);
+    const perUserDay = await this.studyMinutesByUserDay(room, since, null, now);
+    // Pro streak freezes: a frozen day counts as studied (one extra query; the raw cache absorbs it).
+    const frozenByUser = await loadFrozenDates(this.db, [...perUserDay.keys()], since);
 
     const values = new Map<string, number>();
     for (const [userId, byDay] of perUserDay) {
-      const qualifyingDaysAsc = [...byDay.entries()]
-        .filter(([, minutes]) => minutes >= STREAK_MIN_MINUTES)
-        .map(([day]) => day)
-        .sort();
+      const qualifying = new Set([...byDay.entries()].filter(([, minutes]) => minutes >= STREAK_MIN_MINUTES).map(([day]) => day));
+      for (const day of frozenByUser.get(userId) ?? []) qualifying.add(day);
+      const qualifyingDaysAsc = [...qualifying].sort();
       values.set(userId, currentStreak(qualifyingDaysAsc, today));
     }
     return values;

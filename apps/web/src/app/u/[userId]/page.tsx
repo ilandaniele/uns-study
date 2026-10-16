@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { WithAdminBadge } from "@/components/AdminBadge";
+import { avatarRingShadow } from "@/components/avatar-ring";
 import { PhotoViewer } from "@/components/PhotoViewer";
 import { apiFetch, apiPost, ApiRequestError } from "@/lib/api";
 import { conversationErrorMessage, startConversation } from "@/features/chat/start-conversation";
@@ -102,7 +103,7 @@ export default function PublicProfilePage() {
       <div className="border-t border-app pt-5">
         <div className="flex items-center gap-4">
           <WithAdminBadge show={profile.adminBadge} size={64}>
-            <PersonAvatar name={profile.displayName} avatarUrl={profile.avatarUrl} />
+            <PersonAvatar name={profile.displayName} avatarUrl={profile.avatarUrl} proBadge={profile.proBadge} />
           </WithAdminBadge>
           <div className="min-w-0">
             <h1 className="truncate t-title text-xl">{profile.displayName}</h1>
@@ -178,7 +179,8 @@ function Chip({ children }: { children: string }) {
   );
 }
 
-function PersonAvatar({ name, avatarUrl }: { name: string; avatarUrl: string | null }) {
+function PersonAvatar({ name, avatarUrl, proBadge = false }: { name: string; avatarUrl: string | null; proBadge?: boolean }) {
+  const boxShadow = avatarRingShadow({ proBadge });
   const [viewing, setViewing] = useState(false);
   if (avatarUrl) {
     return (
@@ -187,6 +189,7 @@ function PersonAvatar({ name, avatarUrl }: { name: string; avatarUrl: string | n
           type="button"
           onClick={() => setViewing(true)}
           aria-label={`Ver foto de ${name}`}
+          style={{ boxShadow }}
           className="shrink-0 cursor-zoom-in rounded-full transition-transform duration-150 active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- avatars are arbitrary external HTTPS URLs, not a build-time asset */}
@@ -197,7 +200,7 @@ function PersonAvatar({ name, avatarUrl }: { name: string; avatarUrl: string | n
     );
   }
   return (
-    <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] font-display text-2xl font-semibold text-main">
+    <span style={{ boxShadow }} className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] font-display text-2xl font-semibold text-main">
       {name.trim().charAt(0).toUpperCase() || "?"}
     </span>
   );

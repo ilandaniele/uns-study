@@ -17,6 +17,7 @@ export * from "./subscriptions";
 export * from "./email";
 export * from "./events";
 export * from "./feedback";
+export * from "./pro";
 
 // ---- Domain enums ----
 
@@ -219,8 +220,10 @@ export interface MeDto {
   roles: ("ADMIN" | "MODERATOR")[];
   restrictions: { type: string; until: string | null }[];
   profileCompleted: boolean;
-  /** true when the caller is staff (ADMIN/MODERATOR) or user_subscriptions.status === "authorized"; false when anonymous. */
+  /** Ads are hidden: staff, an authorized subscription, or a cancelled/paused one still inside its paid period. False when anonymous or when subscriptions are disabled. */
   adFree: boolean;
+  /** isPro(): Pro features unlocked. Same function as the server guard. */
+  pro: boolean;
   /** Boolean(MP_ACCESS_TOKEN) on the API; same value for anonymous callers. */
   subscriptionsEnabled: boolean;
   /** env.subscriptionPriceArs (default 1500); same value for anonymous callers. */
@@ -290,10 +293,18 @@ export const observationRequestSchema = z.object({
   turnstileToken: z.string().max(4096).nullable().optional(),
 });
 
-export const extendRequestSchema = z.object({
-  location: locationInputSchema.optional(),
-  durationMinutes: z.number().int().min(CHECKIN_MIN_MINUTES).max(CHECKIN_MINUTES).default(CHECKIN_MINUTES),
-});
+export const extendRequestSchema = z
+  .object({
+    location: locationInputSchema.optional(),
+    durationMinutes: z.number().int().min(CHECKIN_MIN_MINUTES).max(CHECKIN_MINUTES).default(CHECKIN_MINUTES),
+    /** Pro: set by the automatic "Sigo acá"; the server also requires a fix and at most 15 minutes left. */
+    auto: z.literal(true).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.auto === true && !value.location) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["location"], message: "El extendido automático necesita tu ubicación." });
+    }
+  });
 
 export const checkInPhotoRequestSchema = z.object({
   image: z.object({
@@ -388,7 +399,8 @@ export type ApiErrorCode =
   | "PHOTO_INVALID"
   | "ALREADY_VERIFIED"
   | "TABLE_NAME_NOT_ALLOWED"
-  | "FEATURE_DISABLED";
+  | "FEATURE_DISABLED"
+  | "PRO_REQUIRED";
 
 export interface ApiError {
   error: {

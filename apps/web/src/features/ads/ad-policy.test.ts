@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { APP_OPEN_CAP_MS, PRE_CHECKIN_CAP_MS, REWARD_SNOOZE_MS } from "./ad-config";
-import { getSnoozedUntil, markShown, shouldShowAppOpen, shouldShowPreCheckIn, snooze, type StorageLike } from "./ad-policy";
+import { getSnoozedUntil, markShown, shouldHideAds, shouldShowAppOpen, shouldShowPreCheckIn, snooze, type StorageLike } from "./ad-policy";
 
 function fakeStorage(): StorageLike & { data: Map<string, string> } {
   const data = new Map<string, string>();
@@ -95,5 +95,16 @@ describe("storage failures", () => {
   it("fails closed: no ad when storage is unavailable", () => {
     expect(shouldShowAppOpen({ ...base, now: T0, storage: broken })).toBe(false);
     expect(shouldShowPreCheckIn({ now: T0, storage: broken })).toBe(false);
+  });
+});
+
+describe("shouldHideAds", () => {
+  it("hides for ad-free users, including cancelled-within-period (me.adFree)", () => {
+    expect(shouldHideAds({ loading: false, adFree: true, snoozedUntil: null })).toBe(true);
+  });
+  it("hides while loading or snoozed, shows otherwise", () => {
+    expect(shouldHideAds({ loading: true, adFree: false, snoozedUntil: null })).toBe(true);
+    expect(shouldHideAds({ loading: false, adFree: false, snoozedUntil: 123 })).toBe(true);
+    expect(shouldHideAds({ loading: false, adFree: false, snoozedUntil: null })).toBe(false);
   });
 });

@@ -22,6 +22,13 @@
       "when": 1792093260006,
       "tag": "0002_feedback",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1792174236596,
+      "tag": "0003_pro_features",
+      "breakpoints": true
     }
   ]
 }

@@ -5,12 +5,12 @@ import type { MeDto } from "@sala/contracts";
 import { env } from "../env.js";
 import type { AppEnv } from "../http/context.js";
 import { optionalAuth } from "../http/guards.js";
-import { isAdFree } from "../subscriptions/ad-free.js";
+import { hasProEntitlement, isPro } from "../subscriptions/pro.js";
 
 export const meRouter = new Hono<AppEnv>();
 
 meRouter.get("/me", optionalAuth, async (c) => {
-  const { checkIns, db, roles, restriction } = c.var.services;
+  const { checkIns, clock, db, roles, restriction } = c.var.services;
   const user = c.var.user;
   const subscriptionsEnabled = Boolean(env.mpAccessToken);
   const subscriptionPriceArs = env.subscriptionPriceArs;
@@ -22,6 +22,7 @@ meRouter.get("/me", optionalAuth, async (c) => {
       restrictions: [],
       profileCompleted: false,
       adFree: false,
+      pro: false,
       subscriptionsEnabled,
       subscriptionPriceArs,
       canManageAdmins: false,
@@ -37,19 +38,26 @@ meRouter.get("/me", optionalAuth, async (c) => {
     restriction.activeRestrictions(user.id),
     db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, user.id)),
     db
-      .select({ status: schema.userSubscriptions.status })
+      .select({ status: schema.userSubscriptions.status, currentPeriodEnd: schema.userSubscriptions.currentPeriodEnd })
       .from(schema.userSubscriptions)
       .where(eq(schema.userSubscriptions.userId, user.id)),
     roles.isOwner(user.id),
   ]);
 
+  const entitlement = {
+    subscriptionStatus: subscription?.status ?? null,
+    currentPeriodEnd: subscription?.currentPeriodEnd ?? null,
+    roles: userRoles,
+    now: clock.now(),
+  };
   const me: MeDto = {
     user,
     activeCheckIn,
     roles: userRoles,
     restrictions: activeRestrictions.map((r) => ({ type: r.type, until: r.until ? r.until.toISOString() : null })),
     profileCompleted: Boolean(profile && (profile.firstName || profile.nickname)),
-    adFree: isAdFree({ subscriptionStatus: subscription?.status, roles: userRoles }),
+    adFree: hasProEntitlement(entitlement),
+    pro: isPro({ ...entitlement, subscriptionsEnabled }),
     subscriptionsEnabled,
     subscriptionPriceArs,
     canManageAdmins,

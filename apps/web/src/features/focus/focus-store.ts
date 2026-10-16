@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { normalizeAmbient, type Ambient } from "./focus-audio";
+import { MAX_LAYERS, normalizeLayers, type AmbientKind, type AmbientLayer } from "./focus-audio";
 import {
   DEFAULT_SETTINGS,
   applySettings,
@@ -9,12 +9,15 @@ import {
   recordCompletions,
   resetAll,
   resetPhase,
+  sanitizeCustomPresets,
   sanitizeSettings,
   selectPhase,
   skip,
   tick,
   toggle,
+  upsertCustomPreset,
   type Completion,
+  type CustomPreset,
   type FocusSettings,
   type FocusStats,
   type Phase,
@@ -35,8 +38,11 @@ export interface FocusData {
   stats: FocusStats;
   tasks: FocusTask[];
   activeTaskId: string | null;
-  ambient: Ambient;
+  /** Ambient sounds playing together: at most MAX_LAYERS, unique kinds. Replaces the single `ambient` of older saves. */
+  layers: AmbientLayer[];
+  /** Master volume for all layers. */
   volume: number;
+  customPresets: CustomPreset[];
   chime: boolean;
 }
 
@@ -50,8 +56,9 @@ function defaults(): FocusData {
     stats: { days: {} },
     tasks: [],
     activeTaskId: null,
-    ambient: "off",
+    layers: [],
     volume: 0.5,
+    customPresets: [],
     chime: true,
   };
 }
@@ -64,12 +71,16 @@ function isPhase(v: unknown): v is Phase {
   return v === "focus" || v === "short" || v === "long";
 }
 
-/** Defensive parse: anything malformed in storage falls back to defaults instead of crashing the app. */
-function parse(raw: string | null): FocusData {
+/**
+ * Defensive parse: anything malformed in storage falls back to defaults instead of crashing the app.
+ * Saves from before layers existed carry `ambient` instead of `layers`; they are migrated on read
+ * and only rewritten by the next state change.
+ */
+export function parseFocusData(raw: string | null): FocusData {
   const d = defaults();
   if (!raw) return d;
   try {
-    const j = JSON.parse(raw) as Partial<FocusData>;
+    const j = JSON.parse(raw) as Partial<FocusData> & { ambient?: unknown };
     const settings = sanitizeSettings(j.settings);
     const t = j.timer;
     const timer: TimerState =
@@ -88,7 +99,6 @@ function parse(raw: string | null): FocusData {
           .slice(0, MAX_TASKS)
           .map((x) => ({ id: x.id, text: x.text.slice(0, 120), done: !!x.done, pomodoros: Math.max(0, Number(x.pomodoros) || 0) }))
       : [];
-    const ambient: Ambient = normalizeAmbient(j.ambient);
     return {
       settings,
       timer,
@@ -96,9 +106,10 @@ function parse(raw: string | null): FocusData {
       tasks,
       activeTaskId: tasks.some((x) => x.id === j.activeTaskId) ? (j.activeTaskId as string) : null,
       // Sound never auto-resumes after a reload: browsers block audio without a tap anyway.
-      ambient,
+      layers: normalizeLayers(j.layers, j.ambient, j.volume),
       volume: typeof j.volume === "number" ? Math.min(1, Math.max(0, j.volume)) : d.volume,
       chime: j.chime !== false,
+      customPresets: sanitizeCustomPresets(j.customPresets),
     };
   } catch {
     return d;
@@ -107,7 +118,7 @@ function parse(raw: string | null): FocusData {
 
 function readStorage(): FocusData {
   try {
-    return parse(window.localStorage.getItem(KEY));
+    return parseFocusData(window.localStorage.getItem(KEY));
   } catch {
     return defaults();
   }
@@ -141,7 +152,7 @@ function subscribe(listener: () => void) {
   // Another tab changed the timer: pick it up so every tab shows the same countdown.
   const onStorage = (e: StorageEvent) => {
     if (e.key !== KEY) return;
-    data = parse(e.newValue);
+    data = parseFocusData(e.newValue);
     emit();
   };
   if (listeners.size === 1) window.addEventListener("storage", onStorage);
@@ -183,8 +194,23 @@ export const focusActions = {
       return { ...d, settings, timer: applySettings(d.timer, settings) };
     });
   },
-  setAmbient(ambient: Ambient) {
-    update((d) => ({ ...d, ambient }));
+  /** Adds or retunes one ambient layer; `null` removes it. A fifth distinct kind is ignored. */
+  setLayer(kind: AmbientKind, volume: number | null) {
+    update((d) => {
+      const rest = d.layers.filter((l) => l.kind !== kind);
+      if (volume === null) return rest.length === d.layers.length ? d : { ...d, layers: rest };
+      const layer = { kind, volume: Math.min(1, Math.max(0, volume)) };
+      if (rest.length === d.layers.length) return d.layers.length >= MAX_LAYERS ? d : { ...d, layers: [...d.layers, layer] };
+      return { ...d, layers: d.layers.map((l) => (l.kind === kind ? layer : l)) };
+    });
+  },
+  /** Saves a custom timer preset (same id replaces it); past the cap a new one is ignored. */
+  saveCustomPreset(p: Omit<CustomPreset, "id"> & { id?: string }) {
+    const id = p.id ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+    update((d) => ({ ...d, customPresets: upsertCustomPreset(d.customPresets, { ...p, id }) }));
+  },
+  deleteCustomPreset(id: string) {
+    update((d) => ({ ...d, customPresets: d.customPresets.filter((p) => p.id !== id) }));
   },
   setVolume(volume: number) {
     update((d) => ({ ...d, volume: Math.min(1, Math.max(0, volume)) }));

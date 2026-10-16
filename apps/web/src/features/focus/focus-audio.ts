@@ -6,44 +6,98 @@
  * are conservative and the master bus has a compressor, so nothing is harsh or clips.
  */
 
-export type Ambient = "off" | "rain" | "brown" | "ocean" | "fire";
+export type AmbientKind = "rain" | "brown" | "ocean" | "fire" | "white" | "pink" | "cafe" | "wind";
 
-export const AMBIENT_LABEL: Record<Ambient, string> = {
-  off: "Silencio",
+export interface AmbientLayer {
+  kind: AmbientKind;
+  /** 0..1, relative to the master volume. */
+  volume: number;
+}
+
+export const AMBIENT_KINDS: readonly AmbientKind[] = ["rain", "brown", "ocean", "fire", "white", "pink", "cafe", "wind"];
+/** The sounds that shipped before layers existed: a single one of these is the old `focus_sounds` feature. */
+export const BASE_AMBIENT_KINDS: readonly AmbientKind[] = ["rain", "brown", "ocean", "fire"];
+export const MAX_LAYERS = 4;
+
+export const AMBIENT_LABEL: Record<AmbientKind, string> = {
   rain: "Lluvia",
   brown: "Ruido marrón suave",
   ocean: "Olas",
   fire: "Fogata",
+  white: "Ruido blanco",
+  pink: "Ruido rosa",
+  cafe: "Café",
+  wind: "Viento",
 };
 
-/** Maps a persisted value (including the retired white/pink presets) onto a current preset. */
-export function normalizeAmbient(value: unknown): Ambient {
-  switch (value) {
-    case "rain":
-    case "white":
-    case "pink":
-      return "rain";
-    case "brown":
-    case "ocean":
-    case "fire":
-      return value;
-    default:
-      return "off";
-  }
+function isKind(value: unknown): value is AmbientKind {
+  return typeof value === "string" && (AMBIENT_KINDS as readonly string[]).includes(value);
 }
 
-type NoiseKind = "pink" | "brown";
+function clamp01(v: unknown, fallback: number): number {
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : fallback;
+}
+
+/**
+ * Turns persisted data into a valid layer list: known kinds only, unique, at most MAX_LAYERS,
+ * volumes clamped. Without a `layers` array it migrates the single-sound `ambient` field of the
+ * first storage format. The legacy master volume is not folded into the layer (the store keeps
+ * `volume` as the master), so a migrated sound plays at exactly the loudness it had before.
+ */
+export function normalizeLayers(raw: unknown, legacyAmbient?: unknown, legacyVolume?: unknown): AmbientLayer[] {
+  void legacyVolume;
+  if (Array.isArray(raw)) {
+    const out: AmbientLayer[] = [];
+    for (const item of raw) {
+      if (!item || typeof item !== "object") continue;
+      const { kind, volume } = item as { kind?: unknown; volume?: unknown };
+      if (!isKind(kind) || out.some((l) => l.kind === kind)) continue;
+      out.push({ kind, volume: clamp01(volume, 1) });
+      if (out.length >= MAX_LAYERS) break;
+    }
+    return out;
+  }
+  if (raw !== undefined && raw !== null) return [];
+  return isKind(legacyAmbient) ? [{ kind: legacyAmbient, volume: 1 }] : [];
+}
+
+/** Which Pro feature a sound belongs to: a lone classic sound is `focus_sounds`, anything beyond is `focus_custom`. */
+export function soundFeatureFor(kind: AmbientKind, active: readonly AmbientLayer[]): "focus_sounds" | "focus_custom" {
+  const others = active.filter((l) => l.kind !== kind);
+  return BASE_AMBIENT_KINDS.includes(kind) && others.length === 0 ? "focus_sounds" : "focus_custom";
+}
+
+/**
+ * What may actually play. Pro plays everything. A lapsed user keeps the saved layers but only the
+ * first one, and only if it is a classic sound. While the plan is still loading nothing plays.
+ */
+export function playableLayers(layers: readonly AmbientLayer[], lock: "unknown" | "locked" | "unlocked"): AmbientLayer[] {
+  if (lock === "unlocked") return [...layers];
+  if (lock === "unknown") return [];
+  const first = layers[0];
+  return first && BASE_AMBIENT_KINDS.includes(first.kind) ? [first] : [];
+}
+
+type NoiseKind = "white" | "pink" | "brown";
 
 const FADE_IN_TAU = 0.7; // ~2 s to settle
 const FADE_OUT_TAU = 0.2; // ~0.6 s to settle
 const MASTER_LEVEL = 0.5;
 
+/** One running ambient sound: its own gain, source nodes and event timers, so layers start and stop independently. */
+interface LayerHandle {
+  kind: AmbientKind;
+  gain: GainNode;
+  nodes: AudioScheduledSourceNode[];
+  timers: Set<ReturnType<typeof setTimeout>>;
+  stopped: boolean;
+}
+
 let ctx: AudioContext | null = null;
 let master: DynamicsCompressorNode | null = null;
-let noiseGain: GainNode | null = null;
-let ambientNodes: AudioScheduledSourceNode[] = [];
-let eventTimer: ReturnType<typeof setTimeout> | null = null;
-let currentAmbient: Ambient = "off";
+let ambientBus: GainNode | null = null;
+const handles = new Map<AmbientKind, LayerHandle>();
 const buffers = new Map<NoiseKind, AudioBuffer>();
 
 function context(): AudioContext | null {
@@ -73,6 +127,17 @@ function bus(ac: AudioContext): AudioNode {
   return master;
 }
 
+/** Master fader for all ambient layers, in front of the compressor. */
+function ambientMaster(ac: AudioContext): GainNode {
+  if (!ambientBus) {
+    const g = ac.createGain();
+    g.gain.value = 0;
+    g.connect(bus(ac));
+    ambientBus = g;
+  }
+  return ambientBus;
+}
+
 /** Ten seconds of looping noise; pink and brown use the usual cheap filters (Voss/Kellet, leaky integrator). */
 function noiseBuffer(ac: AudioContext, kind: NoiseKind): AudioBuffer {
   const cached = buffers.get(kind);
@@ -83,7 +148,9 @@ function noiseBuffer(ac: AudioContext, kind: NoiseKind): AudioBuffer {
   let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0, last = 0;
   for (let i = 0; i < length; i++) {
     const white = Math.random() * 2 - 1;
-    if (kind === "pink") {
+    if (kind === "white") {
+      data[i] = white * 0.5;
+    } else if (kind === "pink") {
       b0 = 0.99886 * b0 + white * 0.0555179;
       b1 = 0.99332 * b1 + white * 0.0750759;
       b2 = 0.969 * b2 + white * 0.153852;
@@ -107,13 +174,13 @@ function noiseBuffer(ac: AudioContext, kind: NoiseKind): AudioBuffer {
   return buf;
 }
 
-function loopingNoise(ac: AudioContext, kind: NoiseKind): AudioBufferSourceNode {
+function loopingNoise(ac: AudioContext, h: LayerHandle, kind: NoiseKind): AudioBufferSourceNode {
   const src = ac.createBufferSource();
   src.buffer = noiseBuffer(ac, kind);
   src.loop = true;
   // Start at a random offset so two layers of the same buffer don't phase together.
   src.start(0, Math.random() * 8);
-  ambientNodes.push(src);
+  h.nodes.push(src);
   return src;
 }
 
@@ -125,14 +192,27 @@ function filter(ac: AudioContext, type: BiquadFilterType, freq: number, q = 0.70
   return f;
 }
 
-/** Calls `fn` at random intervals until the ambient is stopped or switched. */
-function scheduleEvents(minMs: number, maxMs: number, fn: () => void): void {
+/** A slow sine that wobbles `param` by +-`depth` around its current value. */
+function lfo(ac: AudioContext, h: LayerHandle, param: AudioParam, hz: number, depth: number): void {
+  const osc = ac.createOscillator();
+  osc.frequency.value = hz;
+  const amount = ac.createGain();
+  amount.gain.value = depth;
+  osc.connect(amount).connect(param);
+  osc.start();
+  h.nodes.push(osc);
+}
+
+/** Calls `fn` at random intervals until this layer is stopped. */
+function scheduleEvents(h: LayerHandle, minMs: number, maxMs: number, fn: () => void): void {
   const tick = () => {
-    eventTimer = setTimeout(() => {
-      if (!ctx || !noiseGain) return;
+    const id = setTimeout(() => {
+      h.timers.delete(id);
+      if (h.stopped || !ctx) return;
       fn();
       tick();
     }, minMs + Math.random() * (maxMs - minMs));
+    h.timers.add(id);
   };
   tick();
 }
@@ -152,11 +232,26 @@ function burst(ac: AudioContext, out: AudioNode, opts: { freq: number; q: number
   src.start(t, Math.random() * 8, opts.dur + 0.05);
 }
 
-function buildAmbient(ac: AudioContext, kind: Exclude<Ambient, "off">, out: AudioNode): void {
-  switch (kind) {
+function buildAmbient(ac: AudioContext, h: LayerHandle, out: AudioNode): void {
+  switch (h.kind) {
     case "brown": {
       const lp = filter(ac, "lowpass", 500);
-      loopingNoise(ac, "brown").connect(lp).connect(out);
+      loopingNoise(ac, h, "brown").connect(lp).connect(out);
+      break;
+    }
+    case "white": {
+      // Flat spectrum, but never full-band: the top is rolled off so it stays soft.
+      const lp = filter(ac, "lowpass", 6000);
+      const level = ac.createGain();
+      level.gain.value = 0.35;
+      loopingNoise(ac, h, "white").connect(lp).connect(level).connect(out);
+      break;
+    }
+    case "pink": {
+      const lp = filter(ac, "lowpass", 5000);
+      const level = ac.createGain();
+      level.gain.value = 0.8;
+      loopingNoise(ac, h, "pink").connect(lp).connect(level).connect(out);
       break;
     }
     case "rain": {
@@ -167,8 +262,8 @@ function buildAmbient(ac: AudioContext, kind: Exclude<Ambient, "off">, out: Audi
       shelf.gain.value = -9;
       const wash = ac.createGain();
       wash.gain.value = 0.7;
-      loopingNoise(ac, "pink").connect(hp).connect(lp).connect(shelf).connect(wash).connect(out);
-      scheduleEvents(120, 520, () => {
+      loopingNoise(ac, h, "pink").connect(hp).connect(lp).connect(shelf).connect(wash).connect(out);
+      scheduleEvents(h, 120, 520, () => {
         burst(ac, out, { freq: 1200 + Math.random() * 1600, q: 2, peak: 0.02 + Math.random() * 0.03, dur: 0.05 + Math.random() * 0.05 });
       });
       break;
@@ -178,78 +273,122 @@ function buildAmbient(ac: AudioContext, kind: Exclude<Ambient, "off">, out: Audi
       const lp = filter(ac, "lowpass", 450);
       const swell = ac.createGain();
       swell.gain.value = 0.65;
-      const lfo = ac.createOscillator();
-      lfo.frequency.value = 0.09 + Math.random() * 0.03;
-      const depthGain = ac.createGain();
-      depthGain.gain.value = 0.3;
-      const depthFreq = ac.createGain();
-      depthFreq.gain.value = 300;
-      lfo.connect(depthGain).connect(swell.gain);
-      lfo.connect(depthFreq).connect(lp.frequency);
-      lfo.start();
-      ambientNodes.push(lfo);
-      loopingNoise(ac, "brown").connect(lp).connect(swell).connect(out);
+      lfo(ac, h, swell.gain, 0.09 + Math.random() * 0.03, 0.3);
+      lfo(ac, h, lp.frequency, 0.1, 300);
+      loopingNoise(ac, h, "brown").connect(lp).connect(swell).connect(out);
       break;
     }
     case "fire": {
       const lp = filter(ac, "lowpass", 380);
       const rumble = ac.createGain();
       rumble.gain.value = 0.8;
-      loopingNoise(ac, "brown").connect(lp).connect(rumble).connect(out);
-      scheduleEvents(250, 1600, () => {
+      loopingNoise(ac, h, "brown").connect(lp).connect(rumble).connect(out);
+      scheduleEvents(h, 250, 1600, () => {
         burst(ac, out, { freq: 900 + Math.random() * 1800, q: 1.2, peak: 0.03 + Math.random() * 0.05, dur: 0.02 + Math.random() * 0.06 });
       });
+      break;
+    }
+    case "cafe": {
+      // A low room tone plus band-passed "murmur" whose loudness drifts at random, like talk nearby.
+      const room = filter(ac, "lowpass", 600);
+      const roomLevel = ac.createGain();
+      roomLevel.gain.value = 0.5;
+      loopingNoise(ac, h, "brown").connect(room).connect(roomLevel).connect(out);
+      const band = filter(ac, "bandpass", 700, 0.8);
+      const lp = filter(ac, "lowpass", 1800);
+      const murmur = ac.createGain();
+      murmur.gain.value = 0.15;
+      loopingNoise(ac, h, "pink").connect(band).connect(lp).connect(murmur).connect(out);
+      scheduleEvents(h, 400, 1400, () => {
+        murmur.gain.setTargetAtTime(0.05 + Math.random() * 0.3, ac.currentTime, 0.5);
+        band.frequency.setTargetAtTime(500 + Math.random() * 500, ac.currentTime, 0.8);
+      });
+      break;
+    }
+    case "wind": {
+      // Band-passed noise whose center and level sway slowly, like gusts.
+      const band = filter(ac, "bandpass", 500, 0.9);
+      const gust = ac.createGain();
+      gust.gain.value = 0.55;
+      lfo(ac, h, band.frequency, 0.12 + Math.random() * 0.05, 250);
+      lfo(ac, h, gust.gain, 0.08 + Math.random() * 0.04, 0.3);
+      loopingNoise(ac, h, "pink").connect(band).connect(gust).connect(out);
       break;
     }
   }
 }
 
-/** Starts, switches or stops the ambient sound. Must first run inside a user gesture (a tap). */
-export function setAmbient(kind: Ambient, volume: number): void {
-  const ac = context();
-  if (!ac) return;
-  if (kind === currentAmbient && noiseGain) {
-    setAmbientVolume(volume);
-    return;
-  }
-  stopAmbient();
-  currentAmbient = kind;
-  if (kind === "off") return;
-  const gain = ac.createGain();
-  gain.gain.value = 0;
-  gain.connect(bus(ac));
-  noiseGain = gain;
-  buildAmbient(ac, kind, gain);
-  // Slow fade-in instead of a hard start.
-  gain.gain.setTargetAtTime(volumeCurve(volume) * MASTER_LEVEL, ac.currentTime, FADE_IN_TAU);
-}
-
-export function setAmbientVolume(volume: number): void {
-  if (!ctx || !noiseGain) return;
-  noiseGain.gain.setTargetAtTime(volumeCurve(volume) * MASTER_LEVEL, ctx.currentTime, 0.05);
-}
-
-export function stopAmbient(): void {
-  const ac = ctx;
-  const gain = noiseGain;
-  const nodes = ambientNodes;
-  if (eventTimer) clearTimeout(eventTimer);
-  eventTimer = null;
-  noiseGain = null;
-  ambientNodes = [];
-  currentAmbient = "off";
-  if (!ac || !gain) return;
-  gain.gain.cancelScheduledValues(ac.currentTime);
-  gain.gain.setTargetAtTime(0, ac.currentTime, FADE_OUT_TAU);
+function stopHandle(ac: AudioContext, h: LayerHandle): void {
+  h.stopped = true;
+  for (const t of h.timers) clearTimeout(t);
+  h.timers.clear();
+  h.gain.gain.cancelScheduledValues(ac.currentTime);
+  h.gain.gain.setTargetAtTime(0, ac.currentTime, FADE_OUT_TAU);
   const end = ac.currentTime + 0.9;
-  for (const n of nodes) {
+  for (const n of h.nodes) {
     try {
       n.stop(end);
     } catch {
       // already stopped
     }
   }
-  setTimeout(() => gain.disconnect(), 1100);
+  setTimeout(() => h.gain.disconnect(), 1100);
+}
+
+/** Per-layer headroom: stacking sounds must not get louder than a single one. */
+function layerLevel(volume: number, count: number): number {
+  return volumeCurve(volume) / Math.sqrt(Math.max(1, count));
+}
+
+/**
+ * Makes the playing sounds match `layers` (one gain node per layer): starts the new kinds, fades out
+ * the ones that disappeared and retunes the rest. An empty list stops everything. Must first run
+ * inside a user gesture (a tap), like any Web Audio start.
+ */
+export function setLayers(layers: readonly AmbientLayer[], masterVolume: number): void {
+  if (layers.length === 0) {
+    stopAmbient();
+    return;
+  }
+  const ac = context();
+  if (!ac) return;
+  const out = ambientMaster(ac);
+  const wanted = new Map(layers.map((l) => [l.kind, l] as const));
+  for (const [kind, h] of handles) {
+    if (wanted.has(kind)) continue;
+    handles.delete(kind);
+    stopHandle(ac, h);
+  }
+  for (const layer of wanted.values()) {
+    const level = layerLevel(layer.volume, wanted.size);
+    const existing = handles.get(layer.kind);
+    if (existing) {
+      existing.gain.gain.setTargetAtTime(level, ac.currentTime, 0.05);
+      continue;
+    }
+    const gain = ac.createGain();
+    gain.gain.value = 0;
+    gain.connect(out);
+    const h: LayerHandle = { kind: layer.kind, gain, nodes: [], timers: new Set(), stopped: false };
+    handles.set(layer.kind, h);
+    buildAmbient(ac, h, gain);
+    // Slow fade-in instead of a hard start.
+    gain.gain.setTargetAtTime(level, ac.currentTime, FADE_IN_TAU);
+  }
+  out.gain.setTargetAtTime(volumeCurve(masterVolume) * MASTER_LEVEL, ac.currentTime, 0.05);
+}
+
+/** Kinds currently sounding (not fading out). */
+export function activeLayerKinds(): AmbientKind[] {
+  return [...handles.keys()];
+}
+
+export function stopAmbient(): void {
+  const ac = ctx;
+  const all = [...handles.values()];
+  handles.clear();
+  if (!ac) return;
+  for (const h of all) stopHandle(ac, h);
 }
 
 /** Perceptual volume: the slider is linear, loudness is not. */

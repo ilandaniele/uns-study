@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isCheckViolation, isForeignKeyViolation, isUniqueViolation } from "./sqlite-errors.js";
+import { isCheckViolation, isForeignKeyViolation, isMissingSchemaError, isUniqueViolation, orDefault, orDefaultSync } from "./sqlite-errors.js";
 
 function driverError(code: string, message: string): Error {
   return Object.assign(new Error(message), { code });
@@ -49,5 +49,51 @@ describe("sqlite-errors", () => {
     expect(isUniqueViolation("UNIQUE constraint failed")).toBe(false);
     expect(isUniqueViolation(new Error("boom"))).toBe(false);
     expect(isForeignKeyViolation(undefined)).toBe(false);
+  });
+});
+
+describe("missing schema tolerance", () => {
+  it("matches the three message forms", () => {
+    expect(isMissingSchemaError(new Error("no such table: seat_watches"))).toBe(true);
+    expect(isMissingSchemaError(new Error("no such column: weekly_goal_minutes"))).toBe(true);
+    expect(isMissingSchemaError(new Error("table users has no column named foo"))).toBe(true);
+  });
+
+  it("finds the message in a nested cause", () => {
+    const inner = new Error("SQLITE_ERROR: no such table: study_goals");
+    const wrapped = new Error('Failed query: select from "study_goals"', { cause: new Error("outer", { cause: inner }) });
+    expect(isMissingSchemaError(wrapped)).toBe(true);
+  });
+
+  it("is false for other errors and non-errors", () => {
+    expect(isMissingSchemaError(new Error("UNIQUE constraint failed: x.y"))).toBe(false);
+    expect(isMissingSchemaError(null)).toBe(false);
+    expect(isMissingSchemaError("no such table")).toBe(false);
+  });
+
+  it("orDefault returns the value, the fallback on a missing table, and rethrows anything else", async () => {
+    await expect(orDefault(() => 1, 0)).resolves.toBe(1);
+    await expect(orDefault(async () => 1, 0)).resolves.toBe(1);
+    await expect(
+      orDefault(() => {
+        throw new Error("no such table: seat_watches");
+      }, 7),
+    ).resolves.toBe(7);
+    await expect(orDefault(() => Promise.reject(new Error("no such table: seat_watches")), 8)).resolves.toBe(8);
+    await expect(orDefault(() => Promise.reject(new Error("boom")), 0)).rejects.toThrow("boom");
+  });
+
+  it("orDefaultSync returns the value, the fallback on a missing table, and rethrows anything else", () => {
+    expect(orDefaultSync(() => 1, 0)).toBe(1);
+    expect(
+      orDefaultSync(() => {
+        throw new Error("x", { cause: new Error("no such column: a") });
+      }, 5),
+    ).toBe(5);
+    expect(() =>
+      orDefaultSync(() => {
+        throw new Error("boom");
+      }, 0),
+    ).toThrow("boom");
   });
 });

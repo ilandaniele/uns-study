@@ -54,6 +54,7 @@ export const ApiErrors = {
     new ApiException("OWN_SEAT_OBSERVATION", "Ya tenés un check-in activo en este asiento, usá 'Me voy' en vez de observar.", 409),
   turnstileRequired: () =>
     new ApiException("TURNSTILE_REQUIRED", "Confirmá que sos una persona para continuar.", 403),
+  proRequired: () => new ApiException("PRO_REQUIRED", "Esta función es de Sala de Estudio Pro.", 403),
   forbidden: (message = "No tenés permiso para hacer esto.") => new ApiException("FORBIDDEN", message, 403),
   notFound: (message = "No encontrado.") => new ApiException("NOT_FOUND", message, 404),
   blocked: () => new ApiException("BLOCKED", "No podés interactuar con este usuario.", 403),

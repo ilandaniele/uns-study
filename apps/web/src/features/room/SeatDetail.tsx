@@ -5,6 +5,7 @@ import { ArmchairIcon, CaretDownIcon, ChairIcon, EyeIcon, ShieldCheckIcon, StarI
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SeatWatchButton } from "@/features/seat-watch/SeatWatchButton";
 import { MessageOccupantButton } from "./MessageOccupantButton";
 import { useState } from "react";
 import { CheckInDurationPicker } from "./CheckInDurationPicker";
@@ -71,6 +72,7 @@ export interface SeatDetailProps {
   /** SVG viewBox width, used to derive "(lado izquierdo/derecho)" for main tables. */
   viewBoxWidth?: number;
   roomId?: string;
+  roomSlug?: string;
   /** True right after the viewer marked this seat "Está guardado" — offers to report / ask to free it. */
   showSavedPrompt?: boolean;
   onDismissSavedPrompt?: () => void;
@@ -114,6 +116,7 @@ export function SeatDetail({
   nearbyOccupants = [],
   viewBoxWidth = 1000,
   roomId = "",
+  roomSlug = "",
   showSavedPrompt = false,
   onDismissSavedPrompt,
   isFavorite = false,
@@ -216,6 +219,9 @@ export function SeatDetail({
           </button>
         </div>
       </div>
+      {roomSlug && seat.status !== "FREE" ? (
+        <SeatWatchButton roomSlug={roomSlug} seat={seat} tableSeats={tableSeats} checkedInHere={mySeatId !== null} />
+      ) : null}
       <div className="-mt-1 flex items-center gap-3">
         <div className="shrink-0 rounded-control border border-app p-1.5">
           <TableLocator table={table} seats={tableSeats} selectedSeatId={seat.id} mySeatId={mySeatId} onSelectSeat={onSelectSeat} />

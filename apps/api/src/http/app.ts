@@ -58,6 +58,14 @@ import { subscriptionsRouter } from "../subscriptions/subscriptions.router.js";
 import { donationsRouter } from "../subscriptions/donations.router.js";
 import { mercadopagoWebhookRouter } from "../subscriptions/mercadopago-webhook.router.js";
 import { verificationRouter } from "../verification/verification.router.js";
+import { seatWatchRouter } from "../seat-watch/seat-watch.router.js";
+import { studyHistoryRouter } from "../study-history/study-history.router.js";
+import { forecastRouter } from "../forecast/forecast.router.js";
+import { favoritesRouter } from "../favorites/favorites.router.js";
+import { groupStudyRouter } from "../group-study/group-study.router.js";
+import { weeklyGoalRouter } from "../weekly-goal/weekly-goal.router.js";
+import { streakBadgesRouter } from "../badges/streak-badges.router.js";
+import { examsRouter } from "../exams/exams.router.js";
 
 export interface AppDeps {
   services: Services;
@@ -137,6 +145,14 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
     donationsRouter,
     mercadopagoWebhookRouter,
     verificationRouter,
+    seatWatchRouter,
+    studyHistoryRouter,
+    forecastRouter,
+    favoritesRouter,
+    groupStudyRouter,
+    weeklyGoalRouter,
+    streakBadgesRouter,
+    examsRouter,
     e2eTestHooksRouter,
   ]) {
     api.route("/", router);

@@ -1,5 +1,6 @@
 import { isAnimalId } from "@sala/contracts";
 import { WithAdminBadge } from "@/components/AdminBadge";
+import { avatarRingShadow } from "@/components/avatar-ring";
 import { OccupantAvatar } from "@/features/room/OccupantAvatar";
 
 /**
@@ -39,6 +40,8 @@ interface AvatarProps {
   ringColor?: string;
   /** Draws the gold "Admin" pill over the bottom of the avatar. */
   adminBadge?: boolean;
+  /** Draws the Pro ring (paid subscription); combines with `ringColor` and `adminBadge`. */
+  proBadge?: boolean;
 }
 
 /** Round avatar: the user's photo when set, otherwise their initial on a deterministic color. */
@@ -50,8 +53,9 @@ export function Avatar({ adminBadge = false, ...props }: AvatarProps) {
   );
 }
 
-function AvatarImage({ userId, name, url, aliasAnimal = null, size = 40, className = "", ringColor }: Omit<AvatarProps, "adminBadge">) {
-  const ringStyle = ringColor ? { boxShadow: `0 0 0 3px ${ringColor}` } : undefined;
+function AvatarImage({ userId, name, url, aliasAnimal = null, size = 40, className = "", ringColor, proBadge }: Omit<AvatarProps, "adminBadge">) {
+  const boxShadow = avatarRingShadow({ ringColor, proBadge });
+  const ringStyle = boxShadow ? { boxShadow } : undefined;
   if (url) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- small avatar thumbnails, may be same-origin relative URLs

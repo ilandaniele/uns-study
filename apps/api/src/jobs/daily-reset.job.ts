@@ -4,7 +4,10 @@ import { inChunks, schema, type Db, type Tx } from "@sala/database";
 import type { SeatDisputeLiteDto } from "@sala/contracts";
 import type { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { localDateOf } from "../common/dates.js";
+import { isMissingSchemaError } from "../common/sqlite-errors.js";
 import type { StudySessionService } from "../rankings/study-session.service.js";
+import type { ForecastService } from "../forecast/forecast.service.js";
+import type { SeatWatchService } from "../seat-watch/seat-watch.service.js";
 
 const SEAT_STATE_EVENT_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 const VISITOR_RETENTION_DAYS = 7;
@@ -25,19 +28,45 @@ export class DailyResetJob {
     private readonly db: Db,
     private readonly realtime: RoomRealtimeGateway,
     private readonly studySessions: StudySessionService,
+    /** Pro: nightly occupancy forecast; null in tests that construct the job directly. */
+    private readonly forecast: ForecastService | null = null,
+    /** Pro: drops expired seat watches after a reset; null in tests that construct the job directly. */
+    private readonly seatWatch: SeatWatchService | null = null,
   ) {}
 
   /** Scheduler entry point (`daily-reset`, every minute). */
   async tick(): Promise<void> {
     const now = new Date();
     const rooms = this.db.select().from(schema.rooms).where(eq(schema.rooms.active, true)).all();
+    let anyReset = false;
     for (const room of rooms) {
       // One failing room must not block the reset of the others.
       try {
-        await this.runReset(room.id, now);
+        if (await this.runReset(room.id, now)) {
+          anyReset = true;
+          await this.recomputeForecast(room.id, now);
+        }
       } catch (err) {
         console.error(JSON.stringify({ evt: "daily_reset_failed", roomId: room.id, msg: err instanceof Error ? err.message : String(err) }));
       }
+    }
+    if (anyReset) await this.deleteExpiredSeatWatches(now);
+  }
+
+  /** Pro forecast refresh, outside the reset transaction: a failure here never undoes a reset. */
+  private async recomputeForecast(roomId: string, now: Date): Promise<void> {
+    try {
+      await this.forecast?.recomputeRoom(roomId, now);
+    } catch (err) {
+      if (!isMissingSchemaError(err)) console.error(JSON.stringify({ evt: "forecast_recompute_failed", roomId, msg: err instanceof Error ? err.message : String(err) }));
+    }
+  }
+
+  private async deleteExpiredSeatWatches(now: Date): Promise<void> {
+    try {
+      await this.seatWatch?.deleteExpired(now);
+    } catch (err) {
+      if (!isMissingSchemaError(err)) console.error(JSON.stringify({ evt: "seat_watch_cleanup_failed", msg: err instanceof Error ? err.message : String(err) }));
     }
   }
 

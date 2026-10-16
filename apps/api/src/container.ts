@@ -73,6 +73,16 @@ import { DailyResetJob } from "./jobs/daily-reset.job.js";
 import { AttachmentSweepJob } from "./jobs/attachment-sweep.job.js";
 import { CheckInExpiryReminderJob } from "./jobs/checkin-expiry-reminder.job.js";
 import { EmailSendJob } from "./email/email-send.job.js";
+import { WeeklyGoalReminderJob } from "./jobs/weekly-goal-reminder.job.js";
+import { ProService } from "./subscriptions/pro.js";
+import { SeatWatchService } from "./seat-watch/seat-watch.service.js";
+import { StudyHistoryService } from "./study-history/study-history.service.js";
+import { ForecastService } from "./forecast/forecast.service.js";
+import { FavoriteSeatsService } from "./favorites/favorites.service.js";
+import { GroupStudyService } from "./group-study/group-study.service.js";
+import { WeeklyGoalService } from "./weekly-goal/weekly-goal.service.js";
+import { StreakBadgesService } from "./badges/streak-badges.service.js";
+import { ExamsService } from "./exams/exams.service.js";
 
 export interface ContainerDeps {
   db: Db;
@@ -109,25 +119,30 @@ export function buildServices(deps: ContainerDeps): Services {
   const mercadoPago = cfg.mpAccessToken ? new MercadoPagoClient(cfg.mpAccessToken) : null;
   const seatPhotoVerifier = createSeatPhotoVerifier(cfg);
 
+  const pro = new ProService(db, roles, { subscriptionsEnabled: Boolean(cfg.mpAccessToken), clock });
+
+  // Rooms come before notifications: the seat watch (a notification dependency) needs them.
+  const rooms = new RoomsService(db, roomState, roomCache);
+  const seatWatch = new SeatWatchService(db, rooms, clock);
+
   // Notifications and the realtime gateway (roomState -> notifications -> realtime).
   const push = new PushService(db);
-  const notifications = new NotificationService(db, push, roomState, scheduler);
+  const notifications = new NotificationService(db, push, roomState, scheduler, seatWatch);
   // No scheduler: the 250 ms summary debounce uses setTimeout. Pending changes live in memory anyway,
   // and a SQL job cost ~6 rows written per seat change (DO Free plan caps rows written per day).
   const realtime = new RoomRealtimeGateway(hub, roomState, notifications, null);
 
   // Rooms and social.
-  const rooms = new RoomsService(db, roomState, roomCache);
   const roomStats = new RoomStatsService(db, rooms);
   const blocks = new BlocksService(db, alias);
   const study = new StudyService(db, restriction);
-  const profiles = new ProfilesService(db, study, alias, restriction, roles);
+  const profiles = new ProfilesService(db, study, alias, restriction, roles, pro);
   const avatars = new AvatarsService(db, restriction);
   const chat = new ChatService(db, rooms, restriction, roles, blocks, alias);
   const dm = new DmService(db, restriction, blocks, alias);
   const groups = new GroupsService(db, restriction, blocks, alias);
   const roomPeople = new RoomPeopleService(db, alias, roles);
-  const rankings = new RankingsService(db, rooms, alias, roles);
+  const rankings = new RankingsService(db, rooms, alias, roles, pro);
   const tableNames = new TableNamesService(db, restriction, realtime, roomCache);
 
   // Presence-sensitive domain.
@@ -157,13 +172,23 @@ export function buildServices(deps: ContainerDeps): Services {
   const emailCampaigns = new EmailCampaignsService(db);
   const subscriptions = new SubscriptionsService(db, mercadoPago);
 
+  // Pro features.
+  const studyHistory = new StudyHistoryService(db, clock);
+  const forecast = new ForecastService(db, rooms, clock);
+  const favoriteSeats = new FavoriteSeatsService(db, rooms, clock);
+  const groupStudy = new GroupStudyService(db, alias, blocks, realtime, clock);
+  const weeklyGoal = new WeeklyGoalService(db, clock);
+  const streakBadges = new StreakBadgesService(db, clock);
+  const exams = new ExamsService(db, clock);
+
   const jobs = {
     expiration: new ExpirationJob(db, roomState, realtime, studySessions, disputes),
     disputeResolution: new DisputeResolutionJob(disputes),
-    dailyReset: new DailyResetJob(db, realtime, studySessions),
+    dailyReset: new DailyResetJob(db, realtime, studySessions, forecast, seatWatch),
     attachmentSweep: new AttachmentSweepJob(db, storage),
     checkInExpiryReminder: new CheckInExpiryReminderJob(db, realtime, push),
     emailSend: new EmailSendJob(db, resend),
+    weeklyGoalReminder: new WeeklyGoalReminderJob(db, push, pro, weeklyGoal, clock),
   };
 
   return {
@@ -176,6 +201,7 @@ export function buildServices(deps: ContainerDeps): Services {
     notifications, push, pushSubscriptions, notificationPreferences, emailCampaigns, resend,
     subscriptions, mercadoPago, rateLimit, antiAbuse, securityEvents, abusePolicy, turnstile,
     storage, seatPhotoVerifier,
+    pro, seatWatch, studyHistory, forecast, favoriteSeats, groupStudy, weeklyGoal, streakBadges, exams,
     realtime, scheduler, clock,
     jobs,
   };

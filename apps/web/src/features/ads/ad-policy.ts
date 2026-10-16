@@ -92,3 +92,11 @@ export function shouldShowPreCheckIn(args: { now: number; storage: StorageLike }
   const last = readNumber(storage, KEY_PRE_CHECKIN);
   return last === null || now - last >= PRE_CHECKIN_CAP_MS;
 }
+
+/**
+ * Ads are hidden while `/me` loads, for ad-free users (`me.adFree`: subscribers, including cancelled or
+ * paused ones inside their paid period, and staff) and during a reward snooze.
+ */
+export function shouldHideAds(state: { loading: boolean; adFree: boolean; snoozedUntil: number | null }): boolean {
+  return state.loading || state.adFree || state.snoozedUntil !== null;
+}

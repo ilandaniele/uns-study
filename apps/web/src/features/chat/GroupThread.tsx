@@ -7,6 +7,7 @@ import { useState, type ReactNode } from "react";
 import { Avatar } from "@/components/Avatar";
 import { ChatComposer } from "./ChatComposer";
 import { groupErrorMessage, leaveGroup } from "./group-actions";
+import { GroupStudyPanel } from "./GroupStudyPanel";
 import { daySeparatorFlags, formatDaySeparator, formatMessageTime, groupMessages } from "./grouping";
 import { useBlockedUsers } from "./useBlockedUsers";
 import { useGroupThread } from "./useGroupThread";
@@ -121,6 +122,8 @@ export function GroupThread({ groupId, group, currentUserId, onBack, onLeft, hea
           </div>
         </div>
       </div>
+
+      <GroupStudyPanel groupId={groupId} currentUserId={currentUserId} />
 
       {loading ? (
         <p className="flex-1 p-6 text-center text-muted">Cargando conversación…</p>

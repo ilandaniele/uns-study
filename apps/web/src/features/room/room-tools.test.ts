@@ -28,12 +28,17 @@ describe("pickFreeSeat", () => {
 
   it("prefers the favorite seat when it is free", () => {
     const seats = [seat("a", "t1", "FREE"), seat("b", "t1", "FREE"), seat("c", "t2", "FREE")];
-    expect(pickFreeSeat({ seats }, "c")?.id).toBe("c");
+    expect(pickFreeSeat({ seats }, ["c"])?.id).toBe("c");
+  });
+
+  it("with several favorites, the first free one in order wins", () => {
+    const seats = [seat("a", "t1", "FREE"), seat("f1", "t2", "OCCUPIED"), seat("f2", "t2", "FREE"), seat("f3", "t3", "FREE")];
+    expect(pickFreeSeat({ seats }, ["f1", "f3", "f2"])?.id).toBe("f3");
   });
 
   it("ignores a favorite that is not free", () => {
     const seats = [seat("a", "t1", "FREE"), seat("fav", "t2", "OCCUPIED")];
-    expect(pickFreeSeat({ seats }, "fav")?.id).toBe("a");
+    expect(pickFreeSeat({ seats }, ["fav"])?.id).toBe("a");
   });
 
   it("picks the table with the most free seats, then the highest confidence", () => {

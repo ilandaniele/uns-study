@@ -10,16 +10,19 @@ export interface RoomQuickActionsProps {
   map: RoomMapDto;
   onlyFree: boolean;
   onToggleOnlyFree: () => void;
+  /** The favorite shown in its chip (the first free one, else the first saved). */
   favoriteSeat: SeatDto | null;
+  /** All the viewer's favorites, in order, for "Buscar lugar libre". */
+  favoriteSeatIds: readonly string[];
   favoriteTable: TableDto | null;
   onSelectSeat: (seatId: string) => void;
 }
 
 /**
- * Toolbar under the counters: jump to the best free seat, filter the map to free seats, open the
+ * Toolbar under the counters: jump to the best free seat, filter the map to free seats, open a
  * favorite seat (with its live status) and share the room's current availability.
  */
-export function RoomQuickActions({ map, onlyFree, onToggleOnlyFree, favoriteSeat, favoriteTable, onSelectSeat }: RoomQuickActionsProps) {
+export function RoomQuickActions({ map, onlyFree, onToggleOnlyFree, favoriteSeat, favoriteSeatIds, favoriteTable, onSelectSeat }: RoomQuickActionsProps) {
   const [notice, setNotice] = useState<string | null>(null);
 
   function flash(message: string) {
@@ -28,7 +31,7 @@ export function RoomQuickActions({ map, onlyFree, onToggleOnlyFree, favoriteSeat
   }
 
   function findFree() {
-    const seat = pickFreeSeat(map, favoriteSeat?.id ?? null);
+    const seat = pickFreeSeat(map, favoriteSeatIds);
     if (!seat) {
       flash("No hay lugares libres reportados ahora.");
       return;

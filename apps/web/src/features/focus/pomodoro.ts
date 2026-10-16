@@ -40,7 +40,24 @@ export const PRESETS: Preset[] = [
   { id: "30-5", label: "30 / 5", focusMin: 30, shortMin: 5, longMin: 15 },
   { id: "45-15", label: "45 / 15", focusMin: 45, shortMin: 15, longMin: 30 },
   { id: "50-10", label: "50 / 10", focusMin: 50, shortMin: 10, longMin: 30 },
+  { id: "90-20", label: "90 / 20", focusMin: 90, shortMin: 20, longMin: 30 },
 ];
+
+/** Presets that need Pro (the original four stay free). */
+export const PRO_PRESET_IDS: readonly string[] = ["90-20"];
+
+/** A user-defined combination, kept on this device only. `longMin` falls back to the current setting. */
+export interface CustomPreset {
+  id: string;
+  name: string;
+  focusMin: number;
+  shortMin: number;
+  longMin?: number;
+}
+
+export const CUSTOM_PRESETS_MAX = 5;
+export const CUSTOM_PRESET_LIMITS = { focusMin: [5, 180], shortMin: [1, 60], longMin: [1, 90] } as const;
+const CUSTOM_NAME_MAX = 24;
 
 export const DEFAULT_SETTINGS: FocusSettings = {
   focusMin: 25,
@@ -80,6 +97,58 @@ export function sanitizeSettings(raw: Partial<FocusSettings> | null | undefined)
 
 export function presetIdFor(s: FocusSettings): string | null {
   return PRESETS.find((p) => p.focusMin === s.focusMin && p.shortMin === s.shortMin && p.longMin === s.longMin)?.id ?? null;
+}
+
+function clampTo(range: readonly [number, number], value: unknown): number | null {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return Math.min(range[1], Math.max(range[0], Math.round(n)));
+}
+
+/** Validates one custom preset; null when it is unusable (no id, or a non-numeric duration). */
+export function sanitizeCustomPreset(raw: unknown): CustomPreset | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.id !== "string" || !r.id) return null;
+  const focusMin = clampTo(CUSTOM_PRESET_LIMITS.focusMin, r.focusMin);
+  const shortMin = clampTo(CUSTOM_PRESET_LIMITS.shortMin, r.shortMin);
+  if (focusMin === null || shortMin === null) return null;
+  const name = (typeof r.name === "string" ? r.name.trim() : "").slice(0, CUSTOM_NAME_MAX) || `${focusMin} / ${shortMin}`;
+  const longMin = r.longMin === undefined ? null : clampTo(CUSTOM_PRESET_LIMITS.longMin, r.longMin);
+  return longMin === null ? { id: r.id, name, focusMin, shortMin } : { id: r.id, name, focusMin, shortMin, longMin };
+}
+
+/** Defensive parse of the persisted list: drops junk and duplicate ids, caps at CUSTOM_PRESETS_MAX. */
+export function sanitizeCustomPresets(raw: unknown): CustomPreset[] {
+  if (!Array.isArray(raw)) return [];
+  const out: CustomPreset[] = [];
+  for (const item of raw) {
+    const p = sanitizeCustomPreset(item);
+    if (p && !out.some((x) => x.id === p.id)) out.push(p);
+    if (out.length >= CUSTOM_PRESETS_MAX) break;
+  }
+  return out;
+}
+
+/** Adds or replaces (same id) a preset. A new one past the cap is ignored. */
+export function upsertCustomPreset(list: readonly CustomPreset[], input: CustomPreset): CustomPreset[] {
+  const p = sanitizeCustomPreset(input);
+  if (!p) return [...list];
+  if (list.some((x) => x.id === p.id)) return list.map((x) => (x.id === p.id ? p : x));
+  if (list.length >= CUSTOM_PRESETS_MAX) return [...list];
+  return [...list, p];
+}
+
+export function customPresetSettings(p: CustomPreset, current: FocusSettings): Pick<FocusSettings, "focusMin" | "shortMin" | "longMin"> {
+  return { focusMin: p.focusMin, shortMin: p.shortMin, longMin: p.longMin ?? current.longMin };
+}
+
+/** The custom preset matching the current settings, if any. */
+export function customPresetIdFor(s: FocusSettings, list: readonly CustomPreset[]): string | null {
+  return list.find((p) => {
+    const c = customPresetSettings(p, s);
+    return c.focusMin === s.focusMin && c.shortMin === s.shortMin && c.longMin === s.longMin;
+  })?.id ?? null;
 }
 
 export function phaseDurationMs(phase: Phase, s: FocusSettings): number {

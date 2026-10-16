@@ -1,11 +1,24 @@
-import { BellIcon, BellRingingIcon, CheckIcon, FireIcon, PlusIcon, SpeakerHighIcon, SpeakerSlashIcon, TimerIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr";
+import { BellIcon, BellRingingIcon, CheckIcon, FireIcon, PlusIcon, SpeakerHighIcon, TimerIcon, TrashIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import { useState, useSyncExternalStore, type FormEvent } from "react";
 import { useNow } from "@/lib/use-now";
-import { AMBIENT_LABEL, playChime, primeAudio, type Ambient } from "./focus-audio";
+import { AMBIENT_KINDS, AMBIENT_LABEL, MAX_LAYERS, playChime, playableLayers, primeAudio, soundFeatureFor, type AmbientKind } from "./focus-audio";
 import { notifyPermission, requestNotifyPermission, showFocusNotification, type NotifyPermission } from "./focus-notify";
 import { focusActions, getFocus, useFocus } from "./focus-store";
 import { noopSubscribe, useMounted } from "./hooks";
-import { LIMITS, PRESETS, presetIdFor, recentDays, streakDays, todayStats, type FocusSettings } from "./pomodoro";
+import {
+  CUSTOM_PRESETS_MAX,
+  CUSTOM_PRESET_LIMITS,
+  LIMITS,
+  PRESETS,
+  PRO_PRESET_IDS,
+  customPresetIdFor,
+  customPresetSettings,
+  presetIdFor,
+  recentDays,
+  streakDays,
+  todayStats,
+  type FocusSettings,
+} from "./pomodoro";
 import { Card, Stepper, Switch } from "./ui";
 import { openProUpsell } from "@/features/subscriptions/pro-upsell-store";
 import { ProBadge } from "@/features/subscriptions/ProBadge";
@@ -26,71 +39,221 @@ export function TimesCard() {
         <Switch label="Arrancar pausas solas" checked={settings.autoStartBreaks} onChange={(v) => set({ autoStartBreaks: v })} />
         <Switch label="Arrancar foco solo" hint="Después de cada pausa" checked={settings.autoStartFocus} onChange={(v) => set({ autoStartFocus: v })} />
       </div>
+      <CustomPresetsBlock />
     </Card>
   );
 }
 
+/** Save the current times as a named combination (Pro, kept on this device) and manage the saved ones. */
+function CustomPresetsBlock() {
+  const { settings, customPresets } = useFocus();
+  const { lock } = usePro();
+  const [name, setName] = useState("");
+  const [open, setOpen] = useState(false);
+  const full = customPresets.length >= CUSTOM_PRESETS_MAX;
+  const [minFocus, maxFocus] = CUSTOM_PRESET_LIMITS.focusMin;
+  const tooShort = settings.focusMin < minFocus;
+  const duplicate = customPresetIdFor(settings, customPresets) !== null || presetIdFor(settings) !== null;
+
+  function save(e: FormEvent) {
+    e.preventDefault();
+    focusActions.saveCustomPreset({ name, focusMin: settings.focusMin, shortMin: settings.shortMin, longMin: settings.longMin });
+    setName("");
+    setOpen(false);
+  }
+
+  return (
+    <div className="mt-3 flex flex-col gap-2 border-t border-app pt-3">
+      <div className="flex min-h-6 items-center justify-between gap-2">
+        <span className="text-sm font-semibold text-main">Mis combinaciones</span>
+        {lock === "locked" ? <ProBadge inline /> : null}
+      </div>
+      {customPresets.length > 0 ? (
+        <ul className="flex flex-col gap-1">
+          {customPresets.map((p) => (
+            <li key={p.id} className="flex items-center gap-1">
+              <span className="min-w-0 flex-1 truncate text-sm text-main">
+                {p.name}
+                <span className="ml-2 font-mono text-xs text-muted">
+                  {p.focusMin} / {p.shortMin}
+                  {p.longMin ? ` / ${p.longMin}` : ""}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => focusActions.deleteCustomPreset(p.id)}
+                aria-label={`Borrar combinación: ${p.name}`}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-[var(--text-faint)] hover:bg-[var(--surface-2)] hover:text-main"
+              >
+                <TrashIcon size={16} aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-xs text-muted">Guardá los tiempos de arriba con un nombre y elegilos después con un toque.</p>
+      )}
+      {open ? (
+        <form onSubmit={save} className="flex gap-2">
+          <label className="flex-1">
+            <span className="sr-only">Nombre de la combinación</span>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={24}
+              autoFocus
+              placeholder={`${settings.focusMin} / ${settings.shortMin}`}
+              className="h-11 w-full rounded-lg border border-app bg-[var(--surface-2)] px-3 text-base text-main outline-none placeholder:text-[var(--text-faint)] focus:border-[var(--primary)] sm:text-sm"
+            />
+          </label>
+          <button type="submit" className="min-h-11 shrink-0 rounded-lg bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-dark">
+            Guardar
+          </button>
+        </form>
+      ) : (
+        <button
+          type="button"
+          disabled={lock === "unknown" || (lock === "unlocked" && (full || tooShort || duplicate))}
+          onClick={() => {
+            if (lock === "locked") openProUpsell("focus_custom");
+            else setOpen(true);
+          }}
+          className="flex min-h-11 items-center justify-center gap-2 rounded-control border border-app px-3 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-50"
+        >
+          <PlusIcon size={16} aria-hidden="true" />
+          Guardar estos tiempos
+        </button>
+      )}
+      {lock === "unlocked" && full ? <p className="text-xs text-muted">Llegaste al máximo de {CUSTOM_PRESETS_MAX} combinaciones. Borrá una para guardar otra.</p> : null}
+      {lock === "unlocked" && !full && tooShort ? <p className="text-xs text-muted">El foco tiene que ser de al menos {minFocus} min (hasta {maxFocus}).</p> : null}
+      {lock === "unlocked" && !full && !tooShort && duplicate ? <p className="text-xs text-muted">Estos tiempos ya están guardados o son una combinación rápida.</p> : null}
+    </div>
+  );
+}
+
 export function PresetChips() {
-  const { settings } = useFocus();
+  const { settings, customPresets } = useFocus();
+  const { lock } = usePro();
   const current = presetIdFor(settings);
+  const currentCustom = current ? null : customPresetIdFor(settings, customPresets);
+  const chip = (on: boolean) =>
+    `min-h-11 rounded-lg border px-3.5 font-mono text-sm font-semibold transition-[transform,background-color,border-color] duration-150 active:scale-[0.97] ${
+      on ? "border-[var(--primary)] bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] text-main" : "border-app text-muted hover:bg-[var(--surface-2)] hover:text-main"
+    }`;
+  // Picking is the paid part; a lapsed plan keeps the saved combinations but must upgrade to use them.
+  const pick = (proOnly: boolean, patch: Partial<FocusSettings>) => {
+    if (proOnly && lock !== "unlocked") {
+      if (lock === "locked") openProUpsell("focus_custom");
+      return;
+    }
+    focusActions.setSettings(patch);
+  };
   return (
     <div className="flex flex-wrap justify-center gap-2" role="group" aria-label="Combinaciones rápidas">
       {PRESETS.map((p) => {
-        const on = current === p.id;
+        const proOnly = PRO_PRESET_IDS.includes(p.id);
         return (
           <button
             key={p.id}
             type="button"
-            aria-pressed={on}
-            onClick={() => focusActions.setSettings({ focusMin: p.focusMin, shortMin: p.shortMin, longMin: p.longMin })}
-            className={`min-h-11 rounded-lg border px-3.5 font-mono text-sm font-semibold transition-[transform,background-color,border-color] duration-150 active:scale-[0.97] ${
-              on ? "border-[var(--primary)] bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] text-main" : "border-app text-muted hover:bg-[var(--surface-2)] hover:text-main"
-            }`}
+            aria-pressed={current === p.id}
+            onClick={() => pick(proOnly, { focusMin: p.focusMin, shortMin: p.shortMin, longMin: p.longMin })}
+            className={`${chip(current === p.id)} relative`}
           >
             {p.label}
+            {proOnly && lock === "locked" ? <ProBadge /> : null}
           </button>
         );
       })}
+      {customPresets.map((p) => (
+        <button
+          key={p.id}
+          type="button"
+          aria-pressed={currentCustom === p.id}
+          onClick={() => pick(true, customPresetSettings(p, settings))}
+          className={`${chip(currentCustom === p.id)} relative max-w-40 truncate`}
+          title={`${p.focusMin} / ${p.shortMin}`}
+        >
+          {p.name}
+          {lock === "locked" ? <ProBadge /> : null}
+        </button>
+      ))}
     </div>
   );
 }
 
 // ---------- Sound ----------
 
-const AMBIENTS: Ambient[] = ["off", "rain", "brown", "ocean", "fire"];
-
 export function SoundCard() {
-  const { ambient, volume, chime } = useFocus();
-  const locked = usePro().lock === "locked";
+  const { layers, volume, chime } = useFocus();
+  const { lock } = usePro();
+  const locked = lock === "locked";
+  // What is really sounding: a lapsed plan only keeps its first classic layer.
+  const shown = playableLayers(layers, lock);
+  const atLimit = shown.length >= MAX_LAYERS;
+  const toggle = (kind: AmbientKind) => {
+    if (lock === "unknown") return;
+    if (shown.some((l) => l.kind === kind)) {
+      focusActions.setLayer(kind, null);
+      return;
+    }
+    if (locked) {
+      openProUpsell(soundFeatureFor(kind, shown));
+      return;
+    }
+    if (atLimit) return;
+    primeAudio();
+    focusActions.setLayer(kind, 1);
+  };
   return (
     <Card title="Sonido" action={locked ? <ProBadge inline /> : null}>
-      <div className="grid grid-cols-2 gap-2" role="group" aria-label="Sonido de fondo">
-        {AMBIENTS.map((k) => {
-          const on = ambient === k && !(locked && k !== "off");
+      <div className="grid grid-cols-2 gap-2" role="group" aria-label="Sonidos de fondo">
+        {AMBIENT_KINDS.map((k) => {
+          const on = shown.some((l) => l.kind === k);
           return (
             <button
               key={k}
               type="button"
               aria-pressed={on}
-              onClick={() => {
-                if (locked && k !== "off") {
-                  openProUpsell("focus_sounds");
-                  return;
-                }
-                primeAudio();
-                focusActions.setAmbient(k);
-              }}
-              className={`flex min-h-11 items-center gap-2 rounded-lg border px-3 text-left text-sm font-semibold transition-[transform,background-color,border-color] duration-150 active:scale-[0.97] ${
+              disabled={!on && !locked && atLimit}
+              onClick={() => toggle(k)}
+              className={`flex min-h-11 items-center gap-2 rounded-lg border px-3 text-left text-sm font-semibold transition-[transform,background-color,border-color] duration-150 active:scale-[0.97] disabled:opacity-40 ${
                 on ? "border-[var(--primary)] bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] text-main" : "border-app text-muted hover:bg-[var(--surface-2)] hover:text-main"
               }`}
             >
-              {k === "off" ? <SpeakerSlashIcon size={16} aria-hidden="true" /> : <SpeakerHighIcon size={16} aria-hidden="true" />}
+              <SpeakerHighIcon size={16} aria-hidden="true" />
               {AMBIENT_LABEL[k]}
             </button>
           );
         })}
       </div>
-      <p className="mt-2 text-xs text-muted">Suena solo mientras corre un bloque de foco.</p>
+      <p className="mt-2 text-xs text-muted">Suena solo mientras corre un bloque de foco. Podés mezclar hasta {MAX_LAYERS} sonidos.</p>
+      {shown.length > 0 ? (
+        <ul className="mt-2 flex flex-col">
+          {shown.map((l) => (
+            <li key={l.kind} className="flex items-center gap-2">
+              <span className="w-24 shrink-0 truncate text-sm text-main">{AMBIENT_LABEL[l.kind]}</span>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(l.volume * 100)}
+                aria-label={`Volumen de ${AMBIENT_LABEL[l.kind].toLowerCase()}`}
+                onChange={(e) => focusActions.setLayer(l.kind, Number(e.target.value) / 100)}
+                className="h-11 flex-1 accent-[var(--primary)]"
+              />
+              <button
+                type="button"
+                onClick={() => focusActions.setLayer(l.kind, null)}
+                aria-label={`Quitar ${AMBIENT_LABEL[l.kind].toLowerCase()}`}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-[var(--text-faint)] hover:bg-[var(--surface-2)] hover:text-main"
+              >
+                <XIcon size={16} aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <label className="mt-3 flex items-center gap-3">
         <span className="text-sm font-semibold text-main">Volumen</span>
         <input
