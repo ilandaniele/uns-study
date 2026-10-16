@@ -378,6 +378,47 @@ describe("DailyResetJob", () => {
       expect(forecast.recomputeRoom).toHaveBeenCalledTimes(1);
     });
 
+    it("deletes expired quiet-room watches after a reset and tolerates a missing table", async () => {
+      const quietRoom = { deleteExpired: vi.fn(async () => 0) };
+      const make = (q: unknown) =>
+        new DailyResetJob(db, gateway, new StudySessionService(db), null, null, q as ConstructorParameters<typeof DailyResetJob>[5]);
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(await afterReset());
+
+      await make(quietRoom).tick();
+      expect(quietRoom.deleteExpired).toHaveBeenCalledTimes(1);
+
+      // Same day again: no reset, no cleanup.
+      await make(quietRoom).tick();
+      expect(quietRoom.deleteExpired).toHaveBeenCalledTimes(1);
+
+      await db.update(schema.rooms).set({ lastResetAt: null });
+      const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const missing = {
+        deleteExpired: vi.fn(async () => {
+          throw new Error("no such table: quiet_room_watches");
+        }),
+      };
+      await expect(make(missing).tick()).resolves.toBeUndefined();
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it("really deletes expired quiet-room watches with the real service", async () => {
+      const { QuietRoomService } = await import("../quiet-room/quiet-room.service.js");
+      const { RoomsService } = await import("../rooms/rooms.service.js");
+      const now = await afterReset();
+      const quiet = new QuietRoomService(db, new RoomsService(db, new RoomStateService(db)), { now: () => now });
+      await insertUsers(db, ["q1", "q2"]);
+      await db.insert(schema.quietRoomWatches).values([
+        { userId: "q1", roomId, thresholdPct: 50, expiresAt: new Date(now.getTime() - 1000) },
+        { userId: "q2", roomId, thresholdPct: 50, expiresAt: new Date(now.getTime() + 3_600_000) },
+      ]);
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(now);
+      await new DailyResetJob(db, gateway, new StudySessionService(db), null, null, quiet).tick();
+      expect((await db.select().from(schema.quietRoomWatches)).map((r) => r.userId)).toEqual(["q2"]);
+    });
+
     it("writes one forecast row per room with the real service", async () => {
       const { ForecastService } = await import("../forecast/forecast.service.js");
       const { RoomsService } = await import("../rooms/rooms.service.js");

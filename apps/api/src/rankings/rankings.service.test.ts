@@ -8,6 +8,7 @@ import { RoomStateService } from "../rooms/room-state.service.js";
 import { AliasService } from "../users/alias.service.js";
 import { RolesService } from "../users/roles.service.js";
 import { ProService } from "../subscriptions/pro.js";
+import { UserCosmeticsService } from "../cosmetics/cosmetics.service.js";
 import { FixedClock } from "../platform/clock.js";
 import { RankingsService } from "./rankings.service.js";
 
@@ -370,5 +371,38 @@ describe("RankingsService", () => {
     expect(byName.get("Gratis")).toBe(false);
     expect(ranking.entries.find((e) => e.userId === null)?.proBadge).toBe(false);
     expect(ranking.me?.proBadge).toBe(true);
+  });
+
+  it("flair shows on paid visible entries and me, never for lapsed users, free users or aliases", async () => {
+    await insertUsers(db, ["fp", "fl", "fa", "ff"]);
+    const roles = new RolesService(db);
+    const clock = new FixedClock(TODAY);
+    const pro = new ProService(db, roles, { subscriptionsEnabled: true, clock });
+    const cosmetics = new UserCosmeticsService(db, pro, clock);
+    const flairSvc = new RankingsService(db, new RoomsService(db, new RoomStateService(db)), new AliasService(db), roles, pro, cosmetics);
+    await db.insert(schema.userProfiles).values([
+      { userId: "fp", identityMode: "FIRST_NAME", firstName: "Paga" },
+      { userId: "fl", identityMode: "FIRST_NAME", firstName: "Vencida" },
+      { userId: "fa", identityMode: "HIDDEN" },
+      { userId: "ff", identityMode: "FIRST_NAME", firstName: "Gratis" },
+    ]);
+    await db.insert(schema.userSubscriptions).values([
+      { userId: "fp", providerSubscriptionId: "sub-fp", status: "authorized" },
+      { userId: "fl", providerSubscriptionId: "sub-fl", status: "cancelled", currentPeriodEnd: new Date("2026-01-01T00:00:00Z") },
+      { userId: "fa", providerSubscriptionId: "sub-fa", status: "authorized" },
+    ]);
+    await db.insert(schema.userCosmetics).values(["fp", "fl", "fa", "ff"].map((userId) => ({ userId, frame: "gold", nameColor: "ocean" })));
+    await insertStudySession("fp", "2026-01-15", 50, "c1111111-1111-1111-1111-111111111111");
+    await insertStudySession("fl", "2026-01-15", 40, "c2222222-2222-2222-2222-222222222222");
+    await insertStudySession("fa", "2026-01-15", 30, "c3333333-3333-3333-3333-333333333333");
+    await insertStudySession("ff", "2026-01-15", 20, "c4444444-4444-4444-4444-444444444444");
+
+    const ranking = await flairSvc.getRankings(roomSlug, "today", "study_time", "fp", TODAY);
+    const byName = new Map(ranking.entries.map((e) => [e.displayName, e.flair]));
+    expect(byName.get("Paga")).toEqual({ frame: "gold", nameColor: "ocean" });
+    expect(byName.get("Vencida")).toBeUndefined();
+    expect(byName.get("Gratis")).toBeUndefined();
+    expect(ranking.entries.find((e) => e.userId === null)?.flair).toBeUndefined();
+    expect(ranking.me?.flair).toEqual({ frame: "gold", nameColor: "ocean" });
   });
 });

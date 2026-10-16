@@ -1,7 +1,7 @@
 import { randomInt } from "node:crypto";
 import { and, eq, gt, inArray, ne, notExists, sql } from "drizzle-orm";
 import { chunk, schema, type Db } from "@sala/database";
-import { DISPUTE_MINUTES, seatLabel } from "@sala/contracts";
+import { DISPUTE_MINUTES, seatLabel, type QuietRoomAlertEvent, type RoomSummary } from "@sala/contracts";
 import { isMissingSchemaError } from "../common/sqlite-errors.js";
 import { Logger } from "../platform/logger.js";
 import type { Scheduler } from "../platform/scheduler.js";
@@ -10,6 +10,7 @@ import { PushService } from "./push.service.js";
 import { mapWithConcurrency } from "./concurrency.js";
 import { claimNotificationThrottle } from "./throttle.js";
 import type { SeatWatchService } from "../seat-watch/seat-watch.service.js";
+import { occupancyCrossing, type QuietRoomService } from "../quiet-room/quiet-room.service.js";
 
 /** At most one "seat freed" push per user per this many minutes. */
 const SEAT_FREED_THROTTLE_MIN = 10;
@@ -30,6 +31,11 @@ const ADMIN_PRESENT_DELAY_MAX_MS = 5 * 60_000;
 export interface SeatFreedRecipient {
   userId: string;
   seatIds: string[];
+}
+
+export interface QuietRoomRecipient {
+  userId: string;
+  event: QuietRoomAlertEvent;
 }
 
 export type SeatChallengeReason = "dispute" | "marked-free-vote" | "marked-free" | "saved-challenged" | "lost";
@@ -71,6 +77,8 @@ export class NotificationService {
     private readonly scheduler: Scheduler,
     /** Pro seat watches; null in tests that construct the service directly. */
     private readonly seatWatch: SeatWatchService | null = null,
+    /** Pro quiet-room watches; null in tests that construct the service directly. */
+    private readonly quietRoom: QuietRoomService | null = null,
   ) {}
 
   /**
@@ -181,6 +189,54 @@ export class NotificationService {
         this.logger.error("Failed to notify seat watchers", err instanceof Error ? err.stack : String(err));
       }
       return new Set();
+    }
+  }
+
+  /**
+   * Quiet-room alert: claims (one-shot delete) the watches the room just dropped through. Watchers with an
+   * active check-in in the room are consumed but not notified. Others get a push (if subscribed) and are
+   * returned for the in-app event. Never throws; a missing table is silent. Writes only when a watch fires.
+   */
+  async handleQuietRoom(roomId: string, summary: RoomSummary, changes: SeatStateChange[]): Promise<QuietRoomRecipient[]> {
+    if (!this.quietRoom) return [];
+    const crossing = occupancyCrossing(summary, changes);
+    if (!crossing || crossing.afterPct >= crossing.beforePct) return [];
+    try {
+      const claimed = await this.quietRoom.claimCrossed(roomId, crossing.beforePct, crossing.afterPct, new Date());
+      if (claimed.length === 0) return [];
+
+      const targets: typeof claimed = [];
+      for (const watch of claimed) {
+        if (!(await this.hasActiveCheckIn(watch.userId, roomId))) targets.push(watch);
+      }
+      if (targets.length === 0) return [];
+
+      const slug = await this.roomSlug(roomId);
+      const subscribed = new Set(await this.withPushSubscription(targets.map((t) => t.userId)));
+      try {
+        await mapWithConcurrency(
+          targets.filter((t) => subscribed.has(t.userId)),
+          SEND_CONCURRENCY,
+          (watch) =>
+            this.push.sendToUser(watch.userId, {
+              title: "La sala está más tranquila",
+              body: `Está al ${crossing.afterPct} % ocupada: hay ${summary.free} lugares libres.`,
+              url: `/sala/${slug}`,
+              tag: "quiet-room",
+            }),
+        );
+      } catch (err) {
+        this.logger.error("Failed to send quiet-room push batch", err instanceof Error ? err.stack : String(err));
+      }
+      return targets.map((t) => ({
+        userId: t.userId,
+        event: { roomId, roomSlug: slug, thresholdPct: t.thresholdPct, occupancyPct: crossing.afterPct, free: summary.free },
+      }));
+    } catch (err) {
+      if (!isMissingSchemaError(err)) {
+        this.logger.error("Failed to process quiet-room watches", err instanceof Error ? err.stack : String(err));
+      }
+      return [];
     }
   }
 

@@ -12,7 +12,8 @@ export function proLockState(me: Pick<MeDto, "pro"> | null, loading: boolean): P
 export type ProFeatureId =
   | "focus" | "focus_pip" | "focus_fullscreen" | "focus_sounds" | "focus_stats"
   | "focus_custom" | "seat_watch" | "study_history" | "forecast" | "favorites"
-  | "group_study" | "weekly_goal" | "streak_freeze" | "exams" | "auto_extend" | "themes";
+  | "group_study" | "weekly_goal" | "streak_freeze" | "exams" | "auto_extend" | "themes"
+  | "profile_flair" | "group_ranking" | "quiet_room";
 
 export const PRO_FEATURES: Record<ProFeatureId, { title: string; description: string }> = {
   focus: { title: "Foco", description: "Temporizador Pomodoro con tareas, sonidos ambiente y avisos para estudiar en bloques." },
@@ -20,7 +21,7 @@ export const PRO_FEATURES: Record<ProFeatureId, { title: string; description: st
   focus_fullscreen: { title: "Pantalla completa", description: "Un temporizador grande y sin distracciones para concentrarte de verdad." },
   focus_sounds: { title: "Sonidos ambiente", description: "Lluvia, océano o fuego de fondo mientras corre cada bloque de foco." },
   focus_stats: { title: "Historial y racha", description: "Mirá tus últimos 7 días y tu racha para mantener el ritmo de estudio." },
-  focus_custom: { title: "Temporizador a medida", description: "Armá tus propios bloques de foco y descanso con la duración que te sirva." },
+  focus_custom: { title: "Temporizador a medida", description: "Armá tus propios bloques de foco y descanso, y mezclá sonidos como biblioteca, lluvia con truenos o lofi." },
   seat_watch: { title: "Aviso de lugar libre", description: "Te avisamos cuando se libere el lugar que querés. Solo avisa: no te lo guarda." },
   study_history: { title: "Historial de estudio", description: "Mirá cuánto estudiaste en los últimos 30 o 90 días, a qué hora rendís más y exportalo." },
   forecast: { title: "Pronóstico de la sala", description: "Mirá a qué hora suele estar más llena o más vacía la sala según los últimos días." },
@@ -31,6 +32,9 @@ export const PRO_FEATURES: Record<ProFeatureId, { title: string; description: st
   exams: { title: "Plan de exámenes", description: "Cargá tus fechas de examen y mirá cuántas horas por día te faltan para llegar." },
   auto_extend: { title: "Sigo acá automático", description: "Renovamos tu check-in solo cuando estás en la sala, así no te quedás sin lugar." },
   themes: { title: "Paletas de color", description: "Cambiá los colores de la app y elegí la paleta que más te guste." },
+  profile_flair: { title: "Perfil destacado", description: "Elegí un marco para tu foto y un color para tu nombre. Se ven en el ranking, en tu perfil y en la sala." },
+  group_ranking: { title: "Ranking entre amigos", description: "Compará horas, racha y aportes solo con la gente de tu grupo." },
+  quiet_room: { title: "Aviso sala tranquila", description: "Te avisamos cuando la sala se vacía hasta el nivel que elijas, así sabés cuándo ir." },
 };
 
 export const PRO_BENEFITS: string[] = [
@@ -46,4 +50,7 @@ export const PRO_BENEFITS: string[] = [
   "Plan de exámenes con horas por día",
   "Sigo acá automático",
   "Paletas de color",
+  "Perfil destacado: marco para tu foto y color para tu nombre",
+  "Ranking entre amigos de tu grupo",
+  "Aviso cuando la sala está tranquila",
 ];

@@ -76,6 +76,8 @@ class FakeNode {
   type = "";
   buffer: unknown = null;
   loop = false;
+  detune = new FakeParam();
+  onended: (() => void) | null = null;
   constructor(readonly kind: string) {}
   connect(t: FakeNode) {
     this.targets.push(t);
@@ -164,5 +166,27 @@ describe("setLayers", () => {
     expect(activeLayerKinds()).toHaveLength(4);
     setLayers([], 1);
     expect(activeLayerKinds()).toEqual([]);
+  });
+
+  it("builds library, thunder and lofi, and leaves no timer behind once stopped", () => {
+    const before = vi.getTimerCount();
+    const gainsBefore = layerGains().length;
+    setLayers([{ kind: "library", volume: 1 }, { kind: "thunder", volume: 1 }, { kind: "lofi", volume: 1 }], 1);
+    expect(activeLayerKinds()).toEqual(["library", "thunder", "lofi"]);
+    expect(layerGains()).toHaveLength(gainsBefore + 3);
+    vi.advanceTimersByTime(60_000);
+    setLayers([], 1);
+    expect(activeLayerKinds()).toEqual([]);
+    vi.runAllTimers();
+    expect(vi.getTimerCount()).toBe(before);
+  });
+});
+
+describe("new sounds", () => {
+  it("are custom-mix sounds, locked for lapsed plans, and volume is clamped", () => {
+    expect(soundFeatureFor("lofi", [])).toBe("focus_custom");
+    expect(soundFeatureFor("library", [])).toBe("focus_custom");
+    expect(playableLayers([{ kind: "thunder", volume: 1 }], "locked")).toEqual([]);
+    expect(normalizeLayers([{ kind: "library", volume: 2 }])).toEqual([{ kind: "library", volume: 1 }]);
   });
 });

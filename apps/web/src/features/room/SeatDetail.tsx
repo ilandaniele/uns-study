@@ -5,6 +5,7 @@ import { ArmchairIcon, CaretDownIcon, ChairIcon, EyeIcon, ShieldCheckIcon, StarI
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { frameOf, nameColorStyle } from "@/components/flair";
 import { SeatWatchButton } from "@/features/seat-watch/SeatWatchButton";
 import { ProBadge, proLabel } from "@/features/subscriptions/ProBadge";
 import { MessageOccupantButton } from "./MessageOccupantButton";
@@ -248,18 +249,20 @@ export function SeatDetail({
             <div className="flex flex-wrap items-center gap-2 py-2">
               {occupant.userId ? (
                 <Link href={`/u/${occupant.userId}`} aria-hidden="true" tabIndex={-1} className="shrink-0 rounded-full">
-                  <OccupantAvatar avatar={occupant.avatar} size={32} adminBadge={occupant.adminBadge} />
+                  <OccupantAvatar avatar={occupant.avatar} size={32} adminBadge={occupant.adminBadge} proBadge={occupant.proBadge} frame={frameOf(occupant.flair)} />
                 </Link>
               ) : (
-                <OccupantAvatar avatar={occupant.avatar} size={32} adminBadge={occupant.adminBadge} />
+                <OccupantAvatar avatar={occupant.avatar} size={32} adminBadge={occupant.adminBadge} proBadge={occupant.proBadge} frame={frameOf(occupant.flair)} />
               )}
               <span className="min-w-0 flex-1 break-words">
                 {occupant.userId ? (
-                  <Link href={`/u/${occupant.userId}`} className="font-semibold text-primary hover:underline">
+                  <Link href={`/u/${occupant.userId}`} className="font-semibold text-primary hover:underline" style={nameColorStyle(occupant.flair)}>
                     {occupant.displayName}
                   </Link>
                 ) : (
-                  <span className="font-semibold text-main">{occupant.displayName}</span>
+                  <span className="font-semibold text-main" style={nameColorStyle(occupant.flair)}>
+                    {occupant.displayName}
+                  </span>
                 )}{" "}
                 está acá
               </span>

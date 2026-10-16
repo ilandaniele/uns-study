@@ -8,6 +8,7 @@ import { isMissingSchemaError } from "../common/sqlite-errors.js";
 import type { StudySessionService } from "../rankings/study-session.service.js";
 import type { ForecastService } from "../forecast/forecast.service.js";
 import type { SeatWatchService } from "../seat-watch/seat-watch.service.js";
+import type { QuietRoomService } from "../quiet-room/quiet-room.service.js";
 
 const SEAT_STATE_EVENT_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 const VISITOR_RETENTION_DAYS = 7;
@@ -32,6 +33,8 @@ export class DailyResetJob {
     private readonly forecast: ForecastService | null = null,
     /** Pro: drops expired seat watches after a reset; null in tests that construct the job directly. */
     private readonly seatWatch: SeatWatchService | null = null,
+    /** Pro: drops expired quiet-room watches after a reset; null in tests that construct the job directly. */
+    private readonly quietRoom: QuietRoomService | null = null,
   ) {}
 
   /** Scheduler entry point (`daily-reset`, every minute). */
@@ -50,7 +53,10 @@ export class DailyResetJob {
         console.error(JSON.stringify({ evt: "daily_reset_failed", roomId: room.id, msg: err instanceof Error ? err.message : String(err) }));
       }
     }
-    if (anyReset) await this.deleteExpiredSeatWatches(now);
+    if (anyReset) {
+      await this.deleteExpiredSeatWatches(now);
+      await this.deleteExpiredQuietWatches(now);
+    }
   }
 
   /** Pro forecast refresh, outside the reset transaction: a failure here never undoes a reset. */
@@ -67,6 +73,14 @@ export class DailyResetJob {
       await this.seatWatch?.deleteExpired(now);
     } catch (err) {
       if (!isMissingSchemaError(err)) console.error(JSON.stringify({ evt: "seat_watch_cleanup_failed", msg: err instanceof Error ? err.message : String(err) }));
+    }
+  }
+
+  private async deleteExpiredQuietWatches(now: Date): Promise<void> {
+    try {
+      await this.quietRoom?.deleteExpired(now);
+    } catch (err) {
+      if (!isMissingSchemaError(err)) console.error(JSON.stringify({ evt: "quiet_watch_cleanup_failed", msg: err instanceof Error ? err.message : String(err) }));
     }
   }
 

@@ -18,6 +18,8 @@ const PRO_0003_TABLES = [
   "study_goals",
   "user_exams",
 ];
+// Tables created by migration 0004_pro_features_2 (same degradation contract).
+const PRO_0004_TABLES = ["quiet_room_watches", "user_cosmetics"];
 
 async function signUp(app: ReturnType<typeof buildTestApp>["app"], key: string) {
   const res = await app.request("/api/auth/sign-up/email", {
@@ -41,7 +43,7 @@ describe("Pro GET endpoints on a database without migration 0003", () => {
     ctx = buildTestApp();
     const { db } = ctx;
     // Simulate "migrated only through 0002": 0003 only creates new tables, so dropping them is equivalent.
-    for (const table of PRO_0003_TABLES) db.run(sql.raw(`DROP TABLE IF EXISTS ${table}`));
+    for (const table of [...PRO_0003_TABLES, ...PRO_0004_TABLES]) db.run(sql.raw(`DROP TABLE IF EXISTS ${table}`));
     roomSlug = (await getRoom(db)).slug;
     paid = await signUp(ctx.app, "paid-old-schema");
     await db.insert(schema.userSubscriptions).values({ userId: paid.id, providerSubscriptionId: "sub-old-schema", status: "authorized" });
@@ -51,8 +53,8 @@ describe("Pro GET endpoints on a database without migration 0003", () => {
     env.mpAccessToken = priorToken;
   });
 
-  it("the 0003 tables are really gone", () => {
-    for (const table of PRO_0003_TABLES) {
+  it("the 0003 and 0004 tables are really gone", () => {
+    for (const table of [...PRO_0003_TABLES, ...PRO_0004_TABLES]) {
       let thrown: unknown;
       try {
         ctx.db.run(sql.raw(`SELECT 1 FROM ${table}`));
@@ -77,9 +79,29 @@ describe("Pro GET endpoints on a database without migration 0003", () => {
     "/me/exams",
     "/rooms/:slug/forecast",
     "/rooms/:slug/favorites",
+    "/me/cosmetics",
+    "/rooms/:slug/quiet-watch",
+    "/rooms/:slug/rankings?period=week&category=study_time",
+    "/profiles/:me",
+    "/rooms/:slug/people",
+    "/rooms/:slug/occupants",
   ])("GET %s serves defaults (200), not a 500", async (template) => {
-    const path = template.replace(":slug", roomSlug);
+    const path = template.replace(":slug", roomSlug).replace(":me", paid.id);
     const res = await ctx.app.request(`/api/v1${path}`, { headers: baseHeaders({ cookie: paid.cookie }) });
     expect(res.status).toBe(200);
+  });
+
+  it.each([
+    ["/me/cosmetics", { frame: "gold", nameColor: "ocean" }],
+    ["/rooms/:slug/quiet-watch", { thresholdPct: 50 }],
+  ])("PUT %s answers 503 FEATURE_DISABLED", async (template, body) => {
+    const path = template.replace(":slug", roomSlug);
+    const res = await ctx.app.request(`/api/v1${path}`, {
+      method: "PUT",
+      headers: baseHeaders({ cookie: paid.cookie, "content-type": "application/json" }),
+      body: JSON.stringify(body),
+    });
+    expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({ error: { code: "FEATURE_DISABLED" } });
   });
 });

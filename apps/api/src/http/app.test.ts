@@ -32,7 +32,7 @@ describe("createApp", () => {
     expect(live.status).toBe(200);
     expect(((await live.json()) as { ok: boolean }).ok).toBe(true);
     const ready = await app.request("/api/v1/health/ready", { headers: baseHeaders() });
-    expect(await ready.json()).toEqual({ ok: true, proTables: "8/8" });
+    expect(await ready.json()).toEqual({ ok: true, proTables: "10/10" });
   });
 
   it("health/ready answers 503 when the database fails", async () => {

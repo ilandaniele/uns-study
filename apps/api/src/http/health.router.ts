@@ -8,15 +8,17 @@ export const healthRouter = new Hono<AppEnv>();
 /** Liveness: the worker is up. Never touches the database. */
 healthRouter.get("/health", (c) => c.json({ ok: true, ts: new Date().toISOString() }));
 
-/** Tables migration 0003 creates; `proTables` below shows whether that best-effort boot migration ran. */
+/** Tables migrations 0003-0004 create; `proTables` below shows whether that best-effort boot migration ran. */
 const PRO_TABLES = [
   "favorite_seats",
   "group_focus_timers",
   "group_seat_share_optouts",
+  "quiet_room_watches",
   "room_occupancy_forecast",
   "seat_watches",
   "streak_freezes",
   "study_goals",
+  "user_cosmetics",
   "user_exams",
 ];
 

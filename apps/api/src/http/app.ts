@@ -66,6 +66,9 @@ import { groupStudyRouter } from "../group-study/group-study.router.js";
 import { weeklyGoalRouter } from "../weekly-goal/weekly-goal.router.js";
 import { streakBadgesRouter } from "../badges/streak-badges.router.js";
 import { examsRouter } from "../exams/exams.router.js";
+import { cosmeticsRouter } from "../cosmetics/cosmetics.router.js";
+import { quietRoomRouter } from "../quiet-room/quiet-room.router.js";
+import { groupRankingRouter } from "../group-ranking/group-ranking.router.js";
 
 export interface AppDeps {
   services: Services;
@@ -153,6 +156,9 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
     weeklyGoalRouter,
     streakBadgesRouter,
     examsRouter,
+    cosmeticsRouter,
+    quietRoomRouter,
+    groupRankingRouter,
     e2eTestHooksRouter,
   ]) {
     api.route("/", router);

@@ -1,3 +1,5 @@
+import type { ProfileFlairDto } from "./pro";
+
 export type RankingPeriod = "today" | "week" | "month" | "all";
 export type RankingCategory = "study_time" | "streak" | "contribution";
 
@@ -14,6 +16,8 @@ export interface RankingEntryDto {
   adminBadge?: boolean;
   /** Draw the Pro ring: a paid subscription (staff do not get it). */
   proBadge?: boolean;
+  /** Pro "Perfil destacado"; absent = draw defaults. */
+  flair?: ProfileFlairDto;
   /** True for the viewer's own row, so the UI can highlight it even when `userId` is `null`. */
   isMe: boolean;
   /** minutes | days | points, depending on `category`. */

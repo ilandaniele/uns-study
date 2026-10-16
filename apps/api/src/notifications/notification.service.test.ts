@@ -10,6 +10,7 @@ import { ManualScheduler } from "../platform/scheduler.js";
 import { FixedClock } from "../platform/clock.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { SeatWatchService } from "../seat-watch/seat-watch.service.js";
+import { QuietRoomService } from "../quiet-room/quiet-room.service.js";
 import { PushService } from "./push.service.js";
 import { NotificationService } from "./notification.service.js";
 
@@ -387,6 +388,70 @@ describe("NotificationService", () => {
       await addPushSubscription("subscriber");
       await svc.notifyDirectMessage({ recipientId: "subscriber", senderDisplayName: " ", conversationId: "c", content: "hola" });
       expect(JSON.parse(sendNotification.mock.calls[0]![1] as string).title).toBe("Nuevo mensaje privado");
+    });
+  });
+
+  describe("handleQuietRoom", () => {
+    const NOW = new Date();
+    const summary = { roomId: "", total: 100, free: 60, occupied: 40, uncertain: 0, saved: 0, unknown: 0 };
+    // 4 seats stopped being occupied: 44 % -> 40 %.
+    const drop = () => [0, 1, 2, 3].map((i) => change(seatIds[i]!, "FREE", "OCCUPIED"));
+    let watches: QuietRoomService;
+
+    beforeEach(async () => {
+      const roomState = new RoomStateService(db);
+      watches = new QuietRoomService(db, new RoomsService(db, roomState), new FixedClock(NOW));
+      svc = new NotificationService(db, new PushService(db), roomState, scheduler, null, watches);
+      await insertUsers(db, ["qwatcher"]);
+    });
+
+    async function addQuietWatch(userId: string, thresholdPct: number) {
+      await db.insert(schema.quietRoomWatches).values({ userId, roomId, thresholdPct, expiresAt: new Date(NOW.getTime() + 3_600_000) });
+    }
+
+    it("pushes a subscribed watcher once and returns the in-app event", async () => {
+      await addPushSubscription("qwatcher");
+      await addQuietWatch("qwatcher", 42);
+
+      const recipients = await svc.handleQuietRoom(roomId, { ...summary, roomId }, drop());
+
+      expect(recipients).toHaveLength(1);
+      expect(recipients[0]!.userId).toBe("qwatcher");
+      expect(recipients[0]!.event).toMatchObject({ roomId, thresholdPct: 42, occupancyPct: 40, free: 60 });
+      expect(sendNotification).toHaveBeenCalledTimes(1);
+      const payload = JSON.parse(sendNotification.mock.calls[0]![1] as string);
+      expect(payload.tag).toBe("quiet-room");
+      expect(payload.body).toBe("Está al 40 % ocupada: hay 60 lugares libres.");
+      expect(await db.select().from(schema.quietRoomWatches)).toHaveLength(0);
+    });
+
+    it("consumes the watch of a checked-in user without push or recipient", async () => {
+      await addPushSubscription("qwatcher");
+      await addActiveCheckIn("qwatcher", seatIds[10]!);
+      await addQuietWatch("qwatcher", 42);
+
+      expect(await svc.handleQuietRoom(roomId, { ...summary, roomId }, drop())).toEqual([]);
+      expect(sendNotification).not.toHaveBeenCalled();
+      expect(await db.select().from(schema.quietRoomWatches)).toHaveLength(0);
+    });
+
+    it("keeps the watch when occupancy did not cross it (or rose, or the room is small)", async () => {
+      await addQuietWatch("qwatcher", 30);
+      expect(await svc.handleQuietRoom(roomId, { ...summary, roomId }, drop())).toEqual([]);
+      expect(await svc.handleQuietRoom(roomId, { ...summary, roomId }, [change(seatIds[0]!, "OCCUPIED", "FREE")])).toEqual([]);
+      expect(await svc.handleQuietRoom(roomId, { ...summary, roomId, total: 10 }, drop())).toEqual([]);
+      expect(await db.select().from(schema.quietRoomWatches)).toHaveLength(1);
+    });
+
+    it("does not query at all without a crossing", async () => {
+      const spy = vi.spyOn(watches, "claimCrossed");
+      await svc.handleQuietRoom(roomId, { ...summary, roomId }, [change(seatIds[0]!, "OCCUPIED", "FREE")]);
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it("returns [] without throwing when the table is missing", async () => {
+      await db.run(sql`DROP TABLE quiet_room_watches`);
+      await expect(svc.handleQuietRoom(roomId, { ...summary, roomId }, drop())).resolves.toEqual([]);
     });
   });
 });

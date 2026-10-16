@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { AdminBadge } from "@/components/AdminBadge";
 import { Avatar } from "@/components/Avatar";
+import { frameOf, nameColorStyle } from "@/components/flair";
 import { emptyRankingMessage, formatRankingValue } from "./labels";
 
 const MEDAL: Record<number, string> = { 1: "#E0A526", 2: "#9AA6B6", 3: "#C07A45" };
@@ -60,6 +61,7 @@ function Podium({ entries, format }: { entries: RankingEntryDto[]; format: (valu
                 size={entry.rank === 1 ? 64 : 52}
                 ringColor={MEDAL[entry.rank]}
                 proBadge={entry.proBadge}
+                frame={frameOf(entry.flair)}
               />
               {entry.adminBadge ? <AdminBadge size={entry.rank === 1 ? 64 : 52} edge="top" /> : null}
               <span
@@ -73,11 +75,12 @@ function Podium({ entries, format }: { entries: RankingEntryDto[]; format: (valu
               <Link
                 href={`/u/${entry.userId}`}
                 className={`mt-1 w-full truncate text-main hover:underline ${entry.rank === 1 ? "text-sm font-bold" : "text-sm font-semibold"}`}
+                style={nameColorStyle(entry.flair)}
               >
                 {entry.displayName}
               </Link>
             ) : (
-              <span className={`mt-1 w-full truncate text-main ${entry.rank === 1 ? "text-sm font-bold" : "text-sm font-semibold"}`}>
+              <span className={`mt-1 w-full truncate text-main ${entry.rank === 1 ? "text-sm font-bold" : "text-sm font-semibold"}`} style={nameColorStyle(entry.flair)}>
                 {entry.displayName}
               </span>
             )}
@@ -105,7 +108,7 @@ function PodiumAvatarLink({ userId, children }: { userId: string | null; childre
 
 function RankingRow({ entry, value, highlighted }: { entry: RankingEntryDto; value: string; highlighted?: boolean }) {
   const rowAvatar = (
-    <Avatar userId={entry.userId ?? entry.displayName} name={entry.displayName} url={entry.avatarUrl} aliasAnimal={entry.aliasAnimal} size={40} adminBadge={entry.adminBadge} proBadge={entry.proBadge} />
+    <Avatar userId={entry.userId ?? entry.displayName} name={entry.displayName} url={entry.avatarUrl} aliasAnimal={entry.aliasAnimal} size={40} adminBadge={entry.adminBadge} proBadge={entry.proBadge} frame={frameOf(entry.flair)} />
   );
   return (
     <li className={`flex items-center gap-3 px-4 py-3 ${highlighted ? "bg-primary/10" : ""}`}>
@@ -122,12 +125,12 @@ function RankingRow({ entry, value, highlighted }: { entry: RankingEntryDto; val
         rowAvatar
       )}
       {entry.userId ? (
-        <Link href={`/u/${entry.userId}`} className="min-w-0 flex-1 truncate text-sm font-medium text-main hover:underline">
+        <Link href={`/u/${entry.userId}`} className="min-w-0 flex-1 truncate text-sm font-medium text-main hover:underline" style={nameColorStyle(entry.flair)}>
           {entry.displayName}
           {highlighted ? <span className="ml-1.5 text-xs font-medium text-primary"> vos</span> : null}
         </Link>
       ) : (
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-main">
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-main" style={nameColorStyle(entry.flair)}>
           {entry.displayName}
           {highlighted ? <span className="ml-1.5 text-xs font-medium text-primary"> vos</span> : null}
         </span>

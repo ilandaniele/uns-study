@@ -13,6 +13,9 @@ import { StudySessionService } from "../rankings/study-session.service.js";
 import { RestrictionService } from "../users/restriction.service.js";
 import { AliasService } from "../users/alias.service.js";
 import { RolesService } from "../users/roles.service.js";
+import { ProService } from "../subscriptions/pro.js";
+import { UserCosmeticsService } from "../cosmetics/cosmetics.service.js";
+import { FixedClock } from "../platform/clock.js";
 import { StudyService } from "./study.service.js";
 import { RoomPeopleService } from "./room-people.service.js";
 
@@ -322,6 +325,48 @@ describe("RoomPeopleService", () => {
       const marked = (await people.listOccupants(roomId)).filter((e): e is SeatMarkedByDto => "markedBy" in e);
       expect(marked).toHaveLength(1);
       expect(marked[0]).toMatchObject({ seatId: seatIds[3], kind: "SAVED", markedBy: { displayName: "Beto" } });
+    });
+  });
+
+  describe("proBadge and flair", () => {
+    async function proPeople() {
+      const roles = new RolesService(db);
+      const clock = new FixedClock(new Date());
+      const pro = new ProService(db, roles, { subscriptionsEnabled: true, clock });
+      await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: true });
+      await checkIns.checkIn({ userId: "u2", roomId, seatId: seatIds[1]!, location, showIdentity: true });
+      await checkIns.checkIn({ userId: "u3", roomId, seatId: seatIds[2]!, location, showIdentity: true });
+      await setProfile("u1", { firstName: "Ana", identityMode: "FIRST_NAME" }); // paid, visible
+      await setProfile("u2", { firstName: "Beto", identityMode: "FIRST_NAME" }); // free, visible
+      await setProfile("u3", { identityMode: "HIDDEN" }); // paid, alias
+      await db.insert(schema.userSubscriptions).values([
+        { userId: "u1", providerSubscriptionId: "sub-u1", status: "authorized" },
+        { userId: "u3", providerSubscriptionId: "sub-u3", status: "authorized" },
+      ]);
+      await db.insert(schema.userCosmetics).values(["u1", "u2", "u3"].map((userId) => ({ userId, frame: "double", nameColor: "forest" })));
+      return new RoomPeopleService(db, new AliasService(db), roles, pro, new UserCosmeticsService(db, pro, clock));
+    }
+
+    it("listPeople marks paid visible people only; the alias branch gets neither", async () => {
+      const list = await (await proPeople()).listPeople(roomId, "viewer");
+      expect(list.find((p) => p.userId === "u1")).toMatchObject({ proBadge: true, flair: { frame: "double", nameColor: "forest" } });
+      const free = list.find((p) => p.userId === "u2");
+      expect(free?.proBadge).toBeUndefined();
+      expect(free?.flair).toBeUndefined();
+      const alias = list.find((p) => p.userId === null);
+      expect(alias?.proBadge).toBeUndefined();
+      expect(alias?.flair).toBeUndefined();
+    });
+
+    it("listOccupants marks paid visible occupants only; alias and Alguien get neither", async () => {
+      const occupants = (await (await proPeople()).listOccupants(roomId, "viewer")) as SeatOccupantDto[];
+      expect(occupants.find((o) => o.userId === "u1")).toMatchObject({ proBadge: true, flair: { frame: "double", nameColor: "forest" } });
+      const free = occupants.find((o) => o.userId === "u2");
+      expect(free?.proBadge).toBeUndefined();
+      expect(free?.flair).toBeUndefined();
+      const hidden = occupants.find((o) => o.userId === null);
+      expect(hidden?.proBadge).toBeUndefined();
+      expect(hidden?.flair).toBeUndefined();
     });
   });
 });

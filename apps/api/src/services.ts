@@ -70,6 +70,9 @@ import type { GroupStudyService } from "./group-study/group-study.service.js";
 import type { WeeklyGoalService } from "./weekly-goal/weekly-goal.service.js";
 import type { StreakBadgesService } from "./badges/streak-badges.service.js";
 import type { ExamsService } from "./exams/exams.service.js";
+import type { UserCosmeticsService } from "./cosmetics/cosmetics.service.js";
+import type { QuietRoomService } from "./quiet-room/quiet-room.service.js";
+import type { GroupRankingService } from "./group-ranking/group-ranking.service.js";
 
 export interface Services {
   /** The shared sync SQLite handle, for the few routers that touch it directly (health, e2e hooks). */
@@ -141,6 +144,9 @@ export interface Services {
   weeklyGoal: WeeklyGoalService;
   streakBadges: StreakBadgesService;
   exams: ExamsService;
+  cosmetics: UserCosmeticsService;
+  quietRoom: QuietRoomService;
+  groupRanking: GroupRankingService;
   // W1-C
   realtime: RoomRealtimeGateway;
   scheduler: Scheduler;

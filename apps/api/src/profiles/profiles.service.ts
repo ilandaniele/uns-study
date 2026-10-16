@@ -10,6 +10,7 @@ import { RestrictionService } from "../users/restriction.service.js";
 import { StudyService } from "../study/study.service.js";
 import { toDto as toCheckInDto } from "../checkins/checkins.service.js";
 import type { ProService } from "../subscriptions/pro.js";
+import type { UserCosmeticsService } from "../cosmetics/cosmetics.service.js";
 
 type ProfileRow = typeof schema.userProfiles.$inferSelect;
 type PrivacyRow = typeof schema.userPrivacySettings.$inferSelect;
@@ -25,6 +26,8 @@ export class ProfilesService {
     private readonly roles: RolesService,
     /** Pro badge lookups; null in tests that construct the service directly. */
     private readonly pro: ProService | null = null,
+    /** Pro profile flair; null in tests that construct the service directly. */
+    private readonly cosmetics: UserCosmeticsService | null = null,
   ) {}
 
   /** Rows are created lazily on first read/write — there's no signup-time profile step. Also
@@ -117,6 +120,7 @@ export class ProfilesService {
     // Anyone shown as alias (HIDDEN, or a visible mode with empty name fields) leaks nothing real.
     const showsIdentity = Boolean(profile) && !needsAlias(profile!);
     const proBadge = showsIdentity && this.pro ? (await this.pro.badgeIds([targetUserId])).has(targetUserId) : false;
+    const flair = proBadge && this.cosmetics ? (await this.cosmetics.flairFor(new Set([targetUserId]))).get(targetUserId) : undefined;
     return {
       userId: targetUserId,
       displayName: name,
@@ -133,6 +137,7 @@ export class ProfilesService {
       blockedByMe: Boolean(blockedByMe),
       adminBadge: showsAdminBadge(isAdmin, profile ?? null, privacy ?? null),
       proBadge,
+      ...(flair ? { flair } : {}),
     };
   }
 

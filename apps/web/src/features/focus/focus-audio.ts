@@ -6,7 +6,7 @@
  * are conservative and the master bus has a compressor, so nothing is harsh or clips.
  */
 
-export type AmbientKind = "rain" | "brown" | "ocean" | "fire" | "white" | "pink" | "cafe" | "wind";
+export type AmbientKind = "rain" | "brown" | "ocean" | "fire" | "white" | "pink" | "cafe" | "wind" | "library" | "thunder" | "lofi";
 
 export interface AmbientLayer {
   kind: AmbientKind;
@@ -14,7 +14,7 @@ export interface AmbientLayer {
   volume: number;
 }
 
-export const AMBIENT_KINDS: readonly AmbientKind[] = ["rain", "brown", "ocean", "fire", "white", "pink", "cafe", "wind"];
+export const AMBIENT_KINDS: readonly AmbientKind[] = ["rain", "brown", "ocean", "fire", "white", "pink", "cafe", "wind", "library", "thunder", "lofi"];
 /** The sounds that shipped before layers existed: a single one of these is the old `focus_sounds` feature. */
 export const BASE_AMBIENT_KINDS: readonly AmbientKind[] = ["rain", "brown", "ocean", "fire"];
 export const MAX_LAYERS = 4;
@@ -28,6 +28,9 @@ export const AMBIENT_LABEL: Record<AmbientKind, string> = {
   pink: "Ruido rosa",
   cafe: "Café",
   wind: "Viento",
+  library: "Biblioteca",
+  thunder: "Lluvia con truenos",
+  lofi: "Lofi",
 };
 
 function isKind(value: unknown): value is AmbientKind {
@@ -217,19 +220,149 @@ function scheduleEvents(h: LayerHandle, minMs: number, maxMs: number, fn: () => 
   tick();
 }
 
-/** A short, quiet, filtered noise burst (a raindrop or a fire crackle). */
-function burst(ac: AudioContext, out: AudioNode, opts: { freq: number; q: number; peak: number; dur: number }): void {
+/** Registers a one-shot node with the layer and drops it from the list once it has ended, so long sessions don't leak. */
+function track(h: LayerHandle, node: AudioScheduledSourceNode): void {
+  h.nodes.push(node);
+  node.onended = () => {
+    const i = h.nodes.indexOf(node);
+    if (i >= 0) h.nodes.splice(i, 1);
+  };
+}
+
+/** A short, quiet, filtered noise burst (a raindrop, a fire crackle, a page turn, a hi-hat). `at` is an absolute context time. */
+function burst(
+  ac: AudioContext,
+  h: LayerHandle,
+  out: AudioNode,
+  opts: { freq: number; q: number; peak: number; dur: number; at?: number; lowpass?: number },
+): void {
   const src = ac.createBufferSource();
   src.buffer = noiseBuffer(ac, "pink");
   const bp = filter(ac, "bandpass", opts.freq, opts.q);
-  const lp = filter(ac, "lowpass", 3500);
+  const lp = filter(ac, "lowpass", opts.lowpass ?? 3500);
   const g = ac.createGain();
-  const t = ac.currentTime;
+  const t = opts.at ?? ac.currentTime;
   g.gain.setValueAtTime(0, t);
   g.gain.linearRampToValueAtTime(opts.peak, t + 0.004);
   g.gain.exponentialRampToValueAtTime(0.0001, t + opts.dur);
   src.connect(bp).connect(lp).connect(g).connect(out);
   src.start(t, Math.random() * 8, opts.dur + 0.05);
+  track(h, src);
+}
+
+/** The rain bed: a soft wash of pink noise with the top end rolled off, plus the odd quiet droplet. */
+function rainChain(ac: AudioContext, h: LayerHandle, out: AudioNode): void {
+  const hp = filter(ac, "highpass", 300);
+  const lp = filter(ac, "lowpass", 2200);
+  const shelf = filter(ac, "highshelf", 1500);
+  shelf.gain.value = -9;
+  const wash = ac.createGain();
+  wash.gain.value = 0.7;
+  loopingNoise(ac, h, "pink").connect(hp).connect(lp).connect(shelf).connect(wash).connect(out);
+  scheduleEvents(h, 120, 520, () => {
+    burst(ac, h, out, { freq: 1200 + Math.random() * 1600, q: 2, peak: 0.02 + Math.random() * 0.03, dur: 0.05 + Math.random() * 0.05 });
+  });
+}
+
+/** A distant roll of thunder: brown noise through a low lowpass, slow swell, long decay. */
+function thunderRumble(ac: AudioContext, h: LayerHandle, out: AudioNode): void {
+  const src = ac.createBufferSource();
+  src.buffer = noiseBuffer(ac, "brown");
+  src.loop = true;
+  const lp = filter(ac, "lowpass", 120 + Math.random() * 80);
+  const g = ac.createGain();
+  const attack = 0.5 + Math.random() * 0.5;
+  const decay = 3 + Math.random() * 3;
+  const peak = (0.5 + Math.random() * 0.3) * 0.7;
+  const t = ac.currentTime;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(peak, t + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
+  src.connect(lp).connect(g).connect(out);
+  src.start(t, Math.random() * 8);
+  src.stop(t + attack + decay + 0.2);
+  track(h, src);
+}
+
+// Chord loop in C: Cmaj7, Am7, Dm7, G7 (voiced low so it stays warm).
+const LOFI_CHORDS: readonly (readonly number[])[] = [
+  [130.81, 164.81, 196.0, 246.94],
+  [110.0, 130.81, 164.81, 196.0],
+  [146.83, 174.61, 220.0, 261.63],
+  [98.0, 123.47, 146.83, 174.61],
+];
+const LOFI_MELODY = [523.25, 587.33, 659.25, 783.99, 880.0];
+const LOFI_BPM = 72;
+const LOFI_BEAT = 60 / LOFI_BPM;
+const LOFI_BAR = LOFI_BEAT * 4;
+
+/** One note: oscillator -> its own envelope -> `dest`, stopped when the envelope ends. */
+function lofiNote(
+  ac: AudioContext,
+  h: LayerHandle,
+  dest: AudioNode,
+  o: { freq: number; type: OscillatorType; t: number; attack: number; dur: number; peak: number },
+): void {
+  const osc = ac.createOscillator();
+  const g = ac.createGain();
+  osc.type = o.type;
+  osc.frequency.value = o.freq;
+  osc.detune.value = (Math.random() - 0.5) * 12;
+  g.gain.setValueAtTime(0, o.t);
+  g.gain.linearRampToValueAtTime(o.peak, o.t + o.attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, o.t + o.dur);
+  osc.connect(g).connect(dest);
+  osc.start(o.t);
+  osc.stop(o.t + o.dur + 0.05);
+  track(h, osc);
+}
+
+function lofi(ac: AudioContext, h: LayerHandle, out: AudioNode): void {
+  // Warm bus for the chords and melody: everything above ~900 Hz is gone.
+  const warm = filter(ac, "lowpass", 900);
+  warm.connect(out);
+
+  let bar = 0;
+  const playBar = () => {
+    const t0 = ac.currentTime + 0.05;
+    for (const freq of LOFI_CHORDS[bar % LOFI_CHORDS.length]) {
+      lofiNote(ac, h, warm, { freq, type: "triangle", t: t0, attack: 0.4, dur: LOFI_BAR + 0.25, peak: 0.06 });
+    }
+    // A sparse, quiet sine note on top, now and then.
+    if (Math.random() < 0.6) {
+      const beat = Math.floor(Math.random() * 4);
+      const freq = LOFI_MELODY[Math.floor(Math.random() * LOFI_MELODY.length)];
+      lofiNote(ac, h, warm, { freq, type: "sine", t: t0 + beat * LOFI_BEAT, attack: 0.05, dur: 1.4, peak: 0.025 });
+    }
+    // Soft kick on beats 1 and 3: a sine dropping 120 -> 45 Hz.
+    for (const beat of [0, 2]) {
+      const t = t0 + beat * LOFI_BEAT;
+      const kick = ac.createOscillator();
+      const g = ac.createGain();
+      kick.type = "sine";
+      kick.frequency.setValueAtTime(120, t);
+      kick.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.2, t + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+      kick.connect(g).connect(out);
+      kick.start(t);
+      kick.stop(t + 0.3);
+      track(h, kick);
+    }
+    // Light hat on the off-beats.
+    for (const beat of [0.5, 1.5, 2.5, 3.5]) {
+      burst(ac, h, out, { freq: 7000 + Math.random() * 1000, q: 1, peak: 0.01, dur: 0.05, at: t0 + beat * LOFI_BEAT, lowpass: 9000 });
+    }
+    bar++;
+  };
+  playBar();
+  scheduleEvents(h, LOFI_BAR * 1000, LOFI_BAR * 1000, playBar);
+
+  // Vinyl crackle: tiny, sparse ticks.
+  scheduleEvents(h, 40, 250, () => {
+    burst(ac, h, out, { freq: 3000 + Math.random() * 1500, q: 0.7, peak: 0.005 + Math.random() * 0.01, dur: 0.008 + Math.random() * 0.012, lowpass: 8000 });
+  });
 }
 
 function buildAmbient(ac: AudioContext, h: LayerHandle, out: AudioNode): void {
@@ -255,17 +388,12 @@ function buildAmbient(ac: AudioContext, h: LayerHandle, out: AudioNode): void {
       break;
     }
     case "rain": {
-      // Soft wash of pink noise with the top end rolled off, plus the odd quiet droplet.
-      const hp = filter(ac, "highpass", 300);
-      const lp = filter(ac, "lowpass", 2200);
-      const shelf = filter(ac, "highshelf", 1500);
-      shelf.gain.value = -9;
-      const wash = ac.createGain();
-      wash.gain.value = 0.7;
-      loopingNoise(ac, h, "pink").connect(hp).connect(lp).connect(shelf).connect(wash).connect(out);
-      scheduleEvents(h, 120, 520, () => {
-        burst(ac, out, { freq: 1200 + Math.random() * 1600, q: 2, peak: 0.02 + Math.random() * 0.03, dur: 0.05 + Math.random() * 0.05 });
-      });
+      rainChain(ac, h, out);
+      break;
+    }
+    case "thunder": {
+      rainChain(ac, h, out);
+      scheduleEvents(h, 15000, 45000, () => thunderRumble(ac, h, out));
       break;
     }
     case "ocean": {
@@ -284,7 +412,7 @@ function buildAmbient(ac: AudioContext, h: LayerHandle, out: AudioNode): void {
       rumble.gain.value = 0.8;
       loopingNoise(ac, h, "brown").connect(lp).connect(rumble).connect(out);
       scheduleEvents(h, 250, 1600, () => {
-        burst(ac, out, { freq: 900 + Math.random() * 1800, q: 1.2, peak: 0.03 + Math.random() * 0.05, dur: 0.02 + Math.random() * 0.06 });
+        burst(ac, h, out, { freq: 900 + Math.random() * 1800, q: 1.2, peak: 0.03 + Math.random() * 0.05, dur: 0.02 + Math.random() * 0.06 });
       });
       break;
     }
@@ -303,6 +431,35 @@ function buildAmbient(ac: AudioContext, h: LayerHandle, out: AudioNode): void {
         murmur.gain.setTargetAtTime(0.05 + Math.random() * 0.3, ac.currentTime, 0.5);
         band.frequency.setTargetAtTime(500 + Math.random() * 500, ac.currentTime, 0.8);
       });
+      break;
+    }
+    case "library": {
+      // The cafe recipe, much quieter: a faint room tone, a barely-there murmur and the odd page turn.
+      const room = filter(ac, "lowpass", 500);
+      const roomLevel = ac.createGain();
+      roomLevel.gain.value = 0.35;
+      loopingNoise(ac, h, "brown").connect(room).connect(roomLevel).connect(out);
+      const band = filter(ac, "bandpass", 700, 0.8);
+      const lp = filter(ac, "lowpass", 1800);
+      const murmur = ac.createGain();
+      murmur.gain.value = 0.06;
+      loopingNoise(ac, h, "pink").connect(band).connect(lp).connect(murmur).connect(out);
+      scheduleEvents(h, 400, 1400, () => {
+        murmur.gain.setTargetAtTime(0.04 + Math.random() * 0.08, ac.currentTime, 0.5);
+        band.frequency.setTargetAtTime(500 + Math.random() * 500, ac.currentTime, 0.8);
+      });
+      scheduleEvents(h, 6000, 18000, () => {
+        const flips = 2 + Math.floor(Math.random() * 2);
+        let at = ac.currentTime;
+        for (let i = 0; i < flips; i++) {
+          burst(ac, h, out, { freq: 2500 + Math.random() * 1500, q: 1.5, peak: 0.012 + Math.random() * 0.01, dur: 0.08 + Math.random() * 0.07, at });
+          at += 0.05 + Math.random() * 0.07;
+        }
+      });
+      break;
+    }
+    case "lofi": {
+      lofi(ac, h, out);
       break;
     }
     case "wind": {

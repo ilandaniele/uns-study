@@ -29,6 +29,13 @@
       "when": 1792174236596,
       "tag": "0003_pro_features",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1792188640294,
+      "tag": "0004_pro_features_2",
+      "breakpoints": true
     }
   ]
 }

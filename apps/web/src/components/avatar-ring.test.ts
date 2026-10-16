@@ -19,3 +19,32 @@ describe("avatarRingShadow", () => {
     expect(avatarRingShadow({ ringColor: "#c9a227", proBadge: true })).toBe(`0 0 0 3px #c9a227, 0 0 0 5px ${PRO_RING_COLOR}`);
   });
 });
+
+describe("avatarRingShadow frames", () => {
+  it("draws each frame", () => {
+    expect(avatarRingShadow({ proBadge: true, frame: "gold" })).toBe("0 0 0 2px var(--surface), 0 0 0 4px var(--flair-frame-gold)");
+    expect(avatarRingShadow({ proBadge: true, frame: "double" })).toBe(
+      "0 0 0 2px var(--surface), 0 0 0 4px var(--primary), 0 0 0 6px var(--surface), 0 0 0 8px var(--primary)",
+    );
+    expect(avatarRingShadow({ proBadge: true, frame: "glow" })).toBe(
+      "0 0 0 2px var(--surface), 0 0 0 4px var(--primary), 0 0 12px 4px color-mix(in srgb, var(--primary) 45%, transparent)",
+    );
+    expect(avatarRingShadow({ proBadge: true, frame: "duo" })).toBe("0 0 0 2px var(--flair-frame-duo-a), 0 0 0 4px var(--flair-frame-duo-b)");
+  });
+
+  it("treats none like no frame", () => {
+    expect(avatarRingShadow({ proBadge: true, frame: "none" })).toBe(avatarRingShadow({ proBadge: true }));
+    expect(avatarRingShadow({ ringColor: "#c9a227", proBadge: true, frame: "none" })).toBe(avatarRingShadow({ ringColor: "#c9a227", proBadge: true }));
+  });
+
+  it("ignores the frame without proBadge", () => {
+    expect(avatarRingShadow({ frame: "gold" })).toBeUndefined();
+    expect(avatarRingShadow({ ringColor: "#c9a227", frame: "duo" })).toBe("0 0 0 3px #c9a227");
+  });
+
+  it("pushes the frame outside a medal ring", () => {
+    expect(avatarRingShadow({ ringColor: "#c9a227", proBadge: true, frame: "gold" })).toBe(
+      "0 0 0 3px #c9a227, 0 0 0 3px var(--surface), 0 0 0 5px var(--flair-frame-gold)",
+    );
+  });
+});

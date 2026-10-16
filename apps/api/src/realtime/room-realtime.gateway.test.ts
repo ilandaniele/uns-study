@@ -153,6 +153,44 @@ describe("RoomRealtimeGateway.broadcastSeatChanges", () => {
   });
 });
 
+describe("RoomRealtimeGateway quiet-room alerts", () => {
+  const ROOM_ID = "289306e1-e5f2-4cb6-ac63-9ae49e986e04";
+  const change = { seatId: "a", status: "FREE" as const, confidence: 0.5, lastUpdatedAt: new Date(), verified: false, previousStatus: "OCCUPIED" as const };
+  const summary = { roomId: ROOM_ID, total: 100, free: 60, occupied: 40, uncertain: 0, saved: 0, unknown: 0 };
+
+  it("publishes room:quiet-alert to each recipient", async () => {
+    const hub = new RecordingHub();
+    const event = { roomId: ROOM_ID, roomSlug: "principal", thresholdPct: 50, occupancyPct: 40, free: 60 };
+    const handleQuietRoom = vi.fn(async () => [{ userId: "u7", event }]);
+    const gateway = new RoomRealtimeGateway(hub, { getRoomSummary: async () => summary }, { handleSeatFreed: async () => [], handleQuietRoom } as never, null);
+    await gateway.broadcastSeatChanges(ROOM_ID, [change]);
+    await gateway.flushPending();
+    expect(handleQuietRoom).toHaveBeenCalledWith(ROOM_ID, summary, [expect.objectContaining({ seatId: "a" })]);
+    expect(hub.eventsFor("room:quiet-alert")).toEqual([{ to: "user:u7", event: "room:quiet-alert", payload: event }]);
+  });
+
+  it("still emits the summary when quiet-room processing throws", async () => {
+    const hub = new RecordingHub();
+    const gateway = new RoomRealtimeGateway(
+      hub,
+      { getRoomSummary: async () => summary },
+      {
+        handleSeatFreed: async () => [],
+        handleQuietRoom: async () => {
+          throw new Error("boom");
+        },
+      } as never,
+      null,
+    );
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await gateway.broadcastSeatChanges(ROOM_ID, [change]);
+    await gateway.flushPending();
+    spy.mockRestore();
+    expect(hub.eventsFor("room:summary-changed")).toHaveLength(1);
+    expect(hub.eventsFor("room:quiet-alert")).toHaveLength(0);
+  });
+});
+
 describe("RoomRealtimeGateway emitters", () => {
   const hub = new RecordingHub();
   const gateway = new RoomRealtimeGateway(hub, { getRoomSummary: async () => ({}) as never }, { handleSeatFreed: async () => [] } as never, null);

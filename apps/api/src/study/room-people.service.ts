@@ -1,9 +1,11 @@
 import { and, desc, eq, gt, inArray, or } from "drizzle-orm";
 import { inChunks, schema, type Db } from "@sala/database";
-import { animalIdFromAlias, type RoomPersonDto, type SeatMarkedByDto, type SeatOccupancyDto } from "@sala/contracts";
+import { animalIdFromAlias, type ProfileFlairDto, type RoomPersonDto, type SeatMarkedByDto, type SeatOccupancyDto } from "@sala/contracts";
 import { displayName, needsAlias, showsAdminBadge, visibleAvatarUrl, type DisplayNameProfile } from "../users/display-name.js";
 import type { AliasService } from "../users/alias.service.js";
 import type { RolesService } from "../users/roles.service.js";
+import type { ProService } from "../subscriptions/pro.js";
+import type { UserCosmeticsService } from "../cosmetics/cosmetics.service.js";
 import { toStudyStatusDto } from "./study.service.js";
 
 function profileForDisplay(profile: typeof schema.userProfiles.$inferSelect | null, alias?: string | null): DisplayNameProfile | null {
@@ -17,6 +19,9 @@ export class RoomPeopleService {
     private readonly db: Db,
     private readonly aliases: AliasService,
     private readonly roles: RolesService,
+    /** Pro badge and flair lookups; null in tests that construct the service directly. */
+    private readonly pro: ProService | null = null,
+    private readonly cosmetics: UserCosmeticsService | null = null,
   ) {}
 
   /**
@@ -88,12 +93,16 @@ export class RoomPeopleService {
 
     // A visible identity mode (with its field filled) is always listed by that name; the alias is only for hidden users.
     const hasVisibleName = (r: (typeof rows)[number]) => Boolean(r.profile) && !needsAlias(r.profile!);
-    const admins = await this.roles.adminIds(rows.filter(hasVisibleName).map((r) => r.userId));
+    const visibleIds = rows.filter(hasVisibleName).map((r) => r.userId);
+    const admins = await this.roles.adminIds(visibleIds);
+    const { paid, flair } = await this.proFlair(visibleIds);
 
     const result: RoomPersonDto[] = [];
     for (const r of rows) {
       if (hasVisibleName(r)) {
         result.push({
+          ...(paid.has(r.userId) ? { proBadge: true } : {}),
+          ...(flair.has(r.userId) ? { flair: flair.get(r.userId) } : {}),
           userId: r.userId,
           displayName: displayName(profileForDisplay(r.profile), null, r.userName),
           avatarUrl: visibleAvatarUrl(r.profile ?? null, r.privacy ?? null),
@@ -121,6 +130,13 @@ export class RoomPeopleService {
       });
     }
     return result;
+  }
+
+  /** Paid subset of `visibleIds` (one `badgeIds` call) and their flair. Both empty without the Pro services. */
+  private async proFlair(visibleIds: string[]): Promise<{ paid: Set<string>; flair: Map<string, ProfileFlairDto> }> {
+    const paid = this.pro && visibleIds.length > 0 ? await this.pro.badgeIds(visibleIds) : new Set<string>();
+    const flair = this.cosmetics ? await this.cosmetics.flairFor(paid) : new Map<string, ProfileFlairDto>();
+    return { paid, flair };
   }
 
   /** Users `viewerId` blocked or was blocked by. */
@@ -156,12 +172,16 @@ export class RoomPeopleService {
       .all();
 
     const isVisible = (r: (typeof rows)[number]) => Boolean(r.profile) && !needsAlias(r.profile!) && !blocked.has(r.userId);
-    const admins = await this.roles.adminIds(rows.filter(isVisible).map((r) => r.userId));
+    const visibleIds = rows.filter(isVisible).map((r) => r.userId);
+    const admins = await this.roles.adminIds(visibleIds);
+    const { paid, flair } = await this.proFlair(visibleIds);
     const result: SeatOccupancyDto[] = [];
     for (const r of rows) {
       if (isVisible(r)) {
         const url = visibleAvatarUrl(r.profile ?? null, r.privacy ?? null);
         result.push({
+          ...(paid.has(r.userId) ? { proBadge: true } : {}),
+          ...(flair.has(r.userId) ? { flair: flair.get(r.userId) } : {}),
           seatId: r.seatId,
           userId: r.userId,
           displayName: displayName(profileForDisplay(r.profile), null, r.userName),

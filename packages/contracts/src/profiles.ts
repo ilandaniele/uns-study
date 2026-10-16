@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ProfileFlairDto } from "./pro";
 
 export type IdentityMode = "FULL_NAME" | "FIRST_NAME" | "NICKNAME" | "NICKNAME_AND_NAME" | "HIDDEN";
 
@@ -65,6 +66,8 @@ export interface PublicProfileDto {
   adminBadge: boolean;
   /** Draw the Pro ring: a paid subscription (staff do not get it). */
   proBadge?: boolean;
+  /** Pro "Perfil destacado"; absent = draw defaults. */
+  flair?: ProfileFlairDto;
 }
 
 export interface RoomPersonDto {
@@ -81,6 +84,8 @@ export interface RoomPersonDto {
   adminBadge?: boolean;
   /** Draw the Pro ring: a paid subscription (staff do not get it). */
   proBadge?: boolean;
+  /** Pro "Perfil destacado"; absent = draw defaults. */
+  flair?: ProfileFlairDto;
 }
 
 /** What to draw on an occupied seat: the person's photo, their alias animal, or a generic silhouette. */
@@ -98,6 +103,8 @@ export interface SeatOccupantDto {
   adminBadge?: boolean;
   /** Draw the Pro ring: a paid subscription (staff do not get it). */
   proBadge?: boolean;
+  /** Pro "Perfil destacado"; absent = draw defaults. */
+  flair?: ProfileFlairDto;
 }
 
 /** A seat that reads OCCUPIED ("Está ocupado") or SAVED ("Está guardado") only because someone marked it; nobody is checked in. */

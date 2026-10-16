@@ -79,7 +79,7 @@ export class RoomRealtimeGateway {
   constructor(
     private readonly hub: RealtimeHub,
     private readonly roomState: Pick<RoomStateService, "getRoomSummary">,
-    private readonly notifications: Pick<NotificationService, "handleSeatFreed">,
+    private readonly notifications: Pick<NotificationService, "handleSeatFreed"> & Partial<Pick<NotificationService, "handleQuietRoom">>,
     /** `null` falls back to `setTimeout` (unit tests without a scheduler). */
     private readonly scheduler: Scheduler | null,
   ) {}
@@ -150,6 +150,14 @@ export class RoomRealtimeGateway {
       }
     } catch (err) {
       this.logger.error("Failed to process seat-freed notifications", err instanceof Error ? err.stack : String(err));
+    }
+
+    // "Sala tranquila" watchers: only does work when the room dropped through a watched threshold.
+    try {
+      const quiet = (await this.notifications.handleQuietRoom?.(roomId, summary, changes)) ?? [];
+      for (const { userId, event } of quiet) this.hub.publishToUser(userId, SocketEvents.QuietRoomAlert, event);
+    } catch (err) {
+      this.logger.error("Failed to process quiet-room notifications", err instanceof Error ? err.stack : String(err));
     }
   }
 

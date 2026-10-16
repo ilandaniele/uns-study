@@ -20,8 +20,8 @@ export class GroupStudyService {
     private readonly clock: Clock,
   ) {}
 
-  /** 404 for both "no such group" and "not a member", like GroupsService. Returns every member id. */
-  private memberIdsOf(groupId: string, userId: string): string[] {
+  /** 404 for both "no such group" and "not a member", like GroupsService. Returns every member id. Also used by GroupRankingService. */
+  memberIdsOf(groupId: string, userId: string): string[] {
     const rows = this.db.select({ userId: schema.groupMembers.userId }).from(schema.groupMembers).where(eq(schema.groupMembers.groupId, groupId)).all();
     const ids = rows.map((r) => r.userId);
     if (!ids.includes(userId)) throw ApiErrors.notFound("Grupo no encontrado.");
@@ -119,8 +119,8 @@ export class GroupStudyService {
     return row ? toFocusDto(row) : null;
   }
 
-  /** Users among `ids` that `viewerId` blocked or that blocked `viewerId`. */
-  private blockedAmong(viewerId: string, ids: string[]): Set<string> {
+  /** Users among `ids` that `viewerId` blocked or that blocked `viewerId`. Also used by GroupRankingService. */
+  blockedAmong(viewerId: string, ids: string[]): Set<string> {
     const b = schema.userBlocks;
     // Each id binds twice, so keep parts small enough for the 100-parameter cap.
     const rows = inChunks(

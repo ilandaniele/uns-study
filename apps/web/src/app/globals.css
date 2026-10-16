@@ -59,6 +59,15 @@
 }
 
 :root {
+  --flair-name-ocean: #0369a1;
+  --flair-name-forest: #15803d;
+  --flair-name-berry: #be185d;
+  --flair-name-sunset: #c2410c;
+  --flair-name-violet: #6d28d9;
+  --flair-name-gold: #a16207;
+  --flair-frame-gold: #c9a227;
+  --flair-frame-duo-a: #db2777;
+  --flair-frame-duo-b: #7c3aed;
   /* Cool graphite on a grey-green "pizarra clara" paper — no navy, no cream. */
   --ink: #131816;
   --muted: #535b57;
@@ -122,6 +131,15 @@
 }
 
 .dark {
+  --flair-name-ocean: #38bdf8;
+  --flair-name-forest: #4ade80;
+  --flair-name-berry: #f472b6;
+  --flair-name-sunset: #fb923c;
+  --flair-name-violet: #a78bfa;
+  --flair-name-gold: #facc15;
+  --flair-frame-gold: #e0b84a;
+  --flair-frame-duo-a: #f472b6;
+  --flair-frame-duo-b: #a78bfa;
   --ink: #e7ebe8;
   --muted: #a0aaa5;
   --bg: #0d1110;

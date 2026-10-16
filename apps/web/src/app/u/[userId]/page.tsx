@@ -1,12 +1,13 @@
 "use client";
 
-import type { PublicProfileDto } from "@sala/contracts";
+import type { ProfileFrameId, PublicProfileDto } from "@sala/contracts";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { WithAdminBadge } from "@/components/AdminBadge";
 import { avatarRingShadow } from "@/components/avatar-ring";
+import { frameOf, nameColorStyle } from "@/components/flair";
 import { PhotoViewer } from "@/components/PhotoViewer";
 import { apiFetch, apiPost, ApiRequestError } from "@/lib/api";
 import { conversationErrorMessage, startConversation } from "@/features/chat/start-conversation";
@@ -103,10 +104,12 @@ export default function PublicProfilePage() {
       <div className="border-t border-app pt-5">
         <div className="flex items-center gap-4">
           <WithAdminBadge show={profile.adminBadge} size={64}>
-            <PersonAvatar name={profile.displayName} avatarUrl={profile.avatarUrl} proBadge={profile.proBadge} />
+            <PersonAvatar name={profile.displayName} avatarUrl={profile.avatarUrl} proBadge={profile.proBadge} frame={frameOf(profile.flair)} />
           </WithAdminBadge>
           <div className="min-w-0">
-            <h1 className="truncate t-title text-xl">{profile.displayName}</h1>
+            <h1 className="truncate t-title text-xl" style={nameColorStyle(profile.flair)}>
+              {profile.displayName}
+            </h1>
             {profile.career || profile.currentSubject ? (
               <div className="mt-1 flex flex-wrap gap-1.5">
                 {profile.career ? <Chip>{profile.career}</Chip> : null}
@@ -179,8 +182,8 @@ function Chip({ children }: { children: string }) {
   );
 }
 
-function PersonAvatar({ name, avatarUrl, proBadge = false }: { name: string; avatarUrl: string | null; proBadge?: boolean }) {
-  const boxShadow = avatarRingShadow({ proBadge });
+function PersonAvatar({ name, avatarUrl, proBadge = false, frame }: { name: string; avatarUrl: string | null; proBadge?: boolean; frame?: ProfileFrameId }) {
+  const boxShadow = avatarRingShadow({ proBadge, frame });
   const [viewing, setViewing] = useState(false);
   if (avatarUrl) {
     return (

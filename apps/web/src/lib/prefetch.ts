@@ -14,6 +14,8 @@ export const DataPaths = {
   groups: () => "/api/v1/groups",
   groupThread: (groupId: string) => `/api/v1/groups/${groupId}/messages`,
   groupContacts: () => "/api/v1/groups/contacts",
+  groupRanking: (groupId: string, period: string, category: string, roomSlug = "principal") =>
+    `/api/v1/groups/${groupId}/rankings?period=${period}&category=${category}&room=${roomSlug}`,
 } as const;
 
 /** The ranking view opens on this period/category. */

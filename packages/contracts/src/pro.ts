@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { RankingCategory, RankingEntryDto, RankingPeriod } from "./rankings";
 
 const localDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
@@ -153,4 +154,66 @@ export interface ExamDto {
 export interface ExamsDto {
   exams: ExamDto[];
   career: string | null;
+}
+
+// 10 Profile flair
+export const PROFILE_FRAMES = ["none", "gold", "double", "glow", "duo"] as const;
+export type ProfileFrameId = (typeof PROFILE_FRAMES)[number];
+export const NAME_COLORS = ["default", "ocean", "forest", "berry", "sunset", "violet", "gold"] as const;
+export type NameColorId = (typeof NAME_COLORS)[number];
+export const profileFlairRequestSchema = z.object({ frame: z.enum(PROFILE_FRAMES), nameColor: z.enum(NAME_COLORS) });
+export type ProfileFlairRequest = z.infer<typeof profileFlairRequestSchema>;
+/** Shown to others. Only present on paid users with a visible identity whose choice is not all-default. */
+export interface ProfileFlairDto {
+  frame: ProfileFrameId;
+  nameColor: NameColorId;
+}
+/** `GET|PUT /me/cosmetics`. Defaults ("none"/"default") when nothing is saved. */
+export interface MyCosmeticsDto extends ProfileFlairDto {
+  /** Paid subscription and a visible identity right now, i.e. others actually see the flair. */
+  visibleToOthers: boolean;
+}
+
+// 11 Group ranking
+/** `GET /groups/:id/rankings`: the room ranking restricted to the group's members. */
+export interface GroupRankingDto {
+  groupId: string;
+  groupName: string;
+  roomSlug: string;
+  period: RankingPeriod;
+  category: RankingCategory;
+  entries: RankingEntryDto[];
+  me: RankingEntryDto | null;
+}
+
+// 12 Quiet room
+export const QUIET_ROOM_THRESHOLDS = [30, 50, 70] as const;
+export type QuietRoomThreshold = (typeof QUIET_ROOM_THRESHOLDS)[number];
+export const QUIET_ROOM_TTL_MINUTES = 240;
+/** Rooms with fewer active seats never trigger (too noisy). */
+export const QUIET_ROOM_MIN_SEATS = 20;
+export const quietWatchRequestSchema = z.object({
+  thresholdPct: z.union([z.literal(30), z.literal(50), z.literal(70)]),
+});
+export type QuietWatchRequest = z.infer<typeof quietWatchRequestSchema>;
+export interface QuietWatchDto {
+  roomId: string;
+  thresholdPct: QuietRoomThreshold;
+  expiresAt: string;
+}
+export interface QuietWatchResponse {
+  watch: QuietWatchDto | null;
+}
+/** Payload of SocketEvents.QuietRoomAlert, sent to the private user channel. */
+export interface QuietRoomAlertEvent {
+  roomId: string;
+  roomSlug: string;
+  thresholdPct: number;
+  occupancyPct: number;
+  free: number;
+}
+/** Occupancy % the quiet-room alert uses (occupied + saved + uncertain over total), or null below QUIET_ROOM_MIN_SEATS. Shared by API and web. */
+export function quietRoomOccupancyPct(s: { total: number; occupied: number; saved: number; uncertain: number }): number | null {
+  if (s.total < QUIET_ROOM_MIN_SEATS) return null;
+  return Math.round(((s.occupied + s.saved + s.uncertain) / s.total) * 100);
 }

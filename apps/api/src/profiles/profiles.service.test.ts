@@ -15,6 +15,7 @@ import { RestrictionService } from "../users/restriction.service.js";
 import { AliasService } from "../users/alias.service.js";
 import { RolesService } from "../users/roles.service.js";
 import { ProService } from "../subscriptions/pro.js";
+import { UserCosmeticsService } from "../cosmetics/cosmetics.service.js";
 import { FixedClock } from "../platform/clock.js";
 import { ProfilesService } from "./profiles.service.js";
 
@@ -122,6 +123,26 @@ describe("ProfilesService", () => {
       expect((await proProfiles.getPublicProfile("viewer", "u1")).proBadge).toBe(true);
       expect((await proProfiles.getPublicProfile("viewer", "u2")).proBadge).toBe(false);
       expect((await profiles.getPublicProfile("viewer", "u1")).proBadge).toBe(false); // no ProService wired
+    });
+
+    it("flair shows only for a paid user with a visible identity", async () => {
+      const roles = new RolesService(db);
+      const clock = new FixedClock(new Date());
+      const pro = new ProService(db, roles, { subscriptionsEnabled: true, clock });
+      const proProfiles = new ProfilesService(db, new StudyService(db, new RestrictionService(db)), new AliasService(db), new RestrictionService(db), roles, pro, new UserCosmeticsService(db, pro, clock));
+      await profiles.updateMyProfile("u1", "u1@example.test", { firstName: "Ana", identityMode: "FIRST_NAME" });
+      await profiles.updateMyProfile("u2", "u2@example.test", { firstName: "Beto", identityMode: "FIRST_NAME" });
+      await profiles.updateMyProfile("viewer", "viewer@example.test", { identityMode: "HIDDEN" });
+      await db.insert(schema.userSubscriptions).values([
+        { userId: "u1", providerSubscriptionId: "sub-u1", status: "authorized" },
+        { userId: "viewer", providerSubscriptionId: "sub-v", status: "authorized" },
+      ]);
+      await db.insert(schema.userCosmetics).values(["u1", "u2", "viewer"].map((userId) => ({ userId, frame: "glow", nameColor: "berry" })));
+
+      expect((await proProfiles.getPublicProfile("u2", "u1")).flair).toEqual({ frame: "glow", nameColor: "berry" });
+      expect((await proProfiles.getPublicProfile("u1", "u2")).flair).toBeUndefined(); // free
+      expect((await proProfiles.getPublicProfile("u1", "viewer")).flair).toBeUndefined(); // paid but alias
+      expect((await profiles.getPublicProfile("u2", "u1")).flair).toBeUndefined(); // no cosmetics wired
     });
 
     it("exposes fields once the owner opts in via privacy settings", async () => {

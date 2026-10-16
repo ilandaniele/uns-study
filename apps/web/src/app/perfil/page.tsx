@@ -20,6 +20,7 @@ import { BadgesSection } from "@/features/badges/BadgesSection";
 import { ExamsSection } from "@/features/exams/ExamsSection";
 import { ProBadge } from "@/features/subscriptions/ProBadge";
 import { usePro } from "@/features/subscriptions/usePro";
+import { FlairSection } from "@/features/flair/FlairSection";
 import { PaletteSection } from "@/features/theme/PaletteSection";
 import { WeeklyGoalCard } from "@/features/weekly-goal/WeeklyGoalCard";
 import { apiFetch, apiPost } from "@/lib/api";
@@ -192,6 +193,7 @@ export default function PerfilPage() {
       <section className="border-t border-app py-6 first:border-t-0">
         <h2 className="mb-3 t-title">Apariencia</h2>
         <PaletteSection />
+        <FlairSection userId={session.user.id} name={session.user.name || profile.nickname || profile.firstName || "?"} avatarUrl={profile.avatarUrl} />
       </section>
 
       <section className="border-t border-app py-6 first:border-t-0">

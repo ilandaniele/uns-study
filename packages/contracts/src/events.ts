@@ -37,4 +37,5 @@ export const SocketEvents = {
   RoomAdminPresent: "room:admin-present",
   SeatFreedAlert: "seat:freed-alert",
   CheckInExpiring: "checkin:expiring",
+  QuietRoomAlert: "room:quiet-alert",
 } as const;

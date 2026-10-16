@@ -1,7 +1,7 @@
 import { and, eq, gte, inArray, lt, lte } from "drizzle-orm";
 import { fromZonedTime } from "date-fns-tz";
 import { inChunks, schema, type Db } from "@sala/database";
-import type { RankingCategory, RankingDto, RankingEntryDto, RankingPeriod } from "@sala/contracts";
+import type { ProfileFlairDto, RankingCategory, RankingDto, RankingEntryDto, RankingPeriod } from "@sala/contracts";
 import { minutesByLocalDay, verifiedMinutesFor } from "./study-session.service.js";
 import { localDateOf } from "../common/dates.js";
 import { STREAK_LOOKBACK_DAYS, STREAK_MIN_MINUTES } from "../study-history/streak.js";
@@ -11,6 +11,7 @@ import { displayName, needsAlias, showsAdminBadge, shownAliasAnimal, visibleAvat
 import type { RolesService } from "../users/roles.service.js";
 import type { AliasService } from "../users/alias.service.js";
 import type { ProService } from "../subscriptions/pro.js";
+import type { UserCosmeticsService } from "../cosmetics/cosmetics.service.js";
 
 const STUDY_TIME_DAILY_CAP_MIN = 720;
 const CONTRIBUTION_OBSERVATION_DAILY_CAP = 20;
@@ -64,7 +65,7 @@ function currentStreak(qualifyingDatesAsc: string[], todayLocal: string): number
   return streak;
 }
 
-interface VisibilityInfo {
+export interface RankingIdentity {
   /** Appears in the ranking list at all. */
   visible: boolean;
   /** Opted out of rankings entirely (`showInRanking: false`) — excluded even from their own `me` row. */
@@ -78,6 +79,24 @@ interface VisibilityInfo {
   /** `false` whenever the entry must not be linkable: not opted into room visibility, or the shown
    *  name is the random alias rather than a chosen identity. */
   linkable: boolean;
+  /** Pro profile flair; set only for paid users shown with a visible identity. */
+  flair?: ProfileFlairDto;
+}
+
+/** One ranking row from a user's identity. `userId` is hidden unless the entry is linkable. */
+export function toRankingEntry(userId: string, info: RankingIdentity, rank: number, value: number, viewerUserId: string | null): RankingEntryDto {
+  return {
+    rank,
+    userId: info.linkable ? userId : null,
+    displayName: info.displayName,
+    avatarUrl: info.avatarUrl,
+    aliasAnimal: info.aliasAnimal,
+    adminBadge: info.adminBadge,
+    proBadge: info.proBadge,
+    ...(info.flair ? { flair: info.flair } : {}),
+    isMe: userId === viewerUserId,
+    value,
+  };
 }
 
 /** Public ranking lists show at most this many users; the viewer's own entry is returned separately. */
@@ -95,10 +114,34 @@ export class RankingsService {
     private readonly roles: RolesService,
     /** Pro badge lookups; null in tests that construct the service directly. */
     private readonly pro: ProService | null = null,
+    /** Pro profile flair; null in tests that construct the service directly. */
+    private readonly cosmetics: UserCosmeticsService | null = null,
   ) {}
 
   /** Raw (viewer-independent) ranking values per `roomId|period|category`, invalidated by TTL only. */
   private readonly rawCache = new Map<string, { at: number; values: Map<string, number> }>();
+
+  /** Viewer-independent values for room+period+category from the 60 s rawCache (nowOverride bypasses it). */
+  async rawValues(
+    room: { id: string; timezone: string },
+    period: RankingPeriod,
+    category: RankingCategory,
+    nowOverride?: Date,
+  ): Promise<Map<string, number>> {
+    const now = nowOverride ?? new Date();
+    // An explicit `now` (tests, backfills) always recomputes; live requests share the TTL cache.
+    const cacheKey = `${room.id}|${period}|${category}`;
+    const cached = nowOverride ? undefined : this.rawCache.get(cacheKey);
+    if (cached && Date.now() - cached.at < RAW_CACHE_TTL_MS) return cached.values;
+    const values =
+      category === "study_time"
+        ? await this.studyTimeValues(room, period, now)
+        : category === "streak"
+          ? await this.streakValues(room, now)
+          : await this.contributionValues(room, period, now);
+    if (!nowOverride) this.rawCache.set(cacheKey, { at: Date.now(), values });
+    return values;
+  }
 
   async getRankings(
     idOrSlug: string,
@@ -108,50 +151,23 @@ export class RankingsService {
     nowOverride?: Date,
   ): Promise<RankingDto> {
     const room = await this.rooms.findRoomRow(idOrSlug);
-    const now = nowOverride ?? new Date();
-
-    // An explicit `now` (tests, backfills) always recomputes; live requests share the TTL cache.
-    const cacheKey = `${room.id}|${period}|${category}`;
-    const cached = nowOverride ? undefined : this.rawCache.get(cacheKey);
-    let values: Map<string, number>;
-    if (cached && Date.now() - cached.at < RAW_CACHE_TTL_MS) {
-      values = cached.values;
-    } else {
-      values =
-        category === "study_time"
-          ? await this.studyTimeValues(room, period, now)
-          : category === "streak"
-            ? await this.streakValues(room, now)
-            : await this.contributionValues(room, period, now);
-      if (!nowOverride) this.rawCache.set(cacheKey, { at: Date.now(), values });
-    }
+    const values = await this.rawValues(room, period, category, nowOverride);
 
     // Only the top RANKING_PUBLIC_LIMIT visible users are public. Candidates are walked best-first in
     // batches so the visibility lookup never has to cover every user in the room.
     const candidates = [...values.entries()]
       .filter(([, value]) => value > 0)
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-    const visibility = new Map<string, VisibilityInfo>();
+    const visibility = new Map<string, RankingIdentity>();
     const entries: (RankingEntryDto & { realUserId: string })[] = [];
     for (let i = 0; i < candidates.length && entries.length < RANKING_PUBLIC_LIMIT; i += RANKING_PUBLIC_LIMIT) {
       const batch = candidates.slice(i, i + RANKING_PUBLIC_LIMIT);
-      for (const [userId, info] of await this.visibilityInfo(batch.map(([id]) => id))) visibility.set(userId, info);
+      for (const [userId, info] of await this.identities(batch.map(([id]) => id))) visibility.set(userId, info);
       for (const [userId, value] of batch) {
         if (entries.length >= RANKING_PUBLIC_LIMIT) break;
         const info = visibility.get(userId);
         if (!info?.visible || info.hiddenFromRanking) continue;
-        entries.push({
-          rank: entries.length + 1,
-          userId: info.linkable ? userId : null,
-          displayName: info.displayName,
-          avatarUrl: info.avatarUrl,
-          aliasAnimal: info.aliasAnimal,
-          adminBadge: info.adminBadge,
-          proBadge: info.proBadge,
-          isMe: userId === viewerUserId,
-          value,
-          realUserId: userId,
-        });
+        entries.push({ ...toRankingEntry(userId, info, entries.length + 1, value, viewerUserId), realUserId: userId });
       }
     }
     const publicEntries: RankingEntryDto[] = entries.map(({ realUserId: _realUserId, ...entry }) => entry);
@@ -159,7 +175,7 @@ export class RankingsService {
     let me: RankingEntryDto | null = null;
     if (viewerUserId) {
       if (!visibility.has(viewerUserId)) {
-        for (const [userId, info] of await this.visibilityInfo([viewerUserId])) visibility.set(userId, info);
+        for (const [userId, info] of await this.identities([viewerUserId])) visibility.set(userId, info);
       }
       const info = visibility.get(viewerUserId);
       if (info && !info.hiddenFromRanking) {
@@ -168,25 +184,16 @@ export class RankingsService {
         // Outside the public list the exact visible rank would need every user's visibility, so it is
         // approximated from the raw values (hidden users included).
         const approxRank = info.visible && myValue > 0 ? candidates.findIndex(([id]) => id === viewerUserId) + 1 : 0;
-        me = {
-          rank: inList?.rank ?? approxRank,
-          userId: info.linkable ? viewerUserId : null,
-          displayName: info.displayName,
-          avatarUrl: info.avatarUrl,
-          aliasAnimal: info.aliasAnimal,
-          adminBadge: info.adminBadge,
-          proBadge: info.proBadge,
-          isMe: true,
-          value: myValue,
-        };
+        me = toRankingEntry(viewerUserId, info, inList?.rank ?? approxRank, myValue, viewerUserId);
       }
     }
 
     return { period, category, entries: publicEntries, me };
   }
 
-  private async visibilityInfo(userIds: string[]): Promise<Map<string, VisibilityInfo>> {
-    const result = new Map<string, VisibilityInfo>();
+  /** Was the private visibilityInfo(). */
+  async identities(userIds: string[]): Promise<Map<string, RankingIdentity>> {
+    const result = new Map<string, RankingIdentity>();
     if (!userIds.length) return result;
 
     const profiles = inChunks(userIds, (part) => this.db.select().from(schema.userProfiles).where(inArray(schema.userProfiles.userId, part)).all());
@@ -196,6 +203,9 @@ export class RankingsService {
     const aliasByUser = await this.aliases.ensureAliasesForProfiles(profiles);
     const admins = await this.roles.adminIds(userIds);
     const proIds = this.pro ? await this.pro.badgeIds(userIds) : new Set<string>();
+    // Flair only for paid users shown under a visible identity, never an alias.
+    const flairEligible = new Set(profiles.filter((p) => proIds.has(p.userId) && !needsAlias(p)).map((p) => p.userId));
+    const flairByUser = this.cosmetics ? await this.cosmetics.flairFor(flairEligible) : new Map<string, ProfileFlairDto>();
     const profileByUser = new Map(profiles.map((p) => [p.userId, { ...p, alias: aliasByUser.get(p.userId) ?? p.alias }]));
     const privacyByUser = new Map(privacyRows.map((p) => [p.userId, p]));
 
@@ -208,7 +218,9 @@ export class RankingsService {
       // alias is a fun label, not an identity. A visible identity mode is always linkable.
       const shownAsAlias = !profile || needsAlias(profile);
       const linkable = !shownAsAlias;
+      const flair = !shownAsAlias ? flairByUser.get(userId) : undefined;
       result.set(userId, {
+        ...(flair ? { flair } : {}),
         visible,
         hiddenFromRanking: privacy?.showInRanking === false,
         displayName: displayName(profile, privacy, "Usuario anónimo"),

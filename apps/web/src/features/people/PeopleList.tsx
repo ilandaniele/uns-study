@@ -1,7 +1,9 @@
 "use client";
 
-import type { RoomPersonDto } from "@sala/contracts";
+import type { ProfileFrameId, RoomPersonDto } from "@sala/contracts";
 import { WithAdminBadge } from "@/components/AdminBadge";
+import { avatarRingShadow } from "@/components/avatar-ring";
+import { frameOf, nameColorStyle } from "@/components/flair";
 import { seatCodeLabel } from "@/features/room/format";
 import { OccupantAvatar } from "@/features/room/OccupantAvatar";
 import Link from "next/link";
@@ -30,21 +32,23 @@ export function PeopleList({ people, limit, emptyLabel = "Nadie está mostrándo
               {person.aliasAnimal ? (
                 <OccupantAvatar avatar={{ kind: "animal", animalId: person.aliasAnimal }} size={40} adminBadge={person.adminBadge} />
               ) : (
-                <PersonAvatar name={person.displayName} avatarUrl={person.avatarUrl} adminBadge={person.adminBadge} />
+                <PersonAvatar name={person.displayName} avatarUrl={person.avatarUrl} adminBadge={person.adminBadge} proBadge={person.proBadge} frame={frameOf(person.flair)} />
               )}
             </Link>
           ) : person.aliasAnimal ? (
             <OccupantAvatar avatar={{ kind: "animal", animalId: person.aliasAnimal }} size={40} adminBadge={person.adminBadge} />
           ) : (
-            <PersonAvatar name={person.displayName} avatarUrl={person.avatarUrl} adminBadge={person.adminBadge} />
+            <PersonAvatar name={person.displayName} avatarUrl={person.avatarUrl} adminBadge={person.adminBadge} proBadge={person.proBadge} frame={frameOf(person.flair)} />
           )}
           <div className="min-w-0 flex-1">
             {person.userId ? (
-              <Link href={`/u/${person.userId}`} className="block truncate text-sm font-medium text-main hover:text-primary">
+              <Link href={`/u/${person.userId}`} className="block truncate text-sm font-medium text-main hover:text-primary" style={nameColorStyle(person.flair)}>
                 {person.displayName}
               </Link>
             ) : (
-              <span className="block truncate text-sm font-medium text-main">{person.displayName}</span>
+              <span className="block truncate text-sm font-medium text-main" style={nameColorStyle(person.flair)}>
+                {person.displayName}
+              </span>
             )}
             <p className="truncate text-xs text-muted">
               {[person.career, person.seatCode ? seatCodeLabel(person.seatCode) : null, person.studyStatus?.subject].filter(Boolean).join(" · ") || "Estudiando"}
@@ -59,21 +63,33 @@ export function PeopleList({ people, limit, emptyLabel = "Nadie está mostrándo
   );
 }
 
-function PersonAvatar({ name, avatarUrl, adminBadge = false }: { name: string; avatarUrl: string | null; adminBadge?: boolean }) {
+function PersonAvatar({
+  name,
+  avatarUrl,
+  adminBadge = false,
+  proBadge = false,
+  frame,
+}: {
+  name: string;
+  avatarUrl: string | null;
+  adminBadge?: boolean;
+  proBadge?: boolean;
+  frame?: ProfileFrameId;
+}) {
   return (
     <WithAdminBadge show={adminBadge} size={36}>
-      <PersonAvatarImage name={name} avatarUrl={avatarUrl} />
+      <PersonAvatarImage name={name} avatarUrl={avatarUrl} boxShadow={avatarRingShadow({ proBadge, frame })} />
     </WithAdminBadge>
   );
 }
 
-function PersonAvatarImage({ name, avatarUrl }: { name: string; avatarUrl: string | null }) {
+function PersonAvatarImage({ name, avatarUrl, boxShadow }: { name: string; avatarUrl: string | null; boxShadow?: string }) {
   if (avatarUrl) {
     // eslint-disable-next-line @next/next/no-img-element -- avatars are arbitrary external HTTPS URLs, not a build-time asset
-    return <img src={avatarUrl} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />;
+    return <img src={avatarUrl} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" style={{ boxShadow }} />;
   }
   return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] text-sm font-semibold text-main">
+    <span style={{ boxShadow }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] text-sm font-semibold text-main">
       {name.trim().charAt(0).toUpperCase() || "?"}
     </span>
   );

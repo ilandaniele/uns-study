@@ -83,6 +83,9 @@ import { GroupStudyService } from "./group-study/group-study.service.js";
 import { WeeklyGoalService } from "./weekly-goal/weekly-goal.service.js";
 import { StreakBadgesService } from "./badges/streak-badges.service.js";
 import { ExamsService } from "./exams/exams.service.js";
+import { UserCosmeticsService } from "./cosmetics/cosmetics.service.js";
+import { QuietRoomService } from "./quiet-room/quiet-room.service.js";
+import { GroupRankingService } from "./group-ranking/group-ranking.service.js";
 
 export interface ContainerDeps {
   db: Db;
@@ -120,14 +123,16 @@ export function buildServices(deps: ContainerDeps): Services {
   const seatPhotoVerifier = createSeatPhotoVerifier(cfg);
 
   const pro = new ProService(db, roles, { subscriptionsEnabled: Boolean(cfg.mpAccessToken), clock });
+  const cosmetics = new UserCosmeticsService(db, pro, clock);
 
   // Rooms come before notifications: the seat watch (a notification dependency) needs them.
   const rooms = new RoomsService(db, roomState, roomCache);
   const seatWatch = new SeatWatchService(db, rooms, clock);
+  const quietRoom = new QuietRoomService(db, rooms, clock);
 
   // Notifications and the realtime gateway (roomState -> notifications -> realtime).
   const push = new PushService(db);
-  const notifications = new NotificationService(db, push, roomState, scheduler, seatWatch);
+  const notifications = new NotificationService(db, push, roomState, scheduler, seatWatch, quietRoom);
   // No scheduler: the 250 ms summary debounce uses setTimeout. Pending changes live in memory anyway,
   // and a SQL job cost ~6 rows written per seat change (DO Free plan caps rows written per day).
   const realtime = new RoomRealtimeGateway(hub, roomState, notifications, null);
@@ -136,13 +141,13 @@ export function buildServices(deps: ContainerDeps): Services {
   const roomStats = new RoomStatsService(db, rooms);
   const blocks = new BlocksService(db, alias);
   const study = new StudyService(db, restriction);
-  const profiles = new ProfilesService(db, study, alias, restriction, roles, pro);
+  const profiles = new ProfilesService(db, study, alias, restriction, roles, pro, cosmetics);
   const avatars = new AvatarsService(db, restriction);
   const chat = new ChatService(db, rooms, restriction, roles, blocks, alias);
   const dm = new DmService(db, restriction, blocks, alias);
   const groups = new GroupsService(db, restriction, blocks, alias);
-  const roomPeople = new RoomPeopleService(db, alias, roles);
-  const rankings = new RankingsService(db, rooms, alias, roles, pro);
+  const roomPeople = new RoomPeopleService(db, alias, roles, pro, cosmetics);
+  const rankings = new RankingsService(db, rooms, alias, roles, pro, cosmetics);
   const tableNames = new TableNamesService(db, restriction, realtime, roomCache);
 
   // Presence-sensitive domain.
@@ -177,6 +182,7 @@ export function buildServices(deps: ContainerDeps): Services {
   const forecast = new ForecastService(db, rooms, clock);
   const favoriteSeats = new FavoriteSeatsService(db, rooms, clock);
   const groupStudy = new GroupStudyService(db, alias, blocks, realtime, clock);
+  const groupRanking = new GroupRankingService(db, rooms, rankings, groupStudy);
   const weeklyGoal = new WeeklyGoalService(db, clock);
   const streakBadges = new StreakBadgesService(db, clock);
   const exams = new ExamsService(db, clock);
@@ -184,7 +190,7 @@ export function buildServices(deps: ContainerDeps): Services {
   const jobs = {
     expiration: new ExpirationJob(db, roomState, realtime, studySessions, disputes),
     disputeResolution: new DisputeResolutionJob(disputes),
-    dailyReset: new DailyResetJob(db, realtime, studySessions, forecast, seatWatch),
+    dailyReset: new DailyResetJob(db, realtime, studySessions, forecast, seatWatch, quietRoom),
     attachmentSweep: new AttachmentSweepJob(db, storage),
     checkInExpiryReminder: new CheckInExpiryReminderJob(db, realtime, push),
     emailSend: new EmailSendJob(db, resend),
@@ -202,6 +208,7 @@ export function buildServices(deps: ContainerDeps): Services {
     subscriptions, mercadoPago, rateLimit, antiAbuse, securityEvents, abusePolicy, turnstile,
     storage, seatPhotoVerifier,
     pro, seatWatch, studyHistory, forecast, favoriteSeats, groupStudy, weeklyGoal, streakBadges, exams,
+    cosmetics, quietRoom, groupRanking,
     realtime, scheduler, clock,
     jobs,
   };

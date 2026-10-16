@@ -2,6 +2,7 @@
 
 import type { SeatOccupantDto } from "@sala/contracts";
 import Link from "next/link";
+import { frameOf } from "@/components/flair";
 import { OccupantAvatar } from "./OccupantAvatar";
 
 /** "Personas cercanas" — avatars of other identified occupants at the same table, shown in `SeatDetail`. */
@@ -14,7 +15,7 @@ export function NearbyOccupants({ occupants }: { occupants: SeatOccupantDto[] })
       <div className="mt-2 flex items-center gap-2">
         <div className="flex -space-x-2">
           {occupants.slice(0, 5).map((occupant) => {
-            const avatar = <OccupantAvatar avatar={occupant.avatar} adminBadge={occupant.adminBadge} />;
+            const avatar = <OccupantAvatar avatar={occupant.avatar} adminBadge={occupant.adminBadge} proBadge={occupant.proBadge} frame={frameOf(occupant.flair)} />;
             return occupant.userId ? (
               <Link key={occupant.seatId} href={`/u/${occupant.userId}`} title={occupant.displayName}>
                 {avatar}

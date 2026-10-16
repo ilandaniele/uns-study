@@ -6,6 +6,8 @@ import type { SeatAvatarDto, SeatDto } from "@sala/contracts";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ForecastCard } from "@/features/forecast/ForecastCard";
+import { QuietRoomCard } from "@/features/quiet-room/QuietRoomCard";
+import { quietToastMessage } from "@/features/quiet-room/quiet-room";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FIRST_VISIT_HOW_TO_CLOSED, markHowToSeen, shouldShowHowToOnFirstVisit } from "@/features/help/how-to-seen";
@@ -76,7 +78,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
   const { people } = usePeople(slug);
   const { highlightTableCode, qrToken } = useQrContext();
   const socket = useMemo(() => getSocket(), []);
-  const { toast, dismissToast, adminBanner, dismissAdminBanner } = useRoomAlerts();
+  const { toast, dismissToast, adminBanner, dismissAdminBanner, quietAlert, dismissQuietAlert } = useRoomAlerts();
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -505,6 +507,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
       {isAdmin ? <MarkAllOccupiedCard roomSlug={slug} seats={map.seats} onDone={handleChanged} /> : null}
       {map.summary.free === 0 ? <EnableSeatFreedCta /> : null}
       <ForecastCard roomSlug={slug} />
+      <QuietRoomCard roomSlug={slug} summary={map.summary} checkedInHere={activeCheckIn != null} />
       <AnnouncementsBanner roomSlug={slug} socket={socket} />
     </>
   );
@@ -726,6 +729,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
           onDismiss={dismissToast}
         />
       ) : null}
+      {quietAlert && !toast ? <SeatFreedToast message={quietToastMessage(quietAlert)} onDismiss={dismissQuietAlert} /> : null}
     </main>
   );
 }

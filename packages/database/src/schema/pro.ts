@@ -90,3 +90,24 @@ export const userExams = sqliteTable(
   },
   (t) => [index("idx_user_exams_user").on(t.userId)],
 );
+
+/** Pro "Perfil destacado": preset frame + name color ids (validated by contracts enums). No row = defaults. */
+export const userCosmetics = sqliteTable("user_cosmetics", {
+  userId: text("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
+  frame: text("frame").notNull(),
+  nameColor: text("name_color").notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});
+
+/** One quiet-room watch per user: "tell me when the room drops to threshold_pct % occupied". One-shot. */
+export const quietRoomWatches = sqliteTable(
+  "quiet_room_watches",
+  {
+    userId: text("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
+    roomId: text("room_id").notNull().references(() => rooms.id, { onDelete: "cascade" }),
+    thresholdPct: integer("threshold_pct").notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("idx_quiet_room_watches_room_expires").on(t.roomId, t.expiresAt)],
+);
