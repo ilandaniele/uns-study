@@ -510,7 +510,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
 
   return (
     <main
-      className={`mx-auto flex max-w-7xl flex-col gap-4 p-4 lg:grid ${detail && !isLargeDesktop ? "pb-[62dvh]" : ""} lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-x-8`}
+      className={`mx-auto flex max-w-7xl flex-col gap-4 p-4 lg:grid ${detail && !isLargeDesktop ? "pb-[62dvh]" : ""} lg:grid-cols-[auto_minmax(360px,1fr)] lg:items-start lg:gap-x-10`}
     >
       {error ? (
         <div className="order-0 flex items-center justify-between gap-3 rounded-xl border border-app bg-surface px-3 py-2 text-sm text-muted lg:col-span-full">
@@ -615,11 +615,11 @@ export function RoomPageClient({ slug }: { slug: string }) {
         </section>
       ) : null}
 
-      <section className="order-2 flex min-w-0 flex-col gap-3 lg:order-2 lg:col-start-1">
+      <section className="order-2 flex min-w-0 flex-col gap-3 lg:sticky lg:top-[81px] lg:order-2 lg:col-start-1">
         <div className="lg:mx-auto lg:w-fit lg:max-w-full">
           <div
             onPointerDownCapture={preloadSeatDetail}
-            className="relative h-[70dvh] w-full overflow-hidden rounded-control border border-app bg-surface md:h-[80dvh] lg:mx-auto lg:aspect-[1090/1536] lg:h-[82dvh] lg:w-auto lg:max-w-full"
+            className="relative h-[70dvh] w-full overflow-hidden rounded-control border border-app bg-surface md:h-[80dvh] lg:mx-auto lg:aspect-[1090/1536] lg:h-[calc(100dvh-140px)] lg:w-auto lg:max-w-full"
           >
             {isDesktop || !mounted ? (
               <div className="flex h-full w-full items-center justify-center">{roomMap}</div>
@@ -668,7 +668,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
       ) : null}
 
       {isLargeDesktop ? (
-        <aside className="order-4 flex flex-col gap-4 lg:order-3 lg:col-start-2 lg:sticky lg:top-[81px] lg:max-h-[calc(100dvh-97px)] lg:overflow-y-auto lg:border-l lg:border-app lg:pl-8">
+        <aside className="order-4 flex min-w-0 flex-col gap-4 pb-8 lg:order-3 lg:col-start-2 lg:border-l lg:border-app lg:pl-10">
           <RoomInfoPanel
             map={map}
             people={people}
