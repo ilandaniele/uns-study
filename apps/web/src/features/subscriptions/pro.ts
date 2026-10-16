@@ -10,11 +10,12 @@ export function proLockState(me: Pick<MeDto, "pro"> | null, loading: boolean): P
 }
 
 export type ProFeatureId =
-  | "focus_pip" | "focus_fullscreen" | "focus_sounds" | "focus_stats"
+  | "focus" | "focus_pip" | "focus_fullscreen" | "focus_sounds" | "focus_stats"
   | "focus_custom" | "seat_watch" | "study_history" | "forecast" | "favorites"
   | "group_study" | "weekly_goal" | "streak_freeze" | "exams" | "auto_extend" | "themes";
 
 export const PRO_FEATURES: Record<ProFeatureId, { title: string; description: string }> = {
+  focus: { title: "Foco", description: "Temporizador Pomodoro con tareas, sonidos ambiente y avisos para estudiar en bloques." },
   focus_pip: { title: "Ventana flotante", description: "Tené el temporizador siempre a la vista mientras estudiás en otra pestaña." },
   focus_fullscreen: { title: "Pantalla completa", description: "Un temporizador grande y sin distracciones para concentrarte de verdad." },
   focus_sounds: { title: "Sonidos ambiente", description: "Lluvia, océano o fuego de fondo mientras corre cada bloque de foco." },
@@ -41,7 +42,7 @@ export const PRO_BENEFITS: string[] = [
   "Estudio en grupo: ubicación del grupo y foco compartido",
   "Meta semanal de horas con recordatorio",
   "Congelar la racha una vez por mes",
-  "Temporizador a medida, ventana flotante, pantalla completa y sonidos ambiente",
+  "Foco: Pomodoro con tareas, temporizador a medida, ventana flotante y sonidos ambiente",
   "Plan de exámenes con horas por día",
   "Sigo acá automático",
   "Paletas de color",

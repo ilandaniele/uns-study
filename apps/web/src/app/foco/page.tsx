@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { FocusView } from "@/features/focus/FocusView";
+import { FocusGate } from "@/features/focus/FocusGate";
 
 export const metadata: Metadata = {
   title: "Foco",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function FocoPage() {
-  return <FocusView />;
+  return <FocusGate />;
 }

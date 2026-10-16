@@ -3,6 +3,8 @@
 import { TimerIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ProBadge, proLabel } from "@/features/subscriptions/ProBadge";
+import { usePro } from "@/features/subscriptions/usePro";
 import { useNow } from "@/lib/use-now";
 import { useFocus } from "./focus-store";
 import { PHASE_LABEL, formatClock, remainingMs } from "./pomodoro";
@@ -20,7 +22,10 @@ function LiveClock() {
 export function FocusHeaderButton() {
   const { timer } = useFocus();
   const pathname = usePathname();
-  const active = timer.status !== "idle";
+  const { lock } = usePro();
+  const locked = lock === "locked";
+  // The timer only runs for Pro, so a stale saved session never shows a clock without the plan.
+  const active = lock === "unlocked" && timer.status !== "idle";
   const onFocusPage = pathname?.startsWith("/foco");
 
   // The page itself shows the clock big; a second one in the header would only compete with it.
@@ -29,11 +34,12 @@ export function FocusHeaderButton() {
     return (
       <Link
         href="/foco"
-        aria-label="Pomodoro"
+        aria-label={proLabel("Pomodoro", locked)}
         title="Pomodoro"
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-control border border-app text-main hover:bg-[var(--surface-2)]"
+        className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-control border border-app text-main hover:bg-[var(--surface-2)]"
       >
         <TimerIcon aria-hidden="true" size={20} />
+        {locked ? <ProBadge /> : null}
       </Link>
     );
   }

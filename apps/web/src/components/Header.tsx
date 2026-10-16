@@ -7,15 +7,17 @@ import { signOut } from "@/lib/auth-client";
 import { useAdminAccess } from "@/features/admin/useAdminAccess";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { FocusHeaderButton } from "@/features/focus/FocusHeaderButton";
+import { ProBadge } from "@/features/subscriptions/ProBadge";
+import { proLockState } from "@/features/subscriptions/pro";
 import { invalidateMe } from "@/lib/me-store";
 import { resetSocket } from "@/lib/socket";
 
-const NAV_ITEMS: { label: string; href: string }[] = [
+const NAV_ITEMS: { label: string; href: string; pro?: boolean }[] = [
   { label: "Sala", href: "/" },
   { label: "Personas", href: "/personas" },
   { label: "Comunidad", href: "/comunidad" },
   { label: "Ranking", href: "/ranking" },
-  { label: "Foco", href: "/foco" },
+  { label: "Foco", href: "/foco", pro: true },
   { label: "Guías", href: "/guias" },
   { label: "Perfil", href: "/perfil" },
 ];
@@ -24,6 +26,7 @@ export function Header() {
   const { isAdmin, loading, me } = useAdminAccess();
   const user = me?.user ?? null;
   const pathname = usePathname();
+  const proLocked = proLockState(me, loading) === "locked";
 
   const items = isAdmin ? [...NAV_ITEMS, { label: "Admin", href: "/admin" }] : NAV_ITEMS;
 
@@ -65,9 +68,10 @@ export function Header() {
               aria-current={active ? "page" : undefined}
               className={`rounded-control px-3 py-2 transition-colors ${
                 active ? "bg-transparent text-main shadow-[inset_0_-2px_0_var(--text)]" : "text-muted hover:bg-[var(--surface-2)] hover:text-main"
-              }`}
+              } ${item.pro && proLocked ? "inline-flex items-center gap-1.5" : ""}`}
             >
               {item.label}
+              {item.pro && proLocked ? <ProBadge inline /> : null}
             </Link>
           );
         })}
