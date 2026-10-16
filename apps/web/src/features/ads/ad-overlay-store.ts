@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { HOUSE_INTERSTITIAL_ENABLED } from "./ad-config";
 import type { AdPlacement } from "./ad-provider";
 
 export interface HouseInterstitialState {
@@ -39,7 +40,7 @@ function emit(next: HouseInterstitialState): void {
 }
 
 export function openHouseInterstitial(placement: AdPlacement): void {
-  if (state.open) return;
+  if (!HOUSE_INTERSTITIAL_ENABLED || state.open) return;
   emit({ open: true, placement });
 }
 
@@ -65,6 +66,7 @@ export function suspendHouseInterstitial(remaining: number, path: string): void 
 
 /** Reopens a suspended ad once the visitor is back on the page it was left on. */
 export function resumeSuspendedHouseInterstitial(path: string): void {
+  if (!HOUSE_INTERSTITIAL_ENABLED) return;
   let suspended: SuspendedAd | null = null;
   try {
     const raw = window.sessionStorage.getItem(SUSPENDED_KEY);

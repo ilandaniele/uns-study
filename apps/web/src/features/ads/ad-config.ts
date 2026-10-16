@@ -14,6 +14,11 @@ export const APP_OPEN_CAP_MS = 60_000;
 export const APP_OPEN_BACKGROUND_MS = 60_000;
 /** Minimum gap between two pre-check-in overlays. */
 export const PRE_CHECKIN_CAP_MS = 20 * 60_000;
+/**
+ * Our own full-screen promo ("Quiero sacar los anuncios"). Off for now: no house overlay opens on
+ * app open or before a check-in. Set back to `true` to bring it back; nothing else changes.
+ */
+export const HOUSE_INTERSTITIAL_ENABLED = false;
 /** Seconds the house overlay's close button stays hidden. */
 export const CLOSE_COUNTDOWN_S = 10;
 /** Ad-free window earned by watching a rewarded ad. */
