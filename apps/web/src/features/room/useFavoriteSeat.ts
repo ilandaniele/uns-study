@@ -5,7 +5,8 @@ import { FAVORITE_SEATS_MAX } from "@sala/contracts";
 import type { FavoriteSeatsDto } from "@sala/contracts";
 import { apiFetch, apiPut, enc } from "@/features/pro/pro-api";
 import { usePro } from "@/features/subscriptions/usePro";
-import { FREE_FAVORITES_MAX, shouldMigrate, toggleFavoriteIds } from "./favorite-seats";
+import { openProUpsell } from "@/features/subscriptions/pro-upsell-store";
+import { FREE_FAVORITES_MAX, favoriteToggleOutcome, shouldMigrate, toggleFavoriteIds } from "./favorite-seats";
 
 const favoritesPath = (roomSlug: string) => `/api/v1/rooms/${enc(roomSlug)}/favorites`;
 const getFavoriteSeats = (roomSlug: string) => apiFetch<FavoriteSeatsDto>(favoritesPath(roomSlug));
@@ -35,6 +36,8 @@ export interface FavoriteSeats {
   favoriteSeatIds: string[];
   isFavorite: (seatId: string) => boolean;
   toggleFavorite: (seatId: string) => void;
+  /** True when starring `seatId` would only open the Pro upsell (free slot taken by another seat). */
+  needsPro: (seatId: string) => boolean;
   max: number;
   /** One-line feedback after a refused or failed toggle; clears itself. */
   notice: string | null;
@@ -109,11 +112,14 @@ export function useFavoriteSeats(roomSlug: string): FavoriteSeats {
     (seatId: string) => {
       const current = isPro ? serverRef.current : null;
       if (current === null) {
-        setLocalId((prev) => {
-          const next = prev === seatId ? null : seatId;
-          writeStorage(keyFor(roomSlug), next);
-          return next;
-        });
+        const outcome = favoriteToggleOutcome(localId ? [localId] : [], seatId, lock !== "locked");
+        if (outcome === "upsell") {
+          openProUpsell("favorites");
+          return;
+        }
+        const next = outcome === "remove" ? null : seatId;
+        writeStorage(keyFor(roomSlug), next);
+        setLocalId(next);
         return;
       }
       const { ids, full } = toggleFavoriteIds(current, seatId, FAVORITE_SEATS_MAX);
@@ -127,10 +133,15 @@ export function useFavoriteSeats(roomSlug: string): FavoriteSeats {
         flash("No se pudo guardar el favorito. Probá de nuevo.");
       });
     },
-    [isPro, roomSlug, applyServer, flash],
+    [isPro, lock, localId, roomSlug, applyServer, flash],
   );
 
   const isFavorite = useCallback((seatId: string) => favoriteSeatIds.includes(seatId), [favoriteSeatIds]);
 
-  return { favoriteSeatIds, isFavorite, toggleFavorite, max, notice };
+  const needsPro = useCallback(
+    (seatId: string) => !serverMode && favoriteToggleOutcome(favoriteSeatIds, seatId, lock !== "locked") === "upsell",
+    [serverMode, favoriteSeatIds, lock],
+  );
+
+  return { favoriteSeatIds, isFavorite, toggleFavorite, needsPro, max, notice };
 }

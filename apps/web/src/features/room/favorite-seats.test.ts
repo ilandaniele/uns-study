@@ -1,6 +1,23 @@
 import type { SeatDto } from "@sala/contracts";
 import { describe, expect, it } from "vitest";
-import { dueFavoriteToasts, freedFavorites, shouldMigrate, toggleFavoriteIds } from "./favorite-seats";
+import { dueFavoriteToasts, favoriteToggleOutcome, freedFavorites, shouldMigrate, toggleFavoriteIds } from "./favorite-seats";
+
+describe("favoriteToggleOutcome", () => {
+  it("lets a free viewer star a first seat and un-star the current one", () => {
+    expect(favoriteToggleOutcome([], "a", false)).toBe("add");
+    expect(favoriteToggleOutcome(["a"], "a", false)).toBe("remove");
+  });
+
+  it("sends a free viewer to the upsell instead of replacing their favorite", () => {
+    expect(favoriteToggleOutcome(["a"], "b", false)).toBe("upsell");
+  });
+
+  it("lets a Pro viewer add up to the max, then replace", () => {
+    expect(favoriteToggleOutcome(["a"], "b", true)).toBe("add");
+    expect(favoriteToggleOutcome(["a", "b", "c"], "d", true)).toBe("replace");
+    expect(favoriteToggleOutcome(["a", "b"], "b", true)).toBe("remove");
+  });
+});
 
 const seat = (id: string, status: SeatDto["status"]) => ({ id, status }) as SeatDto;
 const map = (...seats: SeatDto[]) => ({ seats });

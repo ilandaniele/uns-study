@@ -27,6 +27,18 @@ export function shouldMigrate(serverIds: readonly string[], local: string | null
   return serverIds.length === 0 && !!local && !migratedFlag;
 }
 
+export type FavoriteToggleOutcome = "add" | "remove" | "replace" | "upsell";
+
+/**
+ * What starring `seatId` does given the current favorites. A viewer who is not Pro never loses their one
+ * favorite to another seat: that tap is an upsell. `replace` only happens for Pro viewers who are at `proMax`.
+ */
+export function favoriteToggleOutcome(current: readonly string[], seatId: string, isPro: boolean, proMax = 3): FavoriteToggleOutcome {
+  if (current.includes(seatId)) return "remove";
+  if (isPro) return current.length >= proMax ? "replace" : "add";
+  return current.length >= FREE_FAVORITES_MAX ? "upsell" : "add";
+}
+
 /** Adds or removes `seatId`. `full` is true when adding was refused because `max` was reached. */
 export function toggleFavoriteIds(ids: readonly string[], seatId: string, max: number): { ids: string[]; full: boolean } {
   if (ids.includes(seatId)) return { ids: ids.filter((id) => id !== seatId), full: false };

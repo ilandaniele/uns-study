@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SeatWatchButton } from "@/features/seat-watch/SeatWatchButton";
+import { ProBadge, proLabel } from "@/features/subscriptions/ProBadge";
 import { MessageOccupantButton } from "./MessageOccupantButton";
 import { useState } from "react";
 import { CheckInDurationPicker } from "./CheckInDurationPicker";
@@ -79,6 +80,8 @@ export interface SeatDetailProps {
   /** Whether this seat is the viewer's favorite (kept on the device). */
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
+  /** Free viewer whose one favorite is another seat: the star opens the Pro upsell instead. */
+  favoriteNeedsPro?: boolean;
   /** Every seat at this seat's table, for the small locator diagram in the header. */
   tableSeats?: SeatDto[];
   mySeatId?: string | null;
@@ -121,6 +124,7 @@ export function SeatDetail({
   onDismissSavedPrompt,
   isFavorite = false,
   onToggleFavorite,
+  favoriteNeedsPro = false,
   tableSeats = [],
   mySeatId = null,
   onSelectSeat,
@@ -201,12 +205,13 @@ export function SeatDetail({
             <button
               type="button"
               onClick={onToggleFavorite}
-              aria-label={isFavorite ? "Quitar de favoritos" : "Guardar como lugar favorito"}
+              aria-label={isFavorite ? "Quitar de favoritos" : proLabel("Guardar como lugar favorito", favoriteNeedsPro)}
               aria-pressed={isFavorite}
               title={isFavorite ? "Tu lugar favorito" : "Marcar como favorito"}
-              className="flex h-11 w-11 items-center justify-center rounded-control text-muted hover:bg-surface-2 hover:text-main"
+              className="relative flex h-11 w-11 items-center justify-center rounded-control text-muted hover:bg-surface-2 hover:text-main"
             >
               <StarIcon aria-hidden="true" size={20} weight={isFavorite ? "fill" : "regular"} style={isFavorite ? { color: "var(--seat-saved)" } : undefined} />
+              {favoriteNeedsPro && !isFavorite ? <ProBadge /> : null}
             </button>
           ) : null}
           <button

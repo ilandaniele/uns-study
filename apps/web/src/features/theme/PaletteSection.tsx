@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { openProUpsell } from "@/features/subscriptions/pro-upsell-store";
+import { ProBadge } from "@/features/subscriptions/ProBadge";
 import { usePro } from "@/features/subscriptions/usePro";
 import { applyPalette, getStoredPalette } from "@/lib/theme";
 import { PALETTE_META, PALETTES, type Palette } from "./palette";
@@ -39,6 +40,12 @@ export function PaletteSection() {
 
   return (
     <div className="space-y-3">
+      {locked ? (
+        <p className="flex items-center gap-2 text-sm font-semibold text-main">
+          Paletas de color
+          <ProBadge inline />
+        </p>
+      ) : null}
       <p className="text-sm text-muted">
         {locked ? "Elegí los colores de la app con Sala de Estudio Pro." : "Elegí el color principal de la app. Los colores de los lugares no cambian."}
       </p>

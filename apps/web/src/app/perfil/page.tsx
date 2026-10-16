@@ -18,6 +18,8 @@ import { useMyProfile } from "@/features/profile/useMyProfile";
 import { AutoExtendSetting } from "@/features/auto-extend/AutoExtendSetting";
 import { BadgesSection } from "@/features/badges/BadgesSection";
 import { ExamsSection } from "@/features/exams/ExamsSection";
+import { ProBadge } from "@/features/subscriptions/ProBadge";
+import { usePro } from "@/features/subscriptions/usePro";
 import { PaletteSection } from "@/features/theme/PaletteSection";
 import { WeeklyGoalCard } from "@/features/weekly-goal/WeeklyGoalCard";
 import { apiFetch, apiPost } from "@/lib/api";
@@ -40,6 +42,7 @@ export default function PerfilPage() {
   const [verifySent, setVerifySent] = useState(false);
   const { me } = useMe();
   const { adFree, snoozedUntil } = useAdFree();
+  const { lock } = usePro();
 
   useEffect(() => {
     void apiFetch<{ id: string }>(`/api/v1/rooms/${ROOM_SLUG}`).then((room) => setRoomId(room.id));
@@ -177,6 +180,12 @@ export default function PerfilPage() {
         <AutoExtendSetting />
         <Link href="/perfil/historial" className="text-sm underline">
           Historial de estudio
+          {lock === "locked" ? (
+            <>
+              {" "}
+              <ProBadge inline />
+            </>
+          ) : null}
         </Link>
       </section>
 

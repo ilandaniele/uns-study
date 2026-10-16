@@ -151,7 +151,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
   // Seat the viewer just marked "Está guardado" — SeatDetail offers to report / ask to free it.
   const [savedPromptSeatId, setSavedPromptSeatId] = useState<string | null>(null);
   const [onlyFree, setOnlyFree] = useState(false);
-  const { favoriteSeatIds, isFavorite, toggleFavorite, notice: favoriteNotice } = useFavoriteSeats(slug);
+  const { favoriteSeatIds, isFavorite, toggleFavorite, needsPro: favoriteNeedsPro, notice: favoriteNotice } = useFavoriteSeats(slug);
   const { lock: proLock } = usePro();
 
   // Deep link (?seat=<id>, e.g. from a "seat freed" push notification): select it once the map has
@@ -490,6 +490,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
       onDismissSavedPrompt={() => setSavedPromptSeatId(null)}
       isFavorite={isFavorite(selectedSeat.id)}
       onToggleFavorite={() => toggleFavorite(selectedSeat.id)}
+      favoriteNeedsPro={favoriteNeedsPro(selectedSeat.id)}
       tableSeats={selectedTableSeats}
       mySeatId={mySeatId}
       onSelectSeat={openSeat}

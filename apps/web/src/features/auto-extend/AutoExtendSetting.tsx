@@ -1,6 +1,7 @@
 "use client";
 
 import { openProUpsell } from "@/features/subscriptions/pro-upsell-store";
+import { ProBadge } from "@/features/subscriptions/ProBadge";
 import { usePro } from "@/features/subscriptions/usePro";
 import { useAutoExtendEnabled } from "./useAutoExtendPrefs";
 
@@ -17,7 +18,15 @@ export function AutoExtendSetting() {
   return (
     <div className="mb-4 flex items-start justify-between gap-4 py-3">
       <span>
-        <span className="block text-sm font-medium text-main">{LABEL}</span>
+        <span className="block text-sm font-medium text-main">
+          {LABEL}
+          {locked ? (
+            <>
+              {" "}
+              <ProBadge inline />
+            </>
+          ) : null}
+        </span>
         <span className="block text-xs text-muted">
           Cuando falten 15 minutos o menos, usamos tu ubicación para renovar tu lugar. Solo funciona con la app abierta y estando dentro de la sala. Si no
           alcanza, te avisamos como siempre.

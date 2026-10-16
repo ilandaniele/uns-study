@@ -1,6 +1,8 @@
 "use client";
 
 import { useAutoExtendEnabled } from "@/features/auto-extend/useAutoExtendPrefs";
+import { openProUpsell } from "@/features/subscriptions/pro-upsell-store";
+import { ProBadge } from "@/features/subscriptions/ProBadge";
 import { usePro } from "@/features/subscriptions/usePro";
 
 export interface ExtendBannerProps {
@@ -28,6 +30,12 @@ export function ExtendBanner({ minutesLeft, pending, onExtend, onCheckOut, locat
       <div>
         <p className="font-medium">¿Seguís acá? Tu lugar se libera en {minutesLeft} min.</p>
         {autoActive ? <p className="text-xs">Sigo acá automático activo: lo intentamos con tu ubicación mientras tengas la app abierta.</p> : null}
+        {lock === "locked" ? (
+          <button type="button" onClick={() => openProUpsell("auto_extend")} className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold underline">
+            Renovalo solo con Sigo acá automático
+            <ProBadge inline />
+          </button>
+        ) : null}
       </div>
       <div className="flex gap-2">
         <button

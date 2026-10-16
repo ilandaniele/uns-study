@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { apiDelete, apiFetch, apiPost, apiPut, enc, isProRequired } from "@/features/pro/pro-api";
 import { openProUpsell } from "@/features/subscriptions/pro-upsell-store";
+import { ProBadge, proLabel } from "@/features/subscriptions/ProBadge";
 import { usePro } from "@/features/subscriptions/usePro";
 import { getSocket } from "@/lib/socket";
 import { FOCUS_CHIPS, FOCUS_MAX_MINUTES, FOCUS_MIN_MINUTES, formatCountdown, parseFocusMinutes, remainingMs } from "./group-focus";
@@ -159,9 +160,11 @@ export function GroupStudyPanel({ groupId, currentUserId }: GroupStudyPanelProps
             <button
               type="button"
               onClick={() => openProUpsell("group_study")}
-              className="self-start rounded-control border border-app bg-surface min-h-11 px-3.5 text-sm font-semibold text-main hover:bg-[var(--surface-2)]"
+              aria-label={proLabel("Ver dónde se sentó tu grupo", true)}
+              className="inline-flex items-center gap-1.5 self-start rounded-control border border-app bg-surface min-h-11 px-3.5 text-sm font-semibold text-main hover:bg-[var(--surface-2)]"
             >
-              Ver dónde se sentó tu grupo y compartir un temporizador (Pro)
+              Ver dónde se sentó tu grupo
+              <ProBadge inline />
             </button>
           ) : null}
 
@@ -257,6 +260,21 @@ export function GroupStudyPanel({ groupId, currentUserId }: GroupStudyPanelProps
                   </form>
                 </>
               )}
+            </div>
+          ) : lock === "locked" ? (
+            <div className="flex flex-col gap-2 rounded-float border border-app p-3">
+              <p className="flex items-center gap-1.5 text-sm font-semibold text-main">
+                Temporizador compartido
+                <ProBadge inline />
+              </p>
+              <p className="text-xs text-muted">Estudien al mismo ritmo con un pomodoro sincronizado.</p>
+              <button
+                type="button"
+                onClick={() => openProUpsell("group_study")}
+                className="min-h-11 self-start rounded-control border border-app px-3.5 text-sm font-semibold text-main hover:bg-[var(--surface-2)]"
+              >
+                Probar con Pro
+              </button>
             </div>
           ) : null}
 

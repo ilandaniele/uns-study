@@ -72,7 +72,7 @@ export function SubscribePromo() {
         <h2 className="t-title">Pasate a Pro</h2>
       </div>
       <p className="text-sm leading-relaxed text-muted">
-        Sin anuncios y con todo Foco: ventana flotante, sonidos ambiente, pantalla completa e historial. {priceLabel}.
+        Sin anuncios, aviso de lugar libre, pronóstico, estudio en grupo, historial y todo Foco. {priceLabel}.
       </p>
       <div className="flex gap-2">
         <Link

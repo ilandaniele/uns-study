@@ -6,6 +6,7 @@ import { BellRingingIcon } from "@phosphor-icons/react/dist/ssr";
 import { clockLabel } from "@/features/room/checkin-duration";
 import { apiDelete, apiFetch, apiPut, enc, isProRequired } from "@/features/pro/pro-api";
 import { openProUpsell } from "@/features/subscriptions/pro-upsell-store";
+import { ProBadge, proLabel } from "@/features/subscriptions/ProBadge";
 import { usePro } from "@/features/subscriptions/usePro";
 import { useMe } from "@/lib/me-store";
 import { enablePushNotificationsDetailed, getPushSupportState, pushFailureMessage } from "@/lib/push";
@@ -94,6 +95,7 @@ export function SeatWatchButton({ roomSlug, seat, tableSeats, checkedInHere }: S
 
   if (checkedInHere || !signedIn || lock === "unknown") return null;
 
+  const locked = lock === "locked";
   const request = (mode: SeatWatchMode) => () => {
     if (lock === "locked") openProUpsell("seat_watch");
     else void start(mode);
@@ -115,11 +117,25 @@ export function SeatWatchButton({ roomSlug, seat, tableSeats, checkedInHere }: S
         </div>
       ) : (
         <>
-          <button type="button" onClick={request("seat")} disabled={pending} className={actionClass}>
+          <button
+            type="button"
+            onClick={request("seat")}
+            disabled={pending}
+            aria-label={proLabel("Avisame cuando se libere", locked)}
+            className={`${actionClass} ${locked ? "relative" : ""}`}
+          >
             Avisame cuando se libere
+            {locked ? <ProBadge /> : null}
           </button>
-          <button type="button" onClick={request("table")} disabled={pending} className={actionClass}>
+          <button
+            type="button"
+            onClick={request("table")}
+            disabled={pending}
+            aria-label={proLabel("Avisame si se libera cualquier lugar de esta mesa", locked)}
+            className={`${actionClass} ${locked ? "relative" : ""}`}
+          >
             Avisame si se libera cualquier lugar de esta mesa
+            {locked ? <ProBadge /> : null}
           </button>
           <p className="text-xs text-muted">Solo te avisamos: no te guarda el lugar.</p>
         </>
