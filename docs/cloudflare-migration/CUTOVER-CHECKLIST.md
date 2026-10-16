@@ -76,6 +76,9 @@ Fly API frenado con autostart off, export + import con conteos iguales, deploy s
    ("Unexpected loadManifest(...) call!"). Arreglado con `patches/@opennextjs__cloudflare@1.20.11.patch`;
    al subir OpenNext, revisar si ya lo trae y borrar el patch. Si aparece otro manifest, `wrangler tail uns-web` y extender el patch.
 8. [ ] Smoke manual: login, check-in, realtime en dos pestañas.
+   Parcial 2026-10-16 (a4b292a): sesión iniciada, `/api/v1/me`, mapa (108 lugares), occupants, mensajes,
+   rankings y `realtime/token` en 200; la sala muestra "En vivo". Falta el check-in, que necesita estar
+   físicamente en la sala (geofence en el servidor): lo hace el dueño en la próxima visita.
 
 ## 7. Callbacks de terceros (mismo dominio, solo verificar)
 - [x] Google OAuth redirect: `https://saladeestudio.com.ar/api/auth/callback/google` (verificado 2026-10-14)
