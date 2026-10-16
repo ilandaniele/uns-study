@@ -663,7 +663,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
           <DonateCard />
         </section>
       ) : null}
-      {mounted && !isLargeDesktop ? (
+      {mounted ? (
         <DonatePrompt blocked={detail != null || challenge != null || disputeWon != null || showHowTo || confirmMove != null || adOverlayOpen} />
       ) : null}
 

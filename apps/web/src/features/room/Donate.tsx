@@ -13,10 +13,19 @@ import { useFocusTrap } from "@/lib/useFocusTrap";
 export const DONATION_ALIAS = "golf.cabina.mulita";
 const DONATION_BANK = "Banco Provincia";
 
-/** When the mobile prompt was last dismissed; it comes back after PROMPT_EVERY_MS. */
+/** When the prompt was last dismissed; it can come back after PROMPT_COOLDOWN_MS. */
 const PROMPT_KEY = "donate-prompt-dismissed-at";
-const PROMPT_EVERY_MS = 7 * 24 * 60 * 60 * 1000;
+const PROMPT_COOLDOWN_MS = 2 * 24 * 60 * 60 * 1000;
+/** Once the cooldown is over, each app open shows the prompt with this probability. */
+const PROMPT_CHANCE = 0.35;
 const PROMPT_DELAY_MS = 2500;
+
+/** Pure decision for one app open; `roll` is a uniform random number in [0, 1). */
+export function shouldShowDonatePrompt(now: number, dismissedAt: number, engaged: boolean, roll: number): boolean {
+  if (!engaged) return false;
+  if (now - dismissedAt < PROMPT_COOLDOWN_MS) return false;
+  return roll < PROMPT_CHANCE;
+}
 
 /** The alias as a tappable "ticket": tapping anywhere on it copies the alias. */
 function AliasTicket() {
@@ -202,7 +211,8 @@ function readDismissedAt(): number {
 }
 
 /**
- * Mobile-only bottom sheet shown shortly after the app opens, at most once a week. `blocked` holds it
+ * Shown shortly after some app opens, at random, with a cooldown after each dismissal: a bottom sheet
+ * on phones, a centered card on desktop. `blocked` holds it
  * back while something more important is on screen (an open seat sheet, a dispute banner).
  */
 export function DonatePrompt({ blocked }: { blocked: boolean }) {
@@ -214,8 +224,7 @@ export function DonatePrompt({ blocked }: { blocked: boolean }) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (Date.now() - readDismissedAt() < PROMPT_EVERY_MS) return;
-    if (!hasEngaged()) return;
+    if (!shouldShowDonatePrompt(Date.now(), readDismissedAt(), hasEngaged(), Math.random())) return;
     const id = window.setTimeout(() => setDue(true), PROMPT_DELAY_MS);
     return () => window.clearTimeout(id);
   }, []);
@@ -242,7 +251,7 @@ export function DonatePrompt({ blocked }: { blocked: boolean }) {
   if (!visible) return null;
 
   return (
-    <div className={`${closing ? "backdrop-exit" : "backdrop-enter"} fixed inset-0 z-50 flex items-end bg-black/40`} onClick={close}>
+    <div className={`${closing ? "backdrop-exit" : "backdrop-enter"} fixed inset-0 z-50 flex items-end bg-black/40 lg:items-center lg:justify-center lg:p-6`} onClick={close}>
       <div
         ref={dialogRef}
         role="dialog"
@@ -250,9 +259,9 @@ export function DonatePrompt({ blocked }: { blocked: boolean }) {
         aria-labelledby="donate-prompt-title"
         // Scrolls on short screens (Safari with its toolbars) so the alias and "Ahora no" stay reachable.
         onClick={(e) => e.stopPropagation()}
-        className={`${closing ? "sheet-exit" : "sheet-enter"} flex max-h-[calc(100dvh-1.5rem)] w-full flex-col gap-3 overflow-y-auto overscroll-contain rounded-t-sheet border-t border-app bg-surface px-5 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-3 shadow-[0_-8px_24px_rgba(0,0,0,0.18)]`}
+        className={`${closing ? "sheet-exit" : "sheet-enter"} flex max-h-[calc(100dvh-1.5rem)] w-full flex-col gap-3 overflow-y-auto overscroll-contain rounded-t-sheet border-t border-app lg:max-w-md lg:rounded-sheet lg:border lg:pb-6 bg-surface px-5 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-3 shadow-[0_-8px_24px_rgba(0,0,0,0.18)]`}
       >
-        <span aria-hidden="true" className="mx-auto h-1.5 w-11 rounded-full bg-[var(--border-strong)]" />
+        <span aria-hidden="true" className="mx-auto h-1.5 w-11 rounded-full bg-[var(--border-strong)] lg:hidden" />
         <div className="flex items-start gap-3">
           <HeartIcon aria-hidden="true" size={20} weight="fill" className="mt-1 shrink-0 text-muted" />
           <div className="min-w-0 flex-1">
