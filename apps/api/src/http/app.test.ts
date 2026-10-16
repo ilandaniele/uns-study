@@ -32,13 +32,13 @@ describe("createApp", () => {
     expect(live.status).toBe(200);
     expect(((await live.json()) as { ok: boolean }).ok).toBe(true);
     const ready = await app.request("/api/v1/health/ready", { headers: baseHeaders() });
-    expect(await ready.json()).toEqual({ ok: true });
+    expect(await ready.json()).toEqual({ ok: true, proTables: "8/8" });
   });
 
   it("health/ready answers 503 when the database fails", async () => {
     const { app, db } = buildTestApp();
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    vi.spyOn(db, "run").mockImplementation(() => {
+    vi.spyOn(db, "all").mockImplementation(() => {
       throw new Error("down");
     });
     const res = await app.request("/api/v1/health/ready", { headers: baseHeaders() });
