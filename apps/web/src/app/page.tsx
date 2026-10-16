@@ -18,6 +18,10 @@ export default function HomePage() {
       <Suspense fallback={<RoomSkeleton />}>
         <RoomPageClient slug="principal" />
       </Suspense>
+      {/* Same unit twice is allowed: one after the donation card, one after the About text. */}
+      <div className="mx-auto max-w-7xl px-4">
+        <AdSlot placement="room-bottom" />
+      </div>
       <AboutSection />
       <div className="mx-auto max-w-7xl px-4 pb-10">
         <AdSlot placement="room-bottom" />
