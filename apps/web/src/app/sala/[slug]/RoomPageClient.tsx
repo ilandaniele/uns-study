@@ -668,7 +668,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
       ) : null}
 
       {isLargeDesktop ? (
-        <aside className="order-4 flex min-w-0 flex-col gap-4 pb-8 lg:order-3 lg:col-start-2 lg:border-l lg:border-app lg:pl-10">
+        <aside className="order-4 flex min-w-0 flex-col gap-4 pb-8 lg:order-3 lg:col-start-2">
           <RoomInfoPanel
             map={map}
             people={people}
