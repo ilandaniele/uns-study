@@ -53,6 +53,13 @@ export default function HowToUsePage() {
         Ir a la sala
       </Link>
       <p className="text-center text-muted">
+        Para estudiar mejor, mirá las{" "}
+        <Link href="/guias" className="font-semibold text-primary underline underline-offset-2">
+          guías de estudio
+        </Link>
+        .
+      </p>
+      <p className="text-center text-muted">
         ¿Algo no anda o tenés una idea?{" "}
         <Link href="/sugerencias" className="font-semibold text-primary underline underline-offset-2">
           Sugerencias y contacto

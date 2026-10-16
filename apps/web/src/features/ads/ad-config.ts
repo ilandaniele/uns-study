@@ -30,7 +30,7 @@ export const RAIL_MIN_VIEWPORT_PX = 1640;
  * ads. AdSense policy forbids its ads on app-only, navigation, login, loading, empty or error
  * screens, so every other route gets house ads or nothing.
  */
-const ADSENSE_CONTENT_PREFIXES = ["/comunidad"];
+const ADSENSE_CONTENT_PREFIXES = ["/comunidad", "/guias"];
 
 export function isAdSenseContentPath(pathname: string | null | undefined): boolean {
   if (!pathname || isExcludedPath(pathname)) return false;

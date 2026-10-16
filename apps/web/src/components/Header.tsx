@@ -16,6 +16,7 @@ const NAV_ITEMS: { label: string; href: string }[] = [
   { label: "Comunidad", href: "/comunidad" },
   { label: "Ranking", href: "/ranking" },
   { label: "Foco", href: "/foco" },
+  { label: "Guías", href: "/guias" },
   { label: "Perfil", href: "/perfil" },
 ];
 

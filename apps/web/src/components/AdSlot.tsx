@@ -8,11 +8,13 @@ import { useAdFree } from "@/features/ads/useAdFree";
 
 const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
 
-export type AdPlacement = "community-feed" | "rail";
+export type AdPlacement = "community-feed" | "rail" | "article";
 
 const SLOT_BY_PLACEMENT: Record<AdPlacement, string | undefined> = {
   "community-feed": process.env.NEXT_PUBLIC_ADSENSE_SLOT_COMMUNITY_FEED,
   rail: process.env.NEXT_PUBLIC_ADSENSE_SLOT_RAIL,
+  // No dedicated unit yet: articles reuse the community display unit until one is created.
+  article: process.env.NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE || process.env.NEXT_PUBLIC_ADSENSE_SLOT_COMMUNITY_FEED,
 };
 
 declare global {

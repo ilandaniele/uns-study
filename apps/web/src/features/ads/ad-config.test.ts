@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import { isAdSenseContentPath } from "./ad-config";
 
 describe("isAdSenseContentPath", () => {
-  it("allows the community feed", () => {
+  it("allows the community feed and the study guides", () => {
     expect(isAdSenseContentPath("/comunidad")).toBe(true);
+    expect(isAdSenseContentPath("/guias")).toBe(true);
+    expect(isAdSenseContentPath("/guias/tecnica-pomodoro")).toBe(true);
   });
 
   it("blocks app, auth and empty screens", () => {

@@ -32,7 +32,31 @@ export default function PrivacyPage() {
       <h2 className="pt-2 text-lg font-semibold text-main">Quién ve tus datos</h2>
       <p>
         Otras personas registradas sólo ven lo que vos elijas mostrar en tu perfil. La evidencia de reportes es privada
-        y sólo la ve el equipo de moderación. No vendemos ni compartimos tus datos con terceros.
+        y sólo la ve el equipo de moderación. No vendemos tus datos ni los compartimos con terceros, salvo lo que se explica sobre cookies y publicidad.
+      </p>
+
+      <h2 className="pt-2 text-lg font-semibold text-main">Cookies, publicidad y estadísticas</h2>
+      <p>
+        Usamos cookies propias para mantener tu sesión iniciada y recordar preferencias como el tema. Para medir el uso
+        del sitio usamos Google Analytics.
+      </p>
+      <p>
+        En algunas páginas con contenido (como las guías de estudio y las novedades de la comunidad) mostramos anuncios de
+        Google AdSense. Google y sus socios usan cookies para mostrar anuncios según tus visitas anteriores a este y a
+        otros sitios. Podés desactivar la publicidad personalizada en la{" "}
+        <a className="text-primary underline" href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer">
+          configuración de anuncios de Google
+        </a>{" "}
+        y leer cómo Google usa estos datos en{" "}
+        <a
+          className="text-primary underline"
+          href="https://policies.google.com/technologies/partner-sites"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          policies.google.com/technologies/partner-sites
+        </a>
+        . Con la suscripción Pro no se muestran anuncios.
       </p>
 
       <h2 className="pt-2 text-lg font-semibold text-main">Conservación y borrado</h2>
