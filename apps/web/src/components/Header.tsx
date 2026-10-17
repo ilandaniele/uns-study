@@ -40,7 +40,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-app bg-surface/95 px-4 py-2.5 max-[360px]:px-3 backdrop-blur supports-[backdrop-filter]:bg-surface/85">
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3 lg:shrink-0">
         <Link href="/" aria-label="Sala de Estudio" className="flex min-w-0 items-center gap-2.5 whitespace-nowrap text-main max-[360px]:gap-2">
           {/* Brand mark: black-and-orange book over a table; the dark variant swaps black for off-white. */}
           {/* eslint-disable-next-line @next/next/no-img-element -- tiny static PNG, no optimizer needed */}
@@ -57,7 +57,7 @@ export function Header() {
         </Link>
       </div>
 
-      <nav className="hidden items-center gap-1 text-sm font-semibold lg:flex">
+      <nav className="hidden min-w-0 items-center gap-0.5 text-sm font-semibold lg:flex xl:gap-1">
         {items.map((item) => {
           const active = item.href === "/" ? pathname === "/" : pathname?.startsWith(item.href);
           return (
@@ -66,7 +66,7 @@ export function Header() {
               href={item.href}
               {...prefetchHandlers(item.href)}
               aria-current={active ? "page" : undefined}
-              className={`rounded-control px-3 py-2 transition-colors ${
+              className={`whitespace-nowrap rounded-control px-1.5 py-2 transition-colors xl:px-3 ${
                 active ? "bg-transparent text-main shadow-[inset_0_-2px_0_var(--text)]" : "text-muted hover:bg-[var(--surface-2)] hover:text-main"
               } ${item.pro && proLocked ? "inline-flex items-center gap-1.5" : ""}`}
             >
@@ -81,7 +81,7 @@ export function Header() {
         {me?.subscriptionsEnabled && !me.adFree ? (
           <Link
             href="/suscripcion"
-            className="hidden min-h-11 shrink-0 items-center rounded-control border border-app px-3 py-1.5 font-semibold text-main hover:bg-[var(--surface-2)] lg:inline-flex"
+            className="hidden min-h-11 shrink-0 items-center rounded-control border border-app px-3 py-1.5 font-semibold text-main hover:bg-[var(--surface-2)] xl:inline-flex"
           >
             Hacete Pro
           </Link>
@@ -96,8 +96,8 @@ export function Header() {
               onClick={() => void handleSignOut()}
               className="min-h-11 shrink-0 rounded-control border border-app px-3 py-1.5 font-semibold text-main hover:bg-[var(--surface-2)]"
             >
-              <span className="lg:hidden">Salir</span>
-              <span className="hidden lg:inline">Cerrar sesión</span>
+              <span className="xl:hidden">Salir</span>
+              <span className="hidden xl:inline">Cerrar sesión</span>
             </button>
           </div>
         ) : (
