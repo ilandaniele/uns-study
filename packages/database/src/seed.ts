@@ -18,7 +18,7 @@ export const INITIAL_ROOM = {
   longitude: -62.2702852,
   geofenceRadiusM: 50,
   timezone: "America/Argentina/Buenos_Aires",
-  dailyResetTime: "04:00",
+  dailyResetTime: "00:00",
 };
 
 /** Rows per multi-row INSERT for `table`, counting every column as a bound parameter. */

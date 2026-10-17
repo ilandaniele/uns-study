@@ -21,7 +21,7 @@ export function resetInstantFor(room: { timezone: string; dailyResetTime: string
 }
 
 /**
- * Daily operational reset (~04:00 local time): expires ACTIVE check-ins and active observations,
+ * Daily operational reset (00:00 local time, `rooms.daily_reset_time`): clears the room. Expires every ACTIVE check-in and active observations,
  * and resets every seat to UNKNOWN/0. Idempotent per room via `rooms.last_reset_at`.
  */
 export class DailyResetJob {
@@ -156,7 +156,7 @@ export class DailyResetJob {
       this.snapshotDailyStats(tx, room, seatRows, resetInstant);
 
       // Only touch check-ins/observations that actually predate this reset instant — a tick can
-      // run a little late (the job fires every minute, not exactly at 04:00), and anything
+      // run a little late (the job fires every minute, not exactly at the reset time), and anything
       // started/observed after the reset instant belongs to the *new* day and must survive it.
       // One conditional update that returns exactly the rows it closed: a check-in a concurrent
       // checkout/sweep already ended isn't returned, so it's never recorded a second time here.

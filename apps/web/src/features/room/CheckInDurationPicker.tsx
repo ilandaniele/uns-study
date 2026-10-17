@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CHECKIN_MINUTES, CHECKIN_MIN_MINUTES } from "@sala/contracts/events";
+import { CHECKIN_MIN_MINUTES, CHECKIN_PRO_MAX_MINUTES } from "@sala/contracts/events";
 import { CHECKIN_DURATION_CHIPS, clockTimeAfter, rawMinutesUntilClockTime } from "./checkin-duration";
 
 export interface CheckInDurationPickerProps {
@@ -12,7 +12,7 @@ export interface CheckInDurationPickerProps {
   now: Date;
 }
 
-/** Segmented "[30 min] [1 h] [2 h] [3 h] [Otra hora]" — how long the user will occupy the seat. */
+/** Segmented "[1 h] [2 h] [4 h] [6 h] [Otra hora]" — how long the user will occupy the seat. */
 export function CheckInDurationPicker({ minutes, onChange, disabled = false, now }: CheckInDurationPickerProps) {
   /** Label of the confirmed custom end time ("Hasta las 18:30"); null while a preset is selected. */
   const [customLabel, setCustomLabel] = useState<string | null>(null);
@@ -30,8 +30,8 @@ export function CheckInDurationPicker({ minutes, onChange, disabled = false, now
   const confirm = () => {
     const raw = rawMinutesUntilClockTime(draft, new Date());
     const from = new Date();
-    if (raw === null || raw < CHECKIN_MIN_MINUTES || raw > CHECKIN_MINUTES) {
-      setError(`Elegí una hora entre las ${clockTimeAfter(CHECKIN_MIN_MINUTES, from)} y las ${clockTimeAfter(CHECKIN_MINUTES, from)}`);
+    if (raw === null || raw < CHECKIN_MIN_MINUTES || raw > CHECKIN_PRO_MAX_MINUTES) {
+      setError(`Elegí una hora entre las ${clockTimeAfter(CHECKIN_MIN_MINUTES, from)} y las ${clockTimeAfter(CHECKIN_PRO_MAX_MINUTES, from)}`);
       return;
     }
     const chosen = Math.round(raw);
@@ -96,7 +96,7 @@ export function CheckInDurationPicker({ minutes, onChange, disabled = false, now
             />
           </label>
           <p className="text-xs text-muted">
-            Entre las {clockTimeAfter(CHECKIN_MIN_MINUTES, now)} y las {clockTimeAfter(CHECKIN_MINUTES, now)} (15 min a 3 h)
+            Entre las {clockTimeAfter(CHECKIN_MIN_MINUTES, now)} y las {clockTimeAfter(CHECKIN_PRO_MAX_MINUTES, now)} (15 min a 12 h)
           </p>
           {error ? (
             <p role="alert" className="text-xs font-semibold text-red-600">

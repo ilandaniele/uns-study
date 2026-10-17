@@ -174,10 +174,10 @@ describe("optimistic seat changes", () => {
 });
 
 describe("optimistic check-in helpers", () => {
-  it("builds an ACTIVE 3-hour check-in for the seat", () => {
+  it("builds an ACTIVE 2-hour check-in for the seat", () => {
     const checkIn = buildOptimisticCheckIn(seat("a", "UNKNOWN", null), ROOM, true, Date.parse("2026-01-01T10:00:00.000Z"));
     expect(checkIn).toMatchObject({ seatId: "a", seatCode: "a", roomId: ROOM, status: "ACTIVE", showIdentity: true });
-    expect(checkIn.expiresAt).toBe("2026-01-01T13:00:00.000Z");
+    expect(checkIn.expiresAt).toBe("2026-01-01T12:00:00.000Z");
   });
 
   it("uses the chosen duration for the check-in and the extension", () => {
@@ -186,9 +186,9 @@ describe("optimistic check-in helpers", () => {
     expect(extendCheckIn(checkIn, Date.parse("2026-01-01T10:10:00.000Z"), 60).expiresAt).toBe("2026-01-01T11:10:00.000Z");
   });
 
-  it("extends to a fresh 3 hours from now", () => {
+  it("extends to a fresh 2 hours from now", () => {
     const checkIn = buildOptimisticCheckIn(seat("a", "UNKNOWN", null), ROOM, false, Date.parse("2026-01-01T10:00:00.000Z"));
-    expect(extendCheckIn(checkIn, Date.parse("2026-01-01T10:50:00.000Z")).expiresAt).toBe("2026-01-01T13:50:00.000Z");
+    expect(extendCheckIn(checkIn, Date.parse("2026-01-01T10:50:00.000Z")).expiresAt).toBe("2026-01-01T12:50:00.000Z");
   });
 });
 

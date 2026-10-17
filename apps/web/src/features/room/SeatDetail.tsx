@@ -8,6 +8,8 @@ import { usePathname } from "next/navigation";
 import { frameOf, nameColorStyle } from "@/components/flair";
 import { SeatWatchButton } from "@/features/seat-watch/SeatWatchButton";
 import { ProBadge, proLabel } from "@/features/subscriptions/ProBadge";
+import { openProUpsell } from "@/features/subscriptions/pro-upsell-store";
+import { proLockState } from "@/features/subscriptions/pro";
 import { MessageOccupantButton } from "./MessageOccupantButton";
 import { useState } from "react";
 import { CheckInDurationPicker } from "./CheckInDurationPicker";
@@ -144,6 +146,20 @@ export function SeatDetail({
     setTapped(action);
     fn();
   };
+  // Without Pro the check-in is a fixed block (the server forces it); only Pro picks the end time.
+  const durationLocked = proLockState(me, false) === "locked";
+  const effectiveMinutes = durationLocked ? DEFAULT_CHECKIN_DURATION : durationMinutes;
+  const checkInHint = `${durationLocked ? `${durationLabel(effectiveMinutes)} · ` : ""}hasta las ${clockTimeAfter(effectiveMinutes, now)}`;
+  const durationUpsell = durationLocked ? (
+    <button
+      type="button"
+      onClick={() => openProUpsell("checkin_duration")}
+      className="inline-flex min-h-11 w-fit items-center gap-1.5 self-center text-xs font-semibold text-primary hover:underline"
+    >
+      Elegir hasta qué hora
+      <ProBadge inline />
+    </button>
+  ) : null;
   const locationPrompt = useLocationPrompt(me?.user != null);
   const peek = compact && !expanded;
   const isBar = table?.type === "WALL_BAR";
@@ -348,37 +364,41 @@ export function SeatDetail({
                 <div className="flex gap-2">
                   <div className="min-w-0 flex-1">
                     <PrimaryButton
-                      onClick={run("checkin", () => onCheckIn(durationMinutes))}
+                      onClick={run("checkin", () => onCheckIn(effectiveMinutes))}
                       disabled={pending}
-                      hint={searching("checkin") ? undefined : `hasta las ${clockTimeAfter(durationMinutes, now)}`}
+                      hint={searching("checkin") ? undefined : checkInHint}
                     >
                       {searching("checkin") ? "Buscando tu ubicación…" : "Estoy acá"}
                     </PrimaryButton>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowPicker((value) => !value)}
-                    aria-expanded={showPicker}
-                    aria-label={`Duración: ${durationLabel(durationMinutes)}. Cambiar`}
-                    className="flex min-h-[52px] shrink-0 items-center gap-1 rounded-control bg-surface-2 px-3.5 text-sm font-bold tabular-nums text-main transition-transform duration-150 ease-out active:scale-[0.97]"
-                  >
-                    {durationLabel(durationMinutes)}
-                    <CaretDownIcon aria-hidden="true" size={14} weight="bold" className={`transition-transform ${showPicker ? "rotate-180" : ""}`} />
-                  </button>
+                  {!durationLocked ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowPicker((value) => !value)}
+                      aria-expanded={showPicker}
+                      aria-label={`Duración: ${durationLabel(durationMinutes)}. Cambiar`}
+                      className="flex min-h-[52px] shrink-0 items-center gap-1 rounded-control bg-surface-2 px-3.5 text-sm font-bold tabular-nums text-main transition-transform duration-150 ease-out active:scale-[0.97]"
+                    >
+                      {durationLabel(durationMinutes)}
+                      <CaretDownIcon aria-hidden="true" size={14} weight="bold" className={`transition-transform ${showPicker ? "rotate-180" : ""}`} />
+                    </button>
+                  ) : null}
                 </div>
+                {durationUpsell}
                 {locationHint}
-                {showPicker ? <CheckInDurationPicker minutes={durationMinutes} onChange={setDurationMinutes} disabled={pending} now={now} /> : null}
+                {showPicker && !durationLocked ? <CheckInDurationPicker minutes={durationMinutes} onChange={setDurationMinutes} disabled={pending} now={now} /> : null}
               </>
             ) : (
               <>
-                <CheckInDurationPicker minutes={durationMinutes} onChange={setDurationMinutes} disabled={pending} now={now} />
+                {!durationLocked ? <CheckInDurationPicker minutes={durationMinutes} onChange={setDurationMinutes} disabled={pending} now={now} /> : null}
                 <PrimaryButton
-                  onClick={run("checkin", () => onCheckIn(durationMinutes))}
+                  onClick={run("checkin", () => onCheckIn(effectiveMinutes))}
                   disabled={pending}
-                  hint={searching("checkin") ? undefined : `hasta las ${clockTimeAfter(durationMinutes, now)}`}
+                  hint={searching("checkin") ? undefined : checkInHint}
                 >
                   {searching("checkin") ? "Buscando tu ubicación…" : "Estoy acá"}
                 </PrimaryButton>
+                {durationUpsell}
                 {locationHint}
               </>
             )}

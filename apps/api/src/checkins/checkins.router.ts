@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { checkInPhotoRequestSchema, checkInRequestSchema, extendRequestSchema } from "@sala/contracts";
+import { CHECKIN_MINUTES, checkInPhotoRequestSchema, checkInRequestSchema, extendRequestSchema } from "@sala/contracts";
 import { ApiErrors } from "../common/api-error.js";
 import { allInOrder } from "../common/background.js";
 import { currentUser, type AppEnv } from "../http/context.js";
@@ -7,11 +7,18 @@ import { requireAuth } from "../http/guards.js";
 import { reply } from "../http/reply.js";
 import { uuidParam, zBody } from "../http/validate.js";
 import { hashIp } from "../security/security-event.service.js";
+import type { Services } from "../services.js";
 
 /** Automatic "Sigo acá" is only accepted with this much time (or less) left on the check-in. */
 const AUTO_EXTEND_WINDOW_MS = 15 * 60_000;
 
 export const checkinsRouter = new Hono<AppEnv>();
+
+/** Only Pro picks how long to stay; everyone else gets the fixed 2-hour block and renews it with "Sigo acá". */
+async function allowedDuration(services: Services, userId: string, requested: number): Promise<number> {
+  if (requested === CHECKIN_MINUTES) return requested;
+  return (await services.pro.isProUser(userId)) ? requested : CHECKIN_MINUTES;
+}
 
 checkinsRouter.post("/checkins", requireAuth(), zBody(checkInRequestSchema), async (c) => {
   const { services, ip } = c.var;
@@ -38,7 +45,7 @@ checkinsRouter.post("/checkins", requireAuth(), zBody(checkInRequestSchema), asy
     presence,
     showIdentity: body.showIdentity,
     qrToken: body.qrToken,
-    durationMinutes: body.durationMinutes,
+    durationMinutes: await allowedDuration(services, user.id, body.durationMinutes),
   });
   await services.realtime.broadcastSeatChanges(body.roomId, changes);
   if (previousRoom) await services.realtime.broadcastSeatChanges(previousRoom.roomId, previousRoom.changes);
@@ -81,7 +88,8 @@ checkinsRouter.post("/checkins/current/extend", requireAuth(), zBody(extendReque
   // 240 s window: stays in memory (no DO writes). Checked after the fix so a rejected one doesn't spend it.
   if (body.auto) await services.antiAbuse.enforceRateLimit({ key: `extend-auto:${user.id}`, limit: 1, windowSeconds: 240 });
 
-  return reply(c, await services.checkIns.extend(user.id, body.location, active, body.durationMinutes, presence), 201);
+  const durationMinutes = await allowedDuration(services, user.id, body.durationMinutes);
+  return reply(c, await services.checkIns.extend(user.id, body.location, active, durationMinutes, presence), 201);
 });
 
 checkinsRouter.post("/checkins/:id/photo", requireAuth(), uuidParam("id"), zBody(checkInPhotoRequestSchema), async (c) => {

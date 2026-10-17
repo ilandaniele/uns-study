@@ -2,7 +2,10 @@
 
 // ---- Durations (minutes) ----
 
-export const CHECKIN_MINUTES = 180;
+/** Fixed check-in block for everyone without Pro: renewed with "Sigo acá" every 2 hours. */
+export const CHECKIN_MINUTES = 120;
+/** Pro users pick their own end time, up to this many minutes ahead. */
+export const CHECKIN_PRO_MAX_MINUTES = 720;
 export const FREE_OBS_MINUTES = 15;
 export const OCCUPIED_OBS_MINUTES = 20;
 /** "Está guardado" (belongings left, nobody sitting) observation lifetime. */

@@ -103,12 +103,12 @@ describe("study time end to end", () => {
 
   it("counts a 6h stay kept alive with 'Sigo acá' renewals as 360 min, live and after checkout", async () => {
     at("2026-01-15T11:00:00Z");
-    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location: location(), showIdentity: false });
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location: location(), showIdentity: false, durationMinutes: 180 });
     at("2026-01-15T13:55:00Z");
-    await checkIns.extend("u1", location()); // expires 16:55Z
+    await checkIns.extend("u1", location(), undefined, 180); // expires 16:55Z
     at("2026-01-15T16:50:00Z");
     // A same-seat re-check-in is also a renewal: it refreshes the same row instead of opening a new one.
-    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location: location(), showIdentity: false });
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location: location(), showIdentity: false, durationMinutes: 180 });
 
     const sixHoursIn = at("2026-01-15T17:00:00Z");
     expect(await value("today", sixHoursIn)).toBe(360);
@@ -126,16 +126,16 @@ describe("study time end to end", () => {
     at("2026-01-15T11:00:00Z");
     await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location: location(), showIdentity: false });
 
-    // Expired at 14:00Z but the sweep hasn't run yet: the minutes must not drop out of the ranking.
+    // Expired at 13:00Z (2 h block) but the sweep hasn't run yet: the minutes must not drop out of the ranking.
     const beforeSweep = at("2026-01-15T14:10:00Z");
-    expect(await value("today", beforeSweep)).toBe(180);
+    expect(await value("today", beforeSweep)).toBe(120);
 
     await expiration.runSweep(beforeSweep);
     await expiration.runSweep(beforeSweep); // a second sweep is a no-op
     const rows = await sessionsOf("u1");
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.verifiedMinutes).toBe(180);
-    expect(await value("today", beforeSweep)).toBe(180);
+    expect(rows[0]?.verifiedMinutes).toBe(120);
+    expect(await value("today", beforeSweep)).toBe(120);
   });
 
   it("a checkout racing the expiration sweep records exactly one session", async () => {
@@ -145,16 +145,17 @@ describe("study time end to end", () => {
     await Promise.all([checkIns.checkOut("u1"), expiration.runSweep(late)]);
 
     expect(await sessionsOf("u1")).toHaveLength(1);
-    expect(await value("today", late)).toBe(180);
+    expect(await value("today", late)).toBe(120);
   });
 
   it("daily reset closes a 22:00-04:00 stay and credits each local day its own portion", async () => {
+    await db.update(schema.rooms).set({ dailyResetTime: "04:00" }).where(eq(schema.rooms.id, roomId)); // models a 04:00 reset
     at("2026-01-15T01:00:00Z"); // 2026-01-14 22:00 local
-    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location: location(), showIdentity: false });
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location: location(), showIdentity: false, durationMinutes: 180 });
     at("2026-01-15T03:55:00Z");
-    await checkIns.extend("u1", location());
+    await checkIns.extend("u1", location(), undefined, 180);
     at("2026-01-15T06:50:00Z");
-    await checkIns.extend("u1", location());
+    await checkIns.extend("u1", location(), undefined, 180);
 
     const reset = at("2026-01-15T07:00:00Z"); // 04:00 local
     expect(await dailyReset.runReset(roomId, reset)).toBe(true);
@@ -173,7 +174,7 @@ describe("study time end to end", () => {
 
   it("splits a still-ACTIVE stay across midnight live too", async () => {
     at("2026-01-15T01:00:00Z"); // 2026-01-14 22:00 local
-    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location: location(), showIdentity: false });
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location: location(), showIdentity: false, durationMinutes: 180 });
     const afterMidnight = at("2026-01-15T03:30:00Z"); // 00:30 local on the 15th
     expect(await value("today", afterMidnight)).toBe(30);
     expect(await value("week", afterMidnight)).toBe(150);

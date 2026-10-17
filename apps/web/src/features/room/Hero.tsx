@@ -29,7 +29,7 @@ export function Hero({ summary, seats }: HeroProps) {
 
   if (!hasData) {
     headline = <>Todavía no hay datos de hoy</>;
-    subline = "Los datos se reinician cada madrugada. Si estás en la sala, tocá tu lugar y marcá «Estoy acá».";
+    subline = "Los datos se reinician cada medianoche. Si estás en la sala, tocá tu lugar y marcá «Estoy acá».";
   } else if (summary.free === 0 && mostlyKnown) {
     headline = <>La sala está llena</>;
     subline = latestUpdateLabel(seats, now);

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CHECKIN_MINUTES, CHECKIN_MIN_MINUTES } from "./events";
+import { CHECKIN_MINUTES, CHECKIN_MIN_MINUTES, CHECKIN_PRO_MAX_MINUTES } from "./events";
 
 export * from "./animals";
 export * from "./careers";
@@ -277,8 +277,8 @@ export const checkInRequestSchema = z.object({
   seatId: z.string().uuid(),
   location: locationInputSchema.optional(),
   showIdentity: z.boolean().default(false),
-  /** How long the user will occupy the seat, in minutes (15..180, default 180). */
-  durationMinutes: z.number().int().min(CHECKIN_MIN_MINUTES).max(CHECKIN_MINUTES).default(CHECKIN_MINUTES),
+  /** How long the user will occupy the seat, in minutes (15..720, default 120). Only Pro may choose; everyone else gets 120. */
+  durationMinutes: z.number().int().min(CHECKIN_MIN_MINUTES).max(CHECKIN_PRO_MAX_MINUTES).default(CHECKIN_MINUTES),
   qrToken: z.string().max(128).nullable().optional(),
   /** Cloudflare Turnstile token; required only when the API answers TURNSTILE_REQUIRED. */
   turnstileToken: z.string().max(4096).nullable().optional(),
@@ -296,7 +296,7 @@ export const observationRequestSchema = z.object({
 export const extendRequestSchema = z
   .object({
     location: locationInputSchema.optional(),
-    durationMinutes: z.number().int().min(CHECKIN_MIN_MINUTES).max(CHECKIN_MINUTES).default(CHECKIN_MINUTES),
+    durationMinutes: z.number().int().min(CHECKIN_MIN_MINUTES).max(CHECKIN_PRO_MAX_MINUTES).default(CHECKIN_MINUTES),
     /** Pro: set by the automatic "Sigo acá"; the server also requires a fix and at most 15 minutes left. */
     auto: z.literal(true).optional(),
   })

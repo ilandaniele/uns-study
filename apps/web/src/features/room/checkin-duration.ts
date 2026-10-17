@@ -1,24 +1,24 @@
-import { CHECKIN_MINUTES, CHECKIN_MIN_MINUTES } from "@sala/contracts/events";
+import { CHECKIN_MINUTES, CHECKIN_MIN_MINUTES, CHECKIN_PRO_MAX_MINUTES } from "@sala/contracts/events";
 
-/** Quick "Hasta:" choices offered next to "Estoy acá"; the last one is the API default. */
+/** Quick "Hasta:" choices offered to Pro users next to "Estoy acá". */
 export const CHECKIN_DURATION_CHIPS = [
-  { label: "30 min", minutes: 30 },
   { label: "1 h", minutes: 60 },
   { label: "2 h", minutes: 120 },
-  { label: "3 h", minutes: CHECKIN_MINUTES },
+  { label: "4 h", minutes: 240 },
+  { label: "6 h", minutes: 360 },
 ] as const;
 
 export const DEFAULT_CHECKIN_DURATION = CHECKIN_MINUTES;
 
-/** Keeps a chosen duration inside what the API accepts (15..180 whole minutes). */
+/** Keeps a chosen duration inside what the API accepts (15..720 whole minutes). */
 export function clampCheckInMinutes(minutes: number): number {
   if (!Number.isFinite(minutes)) return DEFAULT_CHECKIN_DURATION;
-  return Math.min(CHECKIN_MINUTES, Math.max(CHECKIN_MIN_MINUTES, Math.round(minutes)));
+  return Math.min(CHECKIN_PRO_MAX_MINUTES, Math.max(CHECKIN_MIN_MINUTES, Math.round(minutes)));
 }
 
 /**
  * Minutes from `now` until the next occurrence of a "HH:MM" wall-clock time (tomorrow if it has
- * already passed today), clamped to 15..180. `null` when the text isn't a valid time.
+ * already passed today), clamped to 15..720. `null` when the text isn't a valid time.
  */
 export function minutesUntilClockTime(value: string, now: Date = new Date()): number | null {
   const raw = rawMinutesUntilClockTime(value, now);

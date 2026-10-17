@@ -46,11 +46,25 @@ describe("DailyResetJob", () => {
   });
 
   it("is a no-op before today's reset time", async () => {
+    // At midnight every instant is past "today's" reset, so the guard is exercised with a later time.
+    await db.update(schema.rooms).set({ dailyResetTime: "04:00" }).where(eq(schema.rooms.id, roomId));
     const room = await getRoom(db);
     const todayResetInstant = resetInstantFor(room, new Date());
-    const before = new Date(todayResetInstant.getTime() - 60_000); // 1 minute before 04:00 local
+    const before = new Date(todayResetInstant.getTime() - 60_000); // 1 minute before the reset time
     const ran = await job.runReset(roomId, before);
     expect(ran).toBe(false);
+  });
+
+  it("clears the room at midnight: a long check-in from the evening does not survive into the new day", async () => {
+    const { checkIn: created } = await checkIns.checkIn({ userId: "u1", roomId, seatId, location, showIdentity: false, durationMinutes: 720 });
+    const room = await getRoom(db);
+    expect(room.dailyResetTime).toBe("00:00");
+    const nextMidnight = resetInstantFor(room, new Date(Date.now() + 24 * 60 * 60_000));
+    expect(new Date(created.expiresAt).getTime()).toBeGreaterThan(nextMidnight.getTime() - 24 * 60 * 60_000);
+
+    expect(await job.runReset(roomId, new Date(nextMidnight.getTime() + 60_000))).toBe(true);
+    const [row] = await db.select().from(schema.checkIns).where(eq(schema.checkIns.id, created.id));
+    expect(row!.status).toBe("EXPIRED");
   });
 
   it("expires active check-ins/observations and resets all seats to UNKNOWN after the reset time", async () => {
@@ -351,6 +365,7 @@ describe("DailyResetJob", () => {
     it("does not touch the hooks before the reset time", async () => {
       const forecast = forecastCalls(async () => true);
       const seatWatch = { deleteExpired: vi.fn(async () => 0) };
+      await db.update(schema.rooms).set({ dailyResetTime: "04:00" }).where(eq(schema.rooms.id, roomId));
       const room = await getRoom(db);
       vi.useFakeTimers({ toFake: ["Date"] });
       vi.setSystemTime(new Date(resetInstantFor(room, new Date()).getTime() - 60_000));

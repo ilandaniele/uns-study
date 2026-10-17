@@ -2,17 +2,17 @@ import { describe, expect, it } from "vitest";
 import { CHECKIN_DURATION_CHIPS, clampCheckInMinutes, clockTimeAfter, minutesUntilClockTime, rawMinutesUntilClockTime } from "./checkin-duration";
 
 describe("CHECKIN_DURATION_CHIPS", () => {
-  it("maps the chips to minutes, 3 h being the full window", () => {
-    expect(CHECKIN_DURATION_CHIPS.map((c) => c.minutes)).toEqual([30, 60, 120, 180]);
+  it("maps the chips to minutes, Pro quick picks", () => {
+    expect(CHECKIN_DURATION_CHIPS.map((c) => c.minutes)).toEqual([60, 120, 240, 360]);
   });
 });
 
 describe("clampCheckInMinutes", () => {
-  it("clamps to 15..180 and rounds", () => {
+  it("clamps to 15..720 and rounds", () => {
     expect(clampCheckInMinutes(5)).toBe(15);
-    expect(clampCheckInMinutes(500)).toBe(180);
+    expect(clampCheckInMinutes(900)).toBe(720);
     expect(clampCheckInMinutes(44.6)).toBe(45);
-    expect(clampCheckInMinutes(Number.NaN)).toBe(180);
+    expect(clampCheckInMinutes(Number.NaN)).toBe(120);
   });
 });
 
@@ -23,10 +23,11 @@ describe("minutesUntilClockTime", () => {
   });
   it("clamps too-near and too-far times", () => {
     expect(minutesUntilClockTime("10:05", now)).toBe(15);
-    expect(minutesUntilClockTime("18:00", now)).toBe(180);
+    expect(minutesUntilClockTime("18:00", now)).toBe(480);
+    expect(minutesUntilClockTime("23:00", now)).toBe(720);
   });
   it("treats a time already passed as tomorrow (then clamps)", () => {
-    expect(minutesUntilClockTime("09:00", now)).toBe(180);
+    expect(minutesUntilClockTime("09:00", now)).toBe(720);
   });
   it("rejects invalid text", () => {
     expect(minutesUntilClockTime("", now)).toBeNull();

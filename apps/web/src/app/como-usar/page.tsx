@@ -11,7 +11,7 @@ const FAQ: { q: string; a: string }[] = [
     q: "¿Por qué me pide la ubicación?",
     a: "Para comprobar que estás cerca de la sala cuando marcás «Estoy acá». No guardamos tus coordenadas exactas ni las mostramos a nadie.",
   },
-  { q: "¿Qué pasa si me olvido de liberar mi lugar?", a: "Se libera solo cuando se cumple el tiempo que elegiste, como máximo a las 3 horas." },
+  { q: "¿Qué pasa si me olvido de liberar mi lugar?", a: "Se libera solo a las 2 horas, salvo que toques «Sigo acá» para renovar. Con Pro elegís hasta qué hora te quedás (hasta 12 h). Además, todos los lugares se liberan a medianoche." },
   { q: "¿Tengo que escanear un QR?", a: "No. Alcanza con tocar tu lugar en el mapa." },
 ];
 

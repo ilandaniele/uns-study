@@ -38,7 +38,7 @@ export interface SeatActionsSync {
 /** Extra, optional options threaded through presence-sensitive writes. `qrToken` is supplied by C3's QR flow; unset it's a no-op. */
 export interface SeatActionOptions {
   qrToken?: string | null;
-  /** Check-in only: how long the user will occupy the seat, in minutes (15..180). */
+  /** Check-in only: how long the user will occupy the seat, in minutes (15..720). */
   durationMinutes?: number;
 }
 
