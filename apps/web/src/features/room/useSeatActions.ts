@@ -5,7 +5,7 @@ import type { CheckInDto, DisputeKind, DisputeVote, LocationInput, RoomMapDto, S
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiDelete, apiPost, ApiRequestError } from "@/lib/api";
 import { describeActionError } from "@/lib/errors";
-import { getFreshLocation } from "@/lib/geolocation";
+import { getFreshLocation, GeolocationRequestError } from "@/lib/geolocation";
 import { mutateMe, peekMe, refreshMe } from "@/lib/me-store";
 import { withPresence } from "@/lib/presence-grant";
 import {
@@ -50,6 +50,9 @@ export interface UseSeatActionsResult {
   /** True while the API is waiting for a Cloudflare Turnstile token to retry the last action. */
   turnstileRequired: boolean;
   clearError: () => void;
+  /** True after an action failed because location is blocked or off: show the how-to-enable popup. */
+  locationHelp: boolean;
+  dismissLocationHelp: () => void;
   checkIn: (seatId: string, showIdentity: boolean, options?: SeatActionOptions) => Promise<CheckInDto | null>;
   /**
    * "Está libre". On a seat someone else holds the API opens (or joins) the timed vote instead:
@@ -92,6 +95,8 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
   const [locating, setLocating] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [turnstileRequired, setTurnstileRequired] = useState(false);
+  const [locationHelp, setLocationHelp] = useState(false);
+  const dismissLocationHelp = useCallback(() => setLocationHelp(false), []);
   const retryRef = useRef<((token: string) => void) | null>(null);
   // Latest map, so optimistic patches capture the seat as the user sees it right now.
   const mapRef = useRef(map);
@@ -128,6 +133,7 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
           setTurnstileRequired(false);
           retryRef.current = null;
           setActionError(describeActionError(error));
+          if (error instanceof GeolocationRequestError && (error.code === "PERMISSION_DENIED" || error.code === "UNAVAILABLE")) setLocationHelp(true);
           if (error instanceof ApiRequestError && error.code === "UNAUTHENTICATED") void refreshMe().catch(() => undefined);
         }
         return null;
@@ -351,6 +357,8 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
     actionError,
     turnstileRequired,
     clearError,
+    locationHelp,
+    dismissLocationHelp,
     checkIn,
     markFree,
     markOccupied,

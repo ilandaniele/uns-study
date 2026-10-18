@@ -56,6 +56,7 @@ const DisputeWonBanner = dynamic(() => import("@/features/room/DisputeWonBanner"
 const EnableSeatFreedCta = dynamic(() => import("@/features/room/EnableSeatFreedCta").then((m) => m.EnableSeatFreedCta), { loading: noFallback });
 const HowToUseModal = dynamic(() => import("@/features/room/HowToUseModal").then((m) => m.HowToUseModal), { loading: noFallback });
 const MoveSeatDialog = dynamic(() => import("@/features/room/MoveSeatDialog").then((m) => m.MoveSeatDialog), { loading: noFallback });
+const LocationHelpDialog = dynamic(() => import("@/features/room/LocationHelpDialog").then((m) => m.LocationHelpDialog), { loading: noFallback });
 const SeatFreedToast = dynamic(() => import("@/features/room/SeatFreedToast").then((m) => m.SeatFreedToast), { loading: noFallback });
 const TurnstileChallenge = dynamic(() => import("@/features/room/TurnstileChallenge").then((m) => m.TurnstileChallenge), { loading: noFallback });
 import { SeatSheet } from "@/features/room/SeatSheet";
@@ -121,6 +122,8 @@ export function RoomPageClient({ slug }: { slug: string }) {
     actionError,
     turnstileRequired,
     clearError,
+    locationHelp,
+    dismissLocationHelp,
     submitTurnstileToken,
     checkIn,
     markFree,
@@ -540,6 +543,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
           {actionError}
         </p>
       ) : null}
+      {locationHelp ? <LocationHelpDialog onClose={dismissLocationHelp} /> : null}
       {!selectedSeat && turnstileRequired ? (
         <div className="order-0 lg:col-span-full">
           <TurnstileChallenge onToken={submitTurnstileToken} />
