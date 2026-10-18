@@ -38,8 +38,9 @@ export interface CreateObservationInput {
   /** The caller's observation limits if it already loaded them (saves a query). */
   limits?: ObservationLimits;
   /**
-   * The caller holds the ADMIN role and reports OCCUPIED: the report is stored as an `admin_override`
-   * (ADMIN_OVERRIDE_WEIGHT, ADMIN_OCCUPIED_MARK_MINUTES) and skips the distinct-seat spread cap.
+   * The caller holds the ADMIN role and reports OCCUPIED or FREE: the report is stored as an
+   * `admin_override` (ADMIN_OVERRIDE_WEIGHT; OCCUPIED lasts ADMIN_OCCUPIED_MARK_MINUTES, FREE the usual
+   * FREE_OBS_MINUTES), replaces any earlier admin mark on the seat and skips the distinct-seat spread cap.
    */
   adminMark?: boolean;
 }
@@ -134,8 +135,8 @@ export class ObservationService {
       }
     }
 
-    const adminMark = input.adminMark === true && input.status === "OCCUPIED";
-    const minutes = adminMark
+    const adminMark = input.adminMark === true && input.status !== "SAVED";
+    const minutes = adminMark && input.status === "OCCUPIED"
       ? ADMIN_OCCUPIED_MARK_MINUTES
       : input.status === "FREE"
         ? FREE_OBS_MINUTES
@@ -159,12 +160,15 @@ export class ObservationService {
         return { spread: distinctSeats.size };
       }
 
-      // Duplicate observation by the same user on the same seat replaces the previous one.
+      // Duplicate observation by the same user on the same seat replaces the previous one;
+      // an admin mark also replaces any earlier admin mark on the seat, whoever made it.
       tx.update(schema.seatObservations)
         .set({ expiresAt: now, updatedAt: now })
         .where(
           and(
-            eq(schema.seatObservations.userId, input.userId),
+            adminMark
+              ? or(eq(schema.seatObservations.userId, input.userId), eq(schema.seatObservations.adminOverride, true))
+              : eq(schema.seatObservations.userId, input.userId),
             eq(schema.seatObservations.seatId, input.seatId),
             gt(schema.seatObservations.expiresAt, now),
           ),
