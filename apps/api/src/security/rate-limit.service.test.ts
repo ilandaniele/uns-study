@@ -132,3 +132,33 @@ describe("backend failures fail closed and are logged", () => {
     spy.mockRestore();
   });
 });
+
+describe("RateLimitService owner exemption", () => {
+  async function setup(emailVerified: boolean) {
+    const db = freshDb();
+    await db.insert(schema.user).values([
+      { id: "owner1", name: "o", email: "boss@example.test", emailVerified },
+      { id: "other1", name: "x", email: "x@example.test", emailVerified: true },
+    ]);
+    return new RateLimitService(db, "boss@example.test");
+  }
+
+  it("never limits buckets keyed by the verified owner's user id", async () => {
+    const svc = await setup(true);
+    for (let i = 0; i < 20; i++) expect((await svc.check("checkin:owner1", 1, 60)).allowed).toBe(true);
+    expect((await svc.check("dispute:open:owner1", 1, 3600)).allowed).toBe(true);
+    expect((await svc.check("dispute:open:owner1", 1, 3600)).allowed).toBe(true);
+  });
+
+  it("still limits everyone else, IP buckets, and an unverified owner email", async () => {
+    const svc = await setup(true);
+    await svc.check("checkin:other1", 1, 60);
+    expect((await svc.check("checkin:other1", 1, 60)).allowed).toBe(false);
+    await svc.check("qr-resolve-ip:abc", 1, 60);
+    expect((await svc.check("qr-resolve-ip:abc", 1, 60)).allowed).toBe(false);
+
+    const unverified = await setup(false);
+    await unverified.check("checkin:owner1", 1, 60);
+    expect((await unverified.check("checkin:owner1", 1, 60)).allowed).toBe(false);
+  });
+});

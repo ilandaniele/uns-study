@@ -112,7 +112,7 @@ export function buildServices(deps: ContainerDeps): Services {
   const reputation = new ReputationService(db);
   const studySessions = new StudySessionService(db);
   const securityEvents = new SecurityEventService(db, reputation);
-  const rateLimit = new RateLimitService(db);
+  const rateLimit = new RateLimitService(db, cfg.ownerEmail);
   const turnstile = new TurnstileService();
   const abusePolicy = new AbusePolicyService(db, turnstile);
   const antiAbuse = new AntiAbuseService(rateLimit, securityEvents, abusePolicy, turnstile);

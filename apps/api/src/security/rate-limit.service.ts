@@ -5,6 +5,7 @@ const CLEANUP_INTERVAL_MS = 60 * 1000;
 const CLEANUP_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const MEMORY_PRUNE_INTERVAL_MS = 60 * 1000;
 const MEMORY_MAX_ENTRIES = 50_000;
+const OWNER_LOOKUP_TTL_MS = 5 * 60 * 1000;
 
 /**
  * Windows up to this long are counted in memory. The API is one Durable Object, and a SQLite upsert
@@ -166,13 +167,42 @@ export class RateLimitService {
   private readonly memory = new MemoryWindow();
   private readonly shortWindows = new MemoryWindowCounter();
   private readonly sqliteWindow: SqliteWindow | null;
+  private owner: { id: string | null; at: number } | null = null;
 
-  constructor(db?: Db) {
+  /**
+   * `ownerEmail`: the app owner's account (verified email only) is never rate limited. Its user id
+   * is looked up once and cached for a few minutes; buckets keyed `<name>:<userId>` for that id pass
+   * without counting. IP- or email-keyed buckets still apply.
+   */
+  constructor(
+    private readonly db?: Db,
+    private readonly ownerEmail?: string,
+  ) {
     this.sqliteWindow = db ? new SqliteWindow(db) : null;
+  }
+
+  private async ownerId(): Promise<string | null> {
+    if (!this.db || !this.ownerEmail) return null;
+    const now = Date.now();
+    if (this.owner && now - this.owner.at < OWNER_LOOKUP_TTL_MS) return this.owner.id;
+    try {
+      const [u] = await this.db
+        .select({ id: schema.user.id, emailVerified: schema.user.emailVerified })
+        .from(schema.user)
+        .where(eq(schema.user.email, this.ownerEmail))
+        .limit(1);
+      this.owner = { id: u && u.emailVerified === true ? u.id : null, at: now };
+    } catch {
+      this.owner = { id: null, at: now };
+    }
+    return this.owner.id;
   }
 
   /** `key` should already include the bucket name, e.g. `checkin:<userId>`. */
   async check(key: string, limit: number, windowSeconds: number): Promise<RateLimitResult> {
+    const owner = await this.ownerId();
+    if (owner && key.endsWith(`:${owner}`)) return { allowed: true, remaining: limit };
+
     if (this.sqliteWindow) {
       if (windowSeconds <= IN_MEMORY_MAX_WINDOW_SECONDS) {
         return this.shortWindows.check(key, limit, windowSeconds * 1000);
