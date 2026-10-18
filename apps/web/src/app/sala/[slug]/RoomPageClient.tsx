@@ -1,5 +1,6 @@
 "use client";
 
+import { SEAT_DETAIL_ATTR, useDismissSeatOnOutsideTap } from "@/features/room/seat-outside-tap";
 import { prefetchLikelyNextWhenIdle } from "@/lib/prefetch";
 import { primeLocation } from "@/lib/geolocation";
 import type { SeatAvatarDto, SeatDto } from "@sala/contracts";
@@ -275,6 +276,8 @@ export function RoomPageClient({ slug }: { slug: string }) {
     setSavedPromptSeatId(null);
     clearError();
   }, [clearError]);
+  // A tap on the empty map floor or outside the map lets the seat go.
+  useDismissSeatOnOutsideTap(selectedSeatId !== null && !multiSelect, closeDetail);
 
   // Programmatic open (quick actions): always selects, never toggles closed.
   const openSeat = useCallback(
@@ -471,6 +474,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
   );
 
   const detail = selectedSeat ? (
+    <div className="contents" {...{ [SEAT_DETAIL_ATTR]: "" }}>
     <SeatDetail
       locating={locating}
       seat={selectedSeat}
@@ -513,6 +517,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
       expanded={sheetExpanded}
       onExpandedChange={setSheetExpanded}
     />
+    </div>
   ) : null;
 
   const notices = (
