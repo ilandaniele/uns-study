@@ -27,7 +27,7 @@ export function seatAvatarRender(avatar: SeatAvatarDto | null | undefined, seatO
 export function markedByLabel(name: string, observedAt: string, now: Date = new Date(), kind: "OCCUPIED" | "SAVED" = "OCCUPIED"): string {
   const minutes = Math.max(0, Math.floor((now.getTime() - new Date(observedAt).getTime()) / 60_000));
   const ago = minutes < 1 ? "hace instantes" : minutes < 60 ? `hace ${minutes} min` : `hace ${Math.floor(minutes / 60)} h`;
-  return `${kind === "SAVED" ? "Guardado" : "Marcado"} por: ${name} · ${ago}`;
+  return kind === "SAVED" ? `${name} avisó que este lugar lo guardaron · ${ago}` : `Marcado por: ${name} · ${ago}`;
 }
 
 export type OccupantAvatarProps =
