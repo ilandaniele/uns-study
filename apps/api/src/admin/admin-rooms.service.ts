@@ -1,13 +1,13 @@
-import { and, count, desc, eq, getTableColumns, gt, gte, sql } from "drizzle-orm";
+import { and, count, desc, eq, getTableColumns, gt, gte, inArray, sql } from "drizzle-orm";
 import { chunk, rowsPerInsert, schema, type Db } from "@sala/database";
-import type { GeofenceTestResultDto, LocationInput, RoomDailyStatDto, RoomGeofenceDto, RoomStatsDto } from "@sala/contracts";
+import { FREE_OBS_MINUTES, type GeofenceTestResultDto, type LocationInput, type RoomDailyStatDto, type RoomGeofenceDto, type RoomStatsDto } from "@sala/contracts";
 import { env } from "../env.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { PresenceService } from "../presence/presence.service.js";
 import { RolesService } from "../users/roles.service.js";
 import { RoomCache } from "../common/cache/room-cache.service.js";
-import { ADMIN_OVERRIDE_WEIGHT } from "../observations/observations.service.js";
+import { ADMIN_OCCUPIED_MARK_MINUTES, ADMIN_OVERRIDE_WEIGHT } from "../observations/observations.service.js";
 
 const HOURS_24_MS = 24 * 60 * 60 * 1000;
 const DAY_MS = HOURS_24_MS;
@@ -286,6 +286,87 @@ export class AdminRoomsService {
     });
 
     return { roomId: room.id, count: marked, expiresAt, changes };
+  }
+
+  /**
+   * Marks the chosen seats OCCUPIED or FREE via admin-attributed `admin_override` observations
+   * (OCCUPIED holds for a check-in block, FREE for the normal FREE window). Any earlier live admin
+   * mark on those seats is ended first, so the new one replaces it. Seats with an active check-in,
+   * inactive seats and seats of other rooms are skipped. No presence check.
+   */
+  async markSeats(
+    idOrSlug: string,
+    actorId: string,
+    seatIds: string[],
+    status: "OCCUPIED" | "FREE",
+  ): Promise<{ roomId: string; count: number; skipped: number; expiresAt: Date; changes: SeatStateChange[] }> {
+    const room = await this.rooms.findRoomRow(idOrSlug);
+    const now = new Date();
+    const minutes = status === "OCCUPIED" ? ADMIN_OCCUPIED_MARK_MINUTES : FREE_OBS_MINUTES;
+    const expiresAt = new Date(now.getTime() + minutes * 60_000);
+    const requested = [...new Set(seatIds)];
+
+    const result = this.db.transaction((tx) => {
+      const roomSeats = new Set(
+        tx
+          .select({ id: schema.seats.id })
+          .from(schema.seats)
+          .where(and(eq(schema.seats.roomId, room.id), eq(schema.seats.active, true), inArray(schema.seats.id, requested)))
+          .all()
+          .map((s) => s.id),
+      );
+      const seated = new Set(
+        tx
+          .select({ seatId: schema.checkIns.seatId })
+          .from(schema.checkIns)
+          .where(and(eq(schema.checkIns.roomId, room.id), eq(schema.checkIns.status, "ACTIVE")))
+          .all()
+          .map((c) => c.seatId),
+      );
+      const targets = requested.filter((id) => roomSeats.has(id) && !seated.has(id));
+      if (targets.length === 0) return { count: 0, changes: [] as SeatStateChange[] };
+
+      tx.update(schema.seatObservations)
+        .set({ expiresAt: now, updatedAt: now })
+        .where(
+          and(
+            eq(schema.seatObservations.roomId, room.id),
+            eq(schema.seatObservations.adminOverride, true),
+            gt(schema.seatObservations.expiresAt, now),
+            inArray(schema.seatObservations.seatId, targets),
+          ),
+        )
+        .run();
+      for (const part of chunk(targets, rowsPerInsert(OBSERVATION_COLUMN_COUNT))) {
+        tx.insert(schema.seatObservations)
+          .values(
+            part.map((seatId) => ({
+              userId: actorId,
+              roomId: room.id,
+              seatId,
+              observedStatus: status,
+              presenceVerified: false,
+              adminOverride: true,
+              confidenceWeight: ADMIN_OVERRIDE_WEIGHT,
+              observedAt: now,
+              expiresAt,
+            })),
+          )
+          .run();
+      }
+      const changes = this.roomState.recomputeSeats(targets, { roomId: room.id, now, eventType: "ADMIN_MARK_SEATS", actingUserId: actorId, tx });
+      tx.insert(schema.moderationActions)
+        .values({
+          actorId,
+          targetUserId: null,
+          action: "ADMIN_MARK_SEATS",
+          metadata: { roomId: room.id, status, count: targets.length },
+        })
+        .run();
+      return { count: targets.length, changes };
+    });
+
+    return { roomId: room.id, count: result.count, skipped: requested.length - result.count, expiresAt, changes: result.changes };
   }
 
   /** Expires every live admin bulk-mark in the room and recomputes the affected seats. */

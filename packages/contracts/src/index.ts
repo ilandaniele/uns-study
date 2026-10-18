@@ -351,6 +351,14 @@ export const markAllOccupiedSchema = z.object({
   minutes: z.number().int().min(ADMIN_MARK_OCCUPIED_MIN_MINUTES).max(ADMIN_MARK_OCCUPIED_MAX_MINUTES).default(ADMIN_MARK_OCCUPIED_DEFAULT_MINUTES),
 });
 
+/** Admin multi-select: mark several chosen seats OCCUPIED or FREE at once. */
+export const ADMIN_MARK_SEATS_MAX = 200;
+export const adminMarkSeatsSchema = z.object({
+  seatIds: z.array(z.string().min(1).max(100)).min(1).max(ADMIN_MARK_SEATS_MAX),
+  status: z.enum(["OCCUPIED", "FREE"]),
+});
+export type AdminMarkSeatsInput = z.infer<typeof adminMarkSeatsSchema>;
+
 export const presenceValidateSchema = z.object({
   roomId: z.string().max(100),
   latitude: z.number().min(-90).max(90),

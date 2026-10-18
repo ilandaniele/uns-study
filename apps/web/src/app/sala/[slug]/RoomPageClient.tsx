@@ -37,6 +37,8 @@ import { QuestionIcon } from "@phosphor-icons/react/dist/ssr";
 import { useSeatActions } from "@/features/room/useSeatActions";
 import { useSeatDispute } from "@/features/room/useSeatDispute";
 import { MarkAllOccupiedCard } from "@/features/admin/MarkAllOccupiedCard";
+import { AdminMultiSelectBar } from "@/features/admin/AdminMultiSelectBar";
+import { toggleSeatSelection } from "@/features/admin/mark-seats";
 import { useAdminAccess } from "@/features/admin/useAdminAccess";
 import { PeopleList } from "@/features/people/PeopleList";
 import { useOccupants } from "@/features/people/useOccupants";
@@ -153,6 +155,9 @@ export function RoomPageClient({ slug }: { slug: string }) {
     return () => window.clearTimeout(id);
   }, [preloadSeatDetail]);
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
+  // Admin multi-select: while on, a map tap picks the seat for a bulk mark instead of opening its detail.
+  const [multiSelect, setMultiSelect] = useState(false);
+  const [multiSeatIds, setMultiSeatIds] = useState<ReadonlySet<string>>(() => new Set());
   // Seat the viewer just marked "Está guardado" — SeatDetail offers to report / ask to free it.
   const [savedPromptSeatId, setSavedPromptSeatId] = useState<string | null>(null);
   const [onlyFree, setOnlyFree] = useState(false);
@@ -252,13 +257,17 @@ export function RoomPageClient({ slug }: { slug: string }) {
   const todayStats = useRoomTodayStats(slug, signedIn);
   const handleSelectSeat = useCallback(
     (seat: SeatDto) => {
+      if (multiSelect) {
+        setMultiSeatIds((current) => toggleSeatSelection(current, seat.id));
+        return;
+      }
       setSelectedSeatId((current) => (current === seat.id ? null : seat.id));
       setSavedPromptSeatId(null);
       clearError();
       // Warm the GPS while the person reads the seat panel, so "Estoy acá" answers instantly.
       if (signedIn) primeLocation();
     },
-    [clearError, signedIn],
+    [clearError, signedIn, multiSelect],
   );
 
   const closeDetail = useCallback(() => {
@@ -440,6 +449,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
       adminBadgeSeatIds={adminBadgeSeatIds}
       onlyFree={onlyFree}
       favoriteSeatIds={favoriteSeatIds}
+      multiSelectedSeatIds={multiSelect ? multiSeatIds : undefined}
     />
   );
 
@@ -507,7 +517,18 @@ export function RoomPageClient({ slug }: { slug: string }) {
 
   const notices = (
     <>
-      {isAdmin ? <MarkAllOccupiedCard roomSlug={slug} seats={map.seats} onDone={handleChanged} /> : null}
+      {isAdmin ? (
+        <MarkAllOccupiedCard
+          roomSlug={slug}
+          seats={map.seats}
+          onDone={handleChanged}
+          onStartMultiSelect={() => {
+            closeDetail();
+            setMultiSeatIds(new Set());
+            setMultiSelect(true);
+          }}
+        />
+      ) : null}
       {map.summary.free === 0 ? <EnableSeatFreedCta /> : null}
       <ForecastCard roomSlug={slug} />
       <QuietRoomCard roomSlug={slug} summary={map.summary} checkedInHere={activeCheckIn != null} />
@@ -734,6 +755,18 @@ export function RoomPageClient({ slug }: { slug: string }) {
         />
       ) : null}
       {quietAlert && !toast ? <SeatFreedToast message={quietToastMessage(quietAlert)} onDismiss={dismissQuietAlert} /> : null}
+      {isAdmin && multiSelect ? (
+        <AdminMultiSelectBar
+          roomSlug={slug}
+          seatIds={multiSeatIds}
+          onClear={() => setMultiSeatIds(new Set())}
+          onClose={() => {
+            setMultiSelect(false);
+            setMultiSeatIds(new Set());
+          }}
+          onDone={handleChanged}
+        />
+      ) : null}
     </main>
   );
 }

@@ -22,6 +22,8 @@ export interface RoomMapProps {
   onlyFree?: boolean;
   /** The viewer's favorite seats, each drawn with a small star. */
   favoriteSeatIds?: readonly string[];
+  /** Admin multi-select: seats picked for a bulk mark, each drawn with a ring. */
+  multiSelectedSeatIds?: ReadonlySet<string>;
 }
 
 const NO_FAVORITES: readonly string[] = [];
@@ -35,7 +37,7 @@ const BACK_WINDOWS = 6;
 const SIDE_WINDOW_LENGTH = 220;
 const SIDE_WINDOW_Y = [130, 400, 670, 940, 1210];
 
-export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlightTableCode = null, avatarBySeatId, adminBadgeSeatIds, onlyFree = false, favoriteSeatIds = NO_FAVORITES }: RoomMapProps) {
+export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlightTableCode = null, avatarBySeatId, adminBadgeSeatIds, onlyFree = false, favoriteSeatIds = NO_FAVORITES, multiSelectedSeatIds }: RoomMapProps) {
   // Photo of the real room when one matches this layout; the drawn room otherwise.
   const skin = useMemo(() => photoSkinFor(map), [map]);
   const { width, height } = skin?.viewBox ?? map.viewBox;
@@ -112,6 +114,16 @@ export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, on
           <rect x={0} y={0} width={width} height={height} fill="black" style={{ opacity: "var(--room-dark-overlay)" }} pointerEvents="none" aria-hidden="true" />
         </>
       )}
+
+      {multiSelectedSeatIds && multiSelectedSeatIds.size > 0 ? (
+        <g pointerEvents="none" aria-hidden="true">
+          {displaySeats
+            .filter((seat) => multiSelectedSeatIds.has(seat.id))
+            .map((seat) => (
+              <circle key={seat.id} cx={seat.x} cy={seat.y} r={36} fill="none" stroke="var(--primary)" strokeWidth={7} />
+            ))}
+        </g>
+      ) : null}
 
       {/* Selected seat: dim the rest of the room and ring the seat, so it stays findable while the detail sheet is open. */}
       {selectedSeat ? (

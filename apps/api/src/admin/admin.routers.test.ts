@@ -46,6 +46,20 @@ describe("admin and qr routers", () => {
     expect(realtime.broadcastSeatChanges).toHaveBeenCalledWith("r1", changes);
   });
 
+  it("marks chosen seats and rejects an unknown status", async () => {
+    const changes = [{ seatId: "s1" }];
+    const adminRooms = { markSeats: vi.fn(async () => ({ roomId: "r1", count: 1, skipped: 1, expiresAt: new Date(0), changes })) };
+    const realtime = { broadcastSeatChanges: vi.fn(async () => undefined) };
+    const { app } = buildApp("ADMIN", { adminRooms, realtime });
+    const res = await app.request("/admin/rooms/r1/mark-seats", json({ seatIds: ["s1", "s2"], status: "FREE" }));
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual({ count: 1, skipped: 1, expiresAt: new Date(0).toISOString() });
+    expect(adminRooms.markSeats).toHaveBeenCalledWith("r1", expect.any(String), ["s1", "s2"], "FREE");
+    expect(realtime.broadcastSeatChanges).toHaveBeenCalledWith("r1", changes);
+    const bad = await app.request("/admin/rooms/r1/mark-seats", json({ seatIds: ["s1"], status: "UNKNOWN" }));
+    expect(bad.status).toBe(400);
+  });
+
   it("rejects a moderator on the geofence PUT with 403", async () => {
     const adminRooms = { updateGeofence: vi.fn() };
     const { app } = buildApp("MODERATOR", { adminRooms });

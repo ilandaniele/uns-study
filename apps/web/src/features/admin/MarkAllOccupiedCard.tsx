@@ -22,10 +22,12 @@ export interface MarkAllOccupiedCardProps {
   seats: Pick<SeatDto, "status">[];
   /** Called after a successful mark/undo so the caller can refetch (the socket also updates the map). */
   onDone?: () => void;
+  /** Enters map multi-select so the admin can mark chosen seats; omitted hides the button. */
+  onStartMultiSelect?: () => void;
 }
 
 /** Admin-only bulk action: mark every non-occupied seat as OCCUPIED for a while, or undo it. The API re-checks the role. */
-export function MarkAllOccupiedCard({ roomSlug, seats, onDone }: MarkAllOccupiedCardProps) {
+export function MarkAllOccupiedCard({ roomSlug, seats, onDone, onStartMultiSelect }: MarkAllOccupiedCardProps) {
   const [confirming, setConfirming] = useState(false);
   const { closing, requestClose } = useExitTransition(() => setConfirming(false));
   const [minutes, setMinutes] = useState<number>(MARK_ALL_OCCUPIED_DEFAULT_MINUTES);
@@ -84,6 +86,16 @@ export function MarkAllOccupiedCard({ roomSlug, seats, onDone }: MarkAllOccupied
         >
           Deshacer
         </button>
+        {onStartMultiSelect ? (
+          <button
+            type="button"
+            onClick={onStartMultiSelect}
+            disabled={pending}
+            className="min-h-10 rounded-control border border-app px-3 text-sm font-medium text-main hover:bg-[var(--surface-2)] disabled:opacity-60"
+          >
+            Elegir varios lugares
+          </button>
+        ) : null}
       </div>
       {error && !confirming ? (
         <p role="alert" className="text-xs text-red-700">

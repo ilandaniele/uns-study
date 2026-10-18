@@ -287,6 +287,44 @@ describe("AdminRoomsService — mark all occupied", () => {
     expect(again.count).toBe(0);
   });
 
+  it("marks only the chosen seats occupied, skipping checked-in and unknown seats", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location: await loc(), showIdentity: false });
+
+    const result = await svc.markSeats(roomId, "admin1", [seatIds[0]!, seatIds[1]!, seatIds[2]!, seatIds[2]!, "nope"], "OCCUPIED");
+    expect(result.count).toBe(2);
+    expect(result.skipped).toBe(2);
+    const live = await roomState.getLiveSeatStates(roomId);
+    expect(live.get(seatIds[1]!)?.status).toBe("OCCUPIED");
+    expect(live.get(seatIds[2]!)?.status).toBe("OCCUPIED");
+    expect(live.get(seatIds[3]!)?.status).toBe("UNKNOWN");
+    const obs = await db.select().from(schema.seatObservations);
+    expect(obs).toHaveLength(2);
+    expect(obs.every((o) => o.adminOverride && o.confidenceWeight === 1000)).toBe(true);
+    const [row] = await audit("ADMIN_MARK_SEATS");
+    expect(row?.metadata).toMatchObject({ status: "OCCUPIED", count: 2 });
+  });
+
+  it("marks chosen seats free over member reports and replaces an earlier admin mark", async () => {
+    const now = new Date();
+    await db.insert(schema.seatObservations).values([
+      { userId: "u1", roomId, seatId: seatIds[1]!, observedStatus: "OCCUPIED", confidenceWeight: 1, observedAt: now, expiresAt: new Date(now.getTime() + 600_000) },
+      { userId: "u2", roomId, seatId: seatIds[1]!, observedStatus: "OCCUPIED", confidenceWeight: 1, observedAt: now, expiresAt: new Date(now.getTime() + 600_000) },
+    ]);
+    await svc.markSeats(roomId, "admin1", [seatIds[2]!], "OCCUPIED");
+
+    const result = await svc.markSeats(roomId, "admin1", [seatIds[1]!, seatIds[2]!], "FREE");
+    expect(result.count).toBe(2);
+    const live = await roomState.getLiveSeatStates(roomId);
+    expect(live.get(seatIds[1]!)?.status).toBe("FREE");
+    expect(live.get(seatIds[2]!)?.status).toBe("FREE");
+
+    const undone = await svc.undoMarkAllOccupied(roomId, "admin1");
+    expect(undone.count).toBe(2);
+    const after = await roomState.getLiveSeatStates(roomId);
+    expect(after.get(seatIds[1]!)?.status).toBe("OCCUPIED");
+    expect(after.get(seatIds[2]!)?.status).toBe("UNKNOWN");
+  });
+
   it("shows 'Administración' as the marker without exposing the admin", async () => {
     await svc.markAllOccupied(roomId, "admin1", 60);
     const entries = (await people.listOccupants(roomId)) as SeatMarkedByDto[];

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { markAllOccupiedSchema, testGeofenceSchema, updateGeofenceSchema } from "@sala/contracts";
+import { adminMarkSeatsSchema, markAllOccupiedSchema, testGeofenceSchema, updateGeofenceSchema } from "@sala/contracts";
 import { ApiErrors } from "../common/api-error.js";
 import { currentUser, type AppEnv } from "../http/context.js";
 import { requireAdmin, requireAdminOnly } from "../http/guards.js";
@@ -39,6 +39,17 @@ adminRoomsRouter.post("/admin/rooms/:idOrSlug/mark-all-occupied", requireAdmin, 
   const { roomId, count, expiresAt, changes } = await adminRooms.markAllOccupied(c.req.param("idOrSlug"), user.id, c.req.valid("json").minutes);
   await realtime.broadcastSeatChanges(roomId, changes);
   return reply(c, { count, expiresAt: expiresAt.toISOString() }, 201);
+});
+
+adminRoomsRouter.post("/admin/rooms/:idOrSlug/mark-seats", requireAdmin, zBody(adminMarkSeatsSchema), async (c) => {
+  const user = currentUser(c);
+  const { adminRooms, rateLimit, realtime } = c.var.services;
+  const limit = await rateLimit.check(`admin:mark-all-occupied:${user.id}`, 10, 60);
+  if (!limit.allowed) throw ApiErrors.rateLimited();
+  const { seatIds, status } = c.req.valid("json");
+  const { roomId, count, skipped, expiresAt, changes } = await adminRooms.markSeats(c.req.param("idOrSlug"), user.id, seatIds, status);
+  await realtime.broadcastSeatChanges(roomId, changes);
+  return reply(c, { count, skipped, expiresAt: expiresAt.toISOString() }, 201);
 });
 
 adminRoomsRouter.post("/admin/rooms/:idOrSlug/mark-all-occupied/undo", requireAdmin, async (c) => {
