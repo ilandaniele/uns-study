@@ -178,6 +178,19 @@ export class CheckInService {
             .returning()
             .get();
           if (!row) throw new Error("Failed to create check-in");
+
+          // The person now seated takes over an admin "ocupado" mark: it ends here, so the seat
+          // doesn't keep reading OCCUPIED after they leave.
+          tx.update(schema.seatObservations)
+            .set({ expiresAt: now, updatedAt: now })
+            .where(
+              and(
+                eq(schema.seatObservations.seatId, input.seatId),
+                eq(schema.seatObservations.adminOverride, true),
+                gt(schema.seatObservations.expiresAt, now),
+              ),
+            )
+            .run();
         }
 
         // Same transaction: the seat state can never lag behind the check-in it was derived from.

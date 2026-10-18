@@ -174,6 +174,30 @@ describe("CheckInService", () => {
     expect(active).toBeNull();
   });
 
+  it("checking into a seat an admin marked ocupado takes it over and ends the mark", async () => {
+    const now = new Date();
+    await db.insert(schema.seatObservations).values({
+      userId: "u2",
+      roomId,
+      seatId: seatIds[0]!,
+      observedStatus: "OCCUPIED",
+      presenceVerified: true,
+      adminOverride: true,
+      confidenceWeight: 1000,
+      observedAt: now,
+      expiresAt: new Date(now.getTime() + 120 * 60_000),
+    });
+
+    const { checkIn } = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    expect(checkIn.status).toBe("ACTIVE");
+    const [seated] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatIds[0]!));
+    expect(seated?.sourceSummary).toBe("CHECK_IN");
+
+    await svc.checkOut("u1");
+    const [after] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatIds[0]!));
+    expect(after?.status).toBe("UNKNOWN");
+  });
+
   it("checkOut is a no-op when there is nothing active", async () => {
     expect(await svc.checkOut("u1")).toBeNull();
   });
