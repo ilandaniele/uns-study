@@ -209,7 +209,7 @@ describe("ObservationService", () => {
     expect(state?.status).not.toBe("FREE");
   });
 
-  it("an admin FREE mark is an admin_override for 15 minutes that beats member and admin OCCUPIED reports", async () => {
+  it("an admin FREE mark is an admin_override for one check-in block that beats member and admin OCCUPIED reports", async () => {
     await observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "OCCUPIED", location });
     await observations.observe({ userId: "u1", roomId, seatId: seatIds[1]!, status: "OCCUPIED", location, adminMark: true });
 
@@ -223,8 +223,8 @@ describe("ObservationService", () => {
     const live = (await db.select().from(schema.seatObservations)).filter((o) => o.adminOverride && new Date(o.expiresAt).getTime() > Date.now());
     expect(live.map((o) => o.observedStatus)).toEqual(["FREE", "FREE"]);
     const minutes = (new Date(live[0]!.expiresAt).getTime() - before) / 60_000;
-    expect(minutes).toBeGreaterThan(14.9);
-    expect(minutes).toBeLessThanOrEqual(15.01);
+    expect(minutes).toBeGreaterThan(119.9);
+    expect(minutes).toBeLessThanOrEqual(120.01);
   });
 
   it("a SAVED observation sets the seat SAVED with 30-minute expiry", async () => {
