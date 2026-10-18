@@ -61,9 +61,9 @@ export interface SeatRecencyInput {
  */
 export function recencyLabel(seat: SeatRecencyInput, now: Date = new Date()): string | null {
   const { status, sourceSummary, lastUpdatedAt } = seat;
-  // A seat freed by a "Está guardado" dispute that resolved ABSENT — call out why, instead of the generic recency text.
+  // A seat freed by a "guardado"/"ocupado" vote that resolved ABSENT — call out why, instead of the generic recency text.
   if (sourceSummary === "SAVED") {
-    return "Estaba guardado, se liberó por votación";
+    return "Se liberó por votación";
   }
   if (status === "UNKNOWN" || sourceSummary === null || sourceSummary === "SEED" || sourceSummary === "DAILY_RESET") {
     return "Sin información reciente";

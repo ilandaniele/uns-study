@@ -136,10 +136,38 @@ describe("ObservationService", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("FREE on an observation-only OCCUPIED seat stays an observation conflict (UNCERTAIN, no vote)", async () => {
+  it("FREE on an observation-only OCCUPIED seat opens a vote that the reporter wins when nobody else votes", async () => {
     await observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "OCCUPIED", location });
     const result = await observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "FREE", location });
-    expect(result.dispute).toBeNull();
+    expect(result.dispute).toMatchObject({ kind: "SAVED", status: "OPEN", seatId: seatIds[0] });
+    expect(result.changes.find((c) => c.seatId === seatIds[0])?.status).toBe("UNCERTAIN");
+
+    await db.update(schema.seatDisputes).set({ closesAt: new Date(Date.now() - 1000) }).where(eq(schema.seatDisputes.id, result.dispute!.id));
+    await disputes.resolveDue(new Date());
+    await flushBackground();
+
+    const [row] = await db.select().from(schema.seatDisputes).where(eq(schema.seatDisputes.id, result.dispute!.id));
+    expect(row?.status).toBe("RESOLVED_ABSENT");
+    const [state] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatIds[0]!));
+    expect(state?.status).toBe("FREE");
+  });
+
+  it("FREE on an observation-only OCCUPIED seat stays OCCUPIED when the room votes it is taken", async () => {
+    await observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "OCCUPIED", location });
+    const result = await observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "FREE", location });
+    // Voters need a seat of their own in the room.
+    await insertUsers(db, ["u4"]);
+    await checkIns.checkIn({ userId: "u3", roomId, seatId: seatIds[1]!, location, showIdentity: false });
+    await checkIns.checkIn({ userId: "u4", roomId, seatId: seatIds[2]!, location, showIdentity: false });
+    await disputes.vote(result.dispute!.id, "u3", "PRESENT", location);
+    await disputes.vote(result.dispute!.id, "u4", "PRESENT", location);
+
+    await db.update(schema.seatDisputes).set({ closesAt: new Date(Date.now() - 1000) }).where(eq(schema.seatDisputes.id, result.dispute!.id));
+    await disputes.resolveDue(new Date());
+    await flushBackground();
+
+    const [state] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatIds[0]!));
+    expect(state?.status).toBe("OCCUPIED");
   });
 
   it("does not push when the observed seat has no check-in or the status is not FREE", async () => {
@@ -175,7 +203,8 @@ describe("ObservationService", () => {
     expect(minutes).toBeLessThanOrEqual(120.01);
 
     // A single member "Está libre" does not flip the admin mark to FREE.
-    await observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "FREE", location });
+    const result = await observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "FREE", location });
+    expect(result.dispute).toBeNull();
     const [state] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatIds[0]!));
     expect(state?.status).not.toBe("FREE");
   });

@@ -73,7 +73,7 @@ export class ObservationService {
 
   /**
    * Records an observation. "Está libre" on a seat someone else holds (another user's active
-   * check-in, or a seat that reads "guardado") opens the timed vote instead — or returns the vote
+   * check-in, or a seat that other reports call "guardado" or "ocupado") opens the timed vote instead — or returns the vote
    * already running on the seat — so `dispute` is the vote the reporter should now see, if any.
    */
   async observe(input: CreateObservationInput): Promise<{ roomId: string; changes: SeatStateChange[]; dispute: SeatDisputeDto | null }> {
@@ -216,9 +216,12 @@ export class ObservationService {
       const holder = activeCheckIns.find((c) => c.seatId === input.seatId && c.userId !== input.userId);
       const prior = priorStates[0];
       const after = changes.find((c) => c.seatId === input.seatId)?.status ?? prior?.status;
-      // An ABSENT vote on the holder's check-in, or a SAVED vote on a "guardado" seat that this
-      // report didn't already turn FREE (the reporter's own "guardado" was the only one).
-      const kind = holder ? "ABSENT" : prior?.status === "SAVED" && after !== "FREE" ? "SAVED" : null;
+      // An ABSENT vote on the holder's check-in, or a SAVED vote on a seat that other reports call
+      // "guardado"/"ocupado" and this report didn't already turn FREE. The vote starts with the
+      // reporter's own "libre" vote, so if nobody else votes the report wins. An admin's "ocupado"
+      // mark is not put to a vote.
+      const contested = prior?.status === "SAVED" || prior?.status === "OCCUPIED" || after === "UNCERTAIN" || after === "OCCUPIED" || after === "SAVED";
+      const kind = holder ? "ABSENT" : contested && after !== "FREE" && !this.hasAdminOccupiedMark(input.seatId, now) ? "SAVED" : null;
 
       if (prior?.sourceSummary === "DISPUTE") {
         dispute = await this.disputes.findOpenForSeat(input.seatId, input.userId);
@@ -261,5 +264,22 @@ export class ObservationService {
     }
 
     return { roomId: input.roomId, changes, dispute };
+  }
+
+  private hasAdminOccupiedMark(seatId: string, now: Date): boolean {
+    const mark = this.db
+      .select({ id: schema.seatObservations.id })
+      .from(schema.seatObservations)
+      .where(
+        and(
+          eq(schema.seatObservations.seatId, seatId),
+          eq(schema.seatObservations.adminOverride, true),
+          eq(schema.seatObservations.observedStatus, "OCCUPIED"),
+          gt(schema.seatObservations.expiresAt, now),
+        ),
+      )
+      .limit(1)
+      .get();
+    return mark != null;
   }
 }
