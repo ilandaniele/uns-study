@@ -35,7 +35,7 @@ export const PRO_FEATURES: Record<ProFeatureId, { title: string; description: st
   profile_flair: { title: "Perfil destacado", description: "Elegí un marco para tu foto y un color para tu nombre. Se ven en el ranking, en tu perfil y en la sala." },
   group_ranking: { title: "Ranking entre amigos", description: "Compará horas, racha y aportes solo con la gente de tu grupo." },
   quiet_room: { title: "Aviso sala tranquila", description: "Te avisamos cuando la sala se vacía hasta el nivel que elijas, así sabés cuándo ir." },
-  checkin_duration: { title: "Elegí hasta qué hora", description: "Quedate el tiempo que quieras sin renovar cada 2 horas: elegí la hora de salida, hasta 12 h." },
+  checkin_duration: { title: "Elegí hasta qué hora", description: "Quedate el tiempo que quieras sin renovar cada 3 horas: elegí la hora de salida, hasta 12 h." },
 };
 
 export const PRO_BENEFITS: string[] = [
@@ -54,5 +54,5 @@ export const PRO_BENEFITS: string[] = [
   "Perfil destacado: marco para tu foto y color para tu nombre",
   "Ranking entre amigos de tu grupo",
   "Aviso cuando la sala está tranquila",
-  "Elegir hasta qué hora te quedás (hasta 12 h) sin renovar cada 2 horas",
+  "Elegir hasta qué hora te quedás (hasta 12 h) sin renovar cada 3 horas",
 ];

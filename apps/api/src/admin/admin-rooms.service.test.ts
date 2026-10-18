@@ -314,7 +314,7 @@ describe("AdminRoomsService — mark all occupied", () => {
 
     const result = await svc.markSeats(roomId, "admin1", [seatIds[1]!, seatIds[2]!], "FREE");
     expect(result.count).toBe(2);
-    expect((result.expiresAt.getTime() - Date.now()) / 60_000).toBeGreaterThan(119.9);
+    expect((result.expiresAt.getTime() - Date.now()) / 60_000).toBeGreaterThan(179.9);
     const live = await roomState.getLiveSeatStates(roomId);
     expect(live.get(seatIds[1]!)?.status).toBe("FREE");
     expect(live.get(seatIds[2]!)?.status).toBe("FREE");

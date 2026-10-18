@@ -12,7 +12,7 @@ export interface CheckInDurationPickerProps {
   now: Date;
 }
 
-/** Segmented "[1 h] [2 h] [4 h] [6 h] [Otra hora]" — how long the user will occupy the seat. */
+/** Segmented "[1 h] [3 h] [4 h] [6 h] [Otra hora]" — how long the user will occupy the seat. */
 export function CheckInDurationPicker({ minutes, onChange, disabled = false, now }: CheckInDurationPickerProps) {
   /** Label of the confirmed custom end time ("Hasta las 18:30"); null while a preset is selected. */
   const [customLabel, setCustomLabel] = useState<string | null>(null);

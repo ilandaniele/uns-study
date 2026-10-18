@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { getSocket } from "@/lib/socket";
 
 /**
- * Latest `checkin:expiring` event (sent to the caller's personal socket room ~10 min before their
+ * Latest `checkin:expiring` event (sent to the caller's personal socket room ~5 min before their
  * check-in expires). Vibrates the device once on arrival; compare with `isExpiringAlertFor`.
  */
 export function useCheckInExpiring(): CheckInExpiringEvent | null {

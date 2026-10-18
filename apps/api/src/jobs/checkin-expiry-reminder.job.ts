@@ -7,12 +7,12 @@ import type { PushService } from "../notifications/push.service.js";
 import { mapWithConcurrency } from "../notifications/concurrency.js";
 
 /** A check-in is reminded once it has this long or less left. */
-const REMINDER_LEAD_MS = 10 * 60_000;
+const REMINDER_LEAD_MS = 5 * 60_000;
 /** At most this many reminders are delivered concurrently per sweep. */
 const SEND_CONCURRENCY = 10;
 
 /**
- * Reminds users ~10 minutes before their ACTIVE check-in expires (socket event + push) so they can
+ * Reminds users ~5 minutes before their ACTIVE check-in expires (socket event + push) so they can
  * tap "Sigo acá" or release the seat. Each check-in is claimed with a conditional UPDATE on
  * `expiry_reminder_sent_at`, so overlapping sweeps/instances never double-send; `extend()` resets
  * the flag so the extended check-in gets its own reminder.
@@ -81,7 +81,7 @@ export class CheckInExpiryReminderJob {
         if (this.pushEnabled(row.userId)) {
           const { label, slug } = this.describe(row.seatId);
           await this.push.sendToUser(row.userId, {
-            title: "Tu lugar vence en 10 min",
+            title: "Tu lugar vence en 5 min",
             body: `${label} — tocá para seguir acá o liberarlo.`,
             url: `/sala/${slug}?seat=${row.seatId}`,
             tag: "checkin-expiry",

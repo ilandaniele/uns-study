@@ -3,7 +3,7 @@ import { CHECKIN_MINUTES, CHECKIN_MIN_MINUTES, CHECKIN_PRO_MAX_MINUTES } from "@
 /** Quick "Hasta:" choices offered to Pro users next to "Estoy acá". */
 export const CHECKIN_DURATION_CHIPS = [
   { label: "1 h", minutes: 60 },
-  { label: "2 h", minutes: 120 },
+  { label: "3 h", minutes: 180 },
   { label: "4 h", minutes: 240 },
   { label: "6 h", minutes: 360 },
 ] as const;

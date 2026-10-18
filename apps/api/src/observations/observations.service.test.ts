@@ -199,8 +199,8 @@ describe("ObservationService", () => {
     expect(obs?.adminOverride).toBe(true);
     expect(obs?.confidenceWeight).toBe(1000);
     const minutes = (new Date(obs!.expiresAt).getTime() - before) / 60_000;
-    expect(minutes).toBeGreaterThan(119.9);
-    expect(minutes).toBeLessThanOrEqual(120.01);
+    expect(minutes).toBeGreaterThan(179.9);
+    expect(minutes).toBeLessThanOrEqual(180.01);
 
     // A single member "Está libre" does not flip the admin mark to FREE.
     const result = await observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "FREE", location });
@@ -223,8 +223,8 @@ describe("ObservationService", () => {
     const live = (await db.select().from(schema.seatObservations)).filter((o) => o.adminOverride && new Date(o.expiresAt).getTime() > Date.now());
     expect(live.map((o) => o.observedStatus)).toEqual(["FREE", "FREE"]);
     const minutes = (new Date(live[0]!.expiresAt).getTime() - before) / 60_000;
-    expect(minutes).toBeGreaterThan(119.9);
-    expect(minutes).toBeLessThanOrEqual(120.01);
+    expect(minutes).toBeGreaterThan(179.9);
+    expect(minutes).toBeLessThanOrEqual(180.01);
   });
 
   it("a SAVED observation sets the seat SAVED with 30-minute expiry", async () => {

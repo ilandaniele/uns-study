@@ -259,11 +259,11 @@ describe("CheckInService", () => {
     expect(minutes).toBeLessThan(30.1);
   });
 
-  it("a check-in expires exactly CHECKIN_MINUTES (2 hours) after creation", async () => {
+  it("a check-in expires exactly CHECKIN_MINUTES (3 hours) after creation", async () => {
     const { checkIn } = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
     const started = new Date(checkIn.startedAt).getTime();
     const expires = new Date(checkIn.expiresAt).getTime();
-    expect(expires - started).toBe(120 * 60_000);
+    expect(expires - started).toBe(180 * 60_000);
   });
 
   it("extend rejects a check-in that has already passed its expires_at, even though the row is still status=ACTIVE", async () => {

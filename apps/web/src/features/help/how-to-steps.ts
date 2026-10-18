@@ -18,7 +18,7 @@ export const HOW_TO_STEPS: HowToStep[] = [
   {
     icon: MapPinIcon,
     title: "Tocá «Estoy acá»",
-    body: "Cuando te sientes, tocá tu lugar y marcalo. Tenés que estar en la sala: el GPS lo verifica. Dura 2 horas y 10 minutos antes te avisamos para que toques «Sigo acá» y renueves otras 2 horas. Con Pro elegís hasta qué hora te quedás.",
+    body: "Cuando te sientes, tocá tu lugar y marcalo. Tenés que estar en la sala: el GPS lo verifica. Dura 3 horas y 5 minutos antes te avisamos para que toques «Sigo acá» y renueves otras 3 horas. Con Pro elegís hasta qué hora te quedás.",
   },
   {
     icon: CheckCircleIcon,

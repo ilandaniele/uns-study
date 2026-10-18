@@ -126,14 +126,14 @@ describe("POST /checkins/current/extend with auto: true", () => {
     expect(res.status).toBe(201);
   });
 
-  it("a free user always renews the fixed 2-hour block, whatever duration it asks for", async () => {
+  it("a free user always renews the fixed 3-hour block, whatever duration it asks for", async () => {
     await checkInWithMinutesLeft(free.id, 30);
     const before = Date.now();
     const res = await extend(free.cookie, { location: inside, durationMinutes: 600 });
     expect(res.status).toBe(201);
     const minutes = (new Date(((await res.json()) as { expiresAt: string }).expiresAt).getTime() - before) / 60_000;
-    expect(minutes).toBeGreaterThan(119.9);
-    expect(minutes).toBeLessThan(120.1);
+    expect(minutes).toBeGreaterThan(179.9);
+    expect(minutes).toBeLessThan(180.1);
   });
 
   it("a Pro user renews for the duration it chose", async () => {

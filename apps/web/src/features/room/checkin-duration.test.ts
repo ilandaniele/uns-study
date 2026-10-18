@@ -3,7 +3,7 @@ import { CHECKIN_DURATION_CHIPS, clampCheckInMinutes, clockTimeAfter, minutesUnt
 
 describe("CHECKIN_DURATION_CHIPS", () => {
   it("maps the chips to minutes, Pro quick picks", () => {
-    expect(CHECKIN_DURATION_CHIPS.map((c) => c.minutes)).toEqual([60, 120, 240, 360]);
+    expect(CHECKIN_DURATION_CHIPS.map((c) => c.minutes)).toEqual([60, 180, 240, 360]);
   });
 });
 
@@ -12,7 +12,7 @@ describe("clampCheckInMinutes", () => {
     expect(clampCheckInMinutes(5)).toBe(15);
     expect(clampCheckInMinutes(900)).toBe(720);
     expect(clampCheckInMinutes(44.6)).toBe(45);
-    expect(clampCheckInMinutes(Number.NaN)).toBe(120);
+    expect(clampCheckInMinutes(Number.NaN)).toBe(180);
   });
 });
 

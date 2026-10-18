@@ -126,16 +126,16 @@ describe("study time end to end", () => {
     at("2026-01-15T11:00:00Z");
     await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location: location(), showIdentity: false });
 
-    // Expired at 13:00Z (2 h block) but the sweep hasn't run yet: the minutes must not drop out of the ranking.
+    // Expired at 14:00Z (3 h block) but the sweep hasn't run yet: the minutes must not drop out of the ranking.
     const beforeSweep = at("2026-01-15T14:10:00Z");
-    expect(await value("today", beforeSweep)).toBe(120);
+    expect(await value("today", beforeSweep)).toBe(180);
 
     await expiration.runSweep(beforeSweep);
     await expiration.runSweep(beforeSweep); // a second sweep is a no-op
     const rows = await sessionsOf("u1");
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.verifiedMinutes).toBe(120);
-    expect(await value("today", beforeSweep)).toBe(120);
+    expect(rows[0]?.verifiedMinutes).toBe(180);
+    expect(await value("today", beforeSweep)).toBe(180);
   });
 
   it("a checkout racing the expiration sweep records exactly one session", async () => {
@@ -145,7 +145,7 @@ describe("study time end to end", () => {
     await Promise.all([checkIns.checkOut("u1"), expiration.runSweep(late)]);
 
     expect(await sessionsOf("u1")).toHaveLength(1);
-    expect(await value("today", late)).toBe(120);
+    expect(await value("today", late)).toBe(180);
   });
 
   it("daily reset closes a 22:00-04:00 stay and credits each local day its own portion", async () => {

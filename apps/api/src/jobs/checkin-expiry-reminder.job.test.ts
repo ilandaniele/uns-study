@@ -47,24 +47,24 @@ describe("CheckInExpiryReminderJob", () => {
     await checkIns.checkIn({ userId: "u1", roomId, seatId, location, showIdentity: false });
   });
 
-  it("does nothing while more than 10 minutes remain", async () => {
+  it("does nothing while more than 5 minutes remain", async () => {
     expect(await job.runSweep()).toBe(0);
     expect(emit).not.toHaveBeenCalled();
   });
 
   it("claims once: emits and pushes on the first sweep, nothing on the second", async () => {
-    await setExpiry(9 * 60_000);
+    await setExpiry(4 * 60_000);
     expect(await job.runSweep()).toBe(1);
     expect(await job.runSweep()).toBe(0);
     expect(emit).toHaveBeenCalledTimes(1);
     expect(emit).toHaveBeenCalledWith("u1", expect.objectContaining({ seatId }));
     expect(send).toHaveBeenCalledTimes(1);
-    expect(send.mock.calls[0]![1]).toMatchObject({ title: "Tu lugar vence en 10 min", tag: "checkin-expiry", url: expect.stringContaining(`?seat=${seatId}`) });
+    expect(send.mock.calls[0]![1]).toMatchObject({ title: "Tu lugar vence en 5 min", tag: "checkin-expiry", url: expect.stringContaining(`?seat=${seatId}`) });
   });
 
   it("still emits the socket event but skips push when the preference is off", async () => {
     await db.insert(schema.notificationPreferences).values({ userId: "u1", checkinExpiry: false });
-    await setExpiry(9 * 60_000);
+    await setExpiry(4 * 60_000);
     expect(await job.runSweep()).toBe(1);
     expect(emit).toHaveBeenCalledTimes(1);
     expect(send).not.toHaveBeenCalled();
@@ -73,19 +73,19 @@ describe("CheckInExpiryReminderJob", () => {
   it("skips expired and ended check-ins", async () => {
     await setExpiry(-1000);
     expect(await job.runSweep()).toBe(0);
-    await setExpiry(5 * 60_000);
+    await setExpiry(3 * 60_000);
     await db.update(schema.checkIns).set({ status: "CANCELLED", endedAt: new Date() }).where(eq(schema.checkIns.seatId, seatId));
     expect(await job.runSweep()).toBe(0);
     expect(emit).not.toHaveBeenCalled();
   });
 
   it("extend resets the flag so the extended check-in is reminded again", async () => {
-    await setExpiry(9 * 60_000);
+    await setExpiry(4 * 60_000);
     await job.runSweep();
     await checkIns.extend("u1", location);
     const [row] = await db.select().from(schema.checkIns).where(eq(schema.checkIns.seatId, seatId));
     expect(row!.expiryReminderSentAt).toBeNull();
-    await setExpiry(9 * 60_000);
+    await setExpiry(4 * 60_000);
     expect(await job.runSweep()).toBe(1);
   });
 });

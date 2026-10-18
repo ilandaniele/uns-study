@@ -106,7 +106,7 @@ export function NotificationSettings() {
         <div className="flex items-start justify-between gap-4 py-3">
           <span>
             <span className="block text-sm font-medium text-main">Avisarme antes de que venza mi lugar</span>
-            <span className="block text-xs text-muted">10 minutos antes, para que puedas seguir acá o liberarlo.</span>
+            <span className="block text-xs text-muted">5 minutos antes, para que puedas seguir acá o liberarlo.</span>
           </span>
           <Switch
             checked={preferences.checkinExpiry}
