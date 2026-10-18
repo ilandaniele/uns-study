@@ -24,7 +24,7 @@ test("mobile viewport smoke: room map, bottom sheet, check-in, and bottom nav ac
     // The weekly donation prompt opens shortly after load on mobile; dismiss it and check it stays away.
     const donate = page.getByRole("dialog", { name: "¿Querés donar?" });
     await expect(donate).toBeVisible({ timeout: 10_000 });
-    await expect(donate.getByText("golf.cabina.mulita")).toBeVisible();
+    await expect(donate.getByText("ilandaniele")).toBeVisible();
     await donate.getByRole("button", { name: "Ahora no" }).click();
     await expect(donate).toBeHidden();
     await expect(page.getByText("Ocupados")).toBeVisible();

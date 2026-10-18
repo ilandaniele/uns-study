@@ -51,7 +51,7 @@ It is **not a booking system**: no reservations, no holding seats, no saving a s
 - GPS proves approximate room presence, not the exact seat. QR is optional.
 - The server is canonical (PostgreSQL). Socket events are notifications only. Never trust the client for identity, presence, seat state, ownership or moderation.
 - Ads (AdSense) are secondary to utility. Never on top of the map, next to seat controls, or as an entry popup. Accepted exception: the app-open interstitial (mobile and desktop, skippable after a 5 s countdown) is an intentional entry ad.
-- Running costs are covered by voluntary donations: Banco Provincia alias `golf.cabina.mulita`.
+- Running costs are covered by voluntary donations: transfer alias `ilandaniele`.
 
 ## Brand Commitments
 
