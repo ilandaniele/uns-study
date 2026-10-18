@@ -124,6 +124,23 @@ describe("ChatService", () => {
     expect(audit[0]?.actorId).toBe("mod1");
   });
 
+  it("clearMessages removes every message of the room chat and audits it", async () => {
+    await svc.createMessage("u1", "principal", "uno");
+    await svc.createMessage("u2", "principal", "dos");
+
+    const result = await svc.clearMessages("principal", "mod1");
+    expect(result.count).toBe(2);
+
+    expect(await db.select().from(schema.chatMessages)).toHaveLength(0);
+    const page = await svc.listMessages("principal", "u1");
+    expect(page.items).toHaveLength(0);
+
+    const audit = await db.select().from(schema.moderationActions);
+    expect(audit).toHaveLength(1);
+    expect(audit[0]?.action).toBe("CHAT_CLEARED");
+    expect(audit[0]?.actorId).toBe("mod1");
+  });
+
   it("hides the author's avatar when they haven't opted into showAvatar", async () => {
     await db.insert(schema.userProfiles).values({ userId: "u1", avatarUrl: "https://example.test/a.png" });
     await db.insert(schema.userPrivacySettings).values({ userId: "u1", showAvatar: false });

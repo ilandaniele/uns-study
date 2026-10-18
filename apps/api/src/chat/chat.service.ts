@@ -96,6 +96,23 @@ export class ChatService {
     return { chatRoomId: message.chatRoomId };
   }
 
+  /** ADMIN only (enforced by the route): permanently removes every message of the room's chat (audited). */
+  async clearMessages(idOrSlug: string, actingUserId: string): Promise<{ chatRoomId: string; count: number }> {
+    const chatRoom = await this.resolveChatRoom(idOrSlug);
+    const removed = await this.db
+      .delete(schema.chatMessages)
+      .where(eq(schema.chatMessages.chatRoomId, chatRoom.id))
+      .returning({ id: schema.chatMessages.id });
+
+    await this.db.insert(schema.moderationActions).values({
+      actorId: actingUserId,
+      action: "CHAT_CLEARED",
+      metadata: { chatRoomId: chatRoom.id, count: removed.length },
+    });
+
+    return { chatRoomId: chatRoom.id, count: removed.length };
+  }
+
   private async toDtos(rows: (typeof schema.chatMessages.$inferSelect)[], viewerId?: string): Promise<ChatMessageDto[]> {
     if (rows.length === 0) return [];
     const userIds = [...new Set(rows.map((r) => r.userId))];

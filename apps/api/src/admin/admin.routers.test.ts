@@ -60,6 +60,21 @@ describe("admin and qr routers", () => {
     expect(bad.status).toBe(400);
   });
 
+  it("lets only an admin clear the room chat and notifies the chat", async () => {
+    const chat = { clearMessages: vi.fn(async () => ({ chatRoomId: "c1", count: 4 })) };
+    const realtime = { emitChatCleared: vi.fn() };
+    const mod = buildApp("MODERATOR", { chat, realtime });
+    expect((await mod.app.request("/admin/rooms/r1/chat/clear", json({}))).status).toBe(403);
+    expect(chat.clearMessages).not.toHaveBeenCalled();
+
+    const { app } = buildApp("ADMIN", { chat, realtime });
+    const res = await app.request("/admin/rooms/r1/chat/clear", json({}));
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual({ count: 4 });
+    expect(chat.clearMessages).toHaveBeenCalledWith("r1", "u1");
+    expect(realtime.emitChatCleared).toHaveBeenCalledWith("c1");
+  });
+
   it("rejects a moderator on the geofence PUT with 403", async () => {
     const adminRooms = { updateGeofence: vi.fn() };
     const { app } = buildApp("MODERATOR", { adminRooms });

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { TableType } from "@sala/contracts";
 import { apiFetch } from "@/lib/api";
 import { seatDisplayLabel } from "@/features/room/format";
+import { ClearChatCard } from "./ClearChatCard";
 import { MarkAllOccupiedCard } from "./MarkAllOccupiedCard";
 import type { AdminLiveDto } from "./types";
 
@@ -43,6 +44,7 @@ export function LiveRoomPanel({ roomSlug }: { roomSlug: string }) {
   return (
     <div className="flex flex-col gap-3">
       <MarkAllOccupiedCard roomSlug={roomSlug} seats={live.map.seats} onDone={() => setReloads((n) => n + 1)} />
+      <ClearChatCard roomSlug={roomSlug} />
       <div className="flex flex-col gap-2 border-t border-app pt-4">
         <h2 className="text-sm font-semibold text-main">
           Ocupantes activos ({live.occupants.length} / {live.map.summary.total})

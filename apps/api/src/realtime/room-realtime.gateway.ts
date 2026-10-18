@@ -189,6 +189,10 @@ export class RoomRealtimeGateway {
     this.hub.publishToChat(chatRoomId, SocketEvents.ChatMessageDeleted, { chatRoomId, messageId });
   }
 
+  emitChatCleared(chatRoomId: string): void {
+    this.hub.publishToChat(chatRoomId, SocketEvents.ChatCleared, { chatRoomId });
+  }
+
   /** Notifies both participants' private `user:{userId}` channels. */
   emitDm(userIds: string[], message: DirectMessageDto): void {
     for (const userId of userIds) {

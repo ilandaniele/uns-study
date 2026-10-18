@@ -110,6 +110,11 @@ export function useRoomChat(roomSlug: string, blockedIds: Set<string>): UseRoomC
       if (event.chatRoomId !== chatRoomId) return;
       setMessages((prev) => prev.map((m) => (m.id === event.messageId ? { ...m, content: null, deleted: true } : m)));
     };
+    const onCleared = (event: { chatRoomId: string }) => {
+      if (event.chatRoomId !== chatRoomId) return;
+      setMessages([]);
+      setNextCursor(null);
+    };
     const onConnect = () => {
       setConnected(true);
       setEverConnected(true);
@@ -126,6 +131,7 @@ export function useRoomChat(roomSlug: string, blockedIds: Set<string>): UseRoomC
     socket.on("disconnect", onDisconnect);
     socket.on(SocketEvents.ChatMessageCreated, onCreated);
     socket.on(SocketEvents.ChatMessageDeleted, onDeleted);
+    socket.on(SocketEvents.ChatCleared, onCleared);
     if (socket.connected) onConnect();
 
     return () => {
@@ -133,6 +139,7 @@ export function useRoomChat(roomSlug: string, blockedIds: Set<string>): UseRoomC
       socket.off("disconnect", onDisconnect);
       socket.off(SocketEvents.ChatMessageCreated, onCreated);
       socket.off(SocketEvents.ChatMessageDeleted, onDeleted);
+      socket.off(SocketEvents.ChatCleared, onCleared);
       leaveChat(chatRoomId);
     };
   }, [chatRoomId, appendMessage, historyPath]);

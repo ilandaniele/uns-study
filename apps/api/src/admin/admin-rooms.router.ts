@@ -31,6 +31,16 @@ adminRoomsRouter.put("/admin/rooms/:idOrSlug/geofence", requireAdmin, requireAdm
   return reply(c, await c.var.services.adminRooms.updateGeofence(c.req.param("idOrSlug"), currentUser(c).id, c.req.valid("json")));
 });
 
+adminRoomsRouter.post("/admin/rooms/:idOrSlug/chat/clear", requireAdmin, requireAdminOnly, async (c) => {
+  const user = currentUser(c);
+  const { chat, rateLimit, realtime } = c.var.services;
+  const limit = await rateLimit.check(`admin:chat-clear:${user.id}`, 5, 60);
+  if (!limit.allowed) throw ApiErrors.rateLimited();
+  const { chatRoomId, count } = await chat.clearMessages(c.req.param("idOrSlug"), user.id);
+  realtime.emitChatCleared(chatRoomId);
+  return reply(c, { count }, 201);
+});
+
 adminRoomsRouter.post("/admin/rooms/:idOrSlug/mark-all-occupied", requireAdmin, zBody(markAllOccupiedSchema), async (c) => {
   const user = currentUser(c);
   const { adminRooms, rateLimit, realtime } = c.var.services;
