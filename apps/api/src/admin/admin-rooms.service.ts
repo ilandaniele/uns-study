@@ -7,13 +7,13 @@ import { RoomStateService, type SeatStateChange } from "../rooms/room-state.serv
 import { PresenceService } from "../presence/presence.service.js";
 import { RolesService } from "../users/roles.service.js";
 import { RoomCache } from "../common/cache/room-cache.service.js";
+import { ADMIN_OVERRIDE_WEIGHT } from "../observations/observations.service.js";
 
 const HOURS_24_MS = 24 * 60 * 60 * 1000;
 const DAY_MS = HOURS_24_MS;
 const HOUR_MS = 60 * 60 * 1000;
 const BA_TZ = "America/Argentina/Buenos_Aires";
 /** Far above any user's reputation weight, so an admin mark wins the weighted-conflict rule against user FREE observations. */
-const ADMIN_OVERRIDE_WEIGHT = 1000;
 
 /** `en-CA` formats as `YYYY-MM-DD`. */
 const baDayFormat = new Intl.DateTimeFormat("en-CA", { timeZone: BA_TZ, year: "numeric", month: "2-digit", day: "2-digit" });

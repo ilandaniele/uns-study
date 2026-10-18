@@ -163,6 +163,30 @@ describe("ObservationService", () => {
     expect(minutes).toBeLessThanOrEqual(20.01);
   });
 
+  it("an admin OCCUPIED mark is an admin_override that holds the seat for one check-in block", async () => {
+    const before = Date.now();
+    await observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "OCCUPIED", location, adminMark: true });
+
+    const [obs] = await db.select().from(schema.seatObservations).where(eq(schema.seatObservations.seatId, seatIds[0]!));
+    expect(obs?.adminOverride).toBe(true);
+    expect(obs?.confidenceWeight).toBe(1000);
+    const minutes = (new Date(obs!.expiresAt).getTime() - before) / 60_000;
+    expect(minutes).toBeGreaterThan(119.9);
+    expect(minutes).toBeLessThanOrEqual(120.01);
+
+    // A single member "Está libre" does not flip the admin mark to FREE.
+    await observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "FREE", location });
+    const [state] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatIds[0]!));
+    expect(state?.status).not.toBe("FREE");
+  });
+
+  it("adminMark only applies to OCCUPIED: an admin FREE report keeps the normal 15-minute policy", async () => {
+    await observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "FREE", location, adminMark: true });
+    const [obs] = await db.select().from(schema.seatObservations).where(eq(schema.seatObservations.seatId, seatIds[0]!));
+    expect(obs?.adminOverride).toBe(false);
+    expect(obs?.confidenceWeight).toBe(1);
+  });
+
   it("a SAVED observation sets the seat SAVED with 30-minute expiry", async () => {
     const before = Date.now();
     await observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "SAVED", location });
@@ -261,6 +285,15 @@ describe("ObservationService", () => {
 
     const [obs] = await db.select().from(schema.seatObservations).where(eq(schema.seatObservations.seatId, seatIds[0]!));
     expect(obs?.confidenceWeight).toBeCloseTo(0.5, 5);
+  });
+
+  it("admin OCCUPIED marks skip the distinct-seat cap", async () => {
+    const limits = { perMinuteLimit: 6, distinctSeatCap: 2 } as unknown as ObservationLimits;
+    for (const seatId of seatIds.slice(0, 5)) {
+      await observations.observe({ userId: "u1", roomId, seatId, status: "OCCUPIED", location, limits, adminMark: true });
+    }
+    const rows = await db.select().from(schema.seatObservations).where(eq(schema.seatObservations.userId, "u1"));
+    expect(new Set(rows.map((r) => r.seatId)).size).toBe(5);
   });
 
   it("concurrent observations on different seats cannot bypass the distinct-seat cap", async () => {

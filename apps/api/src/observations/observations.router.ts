@@ -28,6 +28,8 @@ observationsRouter.post("/observations", requireAuth(), zBody(observationRequest
   });
 
   await services.antiAbuse.assertChallengePassed(user.id, body.turnstileToken, ip);
+  // Admin "Está ocupado" marks follow the admin-override policy (one check-in block, top weight).
+  const adminMark = body.status === "OCCUPIED" && (await services.roles.hasRole(user.id, ["ADMIN"]));
 
   const { roomId, changes, dispute } = await services.observations.observe({
     userId: user.id,
@@ -39,6 +41,7 @@ observationsRouter.post("/observations", requireAuth(), zBody(observationRequest
     ip,
     qrToken: body.qrToken,
     limits,
+    adminMark,
   });
   await services.realtime.broadcastSeatChanges(roomId, changes);
   // The resulting seat states (server timestamps) let the client confirm its optimistic update

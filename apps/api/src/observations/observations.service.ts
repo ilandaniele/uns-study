@@ -1,6 +1,6 @@
 import { and, eq, gt, gte, or } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
-import { FREE_OBS_MINUTES, OCCUPIED_OBS_MINUTES, SAVED_OBS_MINUTES, type LocationInput, type SeatDisputeDto } from "@sala/contracts";
+import { CHECKIN_MINUTES, FREE_OBS_MINUTES, OCCUPIED_OBS_MINUTES, SAVED_OBS_MINUTES, type LocationInput, type SeatDisputeDto } from "@sala/contracts";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { PresenceService, type PresenceGrant } from "../presence/presence.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
@@ -18,6 +18,10 @@ import { DisputeService } from "../disputes/disputes.service.js";
 const SPREAD_WINDOW_MIN = 10;
 /** A QR-verified observation counts for 1.5x its base (reputation) confidence weight. */
 const QR_VERIFIED_FACTOR = 1.5;
+/** Weight of an admin `admin_override` observation: it outweighs any mix of member reports. */
+export const ADMIN_OVERRIDE_WEIGHT = 1000;
+/** An admin's "Está ocupado" holds the seat for one standard check-in block. */
+export const ADMIN_OCCUPIED_MARK_MINUTES = CHECKIN_MINUTES;
 
 export interface CreateObservationInput {
   userId: string;
@@ -33,6 +37,11 @@ export interface CreateObservationInput {
   qrToken?: string | null;
   /** The caller's observation limits if it already loaded them (saves a query). */
   limits?: ObservationLimits;
+  /**
+   * The caller holds the ADMIN role and reports OCCUPIED: the report is stored as an `admin_override`
+   * (ADMIN_OVERRIDE_WEIGHT, ADMIN_OCCUPIED_MARK_MINUTES) and skips the distinct-seat spread cap.
+   */
+  adminMark?: boolean;
 }
 
 export class ObservationService {
@@ -125,9 +134,16 @@ export class ObservationService {
       }
     }
 
-    const minutes = input.status === "FREE" ? FREE_OBS_MINUTES : input.status === "SAVED" ? SAVED_OBS_MINUTES : OCCUPIED_OBS_MINUTES;
+    const adminMark = input.adminMark === true && input.status === "OCCUPIED";
+    const minutes = adminMark
+      ? ADMIN_OCCUPIED_MARK_MINUTES
+      : input.status === "FREE"
+        ? FREE_OBS_MINUTES
+        : input.status === "SAVED"
+          ? SAVED_OBS_MINUTES
+          : OCCUPIED_OBS_MINUTES;
     const expiresAt = new Date(now.getTime() + minutes * 60_000);
-    const confidenceWeight = reputationWeight * (qrVerified ? QR_VERIFIED_FACTOR : 1);
+    const confidenceWeight = adminMark ? ADMIN_OVERRIDE_WEIGHT : reputationWeight * (qrVerified ? QR_VERIFIED_FACTOR : 1);
 
     // One synchronous transaction for the write and the seat-state recompute: it serializes this
     // user's observation writes, so the spread cap below (a read-then-insert) can't be bypassed by
@@ -139,7 +155,7 @@ export class ObservationService {
         .where(and(eq(schema.seatObservations.userId, input.userId), gte(schema.seatObservations.createdAt, windowStart)))
         .all();
       const distinctSeats = new Set(recentSeats.map((r) => r.seatId));
-      if (distinctSeats.size >= limits.distinctSeatCap && !distinctSeats.has(input.seatId)) {
+      if (!adminMark && distinctSeats.size >= limits.distinctSeatCap && !distinctSeats.has(input.seatId)) {
         return { spread: distinctSeats.size };
       }
 
@@ -163,6 +179,7 @@ export class ObservationService {
           observedStatus: input.status,
           presenceVerified: true,
           qrVerified,
+          adminOverride: adminMark,
           confidenceWeight,
           observedAt: now,
           expiresAt,
