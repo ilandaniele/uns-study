@@ -9,8 +9,8 @@ const NEW_ACCOUNT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 /** Stricter observation limits applied while an account is younger than 24h. */
 export const OBSERVATION_LIMITS = {
-  default: { perMinuteLimit: 15, distinctSeatCap: 40 },
-  newAccount: { perMinuteLimit: 8, distinctSeatCap: 20 },
+  default: { perMinuteLimit: 20, distinctSeatCap: 40 },
+  newAccount: { perMinuteLimit: 20, distinctSeatCap: 20 },
 } as const;
 export type ObservationLimits = (typeof OBSERVATION_LIMITS)[keyof typeof OBSERVATION_LIMITS];
 

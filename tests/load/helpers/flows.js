@@ -30,7 +30,7 @@ import {
 //   POST /presence/validate        10/min   presence.controller.ts:64   -> at most one per check-in batch
 //   POST /checkins                  5/min   checkins.controller.ts:133  -> <= 3 attempts per batch, batches >= 70 s apart
 //   POST /checkins/current/extend   5/min   checkins.controller.ts:190  -> >= 20 s apart
-//   POST /observations        8/min (account < 24 h) / 15/min abuse-policy.service.ts:16-17, observations.controller.ts:45
+//   POST /observations        20/min (any account age)         abuse-policy.service.ts:16-17, observations.controller.ts:45
 //                             + 8 (new) / 15 distinct seats per 10 min  observations.service.ts:16,103-113
 //                                                                       -> >= 25 s apart, <= 7 per 10 min
 //   everything under /api/v1        300/min per IP   http/middleware/global-ip-rate-limit.ts -> per-VU spoofed IP (data.js)

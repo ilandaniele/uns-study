@@ -76,7 +76,7 @@ Writes are paced under the limits the API enforces, so any `429` is a finding, n
 | `presence:<user>` 10/min | `presence.router.ts` | one per check-in batch |
 | `checkin:<user>` 5/min (counted after the presence pre-check) | `checkins.router.ts` | <= 3 attempts per batch, batches >= 70 s apart |
 | `extend:<user>` 5/min | `checkins.router.ts` | >= 20 s apart |
-| `observation:<user>` 8/min while the account is < 24 h old (15/min later) | `observations.router.ts`, `abuse-policy.service.ts` | >= 8 s apart |
+| `observation:<user>` 20/min (any account age) | `observations.router.ts`, `abuse-policy.service.ts` | >= 3 s apart |
 | distinct observed seats 20 per 10 min (new account) | `observations.service.ts` | <= 19 observations per 10 min |
 | sign-up 5/email/hour | `http/middleware/auth-rate-limit.ts` | unique email per user and per run |
 
