@@ -10,6 +10,7 @@
  * torcaza -> dove, otaria -> seal, dorado -> fish, guanaco -> camel, puma -> lion,
  * chinchilla -> mouse, benteveo -> baby chick. Look-alikes are picked so no two animals share a
  * near-identical drawing; each animal also gets its own backdrop colour (`animalBackdrop`).
+ * New animals go at the END of the list: the backdrop colour depends on the position.
  */
 export interface AnimalDef {
   id: string;
@@ -54,6 +55,39 @@ export const ANIMALS: readonly AnimalDef[] = [
   { id: "yarara", noun: "Yarará", gender: "F", twemoji: "1f40d" },
   { id: "chinchilla", noun: "Chinchilla", gender: "F", twemoji: "1f401" },
   { id: "dorado", noun: "Dorado", gender: "M", twemoji: "1f41f" },
+  { id: "tiburon", noun: "Tiburón", gender: "M", twemoji: "1f988" },
+  { id: "pulpo", noun: "Pulpo", gender: "M", twemoji: "1f419" },
+  { id: "calamar", noun: "Calamar", gender: "M", twemoji: "1f991" },
+  { id: "cangrejo", noun: "Cangrejo", gender: "M", twemoji: "1f980" },
+  { id: "langostino", noun: "Langostino", gender: "M", twemoji: "1f990" },
+  { id: "medusa", noun: "Medusa", gender: "F", twemoji: "1fabc" },
+  { id: "abeja", noun: "Abeja", gender: "F", twemoji: "1f41d" },
+  { id: "vaquita", noun: "Vaquita", gender: "F", twemoji: "1f41e" },
+  { id: "hormiga", noun: "Hormiga", gender: "F", twemoji: "1f41c" },
+  { id: "grillo", noun: "Grillo", gender: "M", twemoji: "1f997" },
+  { id: "caracol", noun: "Caracol", gender: "M", twemoji: "1f40c" },
+  { id: "arana", noun: "Araña", gender: "F", twemoji: "1f577" },
+  { id: "alacran", noun: "Alacrán", gender: "M", twemoji: "1f982" },
+  { id: "lagarto", noun: "Lagarto", gender: "M", twemoji: "1f98e" },
+  { id: "oveja", noun: "Oveja", gender: "F", twemoji: "1f411" },
+  { id: "cabra", noun: "Cabra", gender: "F", twemoji: "1f410" },
+  { id: "chancho", noun: "Chancho", gender: "M", twemoji: "1f416" },
+  { id: "toro", noun: "Toro", gender: "M", twemoji: "1f402" },
+  { id: "burro", noun: "Burro", gender: "M", twemoji: "1facf" },
+  { id: "liebre", noun: "Liebre", gender: "F", twemoji: "1f407" },
+  { id: "aguara", noun: "Aguará", gender: "M", twemoji: "1f43a" },
+  { id: "perro", noun: "Perro", gender: "M", twemoji: "1f415" },
+  { id: "gato", noun: "Gato", gender: "M", twemoji: "1f408" },
+  { id: "pato", noun: "Pato", gender: "M", twemoji: "1f986" },
+  { id: "gallo", noun: "Gallo", gender: "M", twemoji: "1f413" },
+  { id: "cisne", noun: "Cisne", gender: "M", twemoji: "1f9a2" },
+  { id: "huillin", noun: "Huillín", gender: "M", twemoji: "1f9a6" },
+  { id: "mapache", noun: "Mapache", gender: "M", twemoji: "1f99d" },
+  { id: "perezoso", noun: "Perezoso", gender: "M", twemoji: "1f9a5" },
+  { id: "escarabajo", noun: "Escarabajo", gender: "M", twemoji: "1fab2" },
+  { id: "oruga", noun: "Oruga", gender: "F", twemoji: "1f41b" },
+  { id: "tordo", noun: "Tordo", gender: "M", twemoji: "1f426-200d-2b1b" },
+  { id: "ardilla", noun: "Ardilla", gender: "F", twemoji: "1f43f" },
 ];
 
 const BY_ID = new Map(ANIMALS.map((a) => [a.id, a]));
