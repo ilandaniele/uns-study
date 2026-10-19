@@ -144,7 +144,7 @@ export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, is
             />
           ) : (
             <>
-              <circle r={PHOTO_R} fill={AVATAR_BACKDROP} />
+              <circle r={PHOTO_R} fill={badge.type === "animal" ? badge.backdrop : AVATAR_BACKDROP} />
               {badge.type === "animal" ? (
                 <image href={badge.src} x={-PHOTO_R * 0.72} y={-PHOTO_R * 0.72} width={PHOTO_R * 1.44} height={PHOTO_R * 1.44} />
               ) : (

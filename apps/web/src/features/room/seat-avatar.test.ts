@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { ANIMALS } from "@sala/contracts";
-import { AVATAR_BACKDROP, markedByLabel, occupantAvatarProps, seatAvatarRender } from "./seat-avatar";
+import { ANIMALS, animalBackdrop } from "@sala/contracts";
+import { markedByLabel, occupantAvatarProps, seatAvatarRender } from "./seat-avatar";
 
 describe("seatAvatarRender", () => {
   it("draws nothing for seats that aren't occupied or have no avatar info", () => {
@@ -13,7 +13,7 @@ describe("seatAvatarRender", () => {
 
   it("maps each descriptor kind to its render choice", () => {
     expect(seatAvatarRender({ kind: "photo", url: "https://x/a.jpg" }, true)).toEqual({ type: "photo", url: "https://x/a.jpg" });
-    expect(seatAvatarRender({ kind: "animal", animalId: "carpincho" }, true)).toEqual({ type: "animal", src: "/avatars/animals/carpincho.svg" });
+    expect(seatAvatarRender({ kind: "animal", animalId: "carpincho" }, true)).toEqual({ type: "animal", src: "/avatars/animals/carpincho.svg", backdrop: animalBackdrop("carpincho") });
     expect(seatAvatarRender({ kind: "silhouette" }, true)).toEqual({ type: "silhouette" });
   });
 
@@ -30,6 +30,11 @@ describe("seatAvatarRender", () => {
     expect(markedByLabel("Ana", "2026-01-01T11:55:00Z", now, "SAVED")).toBe("Ana avisó que este lugar lo guardaron · hace 5 min");
   });
 
+  it("gives every animal its own drawing and backdrop colour", () => {
+    expect(new Set(ANIMALS.map((a) => a.twemoji)).size).toBe(ANIMALS.length);
+    expect(new Set(ANIMALS.map((a) => animalBackdrop(a.id))).size).toBe(ANIMALS.length);
+  });
+
   it("has a copied illustration file for every catalog animal", () => {
     for (const animal of ANIMALS) {
       expect(existsSync(path.join(process.cwd(), "public", "avatars", "animals", `${animal.id}.svg`))).toBe(true);
@@ -43,7 +48,7 @@ describe("occupantAvatarProps", () => {
     expect(props).toEqual({
       type: "animal",
       src: "/avatars/animals/delfin.svg",
-      style: { width: 40, height: 40, padding: 5, backgroundColor: AVATAR_BACKDROP },
+      style: { width: 40, height: 40, padding: 5, backgroundColor: animalBackdrop("delfin") },
     });
   });
 

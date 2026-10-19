@@ -1,6 +1,6 @@
-import { animalAvatarPath, isAnimalId, type SeatAvatarDto } from "@sala/contracts";
+import { animalAvatarPath, animalBackdrop, isAnimalId, type SeatAvatarDto } from "@sala/contracts";
 
-/** Light blue-grey backdrop shared by the silhouette and the animal illustrations. */
+/** Light blue-grey backdrop of the silhouette; animals get their own colour (`animalBackdrop`). */
 export const AVATAR_BACKDROP = "#c5d0e6";
 
 /** Generic head-and-shoulders silhouette, drawn white on `AVATAR_BACKDROP` in a 100x100 box. */
@@ -9,7 +9,7 @@ export const SILHOUETTE_BODY = "M18 100 C18 74 32 62 50 62 C68 62 82 74 82 100 Z
 
 export type SeatAvatarRender =
   | { type: "photo"; url: string }
-  | { type: "animal"; src: string }
+  | { type: "animal"; src: string; backdrop: string }
   | { type: "silhouette" };
 
 /**
@@ -19,7 +19,7 @@ export type SeatAvatarRender =
 export function seatAvatarRender(avatar: SeatAvatarDto | null | undefined, seatOccupied: boolean): SeatAvatarRender | null {
   if (!seatOccupied || !avatar) return null;
   if (avatar.kind === "photo") return avatar.url ? { type: "photo", url: avatar.url } : { type: "silhouette" };
-  if (avatar.kind === "animal") return isAnimalId(avatar.animalId) ? { type: "animal", src: animalAvatarPath(avatar.animalId) } : { type: "silhouette" };
+  if (avatar.kind === "animal") return isAnimalId(avatar.animalId) ? { type: "animal", src: animalAvatarPath(avatar.animalId), backdrop: animalBackdrop(avatar.animalId) } : { type: "silhouette" };
   return { type: "silhouette" };
 }
 
@@ -43,6 +43,6 @@ export function occupantAvatarProps(avatar: SeatAvatarDto, size: number): Occupa
   const box = { width: size, height: size };
   const render = seatAvatarRender(avatar, true);
   if (render?.type === "photo") return { type: "photo", src: render.url, style: box };
-  if (render?.type === "animal") return { type: "animal", src: render.src, style: { ...box, padding: Math.round(size * 0.12), backgroundColor: AVATAR_BACKDROP } };
+  if (render?.type === "animal") return { type: "animal", src: render.src, style: { ...box, padding: Math.round(size * 0.12), backgroundColor: render.backdrop } };
   return { type: "silhouette", style: box };
 }

@@ -7,7 +7,9 @@
  * can be recovered from an alias's first word (see `animalIdFromAlias`).
  * `twemoji` is the Twemoji codepoint file name. Some animals have no emoji of their own and use the
  * closest look-alike: carpincho -> hamster, quirquincho -> hedgehog, ñandú -> turkey,
- * torcaza -> dove, otaria -> seal, dorado -> fish, guanaco/llama -> llama.
+ * torcaza -> dove, otaria -> seal, dorado -> fish, guanaco -> camel, puma -> lion,
+ * chinchilla -> mouse, benteveo -> baby chick. Look-alikes are picked so no two animals share a
+ * near-identical drawing; each animal also gets its own backdrop colour (`animalBackdrop`).
  */
 export interface AnimalDef {
   id: string;
@@ -18,19 +20,19 @@ export interface AnimalDef {
 
 export const ANIMALS: readonly AnimalDef[] = [
   { id: "yaguarete", noun: "Yaguareté", gender: "M", twemoji: "1f406" },
-  { id: "puma", noun: "Puma", gender: "M", twemoji: "1f408" },
+  { id: "puma", noun: "Puma", gender: "M", twemoji: "1f981" },
   { id: "condor", noun: "Cóndor", gender: "M", twemoji: "1f985" },
   { id: "pinguino", noun: "Pingüino", gender: "M", twemoji: "1f427" },
   { id: "zorrino", noun: "Zorrino", gender: "M", twemoji: "1f9a8" },
   { id: "zorro", noun: "Zorro", gender: "M", twemoji: "1f98a" },
   { id: "flamenco", noun: "Flamenco", gender: "M", twemoji: "1f9a9" },
-  { id: "guanaco", noun: "Guanaco", gender: "M", twemoji: "1f999" },
+  { id: "guanaco", noun: "Guanaco", gender: "M", twemoji: "1f42a" },
   { id: "llama", noun: "Llama", gender: "F", twemoji: "1f999" },
   { id: "yacare", noun: "Yacaré", gender: "M", twemoji: "1f40a" },
   { id: "lechuza", noun: "Lechuza", gender: "F", twemoji: "1f989" },
   { id: "loro", noun: "Loro", gender: "M", twemoji: "1f99c" },
   { id: "otaria", noun: "Otaria", gender: "F", twemoji: "1f9ad" },
-  { id: "ballena", noun: "Ballena", gender: "F", twemoji: "1f40b" },
+  { id: "ballena", noun: "Ballena", gender: "F", twemoji: "1f433" },
   { id: "tortuga", noun: "Tortuga", gender: "F", twemoji: "1f422" },
   { id: "rana", noun: "Rana", gender: "F", twemoji: "1f438" },
   { id: "murcielago", noun: "Murciélago", gender: "M", twemoji: "1f987" },
@@ -38,7 +40,7 @@ export const ANIMALS: readonly AnimalDef[] = [
   { id: "coipo", noun: "Coipo", gender: "M", twemoji: "1f9ab" },
   { id: "carpincho", noun: "Carpincho", gender: "M", twemoji: "1f439" },
   { id: "hornero", noun: "Hornero", gender: "M", twemoji: "1f426" },
-  { id: "benteveo", noun: "Benteveo", gender: "M", twemoji: "1f425" },
+  { id: "benteveo", noun: "Benteveo", gender: "M", twemoji: "1f424" },
   { id: "torcaza", noun: "Torcaza", gender: "F", twemoji: "1f54a" },
   { id: "vizcacha", noun: "Vizcacha", gender: "F", twemoji: "1f430" },
   { id: "huemul", noun: "Huemul", gender: "M", twemoji: "1f98c" },
@@ -50,7 +52,7 @@ export const ANIMALS: readonly AnimalDef[] = [
   { id: "caraya", noun: "Carayá", gender: "M", twemoji: "1f412" },
   { id: "delfin", noun: "Delfín", gender: "M", twemoji: "1f42c" },
   { id: "yarara", noun: "Yarará", gender: "F", twemoji: "1f40d" },
-  { id: "chinchilla", noun: "Chinchilla", gender: "F", twemoji: "1f42d" },
+  { id: "chinchilla", noun: "Chinchilla", gender: "F", twemoji: "1f401" },
   { id: "dorado", noun: "Dorado", gender: "M", twemoji: "1f41f" },
 ];
 
@@ -65,6 +67,16 @@ export function isAnimalId(id: string | null | undefined): id is string {
 export function animalIdFromAlias(alias: string | null | undefined): string | null {
   const noun = alias?.trim().split(/\s+/)[0]?.toLowerCase();
   return noun ? (BY_NOUN.get(noun)?.id ?? null) : null;
+}
+
+/**
+ * Pastel backdrop behind an animal's illustration. Hues step by the golden angle through the catalog
+ * order, so neighbouring animals never get similar colours. Unknown ids get the neutral grey-blue.
+ */
+export function animalBackdrop(animalId: string): string {
+  const index = ANIMALS.findIndex((a) => a.id === animalId);
+  if (index < 0) return "#c5d0e6";
+  return `hsl(${Math.round((index * 137.508) % 360)} 70% 84%)`;
 }
 
 /** Public path of an animal's illustration (served from `apps/web/public`). */
