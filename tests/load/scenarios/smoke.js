@@ -32,7 +32,7 @@ export default function (data) {
   const c = getContext(data);
   sweepReads(c);
 
-  // Write flow once per ~3 iterations (check-in limit is 5/min, observations 3/min for new accounts).
+  // Write flow once per ~3 iterations (check-in limit is 5/min, observations 8/min for new accounts).
   if (__ITER % 3 === 0 && c.user) {
     tryCheckIn(c);
     sleep(1);

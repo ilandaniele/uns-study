@@ -65,7 +65,7 @@ describe("AbusePolicyService", () => {
     expect(await policy.observationLimits("u1")).toEqual(OBSERVATION_LIMITS.newAccount);
   });
 
-  it("a brand-new account hits the observation rate limit on its 4th request within a minute", async () => {
+  it("a brand-new account hits the observation rate limit on its 9th request within a minute", async () => {
     const policy = new AbusePolicyService(db, turnstile);
     const rateLimit = new RateLimitService();
 
@@ -74,13 +74,13 @@ describe("AbusePolicyService", () => {
       return rateLimit.check(`observation:u1`, limits.perMinuteLimit, 60);
     };
 
-    expect((await attempt()).allowed).toBe(true);
-    expect((await attempt()).allowed).toBe(true);
-    expect((await attempt()).allowed).toBe(true);
-    expect((await attempt()).allowed).toBe(false); // 4th request blocked: new-account limit is 3/min
+    for (let i = 0; i < 8; i++) {
+      expect((await attempt()).allowed).toBe(true);
+    }
+    expect((await attempt()).allowed).toBe(false); // 9th request blocked: new-account limit is 8/min
   });
 
-  it("an established account is not blocked until its 7th request within a minute", async () => {
+  it("an established account is not blocked until its 16th request within a minute", async () => {
     await insertUsers(db, ["old2"], { createdAt: new Date(Date.now() - 48 * 60 * 60_000) });
     const policy = new AbusePolicyService(db, turnstile);
     const rateLimit = new RateLimitService();
@@ -90,9 +90,9 @@ describe("AbusePolicyService", () => {
       return rateLimit.check(`observation:old2`, limits.perMinuteLimit, 60);
     };
 
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 15; i++) {
       expect((await attempt()).allowed).toBe(true);
     }
-    expect((await attempt()).allowed).toBe(false); // 7th request blocked: default limit is 6/min
+    expect((await attempt()).allowed).toBe(false); // 16th request blocked: default limit is 15/min
   });
 });
