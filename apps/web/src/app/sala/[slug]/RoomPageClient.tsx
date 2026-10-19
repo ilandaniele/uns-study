@@ -64,6 +64,7 @@ const SeatFreedToast = dynamic(() => import("@/features/room/SeatFreedToast").th
 const TurnstileChallenge = dynamic(() => import("@/features/room/TurnstileChallenge").then((m) => m.TurnstileChallenge), { loading: noFallback });
 import { SeatSheet } from "@/features/room/SeatSheet";
 import { DonateCard, DonatePrompt } from "@/features/room/Donate";
+import { IdentityPrompt } from "@/features/profile/IdentityPrompt";
 const ZoomableMap = dynamic(() => import("@/features/room/ZoomableMap"), { loading: noFallback });
 const loadSeatDetail = () => import("@/features/room/SeatDetail").then((m) => m.SeatDetail);
 const SeatDetail = dynamic(loadSeatDetail, { loading: noFallback });
@@ -722,6 +723,9 @@ export function RoomPageClient({ slug }: { slug: string }) {
       ) : null}
 
       <HowToUseModal open={showHowTo} onClose={closeHowTo} />
+      {mounted ? (
+        <IdentityPrompt user={me?.user ?? null} blocked={detail != null || challenge != null || disputeWon != null || showHowTo || confirmMove != null || adOverlayOpen} />
+      ) : null}
       {confirmMove && activeCheckIn ? (
         <MoveSeatDialog
           fromLabel={seatDisplayLabel(myTable, mySeat?.code ?? activeCheckIn.seatCode, mySeat?.seatNumber ?? 0)}
