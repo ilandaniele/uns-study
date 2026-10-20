@@ -47,7 +47,7 @@ describe("ModerationActionService", () => {
     location = { latitude: room.latitude, longitude: room.longitude, accuracy: 10, capturedAt: new Date().toISOString() };
     const seats = await getSeats(db);
     seatIds = seats.map((s) => s.id);
-    await insertUsers(db, ["actor", "target"]);
+    await insertUsers(db, ["actor", "target", "other"]);
   });
 
   it("writes a user_restrictions row and a moderation_actions audit entry", async () => {
@@ -76,6 +76,22 @@ describe("ModerationActionService", () => {
       .from(schema.moderationActions)
       .where(eq(schema.moderationActions.action, "LIFT"));
     expect(audit?.targetUserId).toBe("target");
+  });
+
+  it("LIFT with a restrictionId lifts only that restriction of that user (unban)", async () => {
+    await svc.apply({ actorId: "actor", targetUserId: "target", type: "MUTE_CHAT", reason: "spam" });
+    await svc.apply({ actorId: "actor", targetUserId: "target", type: "BAN", reason: "abuse" });
+    const rows = await db.select().from(schema.userRestrictions).where(eq(schema.userRestrictions.userId, "target"));
+    const ban = rows.find((r) => r.type === "BANNED")!;
+
+    // Another user's id never lifts anything.
+    await svc.apply({ actorId: "actor", targetUserId: "other", type: "LIFT", reason: "x", restrictionId: ban.id });
+    expect((await db.select().from(schema.userRestrictions).where(eq(schema.userRestrictions.id, ban.id)))[0]?.liftedAt).toBeNull();
+
+    await svc.apply({ actorId: "actor", targetUserId: "target", type: "LIFT", reason: "unban", restrictionId: ban.id });
+    const after = await db.select().from(schema.userRestrictions).where(eq(schema.userRestrictions.userId, "target"));
+    expect(after.find((r) => r.type === "BANNED")?.liftedAt).not.toBeNull();
+    expect(after.find((r) => r.type === "MUTE_CHAT")?.liftedAt).toBeNull();
   });
 
   it("SUSPEND revokes sessions and checks out an active check-in", async () => {

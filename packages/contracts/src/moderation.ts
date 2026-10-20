@@ -51,7 +51,7 @@ export interface AdminUserDto {
   email: string | null;
   createdAt: string;
   roles: string[];
-  restrictions: { id: string; type: string; reason: string; until: string | null; createdAt: string }[];
+  restrictions: { id: string; type: string; reason: string; until: string | null; createdAt: string; createdByName: string | null }[];
   reputation: { observationScore: number; spamScore: number; confirmedObservations: number; rejectedObservations: number } | null;
   recentSecurityEvents: { eventType: string; createdAt: string }[];
 }
@@ -86,6 +86,8 @@ export const moderationActionSchema = z.object({
   reason: z.string().trim().max(500),
   until: z.string().datetime().nullable().optional(),
   reportId: z.string().uuid().optional(),
+  /** With LIFT: lift only this restriction (e.g. unban) instead of every active one. */
+  restrictionId: z.string().min(1).optional(),
 });
 
 /** Admin credit of study time a user really did but that wasn't recorded. Exactly one of `endedAt` / `minutes`. */

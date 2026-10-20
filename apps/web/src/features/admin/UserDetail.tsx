@@ -15,6 +15,13 @@ const ACTIONS: { type: ModerationActionType; label: string }[] = [
   { type: "LIFT", label: "Levantar restricciones" },
 ];
 
+const LIFT_LABEL: Record<string, string> = {
+  BANNED: "Desbanear",
+  SUSPENDED: "Quitar suspensión",
+  MUTE_CHAT: "Quitar silencio",
+  RESTRICT_OBSERVATIONS: "Quitar restricción",
+};
+
 export function UserDetail({ userId }: { userId: string }) {
   const [user, setUser] = useState<AdminUserDto | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -22,6 +29,7 @@ export function UserDetail({ userId }: { userId: string }) {
   const [reason, setReason] = useState("");
   const [until, setUntil] = useState("");
   const [saving, setSaving] = useState(false);
+  const [liftingId, setLiftingId] = useState<string | null>(null);
   const [togglingAdmin, setTogglingAdmin] = useState(false);
   const [studyStart, setStudyStart] = useState("");
   const [studyMinutes, setStudyMinutes] = useState("");
@@ -62,6 +70,23 @@ export function UserDetail({ userId }: { userId: string }) {
       setError("No pudimos aplicar la acción.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function liftRestriction(restrictionId: string, label: string) {
+    if (!window.confirm(`¿${label} a este usuario?`)) return;
+    setLiftingId(restrictionId);
+    try {
+      await apiPost(
+        `/api/v1/admin/users/${userId}/actions`,
+        { type: "LIFT", reason: `${label} desde el panel`, restrictionId },
+        moderationActionSchema,
+      );
+      await load();
+    } catch {
+      setError("No pudimos levantar la restricción.");
+    } finally {
+      setLiftingId(null);
     }
   }
 
@@ -159,9 +184,20 @@ export function UserDetail({ userId }: { userId: string }) {
                 >
                   <span className="font-mono font-semibold text-[var(--seat-occupied)]">{r.type}</span>
                   <span className="text-muted">{r.reason}</span>
+                  {r.createdByName ? <span className="text-muted">· por {r.createdByName}</span> : null}
                   <span className="font-mono text-muted">
                     {r.until ? `hasta ${new Date(r.until).toLocaleString("es-AR")}` : "permanente"}
                   </span>
+                  {me?.roles.includes("ADMIN") ? (
+                    <button
+                      type="button"
+                      disabled={liftingId !== null}
+                      onClick={() => void liftRestriction(r.id, LIFT_LABEL[r.type] ?? "Quitar restricción")}
+                      className="ml-1 min-h-8 rounded-md border border-app px-2 font-semibold text-primary hover:bg-surface disabled:opacity-50"
+                    >
+                      {liftingId === r.id ? "…" : (LIFT_LABEL[r.type] ?? "Quitar")}
+                    </button>
+                  ) : null}
                 </span>
               ))}
             </div>

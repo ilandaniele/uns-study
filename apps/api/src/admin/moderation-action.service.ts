@@ -12,6 +12,8 @@ export interface ApplyActionInput {
   reason: string;
   until?: string | null;
   reportId?: string;
+  /** With LIFT: lift only this restriction of the target user. */
+  restrictionId?: string;
 }
 
 const RESTRICTION_TYPE_BY_ACTION: Partial<Record<ModerationActionType, RestrictionType>> = {
@@ -38,7 +40,13 @@ export class ModerationActionService {
         const now = new Date();
         tx.update(schema.userRestrictions)
           .set({ liftedAt: now })
-          .where(and(eq(schema.userRestrictions.userId, input.targetUserId), isNull(schema.userRestrictions.liftedAt)))
+          .where(
+            and(
+              eq(schema.userRestrictions.userId, input.targetUserId),
+              isNull(schema.userRestrictions.liftedAt),
+              input.restrictionId ? eq(schema.userRestrictions.id, input.restrictionId) : undefined,
+            ),
+          )
           .run();
       } else {
         const restrictionType = RESTRICTION_TYPE_BY_ACTION[input.type];
@@ -61,7 +69,7 @@ export class ModerationActionService {
           targetUserId: input.targetUserId,
           reportId: input.reportId ?? null,
           action: input.type,
-          metadata: { reason: input.reason, until: input.until ?? null },
+          metadata: { reason: input.reason, until: input.until ?? null, ...(input.restrictionId ? { restrictionId: input.restrictionId } : {}) },
         })
         .run();
 

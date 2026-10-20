@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { AdminUserDto, ModerationActionType } from "@sala/contracts";
 import { ApiErrors } from "../common/api-error.js";
@@ -63,15 +63,28 @@ export class AdminUsersService {
         .limit(RECENT_SECURITY_EVENTS),
     ]);
 
+    // Who applied each active restriction, so an admin can see who banned someone.
+    const activeRestrictions = restrictionRows.filter((r) => !r.liftedAt);
+    const actorIds = [...new Set(activeRestrictions.map((r) => r.createdBy).filter((id): id is string => !!id))];
+    const actorRows = actorIds.length
+      ? await this.db.select({ id: schema.user.id, name: schema.user.name }).from(schema.user).where(inArray(schema.user.id, actorIds))
+      : [];
+    const actorNames = new Map(actorRows.map((r) => [r.id, r.name]));
+
     return {
       userId: u.id,
       name: u.name,
       email: canSeeEmail ? u.email : null,
       createdAt: u.createdAt.toISOString(),
       roles: roleRows.map((r) => r.role),
-      restrictions: restrictionRows
-        .filter((r) => !r.liftedAt)
-        .map((r) => ({ id: r.id, type: r.type, reason: r.reason, until: r.until ? r.until.toISOString() : null, createdAt: r.createdAt.toISOString() })),
+      restrictions: activeRestrictions.map((r) => ({
+        id: r.id,
+        type: r.type,
+        reason: r.reason,
+        until: r.until ? r.until.toISOString() : null,
+        createdAt: r.createdAt.toISOString(),
+        createdByName: r.createdBy ? (actorNames.get(r.createdBy) ?? null) : null,
+      })),
       reputation: reputation
         ? {
             observationScore: reputation.observationScore,
@@ -107,7 +120,7 @@ export class AdminUsersService {
   async applyAction(
     actorId: string,
     targetUserId: string,
-    input: { type: ModerationActionType; reason: string; until?: string | null; reportId?: string },
+    input: { type: ModerationActionType; reason: string; until?: string | null; reportId?: string; restrictionId?: string },
   ): Promise<void> {
     if (targetUserId === actorId) throw ApiErrors.forbidden("No podés aplicar una acción de moderación sobre vos mismo.");
 
