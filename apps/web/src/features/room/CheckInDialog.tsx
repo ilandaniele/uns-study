@@ -6,7 +6,7 @@ import { CHECKIN_PRO_MAX_MINUTES } from "@sala/contracts/events";
 import { ProBadge } from "@/features/subscriptions/ProBadge";
 import { openProUpsell } from "@/features/subscriptions/pro-upsell-store";
 import { useFocusTrap } from "@/lib/useFocusTrap";
-import { checkInChoice, chipsUpTo, clockTimeAfter, DEFAULT_CHECKIN_DURATION } from "./checkin-duration";
+import { checkInChoice, chipsUpTo, clockTimeAfter } from "./checkin-duration";
 import { durationLabel } from "./SeatDetailParts";
 
 export interface CheckInDialogProps {
@@ -18,12 +18,15 @@ export interface CheckInDialogProps {
 
 /** "¿Hasta qué hora te quedás?" — the end-time step between tapping "Estoy acá" and the check-in itself. */
 export function CheckInDialog({ maxMinutes, onConfirm, onCancel }: CheckInDialogProps) {
-  const [time, setTime] = useState(() => clockTimeAfter(Math.min(DEFAULT_CHECKIN_DURATION, maxMinutes), new Date()));
+  // Starts empty on purpose: the user must say until what time they stay before checking in.
+  const [time, setTime] = useState("");
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef, { onEscape: onCancel });
 
   // Read against the clock at render and confirm time, so a dialog left open can't drift past the limit.
   const choice = checkInChoice(time, new Date(), maxMinutes);
+  const picked = time !== "";
+  const showError = picked && !choice.ok;
   const isPro = maxMinutes >= CHECKIN_PRO_MAX_MINUTES;
   const chips = chipsUpTo(maxMinutes);
   const choiceMinutes = choice.ok ? choice.minutes : null;
@@ -71,7 +74,8 @@ export function CheckInDialog({ maxMinutes, onConfirm, onCancel }: CheckInDialog
           <input
             type="time"
             value={time}
-            aria-invalid={choice.ok ? undefined : true}
+            required
+            aria-invalid={showError ? true : undefined}
             aria-describedby="checkin-dialog-summary"
             onChange={(e) => setTime(e.target.value)}
             onKeyDown={(e) => {
@@ -83,8 +87,12 @@ export function CheckInDialog({ maxMinutes, onConfirm, onCancel }: CheckInDialog
             className="min-h-11 rounded-control border border-app bg-transparent px-2 text-base text-main"
           />
         </label>
-        <p id="checkin-dialog-summary" role={choice.ok ? undefined : "alert"} className={`mt-2 text-sm ${choice.ok ? "text-muted" : "font-semibold text-red-600"}`}>
-          {choice.ok ? `${durationLabel(choice.minutes)} · hasta las ${clockTimeAfter(choice.minutes, new Date())}` : choice.message}
+        <p id="checkin-dialog-summary" role={showError ? "alert" : undefined} className={`mt-2 text-sm ${showError ? "font-semibold text-red-600" : "text-muted"}`}>
+          {!picked
+            ? "Elegí hasta qué hora te quedás para marcar el lugar."
+            : choice.ok
+              ? `${durationLabel(choice.minutes)} · hasta las ${clockTimeAfter(choice.minutes, new Date())}`
+              : choice.message}
         </p>
         {!isPro ? (
           <button
