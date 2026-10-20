@@ -49,6 +49,7 @@ export function evaluateBadges(input: BadgeInput): BadgeDto[] {
 /** True when any interval starts before `EARLY_BIRD_BEFORE_HOUR` local time. */
 export function hasEarlyStart(intervals: readonly StudyInterval[], tz: string): boolean {
   return intervals.some((interval) => {
+    if (interval.manual) return false; // an admin credit has no real start time
     const day = localDateOf(interval.startedAt, tz);
     return interval.startedAt.getTime() < fromZonedTime(`${day}T${String(EARLY_BIRD_BEFORE_HOUR).padStart(2, "0")}:00:00`, tz).getTime();
   });
@@ -57,7 +58,7 @@ export function hasEarlyStart(intervals: readonly StudyInterval[], tz: string): 
 /** True when any interval runs past `NIGHT_OWL_AFTER_HOUR` local time on the day it started. */
 export function hasLateMinutes(intervals: readonly StudyInterval[], tz: string): boolean {
   return intervals.some((interval) => {
-    if (interval.minutes <= 0) return false;
+    if (interval.minutes <= 0 || interval.manual) return false;
     const start = interval.startedAt.getTime();
     const end = start + interval.minutes * 60_000;
     const day = localDateOf(interval.startedAt, tz);

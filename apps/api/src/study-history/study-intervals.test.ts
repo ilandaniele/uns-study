@@ -98,3 +98,17 @@ describe("minutesBetween", () => {
     expect(minutesBetween(intervals, new Date("2026-01-15T00:00:00Z"), new Date("2026-01-16T00:00:00Z"))).toBe(120);
   });
 });
+
+describe("admin credits (manual intervals)", () => {
+  const credit: StudyInterval = { startedAt: new Date("2026-01-15T23:00:00Z"), minutes: 3000, roomId: "r", live: false, manual: true };
+
+  it("count whole on the local day they start, never split across days", () => {
+    // 23:00Z is 20:00 in Buenos Aires: all 3000 minutes land on 2026-01-15.
+    expect([...minutesByDay([credit], "America/Argentina/Buenos_Aires")]).toEqual([["2026-01-15", 3000]]);
+  });
+
+  it("count whole only when they start inside the window", () => {
+    expect(minutesBetween([credit], new Date("2026-01-15T00:00:00Z"), new Date("2026-01-16T00:00:00Z"))).toBe(3000);
+    expect(minutesBetween([credit], new Date("2026-01-16T00:00:00Z"), new Date("2026-01-20T00:00:00Z"))).toBe(0);
+  });
+});

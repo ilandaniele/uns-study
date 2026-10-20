@@ -238,13 +238,19 @@ export class RankingsService {
   private async studyTimeValues(room: { id: string; timezone: string }, period: RankingPeriod, now: Date): Promise<Map<string, number>> {
     const today = localDateOf(now, room.timezone);
     const { start, end } = periodLocalBounds(period, today);
-    const perUserDay = await this.studyMinutesByUserDay(room, start, end, now);
+    const { tracked, manual } = await this.studyMinutesByUserDay(room, start, end, now);
 
-    // Cap per (user, local day) after merging every source, then sum the capped days per user.
+    // Cap per (user, local day) after merging every tracked source, then sum the capped days per user.
+    // Admin credits (MANUAL) are added on top, uncapped: the admin decides how much they are worth.
     const values = new Map<string, number>();
-    for (const [userId, byDay] of perUserDay) {
+    for (const [userId, byDay] of tracked) {
       let total = 0;
       for (const minutes of byDay.values()) total += Math.min(minutes, STUDY_TIME_DAILY_CAP_MIN);
+      values.set(userId, total);
+    }
+    for (const [userId, byDay] of manual) {
+      let total = values.get(userId) ?? 0;
+      for (const minutes of byDay.values()) total += minutes;
       values.set(userId, total);
     }
     return values;
@@ -260,7 +266,7 @@ export class RankingsService {
     start: string | null,
     end: string | null,
     now: Date,
-  ): Promise<Map<string, Map<string, number>>> {
+  ): Promise<{ tracked: Map<string, Map<string, number>>; manual: Map<string, Map<string, number>> }> {
     // A session is at most MAX_VERIFIED_MINUTES (12h) long, so it spans at most its start day and the
     // next one: sessions that started the day before `start` can still spill into the range.
     const conditions = [eq(schema.studySessions.roomId, room.id)];
@@ -272,6 +278,8 @@ export class RankingsService {
         checkInId: schema.studySessions.checkInId,
         startedAt: schema.studySessions.startedAt,
         minutes: schema.studySessions.verifiedMinutes,
+        localDate: schema.studySessions.localDate,
+        source: schema.studySessions.source,
       })
       .from(schema.studySessions)
       .where(and(...conditions))
@@ -282,13 +290,18 @@ export class RankingsService {
     const recorded = new Set(sessions.map((s) => s.checkInId).filter((id): id is string => id !== null));
     const live = (await this.activeLiveMinutes(room, now)).filter((c) => !recorded.has(c.checkInId));
 
+    const inRange = (day: string) => (!start || day >= start) && (!end || day <= end);
     const parts: { userId: string; day: string; value: number }[] = [];
-    for (const stay of [...sessions, ...live]) {
+    const manualParts: { userId: string; day: string; value: number }[] = [];
+    for (const s of sessions) {
+      if (s.source === "MANUAL" && inRange(s.localDate)) manualParts.push({ userId: s.userId, day: s.localDate, value: s.minutes });
+    }
+    for (const stay of [...sessions.filter((s) => s.source !== "MANUAL"), ...live]) {
       for (const part of minutesByLocalDay(stay.startedAt, stay.minutes, room.timezone)) {
         if ((!start || part.day >= start) && (!end || part.day <= end)) parts.push({ userId: stay.userId, day: part.day, value: part.minutes });
       }
     }
-    return groupByUserDay(parts);
+    return { tracked: groupByUserDay(parts), manual: groupByUserDay(manualParts) };
   }
 
   /**
@@ -316,7 +329,10 @@ export class RankingsService {
   private async streakValues(room: { id: string; timezone: string }, now: Date): Promise<Map<string, number>> {
     const today = localDateOf(now, room.timezone);
     const since = addDaysToLocal(today, -STREAK_LOOKBACK_DAYS);
-    const perUserDay = await this.studyMinutesByUserDay(room, since, null, now);
+    const { tracked, manual } = await this.studyMinutesByUserDay(room, since, null, now);
+    const perUserDay = groupByUserDay(
+      [...tracked, ...manual].flatMap(([userId, byDay]) => [...byDay].map(([day, value]) => ({ userId, day, value }))),
+    );
     // Pro streak freezes: a frozen day counts as studied (one extra query; the raw cache absorbs it).
     const frozenByUser = await loadFrozenDates(this.db, [...perUserDay.keys()], since);
 

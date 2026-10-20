@@ -95,7 +95,8 @@ export const manualStudySessionSchema = z
     roomId: z.string().uuid().optional(),
     startedAt: z.string().datetime(),
     endedAt: z.string().datetime().optional(),
-    minutes: z.number().int().min(1).max(720).optional(),
+    // Admin credits have no 12 h limit; the bound only stops absurd typos (about 2 years).
+    minutes: z.number().int().min(1).max(1_000_000).optional(),
     reason: z.string().trim().min(1).max(500),
   })
   .refine((v) => (v.endedAt === undefined) !== (v.minutes === undefined), { message: "Indicá endedAt o minutes (uno solo)." });

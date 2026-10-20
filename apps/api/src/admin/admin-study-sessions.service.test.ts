@@ -62,17 +62,31 @@ describe("AdminStudySessionsService.credit", () => {
     expect(result.minutes).toBe(90);
   });
 
-  it("rejects more than 720 minutes, an end before the start, and an end in the future", async () => {
-    await expect(
-      svc.credit("admin", { userId: "friend", startedAt: "2026-01-14T00:00:00.000Z", endedAt: "2026-01-14T12:01:00.000Z", reason: "x" }, NOW),
-    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+  it("rejects an end before the start, an end in the future, and a start in the future", async () => {
     await expect(
       svc.credit("admin", { userId: "friend", startedAt: "2026-01-15T12:00:00.000Z", endedAt: "2026-01-15T11:00:00.000Z", reason: "x" }, NOW),
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
     await expect(svc.credit("admin", { ...credit, startedAt: "2026-01-15T20:00:00.000Z", minutes: 180 }, NOW)).rejects.toMatchObject({
       code: "VALIDATION_ERROR",
     });
+    await expect(svc.credit("admin", { ...credit, startedAt: "2026-01-15T23:00:00.000Z", minutes: 5000 }, NOW)).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
     expect(await db.select().from(schema.studySessions)).toHaveLength(0);
+  });
+
+  it("credits more than 720 minutes as a bonus that counts whole on its start day, uncapped", async () => {
+    // A real 6 h stay already counted that day: a bonus never overlaps it, and it may end after now.
+    await svc.credit("admin", credit, NOW); // 12:00-18:00Z
+    const bonus = await svc.credit("admin", { ...credit, startedAt: "2026-01-15T13:00:00.000Z", minutes: 5000 }, NOW);
+    expect(bonus.minutes).toBe(5000);
+
+    const rankings = new RankingsService(db, roomsService, new AliasService(db), new RolesService(db));
+    const today = await rankings.getRankings(roomId, "today", "study_time", "friend", NOW);
+    expect(today.me?.value).toBe(5360);
+
+    // It still never blocks a later real stay.
+    await expect(svc.credit("admin", { ...credit, startedAt: "2026-01-15T19:00:00.000Z", minutes: 60 }, NOW)).resolves.toMatchObject({ minutes: 60 });
   });
 
   it("rejects an unknown user or room", async () => {
@@ -104,12 +118,13 @@ describe("AdminStudySessionsService.credit", () => {
 describe("manualStudySessionSchema", () => {
   const base = { userId: "friend", startedAt: "2026-01-15T12:00:00.000Z", reason: "x" };
 
-  it("requires exactly one of endedAt / minutes, a reason, and at most 720 minutes", () => {
+  it("requires exactly one of endedAt / minutes, a reason, and a sane number of minutes", () => {
     expect(manualStudySessionSchema.safeParse({ ...base, minutes: 60 }).success).toBe(true);
     expect(manualStudySessionSchema.safeParse({ ...base, endedAt: "2026-01-15T13:00:00.000Z" }).success).toBe(true);
     expect(manualStudySessionSchema.safeParse(base).success).toBe(false);
     expect(manualStudySessionSchema.safeParse({ ...base, minutes: 60, endedAt: "2026-01-15T13:00:00.000Z" }).success).toBe(false);
-    expect(manualStudySessionSchema.safeParse({ ...base, minutes: 721 }).success).toBe(false);
+    expect(manualStudySessionSchema.safeParse({ ...base, minutes: 721 }).success).toBe(true);
+    expect(manualStudySessionSchema.safeParse({ ...base, minutes: 1_000_001 }).success).toBe(false);
     expect(manualStudySessionSchema.safeParse({ ...base, minutes: 60, reason: "  " }).success).toBe(false);
   });
 });

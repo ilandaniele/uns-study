@@ -244,11 +244,10 @@ export function UserDetail({ userId }: { userId: string }) {
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-muted">
-            Minutos (1 a 720)
+            Minutos (más de 720 suma como bonus del día)
             <input
               type="number"
               min={1}
-              max={720}
               step={1}
               value={studyMinutes}
               onChange={(e) => setStudyMinutes(e.target.value)}

@@ -7,6 +7,9 @@ import { RolesService } from "../users/roles.service.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { MAX_VERIFIED_MINUTES, StudySessionService } from "../rankings/study-session.service.js";
 
+/** Upper bound of one admin credit; only stops absurd typos (about 2 years of time). */
+const MAX_CREDIT_MINUTES = 1_000_000;
+
 export interface ManualStudySessionDto {
   id: string;
   userId: string;
@@ -18,7 +21,7 @@ export interface ManualStudySessionDto {
 
 /**
  * Admin credit of study time that really happened but never reached `study_sessions` (e.g. lost to a
- * past counting bug). Stored as a `MANUAL` session so rankings and streaks pick it up like any other,
+ * past counting bug), or any bonus time the admin decides on. Stored as a `MANUAL` session so rankings and streaks pick it up like any other,
  * and audited in `moderation_actions`.
  */
 export class AdminStudySessionsService {
@@ -36,9 +39,13 @@ export class AdminStudySessionsService {
     const startedAt = new Date(input.startedAt);
     const minutes = input.minutes ?? Math.floor((new Date(input.endedAt!).getTime() - startedAt.getTime()) / 60_000);
     if (minutes < 1) throw ApiErrors.validation("La sesión tiene que durar al menos 1 minuto.");
-    if (minutes > MAX_VERIFIED_MINUTES) throw ApiErrors.validation(`Una sesión no puede superar los ${MAX_VERIFIED_MINUTES} minutos.`);
+    if (minutes > MAX_CREDIT_MINUTES) throw ApiErrors.validation(`No se pueden sumar más de ${MAX_CREDIT_MINUTES} minutos de una vez.`);
+    if (startedAt.getTime() > now.getTime()) throw ApiErrors.validation("La fecha no puede estar en el futuro.");
     const endedAt = new Date(startedAt.getTime() + minutes * 60_000);
-    if (endedAt.getTime() > now.getTime()) throw ApiErrors.validation("La sesión no puede terminar en el futuro.");
+    // Up to 12 h it is a real stay that got lost: it must end before now and not overlap time already
+    // counted. Longer credits are a bonus the admin decides on; they count whole on their start day.
+    const realStay = minutes <= MAX_VERIFIED_MINUTES;
+    if (realStay && endedAt.getTime() > now.getTime()) throw ApiErrors.validation("La sesión no puede terminar en el futuro.");
 
     const [target] = await this.db.select({ id: schema.user.id }).from(schema.user).where(eq(schema.user.id, input.userId)).limit(1);
     if (!target) throw ApiErrors.notFound("Usuario no encontrado.");
@@ -59,14 +66,17 @@ export class AdminStudySessionsService {
           ),
         )
         .all();
-      const overlapsSession = nearby.some((s) => s.startedAt.getTime() + s.minutes * 60_000 > startedAt.getTime());
+      // Bonus credits (over 12 h) never block a real stay: they are not spread over clock time.
+      const overlapsSession = nearby.some(
+        (s) => s.minutes <= MAX_VERIFIED_MINUTES && s.startedAt.getTime() + s.minutes * 60_000 > startedAt.getTime(),
+      );
       const active = tx
         .select({ id: schema.checkIns.id })
         .from(schema.checkIns)
         .where(and(eq(schema.checkIns.userId, input.userId), eq(schema.checkIns.status, "ACTIVE"), lt(schema.checkIns.startedAt, endedAt)))
         .limit(1)
         .get();
-      if (overlapsSession || active) throw ApiErrors.validation("El usuario ya tiene tiempo de estudio registrado en ese horario.");
+      if (realStay && (overlapsSession || active)) throw ApiErrors.validation("El usuario ya tiene tiempo de estudio registrado en ese horario.");
 
       const id = this.studySessions.recordManual(tx, { userId: input.userId, roomId, startedAt, minutes });
       tx.insert(schema.moderationActions)

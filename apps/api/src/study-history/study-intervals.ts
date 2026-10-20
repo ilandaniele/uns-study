@@ -1,5 +1,6 @@
 import { and, eq, gte } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
+import { localDateOf } from "../common/dates.js";
 import { minutesByLocalDay, verifiedMinutesFor } from "../rankings/study-session.service.js";
 
 export interface StudyInterval {
@@ -8,6 +9,11 @@ export interface StudyInterval {
   roomId: string;
   /** Still-running check-in counted up to `now`. */
   live: boolean;
+  /**
+   * Admin credit (`MANUAL` session): counts whole on the local day it starts, never split across days
+   * or spread over clock time, since a credit can be longer than any real stay.
+   */
+  manual?: boolean;
 }
 
 /**
@@ -22,13 +28,20 @@ export async function loadStudyIntervals(db: Db, userId: string, sinceLocalDate:
       startedAt: schema.studySessions.startedAt,
       minutes: schema.studySessions.verifiedMinutes,
       roomId: schema.studySessions.roomId,
+      source: schema.studySessions.source,
     })
     .from(schema.studySessions)
     .where(and(eq(schema.studySessions.userId, userId), gte(schema.studySessions.localDate, sinceLocalDate)))
     .all();
   const recorded = new Set(sessions.map((s) => s.checkInId).filter((id): id is string => id !== null));
 
-  const out: StudyInterval[] = sessions.map((s) => ({ startedAt: s.startedAt, minutes: s.minutes, roomId: s.roomId, live: false }));
+  const out: StudyInterval[] = sessions.map((s) => ({
+    startedAt: s.startedAt,
+    minutes: s.minutes,
+    roomId: s.roomId,
+    live: false,
+    manual: s.source === "MANUAL",
+  }));
 
   const active = db
     .select({ id: schema.checkIns.id, roomId: schema.checkIns.roomId, startedAt: schema.checkIns.startedAt, expiresAt: schema.checkIns.expiresAt })
@@ -47,6 +60,11 @@ export async function loadStudyIntervals(db: Db, userId: string, sinceLocalDate:
 export function minutesByDay(intervals: readonly StudyInterval[], tz: string): Map<string, number> {
   const byDay = new Map<string, number>();
   for (const interval of intervals) {
+    if (interval.manual) {
+      const day = localDateOf(interval.startedAt, tz);
+      byDay.set(day, (byDay.get(day) ?? 0) + interval.minutes);
+      continue;
+    }
     for (const part of minutesByLocalDay(interval.startedAt, interval.minutes, tz)) {
       byDay.set(part.day, (byDay.get(part.day) ?? 0) + part.minutes);
     }
@@ -59,6 +77,11 @@ export function minutesBetween(intervals: readonly StudyInterval[], from: Date, 
   let ms = 0;
   for (const interval of intervals) {
     const start = interval.startedAt.getTime();
+    if (interval.manual) {
+      // An admin credit counts whole when it starts inside the window.
+      if (start >= from.getTime() && start < to.getTime()) ms += interval.minutes * 60_000;
+      continue;
+    }
     const end = start + interval.minutes * 60_000;
     ms += Math.max(0, Math.min(end, to.getTime()) - Math.max(start, from.getTime()));
   }
