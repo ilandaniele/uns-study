@@ -248,10 +248,11 @@ export class RankingsService {
       for (const minutes of byDay.values()) total += Math.min(minutes, STUDY_TIME_DAILY_CAP_MIN);
       values.set(userId, total);
     }
+    // Negative credits (time taken away) can lower a total, never below zero.
     for (const [userId, byDay] of manual) {
       let total = values.get(userId) ?? 0;
       for (const minutes of byDay.values()) total += minutes;
-      values.set(userId, total);
+      values.set(userId, Math.max(0, total));
     }
     return values;
   }

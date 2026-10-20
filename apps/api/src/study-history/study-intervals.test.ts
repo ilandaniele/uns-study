@@ -112,3 +112,14 @@ describe("admin credits (manual intervals)", () => {
     expect(minutesBetween([credit], new Date("2026-01-16T00:00:00Z"), new Date("2026-01-20T00:00:00Z"))).toBe(0);
   });
 });
+
+describe("negative admin credits (time taken away)", () => {
+  const stay: StudyInterval = { startedAt: new Date("2026-01-15T13:00:00Z"), minutes: 60, roomId: "r", live: false };
+  const removal: StudyInterval = { startedAt: new Date("2026-01-15T14:00:00Z"), minutes: -100, roomId: "r", live: false, manual: true };
+
+  it("lower a day and a window, never below zero", () => {
+    expect(minutesByDay([stay, removal], "America/Argentina/Buenos_Aires").get("2026-01-15")).toBe(0);
+    expect(minutesBetween([stay, removal], new Date("2026-01-15T00:00:00Z"), new Date("2026-01-16T00:00:00Z"))).toBe(0);
+    expect(minutesByDay([{ ...stay, minutes: 300 }, removal], "America/Argentina/Buenos_Aires").get("2026-01-15")).toBe(200);
+  });
+});

@@ -89,6 +89,19 @@ describe("AdminStudySessionsService.credit", () => {
     await expect(svc.credit("admin", { ...credit, startedAt: "2026-01-15T19:00:00.000Z", minutes: 60 }, NOW)).resolves.toMatchObject({ minutes: 60 });
   });
 
+  it("takes time away with negative minutes, never below zero in the ranking", async () => {
+    await svc.credit("admin", credit, NOW); // +360 on 2026-01-15
+    const removed = await svc.credit("admin", { ...credit, startedAt: "2026-01-15T14:00:00.000Z", minutes: -100 }, NOW);
+    expect(removed).toMatchObject({ minutes: -100, endedAt: "2026-01-15T14:00:00.000Z" });
+
+    const rankings = new RankingsService(db, roomsService, new AliasService(db), new RolesService(db));
+    expect((await rankings.getRankings(roomId, "today", "study_time", "friend", NOW)).me?.value).toBe(260);
+
+    await svc.credit("admin", { ...credit, startedAt: "2026-01-15T15:00:00.000Z", minutes: -5000 }, NOW);
+    const fresh = new RankingsService(db, roomsService, new AliasService(db), new RolesService(db));
+    expect((await fresh.getRankings(roomId, "today", "study_time", "friend", NOW)).me?.value ?? 0).toBe(0);
+  });
+
   it("rejects an unknown user or room", async () => {
     await expect(svc.credit("admin", { ...credit, userId: "ghost" }, NOW)).rejects.toMatchObject({ code: "NOT_FOUND" });
     await expect(svc.credit("admin", { ...credit, roomId: "00000000-0000-0000-0000-000000000000" }, NOW)).rejects.toMatchObject({ status: 404 });
@@ -125,6 +138,8 @@ describe("manualStudySessionSchema", () => {
     expect(manualStudySessionSchema.safeParse({ ...base, minutes: 60, endedAt: "2026-01-15T13:00:00.000Z" }).success).toBe(false);
     expect(manualStudySessionSchema.safeParse({ ...base, minutes: 721 }).success).toBe(true);
     expect(manualStudySessionSchema.safeParse({ ...base, minutes: 1_000_001 }).success).toBe(false);
+    expect(manualStudySessionSchema.safeParse({ ...base, minutes: -60 }).success).toBe(true);
+    expect(manualStudySessionSchema.safeParse({ ...base, minutes: 0 }).success).toBe(false);
     expect(manualStudySessionSchema.safeParse({ ...base, minutes: 60, reason: "  " }).success).toBe(false);
   });
 });

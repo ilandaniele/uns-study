@@ -98,7 +98,8 @@ export class StudySessionService {
         roomId: input.roomId,
         checkInId: null,
         startedAt: input.startedAt,
-        endedAt: new Date(input.startedAt.getTime() + input.minutes * 60_000),
+        // A negative credit (time taken away) has no duration of its own.
+        endedAt: new Date(input.startedAt.getTime() + Math.max(0, input.minutes) * 60_000),
         verifiedMinutes: input.minutes,
         localDate: localDateOf(input.startedAt, timezone),
         source: "MANUAL",

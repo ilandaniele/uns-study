@@ -69,6 +69,8 @@ export function minutesByDay(intervals: readonly StudyInterval[], tz: string): M
       byDay.set(part.day, (byDay.get(part.day) ?? 0) + part.minutes);
     }
   }
+  // A negative admin credit (time taken away) can lower a day, never below zero.
+  for (const [day, minutes] of byDay) if (minutes < 0) byDay.set(day, 0);
   return byDay;
 }
 
@@ -85,5 +87,5 @@ export function minutesBetween(intervals: readonly StudyInterval[], from: Date, 
     const end = start + interval.minutes * 60_000;
     ms += Math.max(0, Math.min(end, to.getTime()) - Math.max(start, from.getTime()));
   }
-  return Math.round(ms / 60_000);
+  return Math.max(0, Math.round(ms / 60_000));
 }

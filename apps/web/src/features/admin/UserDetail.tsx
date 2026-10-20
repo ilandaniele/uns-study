@@ -25,6 +25,7 @@ export function UserDetail({ userId }: { userId: string }) {
   const [togglingAdmin, setTogglingAdmin] = useState(false);
   const [studyStart, setStudyStart] = useState("");
   const [studyMinutes, setStudyMinutes] = useState("");
+  const [studyRemove, setStudyRemove] = useState(false);
   const [studyReason, setStudyReason] = useState("");
   const [studySaving, setStudySaving] = useState(false);
   const [studyResult, setStudyResult] = useState<{ ok: boolean; text: string } | null>(null);
@@ -73,15 +74,15 @@ export function UserDetail({ userId }: { userId: string }) {
     try {
       const created = await apiPost<{ minutes: number }>(
         "/api/v1/admin/study-sessions",
-        { userId, startedAt, minutes: Number(studyMinutes), reason: studyReason.trim() },
+        { userId, startedAt, minutes: (studyRemove ? -1 : 1) * Number(studyMinutes), reason: studyReason.trim() },
         manualStudySessionSchema,
       );
-      setStudyResult({ ok: true, text: `Se sumaron ${created.minutes} min` });
+      setStudyResult({ ok: true, text: created.minutes < 0 ? `Se sacaron ${-created.minutes} min` : `Se sumaron ${created.minutes} min` });
       setStudyStart("");
       setStudyMinutes("");
       setStudyReason("");
     } catch (err) {
-      setStudyResult({ ok: false, text: err instanceof Error ? err.message : "No pudimos sumar las horas." });
+      setStudyResult({ ok: false, text: err instanceof Error ? err.message : "No pudimos guardar el cambio de horas." });
     } finally {
       setStudySaving(false);
     }
@@ -231,10 +232,28 @@ export function UserDetail({ userId }: { userId: string }) {
 
       {me?.roles.includes("ADMIN") ? (
         <form onSubmit={(e) => void submitStudySession(e)} className="flex flex-col gap-3 border-t border-app pt-4">
-          <p className="text-sm font-semibold text-main">Sumar horas de estudio</p>
+          <p className="text-sm font-semibold text-main">Sumar o sacar horas de estudio</p>
+
+          <div role="radiogroup" aria-label="Sumar o sacar" className="flex w-fit gap-1 rounded-lg border border-app p-1">
+            {[
+              { remove: false, label: "Sumar" },
+              { remove: true, label: "Sacar" },
+            ].map((option) => (
+              <button
+                key={option.label}
+                type="button"
+                role="radio"
+                aria-checked={studyRemove === option.remove}
+                onClick={() => setStudyRemove(option.remove)}
+                className={`min-h-11 rounded-md px-4 text-sm font-semibold ${studyRemove === option.remove ? "bg-primary text-white" : "text-main"}`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
 
           <label className="flex flex-col gap-1 text-xs text-muted">
-            Inicio (hora de Buenos Aires)
+            {studyRemove ? "Día del que se saca (hora de Buenos Aires)" : "Inicio (hora de Buenos Aires)"}
             <input
               type="datetime-local"
               value={studyStart}
@@ -244,7 +263,7 @@ export function UserDetail({ userId }: { userId: string }) {
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-muted">
-            Minutos (más de 720 suma como bonus del día)
+            {studyRemove ? "Minutos a sacar" : "Minutos (más de 720 suma como bonus del día)"}
             <input
               type="number"
               min={1}
@@ -276,7 +295,7 @@ export function UserDetail({ userId }: { userId: string }) {
             disabled={studySaving || !studyStart || !studyMinutes || !studyReason.trim()}
             className="w-fit rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
-            Sumar
+            {studyRemove ? "Sacar" : "Sumar"}
           </button>
         </form>
       ) : null}

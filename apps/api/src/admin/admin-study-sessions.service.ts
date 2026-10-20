@@ -21,7 +21,7 @@ export interface ManualStudySessionDto {
 
 /**
  * Admin credit of study time that really happened but never reached `study_sessions` (e.g. lost to a
- * past counting bug), or any bonus time the admin decides on. Stored as a `MANUAL` session so rankings and streaks pick it up like any other,
+ * past counting bug), any bonus time the admin decides on, or time taken away (negative minutes). Stored as a `MANUAL` session so rankings and streaks pick it up like any other,
  * and audited in `moderation_actions`.
  */
 export class AdminStudySessionsService {
@@ -38,13 +38,15 @@ export class AdminStudySessionsService {
 
     const startedAt = new Date(input.startedAt);
     const minutes = input.minutes ?? Math.floor((new Date(input.endedAt!).getTime() - startedAt.getTime()) / 60_000);
-    if (minutes < 1) throw ApiErrors.validation("La sesión tiene que durar al menos 1 minuto.");
-    if (minutes > MAX_CREDIT_MINUTES) throw ApiErrors.validation(`No se pueden sumar más de ${MAX_CREDIT_MINUTES} minutos de una vez.`);
+    // Negative minutes (only through `minutes`) take time away; an endedAt range is always a positive stay.
+    const removal = input.minutes !== undefined && input.minutes < 0;
+    if (minutes === 0 || (!removal && minutes < 1)) throw ApiErrors.validation("La sesión tiene que durar al menos 1 minuto.");
+    if (Math.abs(minutes) > MAX_CREDIT_MINUTES) throw ApiErrors.validation(`No se pueden sumar ni sacar más de ${MAX_CREDIT_MINUTES} minutos de una vez.`);
     if (startedAt.getTime() > now.getTime()) throw ApiErrors.validation("La fecha no puede estar en el futuro.");
-    const endedAt = new Date(startedAt.getTime() + minutes * 60_000);
-    // Up to 12 h it is a real stay that got lost: it must end before now and not overlap time already
+    const endedAt = new Date(startedAt.getTime() + Math.max(0, minutes) * 60_000);
+    // A removal is a correction on its start day: no overlap or end checks. Up to 12 h it is a real stay that got lost: it must end before now and not overlap time already
     // counted. Longer credits are a bonus the admin decides on; they count whole on their start day.
-    const realStay = minutes <= MAX_VERIFIED_MINUTES;
+    const realStay = !removal && minutes <= MAX_VERIFIED_MINUTES;
     if (realStay && endedAt.getTime() > now.getTime()) throw ApiErrors.validation("La sesión no puede terminar en el futuro.");
 
     const [target] = await this.db.select({ id: schema.user.id }).from(schema.user).where(eq(schema.user.id, input.userId)).limit(1);
@@ -68,7 +70,7 @@ export class AdminStudySessionsService {
         .all();
       // Bonus credits (over 12 h) never block a real stay: they are not spread over clock time.
       const overlapsSession = nearby.some(
-        (s) => s.minutes <= MAX_VERIFIED_MINUTES && s.startedAt.getTime() + s.minutes * 60_000 > startedAt.getTime(),
+        (s) => s.minutes > 0 && s.minutes <= MAX_VERIFIED_MINUTES && s.startedAt.getTime() + s.minutes * 60_000 > startedAt.getTime(),
       );
       const active = tx
         .select({ id: schema.checkIns.id })

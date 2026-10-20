@@ -96,7 +96,14 @@ export const manualStudySessionSchema = z
     startedAt: z.string().datetime(),
     endedAt: z.string().datetime().optional(),
     // Admin credits have no 12 h limit; the bound only stops absurd typos (about 2 years).
-    minutes: z.number().int().min(1).max(1_000_000).optional(),
+    // Negative minutes take time away (a correction), never below zero in rankings.
+    minutes: z
+      .number()
+      .int()
+      .min(-1_000_000)
+      .max(1_000_000)
+      .refine((m) => m !== 0, { message: "Indicá cuántos minutos sumar o sacar." })
+      .optional(),
     reason: z.string().trim().min(1).max(500),
   })
   .refine((v) => (v.endedAt === undefined) !== (v.minutes === undefined), { message: "Indicá endedAt o minutes (uno solo)." });
