@@ -173,9 +173,11 @@ export function UserDetail({ userId }: { userId: string }) {
           </dl>
         ) : null}
 
-        {user.restrictions.length > 0 ? (
-          <div className="mt-3 flex flex-col gap-1.5 border-t border-app pt-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted">Restricciones activas</p>
+        <div className="mt-3 flex flex-col gap-1.5 border-t border-app pt-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Restricciones activas</p>
+          {user.restrictions.length === 0 ? (
+            <p className="text-sm text-muted">No tiene ban, suspensión ni otra restricción activa.</p>
+          ) : (
             <div className="flex flex-wrap gap-2">
               {user.restrictions.map((r) => (
                 <span
@@ -201,8 +203,8 @@ export function UserDetail({ userId }: { userId: string }) {
                 </span>
               ))}
             </div>
-          </div>
-        ) : null}
+          )}
+        </div>
 
         {user.recentSecurityEvents.length > 0 ? (
           <div className="mt-3 flex flex-col gap-1.5 border-t border-app pt-3">
