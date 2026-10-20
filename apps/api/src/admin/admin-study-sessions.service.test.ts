@@ -25,9 +25,12 @@ describe("AdminStudySessionsService.credit", () => {
     roomsService = new RoomsService(db, new RoomStateService(db));
     svc = new AdminStudySessionsService(db, new RolesService(db), roomsService, new StudySessionService(db));
     roomId = (await getRoom(db)).id;
-    await insertUsers(db, ["admin", "moderator", "plain", "friend"]);
+    await insertUsers(db, ["admin", "otherAdmin", "moderator", "plain", "friend"]);
+    // "admin" is the app owner: only the owner adds or takes away study time.
+    await db.update(schema.user).set({ email: "ilan.daniele@gmail.com", emailVerified: true }).where(eq(schema.user.id, "admin"));
     await db.insert(schema.userRoles).values([
       { userId: "admin", role: "ADMIN" },
+      { userId: "otherAdmin", role: "ADMIN" },
       { userId: "moderator", role: "MODERATOR" },
     ]);
   });
@@ -37,6 +40,8 @@ describe("AdminStudySessionsService.credit", () => {
   it("rejects a non-admin actor, including a moderator, without writing anything", async () => {
     await expect(svc.credit("plain", credit, NOW)).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(svc.credit("moderator", credit, NOW)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(svc.credit("otherAdmin", credit, NOW)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(svc.credit("otherAdmin", { ...credit, minutes: -60 }, NOW)).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(await db.select().from(schema.studySessions)).toHaveLength(0);
     expect(await db.select().from(schema.moderationActions)).toHaveLength(0);
   });

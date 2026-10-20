@@ -33,8 +33,8 @@ export class AdminStudySessionsService {
   ) {}
 
   async credit(actorId: string, input: z.infer<typeof manualStudySessionSchema>, now: Date = new Date()): Promise<ManualStudySessionDto> {
-    // The route is behind AdminOnlyGuard; re-checked here so the rule holds for any caller.
-    if (!(await this.roles.hasRole(actorId, ["ADMIN"]))) throw ApiErrors.forbidden("Necesitás permisos de administrador para hacer esto.");
+    // Only the app owner adds or takes away study time; other admins cannot (route also behind AdminOnlyGuard).
+    if (!(await this.roles.isOwner(actorId))) throw ApiErrors.forbidden("Solo el dueño de la app puede sumar o sacar horas de estudio.");
 
     const startedAt = new Date(input.startedAt);
     const minutes = input.minutes ?? Math.floor((new Date(input.endedAt!).getTime() - startedAt.getTime()) / 60_000);

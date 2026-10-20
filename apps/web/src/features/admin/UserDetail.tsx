@@ -34,6 +34,7 @@ export function UserDetail({ userId }: { userId: string }) {
   // Bumped on every reload so the history re-fetches after an action.
   const [historyKey, setHistoryKey] = useState(0);
   const [togglingAdmin, setTogglingAdmin] = useState(false);
+  const [togglingShield, setTogglingShield] = useState(false);
   const [studyStart, setStudyStart] = useState("");
   const [studyMinutes, setStudyMinutes] = useState("");
   const [studyRemove, setStudyRemove] = useState(false);
@@ -132,6 +133,23 @@ export function UserDetail({ userId }: { userId: string }) {
     }
   }
 
+  async function toggleShield(shield: boolean) {
+    const question = shield
+      ? "¿Blindar a este usuario? Los admins no van a poder banearlo, suspenderlo ni restringirlo."
+      : "¿Desblindar a este usuario?";
+    if (!window.confirm(question)) return;
+    setTogglingShield(true);
+    try {
+      if (shield) await apiPut(`/api/v1/admin/users/${userId}/shield`);
+      else await apiDelete(`/api/v1/admin/users/${userId}/shield`);
+      await load();
+    } catch {
+      setError("No pudimos cambiar el blindaje.");
+    } finally {
+      setTogglingShield(false);
+    }
+  }
+
   if (error) return <p className="text-sm text-[var(--seat-occupied)]">{error}</p>;
   if (!user) return <p className="text-sm text-muted">Cargando…</p>;
 
@@ -144,6 +162,7 @@ export function UserDetail({ userId }: { userId: string }) {
         {user.roles.length > 0 ? (
           <p className="mt-2 text-xs font-semibold text-primary">{user.roles.join(", ")}</p>
         ) : null}
+        {user.shielded ? <p className="mt-2 text-xs font-semibold text-primary">Blindado</p> : null}
 
         {me?.canManageAdmins && me.user?.id !== user.userId ? (
           <button
@@ -153,6 +172,17 @@ export function UserDetail({ userId }: { userId: string }) {
             className="mt-3 w-fit rounded-lg border border-app px-3 py-1.5 text-sm font-semibold text-main disabled:opacity-50"
           >
             {user.roles.includes("ADMIN") ? "Quitar admin" : "Hacer admin"}
+          </button>
+        ) : null}
+
+        {me?.canManageAdmins && me.user?.id !== user.userId ? (
+          <button
+            type="button"
+            onClick={() => void toggleShield(!user.shielded)}
+            disabled={togglingShield}
+            className="mt-3 ml-2 w-fit rounded-lg border border-app px-3 py-1.5 text-sm font-semibold text-main disabled:opacity-50"
+          >
+            {user.shielded ? "Desblindar" : "Blindar"}
           </button>
         ) : null}
 
@@ -277,7 +307,7 @@ export function UserDetail({ userId }: { userId: string }) {
         </button>
       </form>
 
-      {me?.roles.includes("ADMIN") ? (
+      {me?.canManageAdmins ? (
         <form onSubmit={(e) => void submitStudySession(e)} className="flex flex-col gap-3 border-t border-app pt-4">
           <p className="text-sm font-semibold text-main">Sumar o sacar horas de estudio</p>
 

@@ -16,6 +16,8 @@ const ACTION_LABEL: Record<string, string> = {
   STUDY_TIME_CREDITED: "Horas de estudio ajustadas",
   REPORT_STATUS_CHANGED: "Reporte actualizado",
   ACCOUNT_DELETED: "Cuenta eliminada",
+  SHIELDED: "Blindado",
+  UNSHIELDED: "Desblindado",
 };
 
 function reasonOf(metadata: unknown): string | null {

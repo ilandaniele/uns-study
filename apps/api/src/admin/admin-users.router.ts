@@ -29,3 +29,13 @@ adminUsersRouter.delete("/admin/users/:id/admin", requireAdmin, requireAdminOnly
   await c.var.services.adminUsers.setAdmin(currentUser(c).id, c.req.param("id"), false);
   return reply(c, { ok: true });
 });
+
+adminUsersRouter.put("/admin/users/:id/shield", requireAdmin, requireAdminOnly, async (c) => {
+  await c.var.services.adminUsers.setShield(currentUser(c).id, c.req.param("id"), true);
+  return reply(c, { ok: true });
+});
+
+adminUsersRouter.delete("/admin/users/:id/shield", requireAdmin, requireAdminOnly, async (c) => {
+  await c.var.services.adminUsers.setShield(currentUser(c).id, c.req.param("id"), false);
+  return reply(c, { ok: true });
+});

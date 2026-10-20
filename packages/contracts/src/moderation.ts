@@ -54,6 +54,8 @@ export interface AdminUserDto {
   restrictions: { id: string; type: string; reason: string; until: string | null; createdAt: string; createdByName: string | null }[];
   reputation: { observationScore: number; spamScore: number; confirmedObservations: number; rejectedObservations: number } | null;
   recentSecurityEvents: { eventType: string; createdAt: string }[];
+  /** Protected by the app owner: only the owner can restrict this user. */
+  shielded: boolean;
 }
 
 export interface AnnouncementDto {

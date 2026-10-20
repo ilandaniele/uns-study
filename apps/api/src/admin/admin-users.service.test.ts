@@ -169,3 +169,44 @@ describe("AdminUsersService.setAdmin", () => {
     await expect(svc.setAdmin("owner", "ghost", true)).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });
+
+describe("AdminUsersService shields", () => {
+  let db: Db;
+  let roles: RolesService;
+  let svc: AdminUsersService;
+
+  beforeEach(async () => {
+    db = freshDb();
+    roles = new RolesService(db);
+    svc = new AdminUsersService(db, fakeModeration(), roles);
+    await insertUsers(db, ["owner", "admin", "plain"]);
+    await db.update(schema.user).set({ email: "ilan.daniele@gmail.com", emailVerified: true }).where(eq(schema.user.id, "owner"));
+    await db.insert(schema.userRoles).values([
+      { userId: "owner", role: "ADMIN" },
+      { userId: "admin", role: "ADMIN" },
+    ]);
+  });
+
+  it("only the owner can shield and unshield, and both are audited", async () => {
+    await expect(svc.setShield("admin", "plain", true)).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    await svc.setShield("owner", "plain", true);
+    expect((await svc.getById("plain", "owner")).shielded).toBe(true);
+    await expect(svc.setShield("admin", "plain", false)).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    await svc.setShield("owner", "plain", false);
+    expect((await svc.getById("plain", "owner")).shielded).toBe(false);
+    const audit = await db.select().from(schema.moderationActions);
+    expect(audit.map((a) => a.action).sort()).toEqual(["SHIELDED", "UNSHIELDED"]);
+  });
+
+  it("an admin cannot ban, suspend, mute or restrict a shielded user; the owner can", async () => {
+    await svc.setShield("owner", "plain", true);
+    for (const type of ["BAN", "SUSPEND", "MUTE_CHAT", "RESTRICT_OBSERVATIONS"] as const) {
+      await expect(svc.applyAction("admin", "plain", { type, reason: "x" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    }
+    await expect(svc.applyAction("admin", "plain", { type: "WARN", reason: "x" })).resolves.toBeUndefined();
+    await expect(svc.applyAction("admin", "plain", { type: "LIFT", reason: "x" })).resolves.toBeUndefined();
+    await expect(svc.applyAction("owner", "plain", { type: "BAN", reason: "x" })).resolves.toBeUndefined();
+  });
+});

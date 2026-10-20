@@ -6,6 +6,8 @@ import { RolesService } from "../users/roles.service.js";
 import { ModerationActionService } from "./moderation-action.service.js";
 
 const ADMIN_ONLY_ACTIONS: ModerationActionType[] = ["SUSPEND", "BAN", "LIFT"];
+/** Actions that restrict a user; a shielded user can only get these from the owner. */
+const RESTRICTING_ACTIONS: ModerationActionType[] = ["MUTE_CHAT", "RESTRICT_OBSERVATIONS", "SUSPEND", "BAN"];
 
 const SEARCH_LIMIT = 50;
 const LIST_ALL_LIMIT = 500;
@@ -51,7 +53,7 @@ export class AdminUsersService {
     const [u] = await this.db.select().from(schema.user).where(eq(schema.user.id, userId)).limit(1);
     if (!u) throw ApiErrors.notFound("Usuario no encontrado.");
 
-    const [roleRows, restrictionRows, [reputation], events] = await Promise.all([
+    const [roleRows, restrictionRows, [reputation], events, [shield]] = await Promise.all([
       this.db.select().from(schema.userRoles).where(eq(schema.userRoles.userId, userId)),
       this.db.select().from(schema.userRestrictions).where(eq(schema.userRestrictions.userId, userId)).orderBy(desc(schema.userRestrictions.createdAt)),
       this.db.select().from(schema.userReputation).where(eq(schema.userReputation.userId, userId)).limit(1),
@@ -61,6 +63,7 @@ export class AdminUsersService {
         .where(eq(schema.securityEvents.userId, userId))
         .orderBy(desc(schema.securityEvents.createdAt))
         .limit(RECENT_SECURITY_EVENTS),
+      this.db.select({ userId: schema.userShields.userId }).from(schema.userShields).where(eq(schema.userShields.userId, userId)).limit(1),
     ]);
 
     // Who applied each active restriction, so an admin can see who banned someone.
@@ -94,6 +97,7 @@ export class AdminUsersService {
           }
         : null,
       recentSecurityEvents: events.map((e) => ({ eventType: e.eventType, createdAt: e.createdAt.toISOString() })),
+      shielded: Boolean(shield),
     };
   }
 
@@ -117,6 +121,27 @@ export class AdminUsersService {
     });
   }
 
+  /** Owner-only: shields a user so no admin or moderator can restrict them, or removes the shield. Audited. */
+  async setShield(actorId: string, targetUserId: string, shield: boolean): Promise<void> {
+    if (!(await this.roles.isOwner(actorId))) throw ApiErrors.forbidden("Solo el dueño de la app puede blindar usuarios.");
+
+    const [target] = await this.db.select().from(schema.user).where(eq(schema.user.id, targetUserId)).limit(1);
+    if (!target) throw ApiErrors.notFound("Usuario no encontrado.");
+
+    if (shield) {
+      await this.db.insert(schema.userShields).values({ userId: targetUserId, createdBy: actorId }).onConflictDoNothing();
+    } else {
+      await this.db.delete(schema.userShields).where(eq(schema.userShields.userId, targetUserId));
+    }
+
+    await this.db.insert(schema.moderationActions).values({
+      actorId,
+      targetUserId,
+      action: shield ? "SHIELDED" : "UNSHIELDED",
+      metadata: {},
+    });
+  }
+
   async applyAction(
     actorId: string,
     targetUserId: string,
@@ -133,6 +158,11 @@ export class AdminUsersService {
     if (ADMIN_ONLY_ACTIONS.includes(input.type)) {
       const actorIsAdmin = await this.roles.hasRole(actorId, ["ADMIN"]);
       if (!actorIsAdmin) throw ApiErrors.forbidden("Necesitás permisos de administrador para hacer esto.");
+    }
+
+    if (RESTRICTING_ACTIONS.includes(input.type)) {
+      const [shield] = await this.db.select({ userId: schema.userShields.userId }).from(schema.userShields).where(eq(schema.userShields.userId, targetUserId)).limit(1);
+      if (shield && !(await this.roles.isOwner(actorId))) throw ApiErrors.forbidden("Este usuario está blindado por el dueño de la app.");
     }
 
     await this.moderation.apply({ actorId, targetUserId, ...input });

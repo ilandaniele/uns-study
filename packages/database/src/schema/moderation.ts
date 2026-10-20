@@ -97,6 +97,15 @@ export const userRestrictions = sqliteTable(
   (table) => [index("idx_user_restrictions_user").on(table.userId)],
 );
 
+/** Users the app owner protected: no admin or moderator can restrict them (only the owner can). */
+export const userShields = sqliteTable("user_shields", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});
+
 export const moderationActions = sqliteTable(
   "moderation_actions",
   {
