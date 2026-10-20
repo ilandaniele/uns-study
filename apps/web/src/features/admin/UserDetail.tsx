@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { apiDelete, apiFetch, apiPost, apiPut } from "@/lib/api";
 import { buenosAiresLocalToIso } from "./manual-study-session";
 import { useMe } from "@/lib/me-store";
+import { AuditLog } from "./AuditLog";
 
 const ACTIONS: { type: ModerationActionType; label: string }[] = [
   { type: "WARN", label: "Advertir" },
@@ -30,6 +31,8 @@ export function UserDetail({ userId }: { userId: string }) {
   const [until, setUntil] = useState("");
   const [saving, setSaving] = useState(false);
   const [liftingId, setLiftingId] = useState<string | null>(null);
+  // Bumped on every reload so the history re-fetches after an action.
+  const [historyKey, setHistoryKey] = useState(0);
   const [togglingAdmin, setTogglingAdmin] = useState(false);
   const [studyStart, setStudyStart] = useState("");
   const [studyMinutes, setStudyMinutes] = useState("");
@@ -43,6 +46,7 @@ export function UserDetail({ userId }: { userId: string }) {
     try {
       const dto = await apiFetch<AdminUserDto>(`/api/v1/admin/users/${userId}`);
       setUser(dto);
+      setHistoryKey((k) => k + 1);
     } catch {
       setError("No pudimos cargar el usuario.");
     }
@@ -218,6 +222,11 @@ export function UserDetail({ userId }: { userId: string }) {
             </ol>
           </div>
         ) : null}
+      </div>
+
+      <div className="flex flex-col gap-2 border-t border-app pt-4">
+        <p className="text-sm font-semibold text-main">Historial de moderación</p>
+        <AuditLog key={historyKey} userId={userId} />
       </div>
 
       <form onSubmit={(e) => void submitAction(e)} className="flex flex-col gap-3 border-t border-app pt-4">

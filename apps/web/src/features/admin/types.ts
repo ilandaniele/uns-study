@@ -20,7 +20,9 @@ export interface AdminLiveDto {
 export interface AuditEntryDto {
   id: string;
   actorId: string | null;
+  actorName: string | null;
   targetUserId: string | null;
+  targetName: string | null;
   reportId: string | null;
   action: string;
   metadata: unknown;
