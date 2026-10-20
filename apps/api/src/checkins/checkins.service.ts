@@ -29,7 +29,7 @@ export interface CreateCheckInInput {
   showIdentity: boolean;
   /** Optional QR token scanned at the table; invalid/missing tokens are silently ignored. */
   qrToken?: string | null;
-  /** How long the user will occupy the seat (15..720 min, Pro only; the router forces CHECKIN_MINUTES for everyone else); defaults to CHECKIN_MINUTES. */
+  /** How long the user will occupy the seat (15..720 min; the router caps non-Pro users at CHECKIN_MINUTES); defaults to CHECKIN_MINUTES. */
   durationMinutes?: number;
 }
 

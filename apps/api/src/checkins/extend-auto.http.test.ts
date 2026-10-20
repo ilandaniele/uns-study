@@ -136,6 +136,16 @@ describe("POST /checkins/current/extend with auto: true", () => {
     expect(minutes).toBeLessThan(180.1);
   });
 
+  it("a free user may renew a shorter stay than the default block", async () => {
+    await checkInWithMinutesLeft(free.id, 30);
+    const before = Date.now();
+    const res = await extend(free.cookie, { location: inside, durationMinutes: 60 });
+    expect(res.status).toBe(201);
+    const minutes = (new Date(((await res.json()) as { expiresAt: string }).expiresAt).getTime() - before) / 60_000;
+    expect(minutes).toBeGreaterThan(59.9);
+    expect(minutes).toBeLessThan(60.1);
+  });
+
   it("a Pro user renews for the duration it chose", async () => {
     await checkInWithMinutesLeft(paid.id, 30);
     const before = Date.now();

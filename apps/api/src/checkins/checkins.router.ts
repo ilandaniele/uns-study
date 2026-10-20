@@ -14,9 +14,9 @@ const AUTO_EXTEND_WINDOW_MS = 15 * 60_000;
 
 export const checkinsRouter = new Hono<AppEnv>();
 
-/** Only Pro picks how long to stay; everyone else gets the fixed 2-hour block and renews it with "Sigo acá". */
+/** Only Pro stays longer than the default block; everyone else may pick a shorter stay, and longer asks are forced to CHECKIN_MINUTES. */
 async function allowedDuration(services: Services, userId: string, requested: number): Promise<number> {
-  if (requested === CHECKIN_MINUTES) return requested;
+  if (requested <= CHECKIN_MINUTES) return requested;
   return (await services.pro.isProUser(userId)) ? requested : CHECKIN_MINUTES;
 }
 

@@ -8,16 +8,15 @@ import { usePathname } from "next/navigation";
 import { frameOf, nameColorStyle } from "@/components/flair";
 import { SeatWatchButton } from "@/features/seat-watch/SeatWatchButton";
 import { ProBadge, proLabel } from "@/features/subscriptions/ProBadge";
-import { openProUpsell } from "@/features/subscriptions/pro-upsell-store";
 import { proLockState } from "@/features/subscriptions/pro";
 import { MessageOccupantButton } from "./MessageOccupantButton";
 import { useState } from "react";
-import { CheckInDurationPicker } from "./CheckInDurationPicker";
-import { clockLabel, clockTimeAfter, DEFAULT_CHECKIN_DURATION } from "./checkin-duration";
+import { CheckInDialog } from "./CheckInDialog";
+import { clockLabel, clockTimeAfter, DEFAULT_CHECKIN_DURATION, maxCheckInMinutes } from "./checkin-duration";
 import { NearbyOccupants } from "./NearbyOccupants";
 import { OccupantAvatar } from "./OccupantAvatar";
 import { SavedReportPrompt } from "./SavedReportPrompt";
-import { ObservationChip, PrimaryButton, QuietDangerButton, StatusPill, durationLabel } from "./SeatDetailParts";
+import { ObservationChip, PrimaryButton, QuietDangerButton, StatusPill } from "./SeatDetailParts";
 import { TableLocator } from "./TableLocator";
 import { markedByLabel } from "./seat-avatar";
 import { TurnstileChallenge } from "./TurnstileChallenge";
@@ -136,8 +135,7 @@ export function SeatDetail({
   onExpandedChange,
 }: SeatDetailProps) {
   const now = useNow(30_000);
-  const [durationMinutes, setDurationMinutes] = useState(DEFAULT_CHECKIN_DURATION);
-  const [showPicker, setShowPicker] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const pathname = usePathname();
   // Which button was tapped, so only that one swaps to "Buscando…" while the GPS fix is in flight.
   const [tapped, setTapped] = useState<"checkin" | "extend" | "free" | "occupied" | "saved" | null>(null);
@@ -146,20 +144,9 @@ export function SeatDetail({
     setTapped(action);
     fn();
   };
-  // Without Pro the check-in is a fixed block (the server forces it); only Pro picks the end time.
-  const durationLocked = proLockState(me, false) === "locked";
-  const effectiveMinutes = durationLocked ? DEFAULT_CHECKIN_DURATION : durationMinutes;
-  const checkInHint = `${durationLocked ? `${durationLabel(effectiveMinutes)} · ` : ""}hasta las ${clockTimeAfter(effectiveMinutes, now)}`;
-  const durationUpsell = durationLocked ? (
-    <button
-      type="button"
-      onClick={() => openProUpsell("checkin_duration")}
-      className="inline-flex min-h-11 w-fit items-center gap-1.5 self-center text-xs font-semibold text-primary hover:underline"
-    >
-      Elegir hasta qué hora
-      <ProBadge inline />
-    </button>
-  ) : null;
+  // Everyone picks the end time in the dialog; without Pro it can't go past the default block.
+  const maxMinutes = maxCheckInMinutes(proLockState(me, false) !== "locked");
+  const checkInHint = `hasta las ${clockTimeAfter(DEFAULT_CHECKIN_DURATION, now)}`;
   const locationPrompt = useLocationPrompt(me?.user != null);
   const peek = compact && !expanded;
   const isBar = table?.type === "WALL_BAR";
@@ -359,49 +346,14 @@ export function SeatDetail({
           </>
         ) : (
           <>
-            {compact ? (
-              <>
-                <div className="flex gap-2">
-                  <div className="min-w-0 flex-1">
-                    <PrimaryButton
-                      onClick={run("checkin", () => onCheckIn(effectiveMinutes))}
-                      disabled={pending}
-                      hint={searching("checkin") ? undefined : checkInHint}
-                    >
-                      {searching("checkin") ? "Buscando tu ubicación…" : "Estoy acá"}
-                    </PrimaryButton>
-                  </div>
-                  {!durationLocked ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowPicker((value) => !value)}
-                      aria-expanded={showPicker}
-                      aria-label={`Duración: ${durationLabel(durationMinutes)}. Cambiar`}
-                      className="flex min-h-[52px] shrink-0 items-center gap-1 rounded-control bg-surface-2 px-3.5 text-sm font-bold tabular-nums text-main transition-transform duration-150 ease-out active:scale-[0.97]"
-                    >
-                      {durationLabel(durationMinutes)}
-                      <CaretDownIcon aria-hidden="true" size={14} weight="bold" className={`transition-transform ${showPicker ? "rotate-180" : ""}`} />
-                    </button>
-                  ) : null}
-                </div>
-                {durationUpsell}
-                {locationHint}
-                {showPicker && !durationLocked ? <CheckInDurationPicker minutes={durationMinutes} onChange={setDurationMinutes} disabled={pending} now={now} /> : null}
-              </>
-            ) : (
-              <>
-                {!durationLocked ? <CheckInDurationPicker minutes={durationMinutes} onChange={setDurationMinutes} disabled={pending} now={now} /> : null}
-                <PrimaryButton
-                  onClick={run("checkin", () => onCheckIn(effectiveMinutes))}
-                  disabled={pending}
-                  hint={searching("checkin") ? undefined : checkInHint}
-                >
-                  {searching("checkin") ? "Buscando tu ubicación…" : "Estoy acá"}
-                </PrimaryButton>
-                {durationUpsell}
-                {locationHint}
-              </>
-            )}
+            <PrimaryButton
+              onClick={() => setDialogOpen(true)}
+              disabled={pending}
+              hint={searching("checkin") ? undefined : checkInHint}
+            >
+              {searching("checkin") ? "Buscando tu ubicación…" : "Estoy acá"}
+            </PrimaryButton>
+            {locationHint}
             <p className="t-label mt-1">¿Cómo ves este lugar?</p>
             <div className="grid grid-cols-3 gap-2">
               <ObservationChip tone="free" onClick={run("free", onMarkFree)} disabled={pending}>
@@ -427,6 +379,17 @@ export function SeatDetail({
           </>
         )}
       </div>
+
+      {dialogOpen ? (
+        <CheckInDialog
+          maxMinutes={maxMinutes}
+          onCancel={() => setDialogOpen(false)}
+          onConfirm={(minutes) => {
+            setDialogOpen(false);
+            run("checkin", () => onCheckIn(minutes))();
+          }}
+        />
+      ) : null}
 
       <DisputeSection
         seat={seat}

@@ -49,3 +49,31 @@ export function clockTimeAfter(minutes: number, now: Date = new Date()): string 
 export function clockLabel(iso: string): string {
   return new Date(iso).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
 }
+
+/** Longest stay a user can pick: Pro up to 12 h, everyone else up to the default block. */
+export function maxCheckInMinutes(isPro: boolean): number {
+  return isPro ? CHECKIN_PRO_MAX_MINUTES : CHECKIN_MINUTES;
+}
+
+/** Quick choices that fit under `max`. */
+export function chipsUpTo(max: number): typeof CHECKIN_DURATION_CHIPS[number][] {
+  return CHECKIN_DURATION_CHIPS.filter((chip) => chip.minutes <= max);
+}
+
+export type CheckInChoice = { ok: true; minutes: number } | { ok: false; message: string };
+
+/** Validates an "HH:MM" end time against 15..`max` minutes from `now`, with the message to show when it doesn't fit. */
+export function checkInChoice(value: string, now: Date, max: number): CheckInChoice {
+  const raw = rawMinutesUntilClockTime(value, now);
+  if (raw === null) return { ok: false, message: "Elegí una hora válida." };
+  const minutes = Math.round(raw);
+  if (minutes < CHECKIN_MIN_MINUTES) return { ok: false, message: "Elegí una hora al menos 15 min más tarde." };
+  if (minutes > max) {
+    const hours = max / 60;
+    return {
+      ok: false,
+      message: max >= CHECKIN_PRO_MAX_MINUTES ? `Podés elegir hasta ${hours} h.` : `Podés elegir hasta ${hours} h. Con Pro, hasta ${CHECKIN_PRO_MAX_MINUTES / 60} h.`,
+    };
+  }
+  return { ok: true, minutes };
+}
