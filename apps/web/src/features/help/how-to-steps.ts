@@ -1,5 +1,13 @@
 import type { ComponentType } from "react";
-import { BellIcon, CheckCircleIcon, HandPalmIcon, MapPinIcon, MapTrifoldIcon, SignOutIcon } from "@phosphor-icons/react/dist/ssr";
+import {
+  BellIcon,
+  CheckCircleIcon,
+  FlagIcon,
+  HandPalmIcon,
+  MapPinIcon,
+  MapTrifoldIcon,
+  SignOutIcon,
+} from "@phosphor-icons/react/dist/ssr";
 import type { IconProps } from "@phosphor-icons/react";
 
 export interface HowToStep {
@@ -23,12 +31,17 @@ export const HOW_TO_STEPS: HowToStep[] = [
   {
     icon: CheckCircleIcon,
     title: "Ayudá a los demás",
-    body: "Si ves un lugar que no es tuyo, tocalo y marcá «Está libre», «Está ocupado» o «Está guardado».",
+    body: "Si ves un lugar que no es tuyo, tocalo y marcá «Está libre», «Está ocupado» o «Está guardado». «Está guardado» es cuando hay cosas (mochila, apuntes, campera) pero no hay nadie sentado.",
+  },
+  {
+    icon: FlagIcon,
+    title: "Denunciá un lugar guardado",
+    body: "¿Alguien dejó sus cosas y se fue? Tocá el lugar y marcá «Está guardado». Después elegí «Pedir que lo liberen» para abrir una votación, o «Reportar a…» si la persona aparece con su nombre. Si el lugar figura ocupado pero hace rato que no hay nadie, tocá «Se fue hace más de 30 min».",
   },
   {
     icon: HandPalmIcon,
-    title: "¿Lugar guardado sin nadie?",
-    body: "Si alguien guarda un lugar y no está, podés votar para que lo liberen. La gente de la sala decide.",
+    title: "Votaciones",
+    body: "Pedir que liberen un lugar abre una votación de 5 minutos. Si tenés tu lugar marcado, podés votar «Está ahí» o «No está» desde el mapa. Si nadie vota, gana quien la abrió y el lugar queda libre. Podés abrir hasta 3 por hora.",
   },
   {
     icon: SignOutIcon,

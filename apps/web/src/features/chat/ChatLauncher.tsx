@@ -21,6 +21,7 @@ import { ChatSoundToggle } from "./ChatSoundToggle";
 import { ConversationList } from "./ConversationList";
 import { conversationIdFromPath } from "./dm-notify";
 import { DmThread } from "./DmThread";
+import { nextFabHidden } from "./fab-scroll";
 import { GroupThread } from "./GroupThread";
 import { NewGroupView } from "./NewGroupView";
 import { RoomChatPanel } from "./RoomChatPanel";
@@ -78,6 +79,48 @@ function useIsPhone(): boolean {
     () => window.matchMedia(PHONE_QUERY).matches,
     () => false,
   );
+}
+
+/**
+ * True while the page is being scrolled down, so the bubble can slide out of the way of the content
+ * under it. Scrolling back up, reaching an edge of the page or `pinned` (card open) brings it back.
+ */
+function useFabTucked(pinned: boolean): boolean {
+  const [tucked, setTucked] = useState(false);
+
+  useEffect(() => {
+    if (pinned) return;
+    let lastY = window.scrollY;
+    let travel = 0;
+    let frame = 0;
+    let current = false;
+    const update = () => {
+      frame = 0;
+      const y = window.scrollY;
+      const delta = y - lastY;
+      lastY = y;
+      if (delta === 0) return;
+      // Restart the count whenever the direction flips.
+      travel = Math.sign(delta) === Math.sign(travel) ? travel + delta : delta;
+      const maxScrollY = document.documentElement.scrollHeight - window.innerHeight;
+      const next = nextFabHidden({ hidden: current, travel, scrollY: y, maxScrollY });
+      if (next !== current) {
+        current = next;
+        setTucked(next);
+      }
+    };
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+      setTucked(false);
+    };
+  }, [pinned]);
+
+  return tucked && !pinned;
 }
 
 /** Mirrors the unread total on the installed app's icon (Badging API; silently absent elsewhere). */
@@ -454,6 +497,7 @@ function ChatShell({
   children: ReactNode;
 }) {
   const { closing, visible, showCard, requestClose, cancelClose, fabRef, panelRef, phone } = shell;
+  const tucked = useFabTucked(showCard);
   const state = visible ? "open" : "closed";
   const fabLabel = visible
     ? "Cerrar chat de la sala"
@@ -495,7 +539,7 @@ function ChatShell({
         onClick={() => (visible ? requestClose() : closing ? cancelClose() : openChatWidget())}
         aria-label={fabLabel}
         aria-expanded={visible}
-        className={`fixed right-4 bottom-[calc(72px+env(safe-area-inset-bottom))] flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-primary-dark active:scale-[0.96] motion-reduce:transition-none lg:right-6 lg:bottom-6 ${showCard ? "z-[60]" : "z-30"}`}
+        className={`fixed right-4 bottom-[calc(72px+env(safe-area-inset-bottom))] flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-[transform,translate,scale,opacity] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-primary-dark active:scale-[0.96] motion-reduce:transition-none lg:right-6 lg:bottom-6 ${showCard ? "z-[60]" : "z-30"} ${tucked ? "max-lg:pointer-events-none max-lg:translate-y-[calc(100%+96px)] max-lg:opacity-0" : ""}`}
       >
         {/* The two glyphs swap with a short rotate + fade so the bubble reads as one toggle. */}
         <ChatCircleIcon
