@@ -230,8 +230,8 @@ export function freedSeatsToastMessage(map: Pick<RoomMapDto, "seats" | "tables">
   return `Se liberó ${seatDisplayLabel(table, seat.code, seat.seatNumber)}`;
 }
 
-/** "Hoy, 28 sep 2026" in America/Argentina/Buenos_Aires-style Spanish, for the left panel's "Abierto · …" line. */
+/** "Hoy, 28 sep" (no year) in America/Argentina/Buenos_Aires Spanish, for the "En vivo · …" line. */
 export function todayLabel(now: Date = new Date()): string {
-  const formatted = now.toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" });
+  const formatted = now.toLocaleDateString("es-AR", { day: "numeric", month: "short", timeZone: "America/Argentina/Buenos_Aires" });
   return `Hoy, ${formatted.replace(".", "")}`;
 }

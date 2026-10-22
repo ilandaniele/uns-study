@@ -9,7 +9,7 @@ import { contributionsTodayLabel, latestSeatUpdateMs, updatedAgoLabel, visitorsT
 export function UpdatedAgo({ seats }: { seats: Pick<SeatDto, "status" | "sourceSummary" | "lastUpdatedAt">[] }) {
   const now = useNow(30_000);
   const label = updatedAgoLabel(latestSeatUpdateMs(seats), now);
-  return label ? <span>· {label}</span> : null;
+  return label ? <span className="whitespace-nowrap">· {label}</span> : null;
 }
 
 /** Small muted social-proof lines: visitors today and the user's own contributions, with a link to the ranking. */

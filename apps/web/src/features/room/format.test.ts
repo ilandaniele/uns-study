@@ -15,6 +15,7 @@ import {
   statusLabel,
   tableDisplayName,
   tableSideLabel,
+  todayLabel,
 } from "./format";
 
 describe("statusLabel", () => {
@@ -310,5 +311,14 @@ describe("canReportLeft", () => {
     expect(canReportLeft({ status: "FREE", verified: false, dispute: null })).toBe(false);
     expect(canReportLeft({ status: "OCCUPIED", verified: true, dispute: null })).toBe(false);
     expect(canReportLeft({ status: "OCCUPIED", verified: false, dispute })).toBe(false);
+  });
+});
+
+describe("todayLabel", () => {
+  it("drops the year and uses the Buenos Aires day", () => {
+    // 02:00 UTC on the 23rd is still the 22nd at 23:00 in Buenos Aires (UTC-3).
+    const label = todayLabel(new Date("2026-10-23T02:00:00Z"));
+    expect(label).toMatch(/^Hoy, 22 (de )?oct$/);
+    expect(label).not.toMatch(/2026/);
   });
 });

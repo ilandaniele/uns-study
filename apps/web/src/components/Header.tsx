@@ -7,6 +7,7 @@ import { signOut } from "@/lib/auth-client";
 import { useAdminAccess } from "@/features/admin/useAdminAccess";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { FocusHeaderButton } from "@/features/focus/FocusHeaderButton";
+import { NotificationBell } from "@/features/notifications/NotificationBell";
 import { ProBadge } from "@/features/subscriptions/ProBadge";
 import { proLockState } from "@/features/subscriptions/pro";
 import { invalidateMe } from "@/lib/me-store";
@@ -77,7 +78,7 @@ export function Header() {
         })}
       </nav>
 
-      <div className="flex shrink-0 items-center gap-2 text-sm">
+      <div className="flex shrink-0 items-center gap-2 text-sm max-[400px]:gap-1.5">
         {me?.subscriptionsEnabled && !me.adFree ? (
           <Link
             href="/suscripcion"
@@ -87,6 +88,7 @@ export function Header() {
           </Link>
         ) : null}
         <FocusHeaderButton />
+        <NotificationBell />
         <ThemeToggle />
         {loading ? null : user ? (
           <div className="flex items-center gap-3">

@@ -3,6 +3,7 @@
 import { deleteAccountSchema, type PublicProfileDto } from "@sala/contracts";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { RewardedAdButton } from "@/features/ads/RewardedAdButton";
 import { useAdFree } from "@/features/ads/useAdFree";
 import { useMe } from "@/lib/me-store";
@@ -139,9 +140,7 @@ export default function PerfilPage() {
         />
       </section>
 
-      <section className="border-t border-app py-6 first:border-t-0">
-        <h2 className="mb-1 t-title">Privacidad</h2>
-        <p className="mb-2 text-xs text-muted">Todo está oculto por defecto. Activá sólo lo que quieras compartir.</p>
+      <CollapsibleSection id="privacidad" title="Privacidad" description="Todo está oculto por defecto. Activá sólo lo que quieras compartir.">
         <PrivacyToggles
           privacy={privacy}
           isAdmin={profile.isAdmin}
@@ -158,23 +157,19 @@ export default function PerfilPage() {
             {privacyError}
           </p>
         ) : null}
-      </section>
+      </CollapsibleSection>
 
       {roomId ? (
-        <section className="border-t border-app py-6 first:border-t-0">
-          <h2 className="mb-3 t-title">Modo estudio</h2>
+        <CollapsibleSection id="modo-estudio" title="Modo estudio">
           <StudyModeControl roomId={roomId} initialStatus={studyStatus} />
-        </section>
+        </CollapsibleSection>
       ) : null}
 
-      <section className="border-t border-app py-6 first:border-t-0">
-        <h2 className="mb-1 t-title">Notificaciones</h2>
-        <p className="mb-2 text-xs text-muted">Avisos puntuales, nunca spam. Los podés apagar cuando quieras.</p>
+      <CollapsibleSection id="notificaciones" title="Notificaciones" description="Avisos puntuales, nunca spam. Los podés apagar cuando quieras.">
         <NotificationSettings />
-      </section>
+      </CollapsibleSection>
 
-      <section className="border-t border-app py-6 first:border-t-0">
-        <h2 className="mb-3 t-title">Tu estudio</h2>
+      <CollapsibleSection id="tu-estudio" title="Tu estudio">
         <WeeklyGoalCard />
         <BadgesSection userId={session.user.id} />
         <ExamsSection />
@@ -188,16 +183,14 @@ export default function PerfilPage() {
             </>
           ) : null}
         </Link>
-      </section>
+      </CollapsibleSection>
 
-      <section className="border-t border-app py-6 first:border-t-0">
-        <h2 className="mb-3 t-title">Apariencia</h2>
+      <CollapsibleSection id="apariencia" title="Apariencia">
         <PaletteSection />
         <FlairSection userId={session.user.id} name={session.user.name || profile.nickname || profile.firstName || "?"} avatarUrl={profile.avatarUrl} />
-      </section>
+      </CollapsibleSection>
 
-      <section className="border-t border-app py-6 first:border-t-0">
-        <h2 className="mb-2 t-title">Anuncios</h2>
+      <CollapsibleSection id="anuncios" title="Anuncios">
         {adFree && (me?.roles.length ?? 0) > 0 ? (
           <p className="text-sm text-muted">Como parte del equipo de la sala, no ves anuncios.</p>
         ) : adFree ? (
@@ -225,16 +218,13 @@ export default function PerfilPage() {
             ) : null}
           </div>
         )}
-      </section>
+      </CollapsibleSection>
 
-      <section className="border-t border-app py-6 first:border-t-0">
-        <h2 className="mb-1 t-title">Cómo te ven los demás</h2>
-        <p className="mb-3 text-xs text-muted">Vista previa con lo que tenés guardado.</p>
+      <CollapsibleSection id="vista-previa" title="Cómo te ven los demás" description="Vista previa con lo que tenés guardado.">
         <AppearancePreview profile={profile} privacy={privacy} />
-      </section>
+      </CollapsibleSection>
 
-      <section className="border-t border-app py-6 first:border-t-0">
-        <h2 className="mb-2 t-title">Ayuda</h2>
+      <CollapsibleSection id="ayuda" title="Ayuda">
         <div className="flex flex-col items-start gap-2">
           <Link href="/como-usar" className="text-sm font-semibold text-primary underline underline-offset-2">
             Cómo usar la app
@@ -243,10 +233,9 @@ export default function PerfilPage() {
             Sugerencias y contacto
           </Link>
         </div>
-      </section>
+      </CollapsibleSection>
 
-      <section className="border-t border-red-200 pt-6">
-        <h2 className="mb-2 t-title text-red-700">Zona de peligro</h2>
+      <CollapsibleSection id="zona-de-peligro" title="Zona de peligro" className="border-t border-red-200" titleClassName="text-red-700">
         <button
           type="button"
           onClick={() => setShowDelete(true)}
@@ -254,7 +243,7 @@ export default function PerfilPage() {
         >
           Eliminar cuenta
         </button>
-      </section>
+      </CollapsibleSection>
 
       {showDelete ? (
         <DeleteAccountDialog pending={deleting} onConfirm={() => void handleDelete()} onCancel={() => setShowDelete(false)} />

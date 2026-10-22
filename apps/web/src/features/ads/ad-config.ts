@@ -25,7 +25,7 @@ export const CLOSE_COUNTDOWN_S = 10;
 export const REWARD_SNOOZE_MS = 3 * 3600_000;
 
 /** Routes that never show ads. */
-const EXCLUDED_PREFIXES = ["/admin", "/login", "/privacidad", "/terminos", "/baja", "/suscripcion", "/foco"];
+const EXCLUDED_PREFIXES = ["/admin", "/login", "/privacidad", "/terminos", "/baja", "/suscripcion", "/foco", "/perfil"];
 
 /** A 160px rail only fits beside the 1280px room grid from about this viewport width. */
 export const RAIL_MIN_VIEWPORT_PX = 1640;

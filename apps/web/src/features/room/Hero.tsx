@@ -2,7 +2,7 @@
 
 import type { RoomSummary, SeatDto } from "@sala/contracts";
 import { useEffect, useState } from "react";
-import { recencyLabel } from "./format";
+import { latestSeatUpdateMs, updatedAgoLabel } from "./room-social";
 
 export interface HeroProps {
   summary: RoomSummary;
@@ -32,10 +32,10 @@ export function Hero({ summary, seats }: HeroProps) {
     subline = "Los datos se reinician cada medianoche. Si estás en la sala, tocá tu lugar y marcá «Estoy acá».";
   } else if (summary.free === 0 && mostlyKnown) {
     headline = <>La sala está llena</>;
-    subline = latestUpdateLabel(seats, now);
+    subline = latestUpdateLabel(seats, now) ?? "Sin información reciente";
   } else if (summary.free === 0) {
     headline = <>No hay lugares libres confirmados</>;
-    subline = `Sin datos de ${summary.unknown} lugares · ${latestUpdateLabel(seats, now)}`;
+    subline = unknownSubline(summary.unknown, seats, now);
   } else {
     const n = summary.free;
     const places = n === 1 ? "lugar libre" : "lugares libres";
@@ -46,7 +46,7 @@ export function Hero({ summary, seats }: HeroProps) {
           Hay {count} {places} {n === 1 ? "confirmado" : "confirmados"}
         </>
       );
-      subline = `Sin datos de ${summary.unknown} lugares · ${latestUpdateLabel(seats, now)}`;
+      subline = unknownSubline(summary.unknown, seats, now);
     } else {
       headline = n <= 5 ? (
         <>
@@ -57,7 +57,7 @@ export function Hero({ summary, seats }: HeroProps) {
           Hay {count} {places}
         </>
       );
-      subline = latestUpdateLabel(seats, now);
+      subline = latestUpdateLabel(seats, now) ?? "Sin información reciente";
     }
   }
 
@@ -69,12 +69,13 @@ export function Hero({ summary, seats }: HeroProps) {
   );
 }
 
-function latestUpdateLabel(seats: SeatDto[], now: Date): string {
-  const latest = seats.reduce<string | null>((acc, seat) => {
-    if (!seat.lastUpdatedAt) return acc;
-    if (!acc || seat.lastUpdatedAt > acc) return seat.lastUpdatedAt;
-    return acc;
-  }, null);
-  const recency = latest ? recencyLabel({ status: "FREE", sourceSummary: "OBS", lastUpdatedAt: latest }, now) : null;
-  return recency ?? "Sin información reciente";
+/** Same source of truth as the header's "Actualizado hace …" (real reports only); null when there is none. */
+function latestUpdateLabel(seats: SeatDto[], now: Date): string | null {
+  return updatedAgoLabel(latestSeatUpdateMs(seats), now);
+}
+
+function unknownSubline(unknown: number, seats: SeatDto[], now: Date): string {
+  const base = `Sin datos de ${unknown} lugares`;
+  const updated = latestUpdateLabel(seats, now);
+  return updated ? `${base} · ${updated}` : base;
 }

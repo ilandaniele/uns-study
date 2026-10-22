@@ -536,9 +536,15 @@ export function RoomPageClient({ slug }: { slug: string }) {
         />
       ) : null}
       {map.summary.free === 0 ? <EnableSeatFreedCta /> : null}
+      <AnnouncementsBanner roomSlug={slug} socket={socket} />
+    </>
+  );
+
+  // Below the map on mobile; in the aside (after `notices`) on desktop.
+  const proCards = (
+    <>
       <ForecastCard roomSlug={slug} />
       <QuietRoomCard roomSlug={slug} summary={map.summary} checkedInHere={activeCheckIn != null} />
-      <AnnouncementsBanner roomSlug={slug} socket={socket} />
     </>
   );
 
@@ -622,12 +628,15 @@ export function RoomPageClient({ slug }: { slug: string }) {
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h1 className="t-heading">{map.room.name}</h1>
-              <p className="mt-2 flex items-center gap-1.5 text-xs text-muted">
-                <span
-                  aria-hidden="true"
-                  className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-[var(--seat-free)]" : "bg-[var(--seat-unknown)]"}`}
-                />
-                {connected ? "En vivo" : "Reconectando…"} · {todayLabel()}
+              <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted">
+                <span className="flex items-center gap-1.5 whitespace-nowrap">
+                  <span
+                    aria-hidden="true"
+                    className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-[var(--seat-free)]" : "bg-[var(--seat-unknown)]"}`}
+                  />
+                  {connected ? "En vivo" : "Reconectando…"}
+                </span>
+                <span className="whitespace-nowrap">· {todayLabel()}</span>
                 <UpdatedAgo seats={map.seats} />
                 <span className="sr-only" aria-live="polite">
                   {connected ? "" : "Reconectando, el mapa puede estar desactualizado"}
@@ -679,6 +688,8 @@ export function RoomPageClient({ slug }: { slug: string }) {
         </div>
       </section>
 
+      {!isLargeDesktop ? <section className="order-3 flex flex-col gap-4">{proCards}</section> : null}
+
       {/* Mobile/tablet: people list below the map (desktop shows it in RoomInfoPanel instead). */}
       {!isLargeDesktop ? (
         <section className="order-3">
@@ -714,6 +725,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
             detailSlot={detail ?? <RightPanelEmptyState hasActiveCheckIn={activeCheckIn != null} />}
           />
           {notices}
+          {proCards}
           <DonateCard />
         </aside>
       ) : detail ? (
