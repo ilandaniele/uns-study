@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ajustes del mapa</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { background:#131816; color:#e9ece9; font: 15px/1.5 Archivo, system-ui, sans-serif; padding: 28px 16px 64px; }
+  .intro { max-width: 1240px; margin: 0 auto 24px; }
+  .intro h1 { font: 800 26px/1.1 Archivo; font-stretch: 118%; text-transform: uppercase; }
+  .intro p { color:#a0aaa5; max-width: 76ch; margin-top: 8px; }
+  .grid { max-width: 1240px; margin: 0 auto; display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+  .card { background:#1b2120; border-radius: 12px; padding: 14px; border: 1px solid #2a3230; }
+  .card.now { border-color:#0f6e7e; }
+  .card h2 { font: 800 17px Archivo; font-stretch: 118%; text-transform: uppercase; }
+  .card .tag { font-size: 12px; color:#7fb8c2; font-weight: 700; letter-spacing: .06em; }
+  .card ul { margin: 10px 0 0 18px; color:#c7cdca; font-size: 14px; }
+  .card li + li { margin-top: 3px; }
+  .map { margin-top: 12px; border-radius: 10px; overflow: hidden; background:#0d1110; }
+  svg { display:block; width:100%; height:auto; }
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>Mapa de la sala: mismos colores, pocos cambios</h1>
+  <p>Todo lo demás queda igual: encabezado, contadores, hoja del lugar, colores y letra. Sólo cambia el mapa del medio. La primera es como está hoy. Cada opción cambia dos o tres cosas. Se pueden combinar: por ejemplo "1 + el ✓ de la 2".</p>
+</div>
+<div class="grid" id="grid"></div>
+<script>
+const P = 'FOOFNNOFOFFOUONNFOOGFNOFOOFNOFFUONNOOFOGNOFFONOFOOFNFUOONOFFOONNFOOFGOFNOOFUNFOOFNOOFFONGOFOFNOOU';
+const COL = { F:'#16a34a', O:'#dc2626', U:'#d9773a', G:'#eab308', N:'#7d6570' };
+const W = 640, H = 1150;
+
+function map(o) {
+  let d = `<defs>
+    <linearGradient id="wood${o.id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ecd8b2"/><stop offset=".45" stop-color="#e2c898"/><stop offset="1" stop-color="#d6b884"/></linearGradient>
+    <radialGradient id="vig${o.id}" cx="50%" cy="48%" r="72%"><stop offset=".55" stop-opacity="0"/><stop offset="1" stop-opacity=".24"/></radialGradient>
+    <radialGradient id="light${o.id}" cx="50%" cy="6%" r="65%"><stop offset="0" stop-color="#fff6e3" stop-opacity=".5"/><stop offset="1" stop-color="#fff6e3" stop-opacity="0"/></radialGradient>
+    ${Object.entries(COL).map(([k,c]) => `<radialGradient id="sph${o.id}${k}" cx="35%" cy="28%" r="75%"><stop offset="0" stop-color="#fff" stop-opacity=".4"/><stop offset=".55" stop-color="${c}"/><stop offset="1" stop-color="${c}" stop-opacity=".88"/></radialGradient>`).join('')}
+  </defs>`;
+  // floor + walls
+  d += `<rect width="${W}" height="${H}" rx="18" fill="${o.floor}"/>`;
+  if (o.light) d += `<rect width="${W}" height="${H}" fill="url(#light${o.id})"/>`;
+  if (o.aisle) d += `<rect x="${W/2-34}" y="70" width="68" height="${H-110}" rx="8" fill="#ffffff" opacity=".13"/>`;
+  d += `<rect width="${W}" height="56" fill="#efe4cd"/><rect y="38" width="${W}" height="18" fill="#d2a45f"/>`;
+  d += `<rect y="56" width="14" height="${H-56}" fill="#d2a45f"/><rect x="${W-14}" y="56" width="14" height="${H-56}" fill="#d2a45f"/>`;
+  d += `<rect y="${H-22}" width="${W}" height="22" fill="#d2a45f"/>`;
+  for (let i=0;i<6;i++){ const cx=(i+.5)*W/6; d += `<rect x="${cx-42}" y="5" width="84" height="30" rx="2" fill="#bcdcf0" stroke="#fbf6e8" stroke-width="2.5"/>`;
+    if (o.radiators) d += `<rect x="${cx-20}" y="40" width="40" height="12" rx="2" fill="#f4ecd8" stroke="#b5823f" stroke-width=".8"/>`; }
+  for (const y of [110, 330, 550, 770]) for (const x of [1, W-12]) d += `<rect x="${x}" y="${y}" width="11" height="140" fill="#bcdcf0" stroke="#fbf6e8" stroke-width="2"/>`;
+  // door
+  d += `<rect x="${W/2-60}" y="${H-46}" width="56" height="40" rx="4" fill="#bcdcf0" stroke="#fbf6e8" stroke-width="3"/><rect x="${W/2+4}" y="${H-46}" width="56" height="40" rx="4" fill="#bcdcf0" stroke="#fbf6e8" stroke-width="3"/>`;
+  d += `<rect x="${W/2-46}" y="${H-80}" width="92" height="26" rx="13" fill="#fff" stroke="#d6dbd8"/><text x="${W/2}" y="${H-62}" text-anchor="middle" font-size="14" font-weight="700" fill="#131816" font-family="Archivo">Entrada</text>`;
+
+  let i = 0, n = 0;
+  const tw = 210, th = 52;
+  for (let r = 0; r < 6; r++) for (let c = 0; c < 2; c++) {
+    n++;
+    const x = c === 0 ? 62 : W - 62 - tw, y = 110 + r * 150;
+    d += `<rect x="${x}" y="${y+3}" width="${tw}" height="${th}" rx="10" fill="#000" opacity=".12"/>`;
+    d += `<rect x="${x}" y="${y}" width="${tw}" height="${th}" rx="10" fill="url(#wood${o.id})" stroke="#b58a52" stroke-width="1.5"/>`;
+    d += `<rect x="${x+10}" y="${y+th/2-9}" width="${tw-20}" height="18" rx="4" fill="#f4f2ee" stroke="#c9c4ba"/>`;
+    const lbl = `Mesa ${n}`, lw = o.bigLabels ? 84 : 66, fs = o.bigLabels ? 15 : 12;
+    d += `<rect x="${x+tw/2-lw/2}" y="${y+th/2-(o.bigLabels?12:10)}" width="${lw}" height="${o.bigLabels?24:20}" rx="${o.bigLabels?12:10}" fill="#131816"/><text x="${x+tw/2}" y="${y+th/2+fs*0.36}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="#fff" font-family="Archivo">${lbl}</text>`;
+    for (let s = 0; s < 4; s++) for (const up of [true, false]) {
+      const k = P[i++ % P.length];
+      d += seat(o, x + 30 + s * 50, up ? y - 22 : y + th + 22, up, k, r === 2 && c === 1 && s === 1 && up, false);
+    }
+  }
+  for (const bx of [44, W - 44 - 150]) {
+    d += `<rect x="${bx}" y="${H-118}" width="150" height="18" rx="8" fill="url(#wood${o.id})" stroke="#a56a3a" stroke-width="1.5"/>`;
+    for (let s = 0; s < 3; s++) d += seat(o, bx + 28 + s * 47, H - 136, true, P[i++ % P.length], false, true);
+  }
+  if (o.vignette) d += `<rect width="${W}" height="${H}" fill="url(#vig${o.id})"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}">${d}</svg>`;
+}
+
+function seat(o, cx, cy, up, k, sel, bar) {
+  const R = o.seatR, ring = R + 4;
+  let g = `<g transform="translate(${cx} ${cy})">`;
+  if (o.shadow) g += `<ellipse cy="${up ? ring*.55 : -ring*.55}" rx="${R*.85}" ry="${R*.35}" fill="rgb(0 0 0/.22)"/>`;
+  if (!bar && o.backrest) g += `<rect x="${-ring+2}" y="${up ? -ring-6 : ring-1}" width="${(ring-2)*2}" height="6" rx="3" fill="#5a3b25"/>`;
+  if (o.frame) g += `<rect x="${-ring+1}" y="${-ring+1}" width="${(ring-1)*2}" height="${(ring-1)*2}" rx="${o.rx+2}" fill="#8a5a34"/>`;
+  const fill = o.gloss ? `url(#sph${o.id}${k})` : COL[k];
+  const unknownStyle = o.unknownHollow && k === 'N' ? `fill="#f1e4dc" stroke="#7d6570" stroke-width="2" stroke-dasharray="3 3"` : `fill="${fill}" stroke="${o.flatStroke ? '#ffffff' : '#7c8799'}" stroke-width="${o.flatStroke ? 2 : 1}"`;
+  g += `<rect x="${-R+1}" y="${-R+1}" width="${(R-1)*2}" height="${(R-1)*2}" rx="${o.rx}" ${unknownStyle}/>`;
+  const gl = o.glyphs[k];
+  if (gl) {
+    const color = k === 'G' ? '#422006' : (o.unknownHollow && k === 'N' ? '#7d6570' : '#fff');
+    if (gl === 'check') g += `<path d="M-5 0 L-1.5 3.8 L5.5 -4" stroke="${color}" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+    else if (gl === 'x') g += `<path d="M-4.5 -4.5 L4.5 4.5 M4.5 -4.5 L-4.5 4.5" stroke="${color}" stroke-width="2.6" stroke-linecap="round"/>`;
+    else if (gl === 'person') g += `<circle cy="-4" r="3.6" fill="${color}"/><path d="M-6.5 7 a6.5 6 0 0 1 13 0 z" fill="${color}"/>`;
+    else g += `<text y="${o.seatR > 15 ? 4.5 : 4}" text-anchor="middle" font-size="${o.seatR > 15 ? 13 : 11}" font-weight="700" fill="${color}" font-family="Archivo">${gl}</text>`;
+  }
+  if (sel) g += `<rect x="${-ring-4}" y="${-ring-4}" width="${(ring+4)*2}" height="${(ring+4)*2}" rx="${o.rx+6}" fill="none" stroke="#0f6e7e" stroke-width="3"/>`;
+  return g + '</g>';
+}
+
+const base = { floor:'#d8a89a', light:true, aisle:false, radiators:true, vignette:true, bigLabels:false,
+  seatR:15, rx:8, shadow:true, backrest:true, frame:true, gloss:true, flatStroke:false, unknownHollow:false,
+  glyphs:{ F:'L', O:'O', U:'?', G:'G', N:'-' } };
+
+const opts = [
+  { id:'0', now:true, tag:'HOY', name:'Como está', list:['Lugares con brillo de "bolita".','Letras L / O / G / - adentro.','Radiadores, viñeta y luz de ventana.'], cfg:{} },
+  { id:'1', tag:'OPCIÓN 1', name:'Más limpio', list:['Sin brillo: color plano con borde blanco.','Saco radiadores y la viñeta oscura de los bordes.','Lo demás igual.'],
+    cfg:{ gloss:false, flatStroke:true, radiators:false, vignette:false } },
+  { id:'2', tag:'OPCIÓN 2', name:'Se lee mejor', list:['Íconos en vez de letras: ✓ libre, ✕ ocupado, ? dudoso.','"Sin datos" queda hueco y punteado, no gris lleno.','Nombre de la mesa más grande.'],
+    cfg:{ glyphs:{ F:'check', O:'x', U:'?', G:'G', N:'' }, unknownHollow:true, bigLabels:true } },
+  { id:'3', tag:'OPCIÓN 3', name:'Más grande', list:['Lugares un poco más grandes y más fáciles de tocar.','Ocupado muestra una personita en vez de "O".','Pasillo del medio marcado en el piso.'],
+    cfg:{ seatR:17, glyphs:{ F:'', O:'person', U:'?', G:'G', N:'' }, aisle:true } },
+];
+
+document.getElementById('grid').innerHTML = opts.map(o => `
+  <section class="card ${o.now ? 'now' : ''}">
+    <div class="tag">${o.tag}</div><h2>${o.name}</h2>
+    <ul>${o.list.map(l => `<li>${l}</li>`).join('')}</ul>
+    <div class="map">${map({ ...base, ...o.cfg, id:o.id })}</div>
+  </section>`).join('');
+</script>
+</body>
+</html>

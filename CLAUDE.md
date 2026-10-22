@@ -2,39 +2,13 @@
 
 You are the lead engineer for this repository.
 
-Read these files before implementing:
-
-1. `00_START_HERE.md`
-2. `01_PRD.md`
-3. `02_ARCHITECTURE.md`
-4. `03_DOMAIN_AND_DATABASE.md`
-5. `04_API_AND_REALTIME.md`
-6. `05_ROOM_LAYOUT.md`
-7. `06_UI_UX_SPEC.md`
-8. `07_SECURITY_MODERATION_PRIVACY.md`
-9. `08_IMPLEMENTATION_PLAN.md`
-10. `09_ACCEPTANCE_CRITERIA.md`
-11. `10_ENVIRONMENT_AND_SERVICES.md`
+Product and technical specs live in `00_START_HERE.md` through `10_ENVIRONMENT_AND_SERVICES.md` (index in `00_START_HERE.md`). Read the ones relevant to the task before changing that area.
 
 Reference photographs are under `reference-images/`.
 
 ## Current goal
 
-Implement the MVP in the phase order from `08_IMPLEMENTATION_PLAN.md`.
-
-Do not start with chat, profiles, rankings, reports, QR rollout, or AdSense.
-
-The first complete vertical slice is:
-
-anonymous room map
--> authentication
--> geofence presence validation
--> self check-in
--> realtime state propagation
--> observations
--> expiration
--> daily reset
--> basic anti-abuse.
+The occupancy slice (Phases 0–9 of `08_IMPLEMENTATION_PLAN.md`) is shipped. Continue in that plan's phase order; changes must not regress the slice (map, auth, geofence, check-in, realtime, observations, expiration, daily reset, anti-abuse).
 
 ## Stack is decided
 
@@ -42,16 +16,14 @@ Use:
 
 - Turborepo + pnpm
 - Next.js + React + TypeScript + Tailwind
-- NestJS + TypeScript
-- Neon PostgreSQL
-- Drizzle ORM
+- Hono on Cloudflare Workers + TypeScript
+- Durable Object SQLite + Drizzle ORM
 - Better Auth
-- Socket.IO
-- Upstash Redis
-- Cloudflare R2 later for report evidence
-- Cloudflare Turnstile later for suspicious flows
-- Vercel web
-- Railway API
+- WebSocket Hibernation (Durable Objects)
+- Cloudflare R2 for report evidence
+- Cloudflare Turnstile for suspicious flows
+- Cloudflare Workers web via OpenNext (`apps/web/wrangler.jsonc`)
+- Cloudflare Workers API (`apps/api/wrangler.jsonc`)
 
 Do not replace this stack unless there is a blocking incompatibility. If there is one, explain it before changing architecture.
 
@@ -65,12 +37,12 @@ Do not replace this stack unless there is a blocking incompatibility. If there i
 - Presence-sensitive writes require server-side geofence validation.
 - GPS proves approximate room presence, not exact seat.
 - QR is optional and not required for MVP.
-- Check-in = 3 hours (180 minutes; owner decision 2026-09-29, was 60). "Sigo acá" reminder 10 minutes before expiry.
+- Check-in = 180 minutes. "Sigo acá" reminder 10 minutes before expiry.
 - Initial FREE observation = 15 minutes.
 - Initial OCCUPIED observation = 20 minutes.
 - Daily operational reset ≈ 04:00 America/Argentina/Buenos_Aires.
 - Initial room = 108 places.
-- Entrance wall bars run along the front (entrance) wall, one on each side of the door (owner decision, 2026-09-29).
+- Entrance wall bars run along the front (entrance) wall, one on each side of the door.
 
 ## Engineering rules
 
@@ -102,7 +74,7 @@ Never rely solely on client validation.
 
 Never expose DB credentials to web client.
 
-Socket events are notifications; PostgreSQL is canonical.
+Socket events are notifications; SQLite in the Durable Object is canonical.
 
 ## Testing priorities
 
@@ -132,19 +104,4 @@ Do not add:
 
 Use deterministic, testable rules.
 
-## First action
-
-If the repository is empty:
-
-1. scaffold the monorepo;
-2. configure TypeScript/linting;
-3. create web and API apps;
-4. create database package;
-5. write `.env.example`;
-6. add root README;
-7. implement Phase 1 database/room seed;
-8. continue to the read-only SVG room map.
-
-If repository already has code, adapt rather than restart.
-
-Keep going through MVP phases until blocked by a credential or decision that cannot be safely inferred.
+Keep working until the task is done or blocked by a credential or a decision that cannot be safely inferred.

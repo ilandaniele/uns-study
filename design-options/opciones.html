@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Opciones de diseño</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;800&family=Geist+Mono:wght@500;700&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@500;600&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@500&family=Unbounded:wght@600;800&family=Familjen+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --free:#16a34a; --occ:#dc2626; --unc:#d9773a; --saved:#eab308; --unk:#9a8a92; }
+  * { box-sizing: border-box; margin: 0; }
+  body { background:#e9eaec; color:#111; font: 15px/1.5 system-ui, sans-serif; padding: 32px 16px 64px; }
+  .intro { max-width: 1180px; margin: 0 auto 28px; }
+  .intro h1 { font: 800 28px/1.1 Geist, sans-serif; letter-spacing:-0.02em; }
+  .intro p { color:#444; max-width: 70ch; margin-top: 8px; }
+  .grid { max-width: 1180px; margin: 0 auto; display: grid; gap: 28px; }
+  .opt { display:grid; grid-template-columns: 360px 1fr; gap: 28px; background:#fff; border-radius: 14px; padding: 24px; align-items:start; }
+  @media (max-width: 820px) { .opt { grid-template-columns: 1fr; } .phone { margin: 0 auto; } }
+  .meta h2 { font: 800 24px/1.1 Geist, sans-serif; letter-spacing:-0.02em; }
+  .meta .tag { display:inline-block; font: 600 12px Geist Mono, monospace; background:#111; color:#fff; padding:2px 8px; border-radius:4px; margin-bottom:8px; }
+  .meta p { margin-top: 8px; color:#333; }
+  .meta dl { margin-top: 14px; display:grid; grid-template-columns: 110px 1fr; gap: 6px 12px; font-size: 14px; }
+  .meta dt { color:#777; }
+  .sw { display:flex; gap:6px; flex-wrap:wrap; }
+  .sw span { display:inline-flex; align-items:center; gap:6px; font: 500 12px Geist Mono, monospace; }
+  .sw i { width:18px; height:18px; border-radius:4px; border:1px solid #0002; display:inline-block; }
+
+  /* ---------- phone shell (shared structure, themed per option) ---------- */
+  .phone { width: 360px; height: 740px; border-radius: 36px; overflow:hidden; position:relative; border: 8px solid #111; background: var(--bg); color: var(--text); font-family: var(--body); }
+  .bar { display:flex; align-items:center; justify-content:space-between; padding: 14px 16px 10px; }
+  .brand { font-family: var(--display); }
+  .btn { font-family: var(--body); font-weight:600; font-size:13px; padding: 8px 12px; border-radius: var(--r); background: var(--accent); color: var(--on-accent); border:0; }
+  .answer { padding: 4px 16px 0; }
+  .counts { display:grid; grid-template-columns: repeat(4,1fr); gap: 6px; padding: 12px 16px; }
+  .count { padding: 8px 6px; border-radius: var(--r); background: var(--surface); text-align:center; }
+  .count b { display:block; font-family: var(--num); font-size: 22px; line-height:1.1; }
+  .count small { font-size: 11px; color: var(--muted); }
+  .map { margin: 0 16px; border-radius: var(--r); background: var(--map); padding: 12px 10px; position:relative; }
+  .map svg { display:block; width:100%; height:auto; }
+  .sheet { position:absolute; left:0; right:0; bottom:0; background: var(--surface-hi); padding: 12px 16px 22px; border-radius: var(--r2) var(--r2) 0 0; box-shadow: 0 -12px 30px #0003; }
+  .grab { width: 36px; height:4px; border-radius:2px; background: var(--muted); opacity:.5; margin: 0 auto 10px; }
+  .sheet h3 { font-family: var(--display); }
+  .sheet .row { display:flex; gap:8px; margin-top: 12px; }
+  .sheet .row button { flex:1; min-height: 48px; border-radius: var(--r); border: 0; font: 600 14px var(--body); }
+  .primary { background: var(--accent); color: var(--on-accent); }
+  .ghost { background: var(--surface); color: var(--text); }
+  .pill { display:inline-flex; align-items:center; gap:6px; font-size:12px; color: var(--muted); }
+  .dot { width:8px; height:8px; border-radius:50%; background: var(--free); display:inline-block; }
+
+  /* ---------- A · Tablero ---------- */
+  .a { --bg:#eceef1; --surface:#ffffff; --surface-hi:#ffffff; --map:#ffffff; --text:#0b0d10; --muted:#5b6370; --accent:#0b0d10; --on-accent:#fff; --display:Geist, sans-serif; --body:Geist, sans-serif; --num:"Geist Mono", monospace; --r:4px; --r2:10px; }
+  .a .brand { font-weight:800; font-size:15px; letter-spacing:-0.01em; }
+  .a .brand small { display:block; font: 500 10px "Geist Mono"; letter-spacing:.12em; color:var(--muted); }
+  .a .answer h1 { font: 800 30px/1 Geist; letter-spacing:-0.035em; }
+  .a .answer p { font: 500 12px "Geist Mono"; color: var(--muted); margin-top:6px; letter-spacing:.04em; }
+  .a .count { background:#0b0d10; color:#fff; }
+  .a .count b { font-weight:700; letter-spacing:.06em; }
+  .a .count small { color:#aab; font-family:"Geist Mono"; font-size:10px; letter-spacing:.06em; }
+  .a .count .k { display:block; height:3px; margin: -8px -6px 6px; border-radius: 4px 4px 0 0; }
+  .a .map { border: 1px solid #d5d9df; }
+  .a .sheet h3 { font-weight:800; font-size:20px; letter-spacing:-0.02em; }
+
+  /* ---------- B · Cuaderno ---------- */
+  .b { --bg:#fbfcff; --surface:#eef2ff; --surface-hi:#fffef7; --map:transparent; --text:#14205a; --muted:#5a6390; --accent:#2340d8; --on-accent:#fff; --display:"Bricolage Grotesque", sans-serif; --body:"Bricolage Grotesque", sans-serif; --num:"IBM Plex Mono", monospace; --r:8px; --r2:14px; }
+  .b.phone { background-image: linear-gradient(#2340d814 1px, transparent 1px), linear-gradient(90deg, #2340d814 1px, transparent 1px); background-size: 18px 18px; background-color: var(--bg); }
+  .b .brand { font-weight:800; font-size:17px; }
+  .b .brand small { display:block; font-weight:400; font-size:11px; color: var(--muted); }
+  .b .answer h1 { font-weight:800; font-size:31px; line-height:1.02; letter-spacing:-0.02em; }
+  .b .answer h1 u { text-decoration-color: var(--accent); text-decoration-thickness: 4px; text-underline-offset: 4px; }
+  .b .answer p { font-size:13px; color: var(--muted); margin-top:6px; }
+  .b .count { background: #fff; border: 1.5px solid var(--text); box-shadow: 2px 2px 0 var(--text); }
+  .b .count b { font-weight:600; }
+  .b .map { border: 1.5px dashed #2340d855; }
+  .b .sheet { border-top: 1.5px solid var(--text); box-shadow: 0 -4px 0 #14205a14; transform: rotate(-0.6deg); transform-origin: bottom; left:-4px; right:-4px; }
+  .b .sheet h3 { font-weight:800; font-size:21px; }
+  .b .primary { box-shadow: 2px 2px 0 var(--text); }
+
+  /* ---------- C · Biblioteca de noche ---------- */
+  .c { --bg:#0d1016; --surface:#161b24; --surface-hi:#191f2a; --map:#11151c; --text:#ebe8e2; --muted:#8d95a5; --accent:#8fb3ff; --on-accent:#0d1016; --display:Outfit, sans-serif; --body:Outfit, sans-serif; --num:"JetBrains Mono", monospace; --r:12px; --r2:20px; }
+  .c .brand { font-weight:500; font-size:16px; letter-spacing:.01em; }
+  .c .brand small { display:block; font-weight:300; font-size:11px; color: var(--muted); }
+  .c .answer h1 { font-weight:300; font-size:30px; line-height:1.1; letter-spacing:-0.01em; }
+  .c .answer h1 b { font-weight:600; color: #fff; }
+  .c .answer p { font-size:13px; color: var(--muted); margin-top:6px; }
+  .c .count { background: transparent; border: 1px solid #ffffff12; }
+  .c .count b { font-weight:500; }
+  .c .map { background: radial-gradient(60% 40% at 30% 30%, #ffd9a01a, transparent 70%), radial-gradient(50% 35% at 75% 70%, #ffd9a014, transparent 70%), var(--map); border:1px solid #ffffff0d; }
+  .c .sheet { box-shadow: 0 -20px 50px #000a; border-top: 1px solid #ffffff10; }
+  .c .sheet h3 { font-weight:500; font-size:20px; }
+
+  /* ---------- D · Afiche ---------- */
+  .d { --bg:#f3f3ef; --surface:#ffffff; --surface-hi:#ffffff; --map:#ffffff; --text:#0a0a0a; --muted:#545454; --accent:#ff2e74; --on-accent:#0a0a0a; --display:Unbounded, sans-serif; --body:"Familjen Grotesk", sans-serif; --num:Unbounded, sans-serif; --r:0px; --r2:0px; }
+  .d .bar { border-bottom: 2px solid #0a0a0a; }
+  .d .brand { font-weight:800; font-size:13px; text-transform:uppercase; letter-spacing:.02em; }
+  .d .btn { border:2px solid #0a0a0a; }
+  .d .answer { padding-top: 12px; }
+  .d .answer h1 { font: 800 40px/0.95 Unbounded; letter-spacing:-0.04em; text-transform:uppercase; }
+  .d .answer h1 em { font-style:normal; background: var(--accent); padding: 0 4px; }
+  .d .answer p { font-size:13px; margin-top:8px; font-weight:500; }
+  .d .count { border:2px solid #0a0a0a; }
+  .d .count b { font-weight:800; font-size:20px; }
+  .d .map { border:2px solid #0a0a0a; }
+  .d .sheet { border-top: 2px solid #0a0a0a; box-shadow:none; }
+  .d .sheet h3 { font-weight:800; font-size:18px; text-transform:uppercase; }
+  .d .sheet .row button { border:2px solid #0a0a0a; }
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>Cuatro direcciones para Sala de Estudio</h1>
+  <p>Misma pantalla (la sala, en el teléfono) en cuatro mundos visuales. Los colores de estado de los lugares (libre, ocupado, dudoso, guardado) no cambian: son funcionales. Cambia todo lo demás: tipografía, superficies, acento, forma y movimiento. Elegí una (o mezclá: "la B con los números de la A") y la aplico en toda la app.</p>
+</div>
+<div class="grid" id="grid"></div>
+
+<script>
+const S = { F: 'var(--free)', O: 'var(--occ)', U: 'var(--unc)', G: 'var(--saved)', N: 'var(--unk)' };
+// Deterministic seat pattern so every option shows the same room.
+const pattern = 'FOOFNNOFOFFOUONNFOOGFNOFOOFNOFFUONNOOFOGNOFFONOFOOFNFUOONOFFOONNFOOFGOFNOOFUNFOOFNOOFFONGOFOFNOOU';
+function map(style) {
+  const sq = style.seat; let i = 0, out = '';
+  const W = 300, tW = 104, tH = 22, gapX = 40, top = 22;
+  for (let r = 0; r < 6; r++) for (let c = 0; c < 2; c++) {
+    const x = 25 + c * (tW + gapX), y = top + r * 46;
+    out += `<rect x="${x}" y="${y + 9}" width="${tW}" height="${tH - 8}" rx="${style.tr}" fill="${style.table}" stroke="${style.tableStroke}" stroke-width="${style.sw}"/>`;
+    for (let s = 0; s < 4; s++) for (const dy of [0, tH - 2]) {
+      const k = pattern[i++ % pattern.length];
+      const sel = r === 2 && c === 1 && s === 1 && dy === 0;
+      out += `<rect x="${x + 8 + s * 25}" y="${y + dy - 2}" width="${sq}" height="${sq}" rx="${style.sr}" fill="${S[k]}" ${style.seatStroke ? `stroke="${style.seatStroke}" stroke-width="1.5"` : ''}/>`;
+      if (sel) out += `<rect x="${x + 4 + s * 25}" y="${y + dy - 6}" width="${sq + 8}" height="${sq + 8}" rx="${style.sr + 3}" fill="none" stroke="${style.sel}" stroke-width="2"/>`;
+    }
+  }
+  // wall bars along the entrance (front) wall, one each side of the door
+  for (const bx of [20, 196]) {
+    out += `<rect x="${bx}" y="300" width="84" height="6" rx="${style.tr}" fill="${style.table}" stroke="${style.tableStroke}" stroke-width="${style.sw}"/>`;
+    for (let s = 0; s < 3; s++) { const k = pattern[i++ % pattern.length]; out += `<rect x="${bx + 10 + s * 26}" y="${289}" width="${sq - 2}" height="${sq - 2}" rx="${style.sr}" fill="${S[k]}"/>`; }
+  }
+  out += `<text x="150" y="${318}" text-anchor="middle" font-size="8" fill="${style.label}" font-family="inherit" letter-spacing="1.5">ENTRADA</text>`;
+  return `<svg viewBox="0 0 ${W} 324">${out}</svg>`;
+}
+
+const opts = [
+  { cls: 'a', tag: 'A', name: 'Tablero', idea: 'Señalética de estación. Gris frío, tinta negra, cero adornos: la sala se lee como un tablero de partidas. Lo único con color son los estados de los lugares. Los números van en fichas negras con tipografía mono, como un cartel de andén.',
+    answer: '<h1>23 lugares libres ahora</h1><p>ACTUALIZADO HACE 2 MIN · 61% CON DATOS</p>',
+    brand: 'Sala de Estudio<small>BAHÍA BLANCA</small>', cta: 'Ingresar',
+    map: { seat: 15, sr: 2, tr: 2, table: '#e3e6ea', tableStroke: '#0b0d10', sw: 1, sel: '#0b0d10', label: '#5b6370' },
+    sw: [['#eceef1','fondo'],['#ffffff','superficie'],['#0b0d10','tinta / acento'],['#5b6370','secundario']],
+    type: 'Geist (títulos y texto) + Geist Mono (números, horas)', sig: 'Contadores en fichas negras tipo tablero, con una franja del color de su estado.',
+    motion: 'Casi nada. Los números cambian con un corte vertical corto (120 ms). Los botones se hunden a 0.97 al tocarlos. Sin brillo en los lugares libres.', mood: 'Serio, rápido, confiable. El más "herramienta".' },
+  { cls: 'b', tag: 'B', name: 'Cuaderno', idea: 'Hoja cuadriculada con tinta de birome azul. Cercano y estudiantil sin ser infantil. Las tarjetas tienen borde de tinta y sombra dura, como recortes pegados. La hoja del lugar elegido entra apenas torcida, como un post-it.',
+    answer: '<h1>Hay <u>23 lugares</u> libres</h1><p>Actualizado hace 2 min · 61% de la sala con datos</p>',
+    brand: 'Sala de Estudio<small>Bahía Blanca</small>', cta: 'Ingresar',
+    map: { seat: 15, sr: 4, tr: 4, table: '#ffffff', tableStroke: '#14205a', sw: 1.5, sel: '#2340d8', label: '#5a6390', seatStroke: '#14205a' },
+    sw: [['#fbfcff','hoja'],['#2340d8','tinta birome'],['#14205a','tinta oscura'],['#fffef7','post-it']],
+    type: 'Bricolage Grotesque (todo) + IBM Plex Mono (números)', sig: 'Fondo cuadriculado y la hoja del lugar como post-it torcido 0.6°.',
+    motion: 'El post-it sube con curva de cajón (260 ms) y se endereza al soltar. El subrayado del título se dibuja de izquierda a derecha una vez por día. Botones se hunden 0.97.', mood: 'Cálido, de estudiante, con personalidad. El más "nuestro".' },
+  { cls: 'c', tag: 'C', name: 'Biblioteca de noche', idea: 'Oscuro y tranquilo, pensado para quien estudia hasta tarde. Tinta azul noche, texto marfil y un acento azul aciano suave. Sobre las mesas caen manchas de luz cálida, como lámparas de lectura. Tipografía liviana y redonda.',
+    answer: '<h1>Hay <b>23 lugares</b> libres en la sala</h1><p>Actualizado hace 2 min · 61% con datos</p>',
+    brand: 'Sala de Estudio<small>Bahía Blanca</small>', cta: 'Ingresar',
+    map: { seat: 15, sr: 5, tr: 6, table: '#1d2430', tableStroke: '#ffffff14', sw: 1, sel: '#8fb3ff', label: '#8d95a5' },
+    sw: [['#0d1016','fondo'],['#161b24','superficie'],['#ebe8e2','texto marfil'],['#8fb3ff','acento aciano']],
+    type: 'Outfit (300–600) + JetBrains Mono (números)', sig: 'Luz de lámpara: gradientes cálidos y suaves sobre los grupos de mesas.',
+    motion: 'Lento y suave. Los lugares libres respiran con un brillo muy tenue. La hoja sube con resorte sin rebote. Todo se apaga con "reducir movimiento".', mood: 'Calmo, nocturno, premium. El más "lindo de mirar".' },
+  { cls: 'd', tag: 'D', name: 'Afiche', idea: 'Cartel de centro de estudiantes. Bordes negros gruesos, esquinas rectas, mayúsculas enormes y un solo color de golpe: rosa fuerte. La respuesta a "¿hay lugar?" ocupa media pantalla. Atrevido, imposible de confundir con otra app.',
+    answer: '<h1>Sí, hay <em>23</em> lugares</h1><p>Actualizado hace 2 min · 61% de la sala con datos</p>',
+    brand: 'Sala de Estudio', cta: 'Ingresar',
+    map: { seat: 15, sr: 0, tr: 0, table: '#ffffff', tableStroke: '#0a0a0a', sw: 2, sel: '#ff2e74', label: '#0a0a0a', seatStroke: '#0a0a0a' },
+    sw: [['#f3f3ef','papel'],['#0a0a0a','negro'],['#ff2e74','rosa (único acento)'],['#ffffff','blanco']],
+    type: 'Unbounded (títulos y números) + Familjen Grotesk (texto)', sig: 'Respuesta gigante en mayúsculas con el número resaltado en rosa.',
+    motion: 'Cortes secos, sin fundidos. Al tocar, los botones bajan 2 px y pierden la sombra. El número de libres hace un pequeño salto cuando cambia.', mood: 'Ruidoso, juvenil, de afiche. El más arriesgado.' },
+];
+
+const counts = [['23','Libres','F'],['31','Ocupados','O'],['4','Dudosos','U'],['50','Sin datos','N']];
+document.getElementById('grid').innerHTML = opts.map(o => `
+  <section class="opt">
+    <div class="phone ${o.cls}">
+      <div class="bar"><div class="brand">${o.brand}</div><button class="btn">${o.cta}</button></div>
+      <div class="answer">${o.answer}</div>
+      <div class="counts">${counts.map(([n,l,k]) => `<div class="count">${o.cls==='a'?`<span class="k" style="background:${S[k]}"></span>`:''}<b ${o.cls!=='a'?`style="color:${k==='N'?'var(--muted)':S[k]}"`:''}>${n}</b><small>${l}</small></div>`).join('')}</div>
+      <div class="map">${map(o.map)}</div>
+      <div class="sheet"><div class="grab"></div>
+        <span class="pill"><span class="dot"></span> Libre · visto hace 3 min</span>
+        <h3>Mesa 6 · Lugar 2</h3>
+        <div class="row"><button class="primary">Estoy acá</button><button class="ghost">Está ocupado</button></div>
+      </div>
+    </div>
+    <div class="meta">
+      <span class="tag">OPCIÓN ${o.tag}</span>
+      <h2>${o.name}</h2>
+      <p>${o.idea}</p>
+      <dl>
+        <dt>Paleta</dt><dd class="sw">${o.sw.map(([c,n]) => `<span><i style="background:${c}"></i>${c} ${n}</span>`).join('')}</dd>
+        <dt>Tipografía</dt><dd>${o.type}</dd>
+        <dt>Firma</dt><dd>${o.sig}</dd>
+        <dt>Movimiento</dt><dd>${o.motion}</dd>
+        <dt>Sensación</dt><dd>${o.mood}</dd>
+      </dl>
+    </div>
+  </section>`).join('');
+</script>
+</body>
+</html>
