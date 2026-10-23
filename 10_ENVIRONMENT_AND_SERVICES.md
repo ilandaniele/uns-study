@@ -136,7 +136,7 @@ A push to the `staging` branch runs `.github/workflows/deploy-staging.yml`. It d
 One-time owner setup:
 
 1. In Cloudflare DNS, add a proxied record for `dev` (for example `AAAA dev 100::`), so the routes can match.
-2. Set the staging secrets: `wrangler secret put BETTER_AUTH_SECRET --env staging` and `wrangler secret put IP_HASH_SALT --env staging`, from `apps/api`. Use new values, not the production ones. Optional features need their own secrets (for example `GOOGLE_CLIENT_SECRET`, `ADMIN_EMAILS`).
+2. The workflow generates `BETTER_AUTH_SECRET` and `IP_HASH_SALT` on the first deploy and never overwrites them. Optional features need their own secrets, set from `apps/api` with `wrangler secret put <NAME> --env staging` (for example `GOOGLE_CLIENT_SECRET`, `ADMIN_EMAILS`).
 3. For Google sign-in, add `https://dev.saladeestudio.com.ar/api/auth/callback/google` as an authorized redirect URI.
 4. Create and push the branch: `git push origin HEAD:staging`.
 
