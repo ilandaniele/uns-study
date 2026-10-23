@@ -15,7 +15,7 @@ describe("Ceniza's decorative routine", () => {
       expect(action.target.x).toBeLessThanOrEqual(975);
       expect(action.target.y).toBeGreaterThanOrEqual(335);
       expect(action.target.y).toBeLessThanOrEqual(1335);
-      expect(action.target.x === position.x || action.target.y === position.y).toBe(true);
+      expect(action.target.x).toBe(position.x);
       expect(action.duration).toBeGreaterThan(0);
       if (action.pose === "sleep" || action.pose === "lie" || action.pose === "sprawl") {
         expect(action.duration).toBeGreaterThanOrEqual(240_000);
@@ -91,10 +91,11 @@ describe("Ceniza's decorative routine", () => {
     expect(Math.abs(leftSlope - rightSlope)).toBeLessThan(1e-7);
   });
 
-  it("finishes an aisle or crossing after resuming a suspended tab", () => {
+  it("continues forward or backward after resuming a suspended tab", () => {
     const vertical = nextAction({ x: 545, y: 710 }, "rest", () => 0);
     expect(vertical.target.x).toBe(545);
-    const horizontal = nextAction({ x: 360, y: 635 }, "rest", () => 0.9);
-    expect(horizontal.target.y).toBe(635);
+    const resumed = nextAction({ x: 545, y: 635 }, "rest", () => 0.9);
+    expect(resumed.target.x).toBe(545);
+    expect(resumed.target.y).not.toBe(635);
   });
 });

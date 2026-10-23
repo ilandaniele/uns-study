@@ -2,8 +2,7 @@
 export interface Point { x: number; y: number }
 export type Pose = "walk" | "sleep" | "lie" | "sprawl" | "bark" | "rest";
 export interface Action { pose: Pose; target: Point; duration: number }
-const AISLES = [110, 545, 975];
-// Cross the room between chair rows, or beneath the tabletops. Never cross a chair row.
+// Forward/backward travel only: do not introduce a lateral (crab-walking) segment.
 const CROSSINGS = [335, 435, 535, 635, 735, 837, 940, 1044, 1145, 1248, 1335];
 export const START: Point = { x: 545, y: 1145 };
 const choose = <T,>(items: readonly T[], random: () => number): T => items[Math.min(items.length - 1, Math.floor(random() * items.length))]!;
@@ -21,11 +20,7 @@ export function nextAction(position: Point, previous: Pose, random: () => number
   if (previous === "walk" && roll < 0.52) {
     return { pose: "bark", target: position, duration: 1_200 + random() * 1_000 };
   }
-  // A tab can be suspended halfway along an aisle: reach a crossing before turning.
-  const horizontal = (random() < 0.45 || !AISLES.includes(position.x)) && CROSSINGS.includes(position.y);
-  const target = horizontal
-    ? { x: choose(AISLES.filter((x) => x !== position.x), random), y: position.y }
-    : { x: position.x, y: choose(CROSSINGS.filter((y) => y !== position.y), random) };
+  const target = { x: position.x, y: choose(CROSSINGS.filter((y) => y !== position.y), random) };
   return { pose: "walk", target, duration: Math.hypot(target.x - position.x, target.y - position.y) / (20 + random() * 10) * 1_000 };
 }
 
