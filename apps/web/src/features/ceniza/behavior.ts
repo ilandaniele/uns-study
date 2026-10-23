@@ -29,18 +29,20 @@ export function nextAction(position: Point, previous: Pose, random: () => number
 }
 
 export type Heading = "side" | "up" | "down";
-export const SLEEP_FRAME = 23;
-export const SPRITE_FRAMES = 27;
+export const WALK_FRAMES = 16;
+export const SLEEP_FRAME = WALK_FRAMES * 3;
+export const SPRITE_FRAMES = SLEEP_FRAME + 4;
+export const SPRITE_COLUMNS = 8;
+export const SPRITE_ROWS = Math.ceil(SPRITE_FRAMES / SPRITE_COLUMNS);
 // Full gait cycle in photo pixels: slowing travel also slows the paws.
 export const STRIDE = 28;
 export function frameFor(pose: Pose, elapsed: number, distance = 0, heading: Heading = "side"): number {
   if (pose === "walk") {
-    const count = heading === "up" ? 7 : 8;
-    const start = heading === "up" ? 8 : heading === "down" ? 15 : 0;
-    return start + Math.floor(((distance % STRIDE) / STRIDE) * count);
+    const start = heading === "up" ? WALK_FRAMES : heading === "down" ? WALK_FRAMES * 2 : 0;
+    return start + Math.floor(((distance % STRIDE) / STRIDE) * WALK_FRAMES);
   }
   if (pose === "sleep") return SLEEP_FRAME;
-  if (pose === "lie") return 24;
-  if (pose === "bark") return Math.floor(elapsed / 220) % 2 === 0 ? 25 : 26;
-  return 26;
+  if (pose === "lie") return SLEEP_FRAME + 1;
+  if (pose === "bark") return SLEEP_FRAME + (Math.floor(elapsed / 220) % 2 === 0 ? 2 : 3);
+  return SLEEP_FRAME + 3;
 }

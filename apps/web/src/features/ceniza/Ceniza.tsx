@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useEffect, useId, useRef } from "react";
-import { frameFor, nextAction, SLEEP_FRAME, SPRITE_FRAMES, START, type Heading, type Point, type Pose } from "./behavior";
+import { frameFor, nextAction, SLEEP_FRAME, SPRITE_COLUMNS, SPRITE_ROWS, START, type Heading, type Point, type Pose } from "./behavior";
 
 interface TableRect { x: number; y: number; width: number; height: number }
 
@@ -25,7 +25,8 @@ export const Ceniza = memo(function Ceniza({ tables }: { tables: ReadonlyMap<str
     const draw = (point: Point, frame: number) => {
       location.current?.setAttribute("transform", `translate(${point.x} ${point.y})`);
       facing.current?.setAttribute("transform", `scale(${direction} 1)`);
-      sprite.current?.setAttribute("x", String(-frame * 96));
+      sprite.current?.setAttribute("x", String(-(frame % SPRITE_COLUMNS) * 96));
+      sprite.current?.setAttribute("y", String(-Math.floor(frame / SPRITE_COLUMNS) * 96));
       shadow.current?.setAttribute("rx", String(heading === "side" ? 23 : 13));
     };
     const stop = () => {
@@ -102,7 +103,7 @@ export const Ceniza = memo(function Ceniza({ tables }: { tables: ReadonlyMap<str
           <ellipse ref={shadow} cx={0} cy={-3} rx={23} ry={7} fill="black" opacity={0.16} />
           <g ref={facing}>
             <svg x={-32} y={-57} width={64} height={64} viewBox="0 0 96 96" overflow="hidden" className="dark:brightness-75">
-              <image ref={sprite} href="/room/ceniza-v2.webp" x={-SLEEP_FRAME * 96} y={0} width={SPRITE_FRAMES * 96} height={96} />
+              <image ref={sprite} href="/room/ceniza-v3.webp" x={-(SLEEP_FRAME % SPRITE_COLUMNS) * 96} y={-Math.floor(SLEEP_FRAME / SPRITE_COLUMNS) * 96} width={SPRITE_COLUMNS * 96} height={SPRITE_ROWS * 96} />
             </svg>
           </g>
         </g>

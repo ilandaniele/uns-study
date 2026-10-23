@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 // Rebuild from optimized, checked-in sources without local reference files.
 const asset = (name) => fileURLToPath(new URL(`./assets/${name}`, import.meta.url));
-const output = fileURLToPath(new URL("../public/room/ceniza-v2.webp", import.meta.url));
+const output = fileURLToPath(new URL("../public/room/ceniza-v3.webp", import.meta.url));
 const cell = 96;
 const frames = [];
 async function cycle(source, regions) {
@@ -25,20 +25,20 @@ async function cycle(source, regions) {
     .resize(88, 84, { fit: "contain", background: "#00000000", position: "south" })
     .extend({ top: 6, bottom: 6, left: 4, right: 4, background: "#00000000" }).png().toBuffer());
 }
-const grid = (startRow) => Array.from({ length: 8 }, (_, i) => ({
-  left: (i % 4) * 256, top: (startRow + Math.floor(i / 4)) * 256, width: 256, height: 256,
+const grid = Array.from({ length: 16 }, (_, i) => ({
+  left: (i % 4) * 128, top: Math.floor(i / 4) * 128, width: 128, height: 128,
 }));
-await cycle(asset("ceniza-walk-source.webp"), grid(0)); // 0..7: right, mirrored for left
-await cycle(asset("ceniza-up-source.webp"), Array.from({ length: 7 }, (_, i) => ({
-  left: i * 256, top: 188, width: 256, height: 220,
-}))); // 8..14: up
-await cycle(asset("ceniza-walk-source.webp"), grid(2)); // 15..22: down
+await cycle(asset("ceniza-side-source.webp"), grid); // 0..15: right, mirrored for left
+await cycle(asset("ceniza-up-source.webp"), grid); // 16..31: up
+await cycle(asset("ceniza-down-source.webp"), grid); // 32..47: down
 for (let i = 0; i < 4; i++) frames.push(await sharp(asset("ceniza-rest-source.webp"))
   .extract({ left: i * cell, top: 0, width: cell, height: cell }).png().toBuffer());
 await mkdir(fileURLToPath(new URL("../public/room/", import.meta.url)), { recursive: true });
-await sharp({ create: { width: cell * frames.length, height: cell, channels: 4, background: "#00000000" } })
-  .composite(frames.map((input, i) => ({ input, left: i * cell, top: 0 })))
+const columns = 8;
+const rows = Math.ceil(frames.length / columns);
+await sharp({ create: { width: cell * columns, height: cell * rows, channels: 4, background: "#00000000" } })
+  .composite(frames.map((input, i) => ({ input, left: (i % columns) * cell, top: Math.floor(i / columns) * cell })))
   .webp({ quality: 88, alphaQuality: 95, effort: 6 }).toFile(output);
 const { size } = await stat(output);
 if (size >= 500_000) throw new Error(`Sprite exceeds budget: ${size} bytes`);
-console.log(`Ceniza: ${size} bytes, ${cell * frames.length} × ${cell}, ${frames.length} poses`);
+console.log(`Ceniza: ${size} bytes, ${cell * columns} x ${cell * rows}, ${frames.length} poses`);
