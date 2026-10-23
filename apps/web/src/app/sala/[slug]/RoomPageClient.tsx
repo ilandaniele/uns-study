@@ -80,7 +80,8 @@ export function RoomPageClient({ slug }: { slug: string }) {
 
   const { map, me, connected, loading, error, refetch, updateMap } = useRoomState(slug);
   const { bySeatId: occupantsBySeatId, markedBySeatId, refetch: refetchOccupants } = useOccupants(slug);
-  const { people } = usePeople(slug);
+  const { people: reportedPeople } = usePeople(slug);
+  const people = map?.room.operatingHours?.open === false ? [] : reportedPeople;
   const { highlightTableCode, qrToken } = useQrContext();
   const socket = useMemo(() => getSocket(), []);
   const { toast, dismissToast, adminBanner, dismissAdminBanner, quietAlert, dismissQuietAlert } = useRoomAlerts();

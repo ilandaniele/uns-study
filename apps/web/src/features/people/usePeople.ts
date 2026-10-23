@@ -1,11 +1,12 @@
 "use client";
 
-import type { RoomPersonDto } from "@sala/contracts";
+import { SocketEvents, type RoomPersonDto } from "@sala/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { ApiRequestError } from "@/lib/api";
 import { DataPaths } from "@/lib/prefetch";
 import { fetchCached, peekCached } from "@/lib/query-cache";
 import { useMe } from "@/lib/me-store";
+import { getSocket } from "@/lib/socket";
 
 export interface UsePeopleResult {
   people: RoomPersonDto[];
@@ -56,6 +57,27 @@ export function usePeople(roomSlug: string): UsePeopleResult {
   const refetch = useCallback(() => {
     if (!anonymous) void load();
   }, [anonymous, load]);
+
+  // Attendance can expire while this page stays mounted. A list loaded once on
+  // mount must not keep yesterday's people after check-out, reset or reconnect.
+  useEffect(() => {
+    if (anonymous || meLoading) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const refresh = () => { clearTimeout(timer); timer = setTimeout(() => { void load(); }, 500); };
+    const visible = () => { if (!document.hidden) refresh(); };
+    const socket = getSocket();
+    socket.on(SocketEvents.SeatStateChanged, refresh);
+    socket.on(SocketEvents.RoomDailyReset, refresh);
+    socket.on("connect", refresh);
+    document.addEventListener("visibilitychange", visible);
+    return () => {
+      clearTimeout(timer);
+      socket.off(SocketEvents.SeatStateChanged, refresh);
+      socket.off(SocketEvents.RoomDailyReset, refresh);
+      socket.off("connect", refresh);
+      document.removeEventListener("visibilitychange", visible);
+    };
+  }, [anonymous, meLoading, load]);
 
   return { people, loading, error, refetch };
 }

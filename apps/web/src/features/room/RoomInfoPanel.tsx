@@ -56,7 +56,7 @@ export function RoomInfoPanel({ map, people, connected, onOpenHowTo, quickAction
         </p>
       </div>
 
-      <Hero summary={map.summary} seats={map.seats} />
+      <Hero summary={map.summary} seats={map.seats} operatingHours={map.room.operatingHours} />
       <SummaryCounters summary={map.summary} />
       {detailSlot ? (
         <div ref={detailRef} className="border-t border-app pt-4">
