@@ -102,7 +102,7 @@ export const Ceniza = memo(function Ceniza({ tables }: { tables: ReadonlyMap<str
         <g ref={location} transform={`translate(${START.x} ${START.y})`}>
           <ellipse ref={shadow} cx={0} cy={-3} rx={23} ry={7} fill="black" opacity={0.16} />
           <g ref={facing}>
-            <svg x={-32} y={-57} width={64} height={64} viewBox="0 0 96 96" overflow="hidden" className="dark:brightness-75">
+            <svg x={-35} y={-63} width={70} height={70} viewBox="0 0 96 96" overflow="hidden" className="dark:brightness-75">
               <image ref={sprite} href="/room/ceniza-v3.webp" x={-(SLEEP_FRAME % SPRITE_COLUMNS) * 96} y={-Math.floor(SLEEP_FRAME / SPRITE_COLUMNS) * 96} width={SPRITE_COLUMNS * 96} height={SPRITE_ROWS * 96} />
             </svg>
           </g>
