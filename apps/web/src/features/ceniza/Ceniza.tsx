@@ -85,12 +85,18 @@ export const Ceniza = memo(function Ceniza({ tables, chairs }: { tables: Readonl
             lastDraw = now;
           }
           if (t < 1) animation = requestAnimationFrame(tick);
-          else timer = setTimeout(step, 250);
+          else timer = setTimeout(step, action.pose === "walk" ? 0 : 250);
         };
         if (action.pose === "walk") {
           const targetBearing = bearing(from, action.target);
           const turn = turnDelta(angle, targetBearing);
           const initialAngle = angle;
+          if (Math.abs(turn) < 3) {
+            angle = targetBearing;
+            previousBearing = targetBearing;
+            animation = requestAnimationFrame(tick);
+            return;
+          }
           const turnDuration = Math.max(250, Math.abs(turn) * 5);
           const turnStride = Math.abs(turn) * Math.PI / 180 * 10;
           previousBearing = targetBearing;

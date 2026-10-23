@@ -6,14 +6,16 @@ import { photoSkinFor } from "../room/photo-skin";
 const chairs = Array.from(photoSkinFor({ room: { id: "test", slug: "principal", name: "Test", description: null, timezone: "America/Argentina/Buenos_Aires" }, seats: [] })!.seats.values());
 
 describe("Ceniza's decorative routine", () => {
-  it("roams diagonally for hours without crossing chairs or leaving the floor", () => {
-    let seed = 23;
+  it.each([23, 71, 409])("follows aisles with occasional diagonals for hours without crossing chairs (seed %i)", (initialSeed) => {
+    let seed = initialSeed;
     const random = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
     let position: Point = START;
     let pose: Pose = "rest";
     let duration = 0;
     const seen = new Set<Pose>();
     let diagonalSegments = 0;
+    let straightSegments = 0;
+    let continuedSegments = 0;
     let previousBearing: number | undefined;
     for (let i = 0; i < 1000; i++) {
       const action = nextAction(position, pose, random, chairs, previousBearing);
@@ -23,8 +25,11 @@ describe("Ceniza's decorative routine", () => {
       expect(action.target.y).toBeLessThanOrEqual(FLOOR.bottom);
       expect(canWalk(position, action.target, chairs)).toBe(true);
       if (action.pose === "walk") {
+        const heading = bearing(position, action.target);
+        if (previousBearing !== undefined && Math.abs(turnDelta(previousBearing, heading)) < 0.01) continuedSegments++;
         previousBearing = bearing(position, action.target);
         if (Math.abs(action.target.x - position.x) > 5 && Math.abs(action.target.y - position.y) > 5) diagonalSegments++;
+        else straightSegments++;
       }
       expect(action.duration).toBeGreaterThan(0);
       if (action.pose === "sleep" || action.pose === "lie" || action.pose === "sprawl") {
@@ -38,7 +43,9 @@ describe("Ceniza's decorative routine", () => {
       duration += action.duration;
     }
     expect(duration).toBeGreaterThan(8 * 3_600_000);
-    expect(diagonalSegments).toBeGreaterThan(100);
+    expect(diagonalSegments).toBeGreaterThan(10);
+    expect(straightSegments).toBeGreaterThan(diagonalSegments * 2);
+    expect(continuedSegments).toBeGreaterThan(100);
     expect(seen).toEqual(new Set(["walk", "sleep", "lie", "sprawl", "bark", "rest"]));
   });
 

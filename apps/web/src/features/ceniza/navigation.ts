@@ -42,15 +42,23 @@ export function canTurn(position: Point, from: number, to: number, chairs: reado
 }
 
 export function walkTarget(position: Point, chairs: readonly Point[], random: () => number, previousBearing?: number): Point {
+  // Follow the room's aisles most of the time. Keep a heading for several
+  // stretches instead of choosing another oblique direction at every stop.
+  const choice = random();
+  const cardinal = () => previousBearing !== undefined && random() < 0.75
+    ? Math.round(previousBearing / 90) * 90
+    : Math.floor(random() * 4) * 90;
+  const preferred = choice < 0.55 ? cardinal()
+    : previousBearing !== undefined && choice < 0.85 ? previousBearing
+    : (previousBearing ?? Math.floor(random() * 4) * 90) + (random() - 0.5) * 120;
   for (let attempt = 0; attempt < 48; attempt++) {
-    // Usually continue roughly forward; widen the search near obstacles.
-    const angle = previousBearing !== undefined && attempt < 24
-      ? (previousBearing + (random() - 0.5) * 150) * Math.PI / 180
-      : random() * Math.PI * 2;
-    const length = 55 + random() * 145;
+    // Try shorter stretches of the intended route before turning around an
+    // obstacle. Never clamp a destination: that silently changes its heading.
+    const angle = (attempt < 12 ? preferred : attempt < 36 ? Math.floor(random() * 4) * 90 : random() * 360) * Math.PI / 180;
+    const length = attempt < 12 ? (65 + random() * 145) / (1 + Math.floor(attempt / 4) * 0.5) : 55 + random() * 145;
     const target = {
-      x: Math.max(FLOOR.left, Math.min(FLOOR.right, position.x + Math.sin(angle) * length)),
-      y: Math.max(FLOOR.top, Math.min(FLOOR.bottom, position.y - Math.cos(angle) * length)),
+      x: position.x + Math.sin(angle) * length,
+      y: position.y - Math.cos(angle) * length,
     };
     // End only where there is room to turn again; a tight chair gap may be
     // traversed but must not become a dead end that leaves the dog stuck.
