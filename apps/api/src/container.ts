@@ -86,8 +86,11 @@ import { ExamsService } from "./exams/exams.service.js";
 import { UserCosmeticsService } from "./cosmetics/cosmetics.service.js";
 import { QuietRoomService } from "./quiet-room/quiet-room.service.js";
 import { GroupRankingService } from "./group-ranking/group-ranking.service.js";
+import { RoomHours } from "./rooms/room-hours.js";
 
 export interface ContainerDeps {
+  /** Explicit override for isolated tests; production always wires the room schedule. */
+  roomHours?: RoomHours | null;
   db: Db;
   hub: RealtimeHub;
   scheduler: Scheduler;
@@ -104,7 +107,8 @@ export function buildServices(deps: ContainerDeps): Services {
 
   // Leaves.
   const roomCache = new RoomCache();
-  const roomState = new RoomStateService(db);
+  const roomHours = deps.roomHours === undefined ? new RoomHours(db) : deps.roomHours;
+  const roomState = new RoomStateService(db, roomHours);
   const presence = new PresenceService();
   const roles = new RolesService(db);
   const restriction = new RestrictionService(db);
@@ -126,7 +130,7 @@ export function buildServices(deps: ContainerDeps): Services {
   const cosmetics = new UserCosmeticsService(db, pro, clock);
 
   // Rooms come before notifications: the seat watch (a notification dependency) needs them.
-  const rooms = new RoomsService(db, roomState, roomCache);
+  const rooms = new RoomsService(db, roomState, roomCache, roomHours);
   const seatWatch = new SeatWatchService(db, rooms, clock);
   const quietRoom = new QuietRoomService(db, rooms, clock);
 
@@ -140,13 +144,13 @@ export function buildServices(deps: ContainerDeps): Services {
   // Rooms and social.
   const roomStats = new RoomStatsService(db, rooms);
   const blocks = new BlocksService(db, alias);
-  const study = new StudyService(db, restriction);
+  const study = new StudyService(db, restriction, roomHours);
   const profiles = new ProfilesService(db, study, alias, restriction, roles, pro, cosmetics);
   const avatars = new AvatarsService(db, restriction);
   const chat = new ChatService(db, rooms, restriction, roles, blocks, alias);
   const dm = new DmService(db, restriction, blocks, alias);
   const groups = new GroupsService(db, restriction, blocks, alias);
-  const roomPeople = new RoomPeopleService(db, alias, roles, pro, cosmetics);
+  const roomPeople = new RoomPeopleService(db, alias, roles, pro, cosmetics, roomHours);
   const rankings = new RankingsService(db, rooms, alias, roles, pro, cosmetics);
   const tableNames = new TableNamesService(db, restriction, realtime, roomCache);
 
@@ -154,10 +158,10 @@ export function buildServices(deps: ContainerDeps): Services {
   const disputes = new DisputeService(
     db, roomState, presence, securityEvents, studySessions, reputation, restriction, realtime, rateLimit, abusePolicy, notifications,
   );
-  const checkIns = new CheckInService(db, roomState, presence, securityEvents, studySessions, qr, disputes, roles, roomCache);
+  const checkIns = new CheckInService(db, roomState, presence, securityEvents, studySessions, qr, disputes, roles, roomCache, roomHours);
   const photoVerification = new PhotoVerificationService(db, roomState, presence, seatPhotoVerifier);
   const observations = new ObservationService(
-    db, roomState, presence, securityEvents, abusePolicy, qr, reputation, notifications, disputes, roomCache,
+    db, roomState, presence, securityEvents, abusePolicy, qr, reputation, notifications, disputes, roomCache, roomHours,
   );
 
   // Admin and moderation.
@@ -188,7 +192,7 @@ export function buildServices(deps: ContainerDeps): Services {
   const exams = new ExamsService(db, clock);
 
   const jobs = {
-    expiration: new ExpirationJob(db, roomState, realtime, studySessions, disputes),
+    expiration: new ExpirationJob(db, roomState, realtime, studySessions, disputes, roomHours),
     disputeResolution: new DisputeResolutionJob(disputes),
     dailyReset: new DailyResetJob(db, realtime, studySessions, forecast, seatWatch, quietRoom),
     attachmentSweep: new AttachmentSweepJob(db, storage),

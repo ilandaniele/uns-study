@@ -4,6 +4,7 @@ import type { StudyStatusDto } from "@sala/contracts";
 import { ApiErrors } from "../common/api-error.js";
 import type { RestrictionService } from "../users/restriction.service.js";
 import { containsProfanity } from "../table-names/profanity.js";
+import type { RoomHours } from "../rooms/room-hours.js";
 
 const RECENT_PRESENCE_WINDOW_MIN = 60;
 /** Same link filter as table names: this text is public on the room people list and profiles. */
@@ -20,6 +21,7 @@ export class StudyService {
   constructor(
     private readonly db: Db,
     private readonly restrictions: RestrictionService,
+    private readonly hours: RoomHours | null = null,
   ) {}
 
   /** Throws `PRESENCE_REJECTED` unless the user has an active check-in in `roomId`, or started one there in the last hour. */
@@ -52,6 +54,7 @@ export class StudyService {
   }
 
   async start(userId: string, roomId: string, input: StartStudyInput): Promise<StudyStatusDto> {
+    this.hours?.assertOpen(roomId);
     await this.restrictions.assertNot(userId, ["SUSPENDED", "BANNED"]);
     for (const text of [input.subject, input.message]) {
       if (!text) continue;

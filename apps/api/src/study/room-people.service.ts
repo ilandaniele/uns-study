@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, or } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, or } from "drizzle-orm";
 import { inChunks, schema, type Db } from "@sala/database";
 import { animalIdFromAlias, type ProfileFlairDto, type RoomPersonDto, type SeatMarkedByDto, type SeatOccupancyDto } from "@sala/contracts";
 import { displayName, needsAlias, showsAdminBadge, visibleAvatarUrl, type DisplayNameProfile } from "../users/display-name.js";
@@ -7,6 +7,7 @@ import type { RolesService } from "../users/roles.service.js";
 import type { ProService } from "../subscriptions/pro.js";
 import type { UserCosmeticsService } from "../cosmetics/cosmetics.service.js";
 import { toStudyStatusDto } from "./study.service.js";
+import type { RoomHours } from "../rooms/room-hours.js";
 
 function profileForDisplay(profile: typeof schema.userProfiles.$inferSelect | null, alias?: string | null): DisplayNameProfile | null {
   if (!profile) return null;
@@ -22,6 +23,7 @@ export class RoomPeopleService {
     /** Pro badge and flair lookups; null in tests that construct the service directly. */
     private readonly pro: ProService | null = null,
     private readonly cosmetics: UserCosmeticsService | null = null,
+    private readonly hours: RoomHours | null = null,
   ) {}
 
   /**
@@ -31,18 +33,21 @@ export class RoomPeopleService {
    * `show_alias_animal_on_map` is off.
    */
   async listPeople(roomId: string, viewerId: string): Promise<RoomPersonDto[]> {
+    const window = this.hours?.window(roomId);
+    if (window?.open === false) return [];
+    const now = new Date();
     const excluded = await this.blockedEitherWay(viewerId);
 
     // Drive from the (small) sets of active check-ins and active study statuses in this room.
     const checkedIn = this.db
       .select({ id: schema.checkIns.userId })
       .from(schema.checkIns)
-      .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE")))
+      .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE"), gt(schema.checkIns.expiresAt, now), window ? gte(schema.checkIns.startedAt, window.opensAt) : undefined))
       .all();
     const studying = this.db
       .select({ id: schema.studyStatus.userId })
       .from(schema.studyStatus)
-      .where(and(eq(schema.studyStatus.roomId, roomId), eq(schema.studyStatus.active, true)))
+      .where(and(eq(schema.studyStatus.roomId, roomId), eq(schema.studyStatus.active, true), window ? gte(schema.studyStatus.updatedAt, window.opensAt) : undefined))
       .all();
     const candidateIds = [...new Set([...checkedIn, ...studying].map((r) => r.id))].filter((id) => !excluded.has(id));
     if (candidateIds.length === 0) return [];
@@ -70,6 +75,8 @@ export class RoomPeopleService {
           eq(schema.checkIns.userId, schema.user.id),
           eq(schema.checkIns.roomId, roomId),
           eq(schema.checkIns.status, "ACTIVE"),
+          gt(schema.checkIns.expiresAt, now),
+          window ? gte(schema.checkIns.startedAt, window.opensAt) : undefined,
         ),
       )
       .leftJoin(schema.seats, eq(schema.seats.id, schema.checkIns.seatId))
@@ -79,6 +86,7 @@ export class RoomPeopleService {
           eq(schema.studyStatus.userId, schema.user.id),
           eq(schema.studyStatus.roomId, roomId),
           eq(schema.studyStatus.active, true),
+          window ? gte(schema.studyStatus.updatedAt, window.opensAt) : undefined,
         ),
       )
       .where(
@@ -155,6 +163,9 @@ export class RoomPeopleService {
    * always shows as an anonymous "Alguien".
    */
   async listOccupants(roomId: string, viewerId?: string): Promise<SeatOccupancyDto[]> {
+    const window = this.hours?.window(roomId);
+    if (window?.open === false) return [];
+    const now = new Date();
     const blocked = viewerId ? await this.blockedEitherWay(viewerId) : new Set<string>();
     const rows = this.db
       .select({
@@ -168,7 +179,7 @@ export class RoomPeopleService {
       .innerJoin(schema.user, eq(schema.user.id, schema.checkIns.userId))
       .leftJoin(schema.userPrivacySettings, eq(schema.userPrivacySettings.userId, schema.checkIns.userId))
       .leftJoin(schema.userProfiles, eq(schema.userProfiles.userId, schema.checkIns.userId))
-      .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE")))
+      .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE"), gt(schema.checkIns.expiresAt, now), window ? gte(schema.checkIns.startedAt, window.opensAt) : undefined))
       .all();
 
     const isVisible = (r: (typeof rows)[number]) => Boolean(r.profile) && !needsAlias(r.profile!) && !blocked.has(r.userId);

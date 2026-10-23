@@ -1,8 +1,9 @@
-import { and, eq, getTableColumns, gt, inArray } from "drizzle-orm";
+import { and, eq, getTableColumns, gt, gte, inArray } from "drizzle-orm";
 import { inChunks, schema, type Db } from "@sala/database";
 import type { SeatStatus } from "@sala/contracts";
 import { calculateSeatState } from "./seat-state-calculator.js";
 import { isCheckInVerified } from "../checkins/verification.js";
+import type { RoomHours } from "./room-hours.js";
 
 export interface SeatStateChange {
   seatId: string;
@@ -25,7 +26,7 @@ export interface SeatStateChange {
  * active observations) and records an append-only `seat_state_events` row per change.
  */
 export class RoomStateService {
-  constructor(private readonly db: Db) {}
+  constructor(private readonly db: Db, private readonly hours: RoomHours | null = null) {}
 
   /**
    * Recomputes the given seats (within `tx` if provided, else in a transaction of its own) and
@@ -81,7 +82,7 @@ export class RoomStateService {
           expiresAt: schema.checkIns.expiresAt,
         })
         .from(schema.checkIns)
-        .where(and(inArray(schema.checkIns.seatId, part), eq(schema.checkIns.status, "ACTIVE")))
+        .where(and(inArray(schema.checkIns.seatId, part), eq(schema.checkIns.status, "ACTIVE"), gt(schema.checkIns.expiresAt, now)))
         .all(),
     );
     const openRows = inChunks(uniqueSeatIds, (part) =>
@@ -231,10 +232,18 @@ export class RoomStateService {
       (await loadedSeats) ??
       this.db.select({ id: schema.seats.id }).from(schema.seats).where(and(eq(schema.seats.roomId, roomId), eq(schema.seats.active, true))).all();
 
+    const window = this.hours?.window(roomId, now);
+    if (window?.open === false) {
+      return new Map(seatRows.map(({ id }) => [id, {
+        seatId: id, status: "UNKNOWN" as const, confidence: 0, sourceSummary: "ROOM_CLOSED",
+        lastUpdatedAt: now, verified: false, occupiedUntil: null, dispute: null, changed: false,
+      }]));
+    }
+
     const activeCheckInIds = this.db
       .select({ id: schema.checkIns.id })
       .from(schema.checkIns)
-      .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE")));
+      .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE"), gt(schema.checkIns.expiresAt, now), window ? gte(schema.checkIns.startedAt, window.opensAt) : undefined));
 
     const activeCheckIns = this.db
       .select({
@@ -245,7 +254,7 @@ export class RoomStateService {
         expiresAt: schema.checkIns.expiresAt,
       })
       .from(schema.checkIns)
-      .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE")))
+      .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE"), gt(schema.checkIns.expiresAt, now), window ? gte(schema.checkIns.startedAt, window.opensAt) : undefined))
       .all();
     const openDisputes = this.db
       .select({ id: schema.seatDisputes.id, seatId: schema.seatDisputes.seatId, closesAt: schema.seatDisputes.closesAt })

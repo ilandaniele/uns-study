@@ -652,7 +652,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
               <QuestionIcon size={20} />
             </button>
           </div>
-          <Hero summary={map.summary} seats={map.seats} />
+          <Hero summary={map.summary} seats={map.seats} operatingHours={map.room.operatingHours} />
           {quickActions}
           {notices}
           <SummaryCounters summary={map.summary} />

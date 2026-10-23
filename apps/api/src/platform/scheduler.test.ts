@@ -166,7 +166,7 @@ describe("SqliteScheduler specifics", () => {
     const s = new SqliteScheduler(freshDb(), new FixedClock(T0), (n) => changes.push(n));
     s.ensureRecurring();
     expect(s.nextOneShotDueAt()).toBeNull();
-    expect(s.nextDueAt()).toEqual(at(60_000));
+    expect(s.nextDueAt()).toEqual(T0);
     s.schedule("job", at(900_000));
     s.register("job", () => undefined);
     await s.runDue(at(60_000));
@@ -198,7 +198,22 @@ describe("SqliteScheduler specifics", () => {
     s.ensureRecurring();
     s.ensureRecurring();
     for (const job of RECURRING_JOBS) expect(s.has(job.key)).toBe(true);
-    expect(s.nextDueAt()).toEqual(at(60_000));
+    expect(s.nextDueAt()).toEqual(T0);
+  });
+
+  it("runs expiration and daily reset on every cold-started cron tick", async () => {
+    const db = freshDb();
+    for (const instant of [T0, at(60000), at(120000)]) {
+      const scheduler = new SqliteScheduler(db, new FixedClock(instant), () => undefined);
+      const calls: string[] = [];
+      for (const job of RECURRING_JOBS) scheduler.register(job.key, () => { calls.push(job.key); });
+      scheduler.ensureRecurring();
+      await scheduler.runDue();
+      expect(calls).toContain("expiration");
+      expect(calls).toContain("daily-reset");
+      expect(calls).not.toContain("attachment-sweep");
+      expect((await scheduler.runDue()).ran).toEqual([]);
+    }
   });
 
   it("keeps recurring jobs in memory and drops legacy recurring rows", async () => {

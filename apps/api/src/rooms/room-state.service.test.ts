@@ -20,6 +20,20 @@ describe("RoomStateService.getRoomSummary", () => {
     await insertUsers(db, ["u1"]);
   });
 
+  it("ignores ACTIVE check-ins at or after expiry even before the expiration job runs", async () => {
+    const now = new Date();
+    await db.insert(schema.checkIns).values({ userId: "u1", roomId, seatId, status: "ACTIVE", expiresAt: now });
+    const before = await roomState.getLiveSeatStates(roomId, new Date(now.getTime() - 1));
+    expect(before.get(seatId)?.status).toBe("OCCUPIED");
+    const live = await roomState.getLiveSeatStates(roomId, now);
+    expect(live.get(seatId)?.status).toBe("UNKNOWN");
+    expect(live.get(seatId)?.occupiedUntil).toBeNull();
+    expect((await roomState.getRoomSummary(roomId)).occupied).toBe(0);
+    roomState.recomputeSeats([seatId], { roomId, now, eventType: "TEST" });
+    const stored = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatId));
+    expect(stored[0]?.status).toBe("UNKNOWN");
+  });
+
   it("agrees with getLiveSeatStates even when a persisted seat_current_state row is stale (an observation expired but hasn't been swept)", async () => {
     // Seed a stale persisted OCCUPIED state, as if it were computed while the observation below was
     // still active — nothing has reconciled it since it expired.

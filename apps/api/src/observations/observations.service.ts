@@ -8,6 +8,7 @@ import { AbusePolicyService, type ObservationLimits } from "../security/abuse-po
 import { QrService } from "../qr/qr.service.js";
 import { ReputationService } from "../reputation/reputation.service.js";
 import { ApiErrors } from "../common/api-error.js";
+import type { RoomHours } from "../rooms/room-hours.js";
 import { RoomCache } from "../common/cache/room-cache.service.js";
 import { isCheckInVerified } from "../checkins/verification.js";
 import { runInBackground } from "../common/background.js";
@@ -58,6 +59,7 @@ export class ObservationService {
     private readonly notifications: NotificationService,
     private readonly disputes: DisputeService,
     private readonly roomCache: RoomCache = new RoomCache(),
+    private readonly hours: RoomHours | null = null,
   ) {}
 
   /**
@@ -65,6 +67,7 @@ export class ObservationService {
    * user retries doesn't lock them out with "Demasiadas acciones seguidas".
    */
   async assertPresence(userId: string, roomId: string, location: CreateObservationInput["location"]): Promise<PresenceGrant | null> {
+    this.hours?.assertOpen(roomId);
     const room = await this.roomCache.findRoom(this.db, roomId);
     if (!room) return null; // observe() reports the missing room with its usual error.
     return this.presence.requirePresence(this.db, { userId, room, location, rejectMessage: "No pudimos validar tu ubicación." });
@@ -77,6 +80,7 @@ export class ObservationService {
    */
   async observe(input: CreateObservationInput): Promise<{ roomId: string; changes: SeatStateChange[]; dispute: SeatDisputeDto | null }> {
     const room = await this.roomCache.getRoom(this.db, input.roomId);
+    this.hours?.assertOpen(room.id);
 
     const presence = await this.presence.requirePresence(this.db, {
       userId: input.userId,

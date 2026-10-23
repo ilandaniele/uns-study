@@ -3,17 +3,19 @@ import { schema, type Db } from "@sala/database";
 import type { RoomDto, RoomMapDto, SeatDto, TableDto } from "@sala/contracts";
 import { RoomStateService } from "./room-state.service.js";
 import { RoomCache } from "../common/cache/room-cache.service.js";
+import type { RoomHours } from "./room-hours.js";
 
 export class RoomsService {
   constructor(
     private readonly db: Db,
     private readonly roomState: RoomStateService,
     private readonly roomCache: RoomCache = new RoomCache(),
+    private readonly hours: RoomHours | null = null,
   ) {}
 
   async listRooms(): Promise<RoomDto[]> {
     const rows = this.db.select().from(schema.rooms).where(eq(schema.rooms.active, true)).orderBy(asc(schema.rooms.slug)).all();
-    return rows.map(toRoomDto);
+    return rows.map((row) => toRoomDto(row, this.hours));
   }
 
   /** Cached room row by id or slug (see `RoomCache`; writers must invalidate). */
@@ -22,7 +24,7 @@ export class RoomsService {
   }
 
   async getRoom(idOrSlug: string): Promise<RoomDto> {
-    return toRoomDto(await this.findRoomRow(idOrSlug));
+    return toRoomDto(await this.findRoomRow(idOrSlug), this.hours);
   }
 
   async getRoomMap(idOrSlug: string): Promise<RoomMapDto> {
@@ -76,7 +78,7 @@ export class RoomsService {
     }
 
     return {
-      room: toRoomDto(room),
+      room: toRoomDto(room, this.hours),
       summary,
       tables,
       seats,
@@ -85,6 +87,9 @@ export class RoomsService {
   }
 }
 
-function toRoomDto(row: typeof schema.rooms.$inferSelect): RoomDto {
-  return { id: row.id, slug: row.slug, name: row.name, description: row.description, timezone: row.timezone };
+function toRoomDto(row: typeof schema.rooms.$inferSelect, hours: RoomHours | null = null): RoomDto {
+  const window = hours?.window(row.id);
+  return { id: row.id, slug: row.slug, name: row.name, description: row.description, timezone: row.timezone,
+    ...(window ? { operatingHours: { open: window.open, opensAt: window.opensAt.toISOString(), closesAt: window.closesAt.toISOString() } } : {}),
+  };
 }

@@ -9,6 +9,7 @@ import type { RoomMapDto } from "@sala/contracts";
 export function roomMapEtag(map: RoomMapDto): string {
   const hash = createHash("sha1");
   hash.update(map.room.id);
+  hash.update(JSON.stringify(map.room.operatingHours ?? null));
   for (const s of map.seats) {
     hash.update(`|${s.id}:${s.status}:${s.confidence}:${s.lastUpdatedAt ?? ""}:${s.dispute?.id ?? ""}:${s.dispute?.closesAt ?? ""}:${s.verified ? 1 : 0}`);
   }

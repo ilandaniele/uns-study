@@ -14,6 +14,7 @@ import { RoomCache } from "../common/cache/room-cache.service.js";
 import { Logger } from "../platform/logger.js";
 import { computeVerificationExpiresAt } from "./verification.js";
 import { isUniqueViolation } from "../common/sqlite-errors.js";
+import type { RoomHours } from "../rooms/room-hours.js";
 
 const RAPID_TOGGLE_THRESHOLD = 4;
 const RAPID_TOGGLE_WINDOW_MIN = 10;
@@ -46,6 +47,7 @@ export class CheckInService {
     private readonly disputes: DisputeService,
     private readonly roles: RolesService,
     private readonly roomCache: RoomCache = new RoomCache(),
+    private readonly hours: RoomHours | null = null,
   ) {}
 
   async getActiveCheckIn(userId: string): Promise<CheckInDto | null> {
@@ -59,6 +61,8 @@ export class CheckInService {
       .limit(1)
       .get();
     if (!row) return null;
+    const window = this.hours?.window(row.checkIn.roomId);
+    if (window && (!window.open || row.checkIn.startedAt < window.opensAt)) return null;
     return toDto(row.checkIn, row.seatCode);
   }
 
@@ -73,6 +77,7 @@ export class CheckInService {
    * Returns the grant so the router can hand it to the write and presence is checked once.
    */
   async assertPresence(userId: string, roomId: string, location?: LocationInput | null): Promise<PresenceGrant> {
+    this.hours?.assertOpen(roomId);
     const room = await this.roomCache.getRoom(this.db, roomId);
     return this.presence.requirePresence(this.db, { userId, room, location });
   }
@@ -85,6 +90,7 @@ export class CheckInService {
   ): Promise<{ checkIn: CheckInDto; changes: SeatStateChange[]; previousRoom: { roomId: string; changes: SeatStateChange[] } | null; adminPresent: boolean }> {
     // Room + seat come from the in-memory cache (invalidated by geofence/seed writes).
     const room = await this.roomCache.getRoom(this.db, input.roomId);
+    this.hours?.assertOpen(room.id);
 
     await this.presence.requirePresence(this.db, { userId: input.userId, room, location: input.location, already: input.presence });
 
@@ -92,7 +98,8 @@ export class CheckInService {
     if (!seat) throw ApiErrors.seatNotFound();
 
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + (input.durationMinutes ?? CHECKIN_MINUTES) * 60_000);
+    const requestedExpiry = new Date(now.getTime() + (input.durationMinutes ?? CHECKIN_MINUTES) * 60_000);
+    const expiresAt = this.hours?.expiry(room.id, now, requestedExpiry) ?? requestedExpiry;
 
     // External lookups come first: the write below is one synchronous transaction, so nothing in it can await.
     const [qrVerified, isAdmin] = await Promise.all([
@@ -328,7 +335,8 @@ export class CheckInService {
     const room = await this.roomCache.getRoom(this.db, current.roomId);
     const grant = await this.presence.requirePresence(this.db, { userId, room, location, already: presence });
 
-    const expiresAt = new Date(now.getTime() + durationMinutes * 60_000);
+    const requestedExpiry = new Date(now.getTime() + durationMinutes * 60_000);
+    const expiresAt = this.hours?.expiry(room.id, now, requestedExpiry) ?? requestedExpiry;
     // Conditional on still being ACTIVE (and unexpired) at write time: the expiration sweep may
     // have raced ahead and flipped this row between the read above and this update — if so, the
     // extension must not resurrect a check-in the sweep already closed out. Also scoped to the

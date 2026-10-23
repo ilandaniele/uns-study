@@ -62,6 +62,13 @@ describe("RoomPeopleService", () => {
     });
   }
 
+  it("does not list expired ACTIVE check-ins as people or seat occupants before a sweep", async () => {
+    await setProfile("u1", { firstName: "Test", identityMode: "FIRST_NAME" });
+    await db.insert(schema.checkIns).values({ userId: "u1", roomId, seatId: seatIds[0]!, status: "ACTIVE", expiresAt: new Date(Date.now() - 1) });
+    expect(await people.listPeople(roomId, "viewer")).toEqual([]);
+    expect(await people.listOccupants(roomId)).toEqual([]);
+  });
+
   it("lists a hidden-mode checked-in user only as their alias animal (no userId, no profile fields)", async () => {
     await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: true });
     await setPrivacy("u1", { showCareer: true });

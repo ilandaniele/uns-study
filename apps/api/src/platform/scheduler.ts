@@ -198,7 +198,11 @@ export class SqliteScheduler implements Scheduler {
   /** Registers the recurring jobs from `RECURRING_JOBS`; idempotent. Drops recurring rows left in SQL by older versions. */
   ensureRecurring(): void {
     this.db.delete(schema.scheduledJobs).where(isNotNull(schema.scheduledJobs.intervalMs)).run();
-    for (const job of RECURRING_JOBS) this.every(job.key, job.intervalMs);
+    // A Cron tick may cold-start the hibernating DO on every invocation. Minute
+    // sweeps must be due immediately, not one minute after each fresh instance.
+    // Keep slower maintenance jobs on their existing cadence to avoid extra scans.
+    const now = this.clock.now();
+    for (const job of RECURRING_JOBS) this.every(job.key, job.intervalMs, job.intervalMs <= 60_000 ? now : undefined);
   }
 
   private notify(): void {

@@ -1,19 +1,20 @@
 "use client";
 
-import type { RoomSummary, SeatDto } from "@sala/contracts";
+import type { RoomDto, RoomSummary, SeatDto } from "@sala/contracts";
 import { useEffect, useState } from "react";
 import { latestSeatUpdateMs, updatedAgoLabel } from "./room-social";
 
 export interface HeroProps {
   summary: RoomSummary;
   seats: SeatDto[];
+  operatingHours?: RoomDto["operatingHours"];
 }
 
 /**
  * The room page's signature element: one sentence answering "¿hay lugar para estudiar ahora?"
  * at a glance, per the design brief. Purely presentational — derives everything from `summary`.
  */
-export function Hero({ summary, seats }: HeroProps) {
+export function Hero({ summary, seats, operatingHours }: HeroProps) {
   const known = summary.free + summary.occupied + summary.saved + summary.uncertain;
   const hasData = known > 0;
   // "Full" is only a fair claim when most seats have fresh evidence; otherwise say what we know.
@@ -27,7 +28,10 @@ export function Hero({ summary, seats }: HeroProps) {
   let headline: React.ReactNode;
   let subline: string;
 
-  if (!hasData) {
+  if (operatingHours?.open === false) {
+    headline = <>La sala está cerrada</>;
+    subline = "Abre todos los días a las 08:00. Cierra a las 00:00; sábados, domingos y feriados a las 22:00.";
+  } else if (!hasData) {
     headline = <>Todavía no hay datos de hoy</>;
     subline = "Los datos se reinician cada medianoche. Si estás en la sala, tocá tu lugar y marcá «Estoy acá».";
   } else if (summary.free === 0 && mostlyKnown) {

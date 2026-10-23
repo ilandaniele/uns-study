@@ -1,10 +1,11 @@
-import { and, eq, inArray, lte } from "drizzle-orm";
+import { and, eq, gt, inArray, lte } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import { Logger } from "../platform/logger.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { RoomRealtimeGateway } from "../realtime/room-realtime.gateway.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
 import { DisputeService } from "../disputes/disputes.service.js";
+import type { RoomHours } from "../rooms/room-hours.js";
 
 /** Periodically expires ACTIVE check-ins and recomputes seats whose signals just expired. */
 export class ExpirationJob {
@@ -16,6 +17,7 @@ export class ExpirationJob {
     private readonly realtime: RoomRealtimeGateway,
     private readonly studySessions: StudySessionService,
     private readonly disputes: DisputeService,
+    private readonly hours: RoomHours | null = null,
   ) {}
 
   /** Scheduler entry point (`expiration`, every 30 s). */
@@ -25,6 +27,25 @@ export class ExpirationJob {
 
   /** Exposed for tests: runs one sweep against `now` and returns the seats it changed, by room. */
   async runSweep(now: Date = new Date()): Promise<Map<string, SeatStateChange[]>> {
+    if (this.hours) {
+      // Repair existing stays created before closing-time caps were introduced.
+      const active = this.db.select().from(schema.checkIns).where(eq(schema.checkIns.status, "ACTIVE")).all();
+      for (const checkIn of active) {
+        const window = this.hours.window(checkIn.roomId, new Date(checkIn.startedAt));
+        if (!window) continue;
+        const limit = window.open ? window.closesAt : new Date(checkIn.startedAt);
+        if (checkIn.expiresAt > limit) this.db.update(schema.checkIns).set({ expiresAt: limit })
+          .where(and(eq(schema.checkIns.id, checkIn.id), eq(schema.checkIns.status, "ACTIVE"), gt(schema.checkIns.expiresAt, limit))).run();
+      }
+      const studying = this.db.select().from(schema.studyStatus).where(eq(schema.studyStatus.active, true)).all();
+      for (const study of studying) {
+        const window = this.hours.window(study.roomId, now);
+        if (window && (!window.open || study.updatedAt < window.opensAt)) {
+          this.db.update(schema.studyStatus).set({ active: false, updatedAt: now })
+            .where(and(eq(schema.studyStatus.userId, study.userId), eq(schema.studyStatus.roomId, study.roomId), eq(schema.studyStatus.active, true))).run();
+        }
+      }
+    }
     const candidates = this.db
       .select({ id: schema.checkIns.id })
       .from(schema.checkIns)

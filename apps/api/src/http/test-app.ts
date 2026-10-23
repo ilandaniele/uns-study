@@ -14,7 +14,9 @@ export const TEST_ORIGIN = "http://localhost:3000";
 export function buildTestApp(db: Db = freshDb()) {
   const hub = new RecordingHub();
   const scheduler = new ManualScheduler();
-  const services = buildServices({ db, hub, scheduler, evidence: null, clock: new FixedClock(new Date()) });
+  // HTTP/auth tests isolate their own behavior from the wall-clock opening hours.
+  // Production schedule wiring is covered by rooms/room-hours.test.ts.
+  const services = buildServices({ db, hub, scheduler, evidence: null, clock: new FixedClock(new Date()), roomHours: null });
   const auth = buildAuth(db);
   const app = createApp({ services, auth });
   return { app, db, hub, scheduler, services, auth };

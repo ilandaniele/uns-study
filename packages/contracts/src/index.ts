@@ -45,6 +45,7 @@ export interface RoomTodayStatsDto {
 }
 
 export interface RoomDto {
+  operatingHours?: { open: boolean; opensAt: string; closesAt: string };
   id: string;
   slug: string;
   name: string;

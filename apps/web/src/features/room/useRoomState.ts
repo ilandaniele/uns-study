@@ -84,6 +84,20 @@ export function useRoomState(slug: string): RoomState {
     return loadMap();
   }, [loadMap]);
 
+  // Refresh at the server-provided opening/closing boundary, including tabs left
+  // open overnight. A visibility refresh catches timers throttled in the background.
+  const hours = map?.room.operatingHours;
+  useEffect(() => {
+    if (!hours) return;
+    const now = Date.now();
+    let boundary = new Date(hours.open ? hours.closesAt : hours.opensAt).getTime();
+    if (!hours.open && boundary <= now) boundary += 24 * 60 * 60_000;
+    const timer = setTimeout(() => { void load(); }, Math.max(1000, boundary - now + 100));
+    const onVisible = () => { if (!document.hidden) void load(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { clearTimeout(timer); document.removeEventListener("visibilitychange", onVisible); };
+  }, [hours, load]);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch on mount/slug change
     void loadMap();
