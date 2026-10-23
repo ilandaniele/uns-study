@@ -7,6 +7,7 @@ import { photoSkinFor, type PhotoSkin } from "./photo-skin";
 import { Seat, type SeatFacing } from "./Seat";
 import { StudyTable } from "./StudyTable";
 import { WallBar } from "./WallBar";
+import { useRoomDaytime } from "./useRoomDaytime";
 
 export interface RoomMapProps {
   map: RoomMapDto;
@@ -168,16 +169,16 @@ const SharedDefs = memo(function SharedDefs() {
 });
 
 /**
- * The real room photographed from above: the day photo in the light theme, the night photo in the
- * dark theme. Tables are painted in the photo, so only a nickname (over the painted "Mesa N") and
+ * The real room photographed from above, selected by local time in Bahía Blanca.
+ * Tables are painted in the photo, so only a nickname (over the painted "Mesa N") and
  * the QR highlight are drawn on top.
  */
 const PhotoBackdrop = memo(function PhotoBackdrop({ skin, tables, highlightTableCode }: { skin: PhotoSkin; tables: RoomMapDto["tables"]; highlightTableCode: string | null }) {
   const { width, height } = skin.viewBox;
+  const daytime = useRoomDaytime();
   return (
     <>
-      <image href={skin.dayHref} x={0} y={0} width={width} height={height} preserveAspectRatio="xMidYMid slice" className="dark:hidden" aria-hidden="true" />
-      <image href={skin.nightHref} x={0} y={0} width={width} height={height} preserveAspectRatio="xMidYMid slice" className="hidden dark:inline" aria-hidden="true" />
+      {daytime !== null && <image data-room-lighting={daytime ? "day" : "night"} href={daytime ? skin.dayHref : skin.nightHref} x={0} y={0} width={width} height={height} preserveAspectRatio="xMidYMid slice" aria-hidden="true" />}
       {tables.map((table) => {
         const rect = skin.tables.get(table.code);
         if (!rect) return null;

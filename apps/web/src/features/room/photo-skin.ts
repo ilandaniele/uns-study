@@ -1,7 +1,7 @@
 import type { RoomMapDto } from "@sala/contracts";
 
 /**
- * Photographic backdrop for a room: a day photo (light theme) and a night photo (dark theme) of
+ * Photographic backdrop for a room: a day photo and a night photo, selected by local time, of
  * the real room seen from above, plus where each seat and table label sits in that photo. The
  * canonical layout (`packages/database/src/layout.ts`) is untouched; this is display-only, so the
  * map draws seat markers over the chairs in the photo instead of at the layout coordinates.
