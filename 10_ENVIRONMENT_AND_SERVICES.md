@@ -122,6 +122,24 @@ Configure:
 
 Deploys run from GitHub Actions with wrangler on push to main.
 
+## Staging (dev.saladeestudio.com.ar)
+
+A push to the `staging` branch runs `.github/workflows/deploy-staging.yml`. It deploys the Workers `uns-api-staging` and `uns-web-staging` from `env.staging` in both `wrangler.jsonc` files.
+
+- Staging has its own Durable Object, so its SQLite holds no production data.
+- It has no R2 binding, so report evidence uploads are off.
+- It has no ads, analytics or Turnstile.
+- `NEXT_PUBLIC_SITE_ENV=staging` turns on `noindex` and the "Sitio de prueba" banner.
+- `NODE_ENV` stays `production`, so the GPS geofence is enforced.
+- It shares the account's Workers Free quotas with production.
+
+One-time owner setup:
+
+1. In Cloudflare DNS, add a proxied record for `dev` (for example `AAAA dev 100::`), so the routes can match.
+2. Set the staging secrets: `wrangler secret put BETTER_AUTH_SECRET --env staging` and `wrangler secret put IP_HASH_SALT --env staging`, from `apps/api`. Use new values, not the production ones. Optional features need their own secrets (for example `GOOGLE_CLIENT_SECRET`, `ADMIN_EMAILS`).
+3. For Google sign-in, add `https://dev.saladeestudio.com.ar/api/auth/callback/google` as an authorized redirect URI.
+4. Create and push the branch: `git push origin HEAD:staging`.
+
 ## Monetization and email (pending owner accounts)
 
 The code for these features is shipped. Each one turns on when its variables are set. Status as of 2026-10-03:

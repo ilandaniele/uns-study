@@ -35,7 +35,7 @@
     "R2_ACCOUNT_ID": "8355b74d76c27ea18e007625360d9cc0",
     // "1" answers every /api/* path except /api/v1/health* with 503 "Mantenimiento en curso." (e.g. during the data import).
     "MAINTENANCE_MODE": "0"
-  }
+  },
   // ADMIN_EMAILS is a secret (it was a Fly secret). SUBSCRIPTION_PRICE_ARS, VERIFIER_MODEL and
   // SEAT_VERIFIER_MODE were unset on Fly, so the code defaults apply (1500, gemini-2.5-flash, off).
   //
@@ -44,4 +44,31 @@
   //   TURNSTILE_SECRET_KEY, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, MP_ACCESS_TOKEN,
   //   MP_WEBHOOK_SECRET, RESEND_API_KEY, GEMINI_API_KEY and/or ANTHROPIC_API_KEY,
   //   OPS_IMPORT_TOKEN.
+  // Staging: `wrangler deploy --env staging` ships Worker `uns-api-staging` with its own Durable
+  // Object (separate SQLite, no production data) on dev.saladeestudio.com.ar. No R2 binding, so
+  // report evidence uploads are off. Secrets are per environment: `wrangler secret put <NAME> --env staging`
+  // (BETTER_AUTH_SECRET and IP_HASH_SALT are required; the rest enable optional features).
+  "env": {
+    "staging": {
+      "routes": [{ "pattern": "dev.saladeestudio.com.ar/api/*", "zone_name": "saladeestudio.com.ar" }],
+      "workers_dev": false,
+      "durable_objects": { "bindings": [{ "name": "APP", "class_name": "AppDO" }] },
+      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AppDO"] }],
+      // Alarms do the real work; the safety-net cron runs less often to spare the shared Free quota.
+      "triggers": { "crons": ["*/30 * * * *"] },
+      "r2_buckets": [],
+      "vars": {
+        "NODE_ENV": "production",
+        "WEB_ORIGINS": "https://dev.saladeestudio.com.ar",
+        "BETTER_AUTH_URL": "https://dev.saladeestudio.com.ar",
+        "PUBLIC_WEB_URL": "https://dev.saladeestudio.com.ar",
+        "OWNER_EMAIL": "ilan.daniele@gmail.com",
+        // Needs https://dev.saladeestudio.com.ar/api/auth/callback/google as an authorized redirect URI.
+        "GOOGLE_CLIENT_ID": "1032351199989-q4i4g9vsn7unkemt09in1md9omp4hh0o.apps.googleusercontent.com",
+        "PRESENCE_DEV_BYPASS": "false",
+        "VAPID_SUBJECT": "https://dev.saladeestudio.com.ar",
+        "MAINTENANCE_MODE": "0"
+      }
+    }
+  }
 }

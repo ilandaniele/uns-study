@@ -10,5 +10,12 @@
     { "pattern": "saladeestudio.com.ar/*", "zone_name": "saladeestudio.com.ar" },
     { "pattern": "www.saladeestudio.com.ar/*", "zone_name": "saladeestudio.com.ar" }
   ],
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // Staging: `opennextjs-cloudflare deploy --env staging` ships Worker `uns-web-staging`.
+  "env": {
+    "staging": {
+      "workers_dev": false,
+      "routes": [{ "pattern": "dev.saladeestudio.com.ar/*", "zone_name": "saladeestudio.com.ar" }]
+    }
+  }
 }

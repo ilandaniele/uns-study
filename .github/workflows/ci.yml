@@ -2,8 +2,9 @@ name: CI
 
 on:
   push:
+    # main and staging run this through their deploy workflows.
     # Dependabot branches run through their pull_request event only, so each update runs CI once, not twice.
-    branches-ignore: [main, "dependabot/**"]
+    branches-ignore: [main, staging, "dependabot/**"]
     paths-ignore: ["**/*.md", "docs/**", "reference-images/**", "design-options/**"]
   pull_request:
     paths-ignore: ["**/*.md", "docs/**", "reference-images/**", "design-options/**"]
