@@ -1,6 +1,6 @@
 name: Deploy staging
 
-# Every push to the `staging` branch: full CI, then deploy uns-api-staging and uns-web-staging to
+# Every push to the `staging` branch (git push origin HEAD:staging): full CI, then deploy uns-api-staging and uns-web-staging to
 # https://dev.saladeestudio.com.ar. Staging has its own Durable Object (separate SQLite), so nothing
 # here touches production data. It shares the account's Workers Free quotas with production.
 on:
