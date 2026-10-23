@@ -13,12 +13,15 @@ lifts, contacts and passing positions, shoulder/hip weight transfer and tail
 sway. Fixed camera looking down at 45–50 degrees, constant character scale,
 body anchor and identity, full body in each cell, no floor, shadows or text.
 
-Each walking source has 4 columns × 4 rows, one complete cycle with sixteen
-consecutive phases in row-major order. All sources are 512 × 512 WebP images:
+The vertical walking sources have 4 columns × 4 rows (sixteen phases).
+The lateral replacement has 4 columns × 2 rows (eight coherent contact/passing
+phases). All cells are 128 × 128 in the optimized sources:
 
 - `ceniza-side-source.webp`: right-facing walk (mirrored at runtime for left).
 - `ceniza-up-source.webp`: walking away from the viewer.
 - `ceniza-down-source.webp`: walking toward the viewer.
+- `ceniza-settle-source.webp`: eight phases standing, bending elbows, lowering
+  chest, folding hips, shifting weight and rolling onto the flank, head down.
 
 Final prompt set: one atlas per direction using the shared identity/camera
 specification above, requesting exactly sixteen equal phases of a single
@@ -32,6 +35,17 @@ within a cycle. Sources generated with the built-in imagegen tool.
 `ceniza-rest-source.webp`: the four optimized rest/sleep/bark poses from the
 original atlas. These are kept separate from the new walking cycles.
 
-The browser downloads only `public/room/ceniza-v3.webp` (52 poses: 48 walking,
-four resting). The output uses eight columns and seven rows to avoid an overly
-wide texture. Every direction shares one common crop/scale across its phases.
+Lateral replacement prompt: one sequential eight-phase four-beat walk with
+fixed head/trunk geometry, closed mouth, low tail, forward gaze, hip/shoulder
+anchors and constant ground baseline; articulate leg contacts and passing
+poses rather than changing the torso. The settle prompt requests a reversible
+standing-to-flank sequence ending with the whole dog lying on his side and
+eyes closed, constant physical scale and ground anchor, transparent background.
+
+The browser downloads only `public/room/ceniza-v4.webp` (52 poses: 40 walking,
+four resting and eight settling). The output uses eight columns and seven rows.
+Every direction shares one common crop/scale across its phases. The three nap
+styles are curled, lying on the flank, and fully sprawled; posture changes play
+forward when lying down and in reverse when waking up. No animation loop runs
+during long naps. Runtime movement accelerates/brakes over at most 450 ms,
+rather than stretching that interval over 10% of a long trip.

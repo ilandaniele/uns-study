@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useEffect, useId, useRef } from "react";
-import { frameFor, nextAction, SLEEP_FRAME, SPRITE_COLUMNS, SPRITE_ROWS, START, type Heading, type Point, type Pose } from "./behavior";
+import { frameFor, nextAction, settleFrames, travelProgress, SLEEP_FRAME, SPRITE_COLUMNS, SPRITE_ROWS, START, type Heading, type Point, type Pose } from "./behavior";
 
 interface TableRect { x: number; y: number; width: number; height: number }
 
@@ -18,7 +18,7 @@ export const Ceniza = memo(function Ceniza({ tables }: { tables: ReadonlyMap<str
     let timer: ReturnType<typeof setTimeout> | undefined;
     let animation = 0;
     let position: Point = { ...START };
-    let previous: Pose = "rest";
+    let previous: Pose = "sleep";
     let direction = 1;
     let heading: Heading = "side";
     let distance = 0;
@@ -35,36 +35,53 @@ export const Ceniza = memo(function Ceniza({ tables }: { tables: ReadonlyMap<str
     };
     const step = () => {
       const action = nextAction(position, previous);
+      const waking = settleFrames(previous, true);
       previous = action.pose;
       const from = position;
-      if (action.pose === "walk") {
-        heading = action.target.x !== from.x ? "side" : action.target.y < from.y ? "up" : "down";
-        direction = heading === "side" && action.target.x < from.x ? -1 : 1;
-      }
-      draw(position, frameFor(action.pose, 0, distance, heading));
-      if (action.pose === "sleep" || action.pose === "lie" || action.pose === "rest") {
-        timer = setTimeout(step, action.duration);
-        return;
-      }
-      const started = performance.now();
-      const segmentLength = Math.hypot(action.target.x - from.x, action.target.y - from.y);
-      const initialDistance = distance;
-      let lastDraw = -Infinity;
-      const tick = (now: number) => {
-        const elapsed = now - started;
-        const t = Math.min(1, elapsed / action.duration);
-        // Soft acceleration/deceleration, with a steady walking speed in between.
-        const progress = t < 0.1 ? 5 * t * t / 0.9 : t > 0.9 ? 1 - 5 * (1 - t) ** 2 / 0.9 : (t - 0.05) / 0.9;
-        position = { x: from.x + (action.target.x - from.x) * progress, y: from.y + (action.target.y - from.y) * progress };
-        distance = initialDistance + segmentLength * progress;
-        if (now - lastDraw >= 1000 / 30 || t === 1) {
-          draw(position, frameFor(action.pose, elapsed, distance, heading));
-          lastDraw = now;
-        }
-        if (t < 1) animation = requestAnimationFrame(tick);
-        else timer = setTimeout(step, 250);
+      const play = (frames: readonly number[], done: () => void) => {
+        heading = "side";
+        let index = 0;
+        const advance = () => {
+          if (index >= frames.length) { done(); return; }
+          draw(position, frames[index++]!);
+          timer = setTimeout(advance, 200);
+        };
+        advance();
       };
-      animation = requestAnimationFrame(tick);
+      const begin = () => {
+        if (action.pose === "walk") {
+          heading = action.target.x !== from.x ? "side" : action.target.y < from.y ? "up" : "down";
+          direction = heading === "side" && action.target.x < from.x ? -1 : 1;
+        }
+        if (action.pose === "sleep" || action.pose === "lie" || action.pose === "sprawl" || action.pose === "rest") {
+          play(settleFrames(action.pose), () => {
+            draw(position, frameFor(action.pose, 0));
+            timer = setTimeout(step, action.duration);
+          });
+          return;
+        }
+        draw(position, frameFor(action.pose, 0, distance, heading));
+        const started = performance.now();
+        const segmentLength = Math.hypot(action.target.x - from.x, action.target.y - from.y);
+        const initialDistance = distance;
+        let lastDraw = -Infinity;
+        const tick = (now: number) => {
+          const elapsed = now - started;
+          const t = Math.min(1, elapsed / action.duration);
+          const progress = travelProgress(elapsed, action.duration);
+          position = { x: from.x + (action.target.x - from.x) * progress, y: from.y + (action.target.y - from.y) * progress };
+          distance = initialDistance + segmentLength * progress;
+          if (now - lastDraw >= 1000 / 60 || t === 1) {
+            draw(position, frameFor(action.pose, elapsed, distance, heading));
+            lastDraw = now;
+          }
+          if (t < 1) animation = requestAnimationFrame(tick);
+          else timer = setTimeout(step, 250);
+        };
+        animation = requestAnimationFrame(tick);
+      };
+      if (waking.length) play(waking, begin);
+      else begin();
     };
     const resume = () => {
       stop();
@@ -72,11 +89,10 @@ export const Ceniza = memo(function Ceniza({ tables }: { tables: ReadonlyMap<str
         position = { ...START };
         direction = 1;
         heading = "side";
-        previous = "rest";
+        previous = "sleep";
         draw(position, SLEEP_FRAME);
       } else if (!document.hidden) {
         // Pause while hidden; resume locally without catching up hours of animation.
-        previous = "rest";
         timer = setTimeout(step, 8_000);
       }
     };
@@ -103,7 +119,7 @@ export const Ceniza = memo(function Ceniza({ tables }: { tables: ReadonlyMap<str
           <ellipse ref={shadow} cx={0} cy={-3} rx={23} ry={7} fill="black" opacity={0.16} />
           <g ref={facing}>
             <svg x={-35} y={-63} width={70} height={70} viewBox="0 0 96 96" overflow="hidden" className="dark:brightness-75">
-              <image ref={sprite} href="/room/ceniza-v3.webp" x={-(SLEEP_FRAME % SPRITE_COLUMNS) * 96} y={-Math.floor(SLEEP_FRAME / SPRITE_COLUMNS) * 96} width={SPRITE_COLUMNS * 96} height={SPRITE_ROWS * 96} />
+              <image ref={sprite} href="/room/ceniza-v4.webp" x={-(SLEEP_FRAME % SPRITE_COLUMNS) * 96} y={-Math.floor(SLEEP_FRAME / SPRITE_COLUMNS) * 96} width={SPRITE_COLUMNS * 96} height={SPRITE_ROWS * 96} />
             </svg>
           </g>
         </g>

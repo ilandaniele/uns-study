@@ -1,6 +1,6 @@
 /** Decorative animation only: coordinates are photo pixels, independent of seat state. */
 export interface Point { x: number; y: number }
-export type Pose = "walk" | "sleep" | "lie" | "bark" | "rest";
+export type Pose = "walk" | "sleep" | "lie" | "sprawl" | "bark" | "rest";
 export interface Action { pose: Pose; target: Point; duration: number }
 const AISLES = [110, 545, 975];
 // Cross the room between chair rows, or beneath the tabletops. Never cross a chair row.
@@ -12,7 +12,8 @@ export function nextAction(position: Point, previous: Pose, random: () => number
   const roll = random();
   // Every nap/rest ends with a walk; walking can continue across several segments.
   if (previous === "walk" && roll < 0.32) {
-    return { pose: random() < 0.7 ? "sleep" : "lie", target: position, duration: (4 + random() * 14) * 60_000 };
+    const style = random();
+    return { pose: style < 0.3 ? "sleep" : style < 0.7 ? "lie" : "sprawl", target: position, duration: (4 + random() * 14) * 60_000 };
   }
   if (previous === "walk" && roll < 0.48) {
     return { pose: "rest", target: position, duration: 20_000 + random() * 70_000 };
@@ -30,19 +31,44 @@ export function nextAction(position: Point, previous: Pose, random: () => number
 
 export type Heading = "side" | "up" | "down";
 export const WALK_FRAMES = 16;
-export const SLEEP_FRAME = WALK_FRAMES * 3;
-export const SPRITE_FRAMES = SLEEP_FRAME + 4;
+export const SIDE_WALK_FRAMES = 8;
+export const SLEEP_FRAME = 40;
+export const SETTLE_START = 44;
+export const SIDE_SLEEP_FRAME = 51;
+export const SPRITE_FRAMES = 52;
 export const SPRITE_COLUMNS = 8;
 export const SPRITE_ROWS = Math.ceil(SPRITE_FRAMES / SPRITE_COLUMNS);
 // Full gait cycle in photo pixels: slowing travel also slows the paws.
 export const STRIDE = 28;
+/** Brief, fixed-duration acceleration rather than sliding for 10% of a long trip. */
+export function travelProgress(elapsed: number, duration: number): number {
+  const t = Math.max(0, Math.min(elapsed, duration));
+  const ramp = Math.min(450, duration / 3);
+  const speed = 1 / (duration - ramp);
+  if (t < ramp) return speed * t * t / (2 * ramp);
+  if (t > duration - ramp) return 1 - speed * (duration - t) ** 2 / (2 * ramp);
+  return speed * (t - ramp / 2);
+}
+
+/** Play only on posture changes; long naps keep a single still frame and no RAF. */
+export function settleFrames(pose: Pose, waking = false): readonly number[] {
+  const sequence = pose === "sprawl"
+    ? [44, 45, 46, 47, 48, 49, 50, SLEEP_FRAME + 1]
+    : pose === "lie"
+    ? Array.from({ length: 8 }, (_, i) => SETTLE_START + i)
+    : pose === "sleep" ? [44, 45, 46, 47, SLEEP_FRAME] : [];
+  return waking ? [...sequence].reverse() : sequence;
+}
+
 export function frameFor(pose: Pose, elapsed: number, distance = 0, heading: Heading = "side"): number {
   if (pose === "walk") {
-    const start = heading === "up" ? WALK_FRAMES : heading === "down" ? WALK_FRAMES * 2 : 0;
-    return start + Math.floor(((distance % STRIDE) / STRIDE) * WALK_FRAMES);
+    const count = heading === "side" ? SIDE_WALK_FRAMES : WALK_FRAMES;
+    const start = heading === "up" ? SIDE_WALK_FRAMES : heading === "down" ? SIDE_WALK_FRAMES + WALK_FRAMES : 0;
+    return start + Math.floor(((distance % STRIDE) / STRIDE) * count);
   }
   if (pose === "sleep") return SLEEP_FRAME;
-  if (pose === "lie") return SLEEP_FRAME + 1;
+  if (pose === "lie") return SIDE_SLEEP_FRAME;
+  if (pose === "sprawl") return SLEEP_FRAME + 1;
   if (pose === "bark") return SLEEP_FRAME + (Math.floor(elapsed / 220) % 2 === 0 ? 2 : 3);
   return SLEEP_FRAME + 3;
 }

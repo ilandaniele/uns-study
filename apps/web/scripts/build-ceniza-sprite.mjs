@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 // Rebuild from optimized, checked-in sources without local reference files.
 const asset = (name) => fileURLToPath(new URL(`./assets/${name}`, import.meta.url));
-const output = fileURLToPath(new URL("../public/room/ceniza-v3.webp", import.meta.url));
+const output = fileURLToPath(new URL("../public/room/ceniza-v4.webp", import.meta.url));
 const cell = 96;
 const frames = [];
 async function cycle(source, regions) {
@@ -28,11 +28,12 @@ async function cycle(source, regions) {
 const grid = Array.from({ length: 16 }, (_, i) => ({
   left: (i % 4) * 128, top: Math.floor(i / 4) * 128, width: 128, height: 128,
 }));
-await cycle(asset("ceniza-side-source.webp"), grid); // 0..15: right, mirrored for left
-await cycle(asset("ceniza-up-source.webp"), grid); // 16..31: up
-await cycle(asset("ceniza-down-source.webp"), grid); // 32..47: down
+await cycle(asset("ceniza-side-source.webp"), grid.slice(0, 8)); // 0..7: coherent lateral gait
+await cycle(asset("ceniza-up-source.webp"), grid); // 8..23: up
+await cycle(asset("ceniza-down-source.webp"), grid); // 24..39: down
 for (let i = 0; i < 4; i++) frames.push(await sharp(asset("ceniza-rest-source.webp"))
   .extract({ left: i * cell, top: 0, width: cell, height: cell }).png().toBuffer());
+await cycle(asset("ceniza-settle-source.webp"), grid.slice(0, 8)); // 44..51: stand to side sleep
 await mkdir(fileURLToPath(new URL("../public/room/", import.meta.url)), { recursive: true });
 const columns = 8;
 const rows = Math.ceil(frames.length / columns);
