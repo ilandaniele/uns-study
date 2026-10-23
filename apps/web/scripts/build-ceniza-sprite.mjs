@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 // Rebuild from optimized, checked-in sources without local reference files.
 const asset = (name) => fileURLToPath(new URL(`./assets/${name}`, import.meta.url));
-const output = fileURLToPath(new URL("../public/room/ceniza-v5.webp", import.meta.url));
+const output = fileURLToPath(new URL("../public/room/ceniza-v6.webp", import.meta.url));
 const cell = 96;
 const frames = [];
 async function cycle(source, regions) {
@@ -28,15 +28,36 @@ async function cycle(source, regions) {
 const grid = Array.from({ length: 16 }, (_, i) => ({
   left: (i % 4) * 128, top: Math.floor(i / 4) * 128, width: 128, height: 128,
 }));
-await cycle(asset("ceniza-side-source.webp"), grid.slice(0, 8)); // 0..7: coherent lateral gait
-await cycle(asset("ceniza-up-source.webp"), grid); // 8..23: up
-await cycle(asset("ceniza-down-source.webp"), grid); // 24..39: down
+// Register the chest rather than the tail/paws: their movement must never shift
+// the entire dog from side to side. Keep one scale and anchor for every phase.
+for (const region of grid.slice(0, 8)) {
+  const tile = await sharp(asset("ceniza-overhead-source.webp")).extract(region).png().toBuffer();
+  const { data } = await sharp(tile).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  let top = 128, bottom = 0;
+  for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) if (data[(y * 128 + x) * 4 + 3] > 60) {
+    top = Math.min(top, y); bottom = Math.max(bottom, y);
+  }
+  let weight = 0, xSum = 0, ySum = 0;
+  for (let y = Math.ceil(top + (bottom - top) * 0.22); y <= top + (bottom - top) * 0.52; y++) {
+    for (let x = 0; x < 128; x++) {
+      const alpha = data[(y * 128 + x) * 4 + 3];
+      if (alpha > 200) { weight += alpha; xSum += x * alpha; ySum += y * alpha; }
+    }
+  }
+  const dx = Math.round(64 - xSum / weight), dy = Math.round(54 - ySum / weight);
+  const padded = await sharp(tile)
+    .extend({ left: Math.max(0, dx), right: Math.max(0, -dx), top: Math.max(0, dy), bottom: Math.max(0, -dy), background: "#00000000" })
+    .png().toBuffer();
+  frames.push(await sharp(padded)
+    .extract({ left: Math.max(0, -dx), top: Math.max(0, -dy), width: 128, height: 128 })
+    .resize(cell, cell).png().toBuffer());
+}
 for (let i = 0; i < 4; i++) frames.push(await sharp(asset("ceniza-rest-source.webp"))
   .extract({ left: i * cell, top: 0, width: cell, height: cell }).png().toBuffer());
-await cycle(asset("ceniza-settle-source.webp"), grid.slice(0, 8)); // 44..51: stand to side sleep
+await cycle(asset("ceniza-settle-source.webp"), grid.slice(0, 8)); // 12..19: stand to side sleep
 // Contact registration: generated lying poses have different transparent padding.
 // Translate (never resize) them onto the same floor baseline as standing paws.
-for (let i = 40; i < frames.length; i++) {
+for (let i = 8; i < frames.length; i++) {
   const { data, info } = await sharp(frames[i]).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   let bottom = 0;
   for (let y = 0; y < info.height; y++) for (let x = 0; x < info.width; x++) {

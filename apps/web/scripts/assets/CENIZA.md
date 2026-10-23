@@ -42,8 +42,8 @@ poses rather than changing the torso. The settle prompt requests a reversible
 standing-to-flank sequence ending with the whole dog lying on his side and
 eyes closed, constant physical scale and ground anchor, transparent background.
 
-The browser downloads only `public/room/ceniza-v5.webp` (52 poses: 40 walking,
-four resting and eight settling). The output uses eight columns and seven rows.
+The browser downloads only `public/room/ceniza-v6.webp` (20 poses: eight walking,
+four resting and eight settling). The output uses eight columns and three rows.
 Every direction shares one common crop/scale across its phases. The three nap
 styles are curled, lying on the flank, and fully sprawled; posture changes play
 forward when lying down and in reverse when waking up. No animation loop runs
@@ -53,3 +53,23 @@ rather than stretching that interval over 10% of a long trip.
 Rest and settling frames are translated vertically, without changing scale,
 so their opaque lower edge rests at cell y=89, matching standing paws. This
 removes the transparent gap that previously detached lying bodies from shadows.
+
+Current walking source: `ceniza-overhead-source.webp` is a 4 × 2 atlas generated
+with the built-in imagegen tool. Prompt: preserve Ceniza's ash-brown coat, white
+toes/chest and floppy ears; use a strictly overhead orthographic view, nose up,
+eight sequential phases of one relaxed four-beat walk, identical rigid head and
+torso in every cell, independently articulated planted/swinging paws, restrained
+tail tip, no white neck patch, no lateral torso sway, no floor/shadow/grid/text,
+transparent alpha. Reference images were the existing optimized up/side sources.
+
+The build aligns the opaque chest band to a common anchor before resizing;
+independently moving tails/feet do not define that anchor. `sprite.test.ts`
+checks actual rendered atlas pixels: less than one map pixel of lateral chest
+drift at the 70-pixel display size, plus preserved resting ground contact.
+
+Runtime rotates this single overhead gait to the true movement bearing. It turns
+in place before moving and samples safe diagonal segments using the photo's
+chair coordinates, including the nose/tail extent and the swept turning area.
+Tabletop masks still occlude the dog when passing underneath. No business state
+is read or changed by this decorative animation. Older directional source sheets
+remain available as references; the browser does not download them.

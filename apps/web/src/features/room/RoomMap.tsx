@@ -41,6 +41,7 @@ const SIDE_WINDOW_Y = [130, 400, 670, 940, 1210];
 export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlightTableCode = null, avatarBySeatId, adminBadgeSeatIds, onlyFree = false, favoriteSeatIds = NO_FAVORITES, multiSelectedSeatIds }: RoomMapProps) {
   // Photo of the real room when one matches this layout; the drawn room otherwise.
   const skin = useMemo(() => photoSkinFor(map), [map]);
+  const dogChairs = useMemo(() => skin ? Array.from(skin.seats.values()) : [], [skin]);
   const { width, height } = skin?.viewBox ?? map.viewBox;
   // Per-seat facing + table label/type only depend on the layout, not on live seat status.
   const seatMeta = useMemo(() => {
@@ -87,7 +88,7 @@ export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, on
         </>
       )}
 
-      {skin ? <Ceniza tables={skin.tables} /> : null}
+      {skin ? <Ceniza tables={skin.tables} chairs={dogChairs} /> : null}
 
       {displaySeats.map((seat) => {
         const meta = seatMeta.get(seat.id)!;
