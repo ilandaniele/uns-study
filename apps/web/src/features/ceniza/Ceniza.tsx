@@ -27,7 +27,11 @@ export const Ceniza = memo(function Ceniza({ tables }: { tables: ReadonlyMap<str
       facing.current?.setAttribute("transform", `scale(${direction} 1)`);
       sprite.current?.setAttribute("x", String(-(frame % SPRITE_COLUMNS) * 96));
       sprite.current?.setAttribute("y", String(-Math.floor(frame / SPRITE_COLUMNS) * 96));
-      shadow.current?.setAttribute("rx", String(heading === "side" ? 23 : 13));
+      const grounded = frame === SLEEP_FRAME || frame === SLEEP_FRAME + 1 || frame >= 47;
+      shadow.current?.setAttribute("rx", String(grounded ? 30 : heading === "side" ? 23 : 13));
+      shadow.current?.setAttribute("ry", String(grounded ? 5 : 7));
+      shadow.current?.setAttribute("cy", String(grounded ? 0 : -3));
+      shadow.current?.setAttribute("opacity", String(grounded ? 0.22 : 0.16));
     };
     const stop = () => {
       clearTimeout(timer);
@@ -116,10 +120,10 @@ export const Ceniza = memo(function Ceniza({ tables }: { tables: ReadonlyMap<str
       </defs>
       <g mask={`url(#${id})`}>
         <g ref={location} transform={`translate(${START.x} ${START.y})`}>
-          <ellipse ref={shadow} cx={0} cy={-3} rx={23} ry={7} fill="black" opacity={0.16} />
+          <ellipse ref={shadow} cx={0} cy={0} rx={30} ry={5} fill="black" opacity={0.22} />
           <g ref={facing}>
             <svg x={-35} y={-63} width={70} height={70} viewBox="0 0 96 96" overflow="hidden" className="dark:brightness-75">
-              <image ref={sprite} href="/room/ceniza-v4.webp" x={-(SLEEP_FRAME % SPRITE_COLUMNS) * 96} y={-Math.floor(SLEEP_FRAME / SPRITE_COLUMNS) * 96} width={SPRITE_COLUMNS * 96} height={SPRITE_ROWS * 96} />
+              <image ref={sprite} href="/room/ceniza-v5.webp" x={-(SLEEP_FRAME % SPRITE_COLUMNS) * 96} y={-Math.floor(SLEEP_FRAME / SPRITE_COLUMNS) * 96} width={SPRITE_COLUMNS * 96} height={SPRITE_ROWS * 96} />
             </svg>
           </g>
         </g>

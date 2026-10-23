@@ -42,10 +42,14 @@ poses rather than changing the torso. The settle prompt requests a reversible
 standing-to-flank sequence ending with the whole dog lying on his side and
 eyes closed, constant physical scale and ground anchor, transparent background.
 
-The browser downloads only `public/room/ceniza-v4.webp` (52 poses: 40 walking,
+The browser downloads only `public/room/ceniza-v5.webp` (52 poses: 40 walking,
 four resting and eight settling). The output uses eight columns and seven rows.
 Every direction shares one common crop/scale across its phases. The three nap
 styles are curled, lying on the flank, and fully sprawled; posture changes play
 forward when lying down and in reverse when waking up. No animation loop runs
 during long naps. Runtime movement accelerates/brakes over at most 450 ms,
 rather than stretching that interval over 10% of a long trip.
+
+Rest and settling frames are translated vertically, without changing scale,
+so their opaque lower edge rests at cell y=89, matching standing paws. This
+removes the transparent gap that previously detached lying bodies from shadows.

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 // Rebuild from optimized, checked-in sources without local reference files.
 const asset = (name) => fileURLToPath(new URL(`./assets/${name}`, import.meta.url));
-const output = fileURLToPath(new URL("../public/room/ceniza-v4.webp", import.meta.url));
+const output = fileURLToPath(new URL("../public/room/ceniza-v5.webp", import.meta.url));
 const cell = 96;
 const frames = [];
 async function cycle(source, regions) {
@@ -34,6 +34,19 @@ await cycle(asset("ceniza-down-source.webp"), grid); // 24..39: down
 for (let i = 0; i < 4; i++) frames.push(await sharp(asset("ceniza-rest-source.webp"))
   .extract({ left: i * cell, top: 0, width: cell, height: cell }).png().toBuffer());
 await cycle(asset("ceniza-settle-source.webp"), grid.slice(0, 8)); // 44..51: stand to side sleep
+// Contact registration: generated lying poses have different transparent padding.
+// Translate (never resize) them onto the same floor baseline as standing paws.
+for (let i = 40; i < frames.length; i++) {
+  const { data, info } = await sharp(frames[i]).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  let bottom = 0;
+  for (let y = 0; y < info.height; y++) for (let x = 0; x < info.width; x++) {
+    if (data[(y * info.width + x) * 4 + 3] > 60) bottom = y;
+  }
+  const shift = 89 - bottom;
+  if (shift > 0) frames[i] = await sharp(frames[i])
+    .extend({ top: shift, bottom: 0, left: 0, right: 0, background: "#00000000" })
+    .extract({ left: 0, top: 0, width: cell, height: cell }).png().toBuffer();
+}
 await mkdir(fileURLToPath(new URL("../public/room/", import.meta.url)), { recursive: true });
 const columns = 8;
 const rows = Math.ceil(frames.length / columns);
