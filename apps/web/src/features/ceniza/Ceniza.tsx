@@ -67,7 +67,7 @@ export const Ceniza = memo(function Ceniza({ tables, chairs }: { tables: Readonl
         draw(position, frameFor(action.pose, 0, distance));
         let movementStarted = performance.now();
         const segmentLength = Math.hypot(action.target.x - from.x, action.target.y - from.y);
-        const initialDistance = distance;
+        let initialDistance = distance;
         let lastDraw = -Infinity;
         const tick = (now: number) => {
           const elapsed = now - movementStarted;
@@ -86,15 +86,22 @@ export const Ceniza = memo(function Ceniza({ tables, chairs }: { tables: Readonl
           const targetBearing = bearing(from, action.target);
           const turn = turnDelta(angle, targetBearing);
           const initialAngle = angle;
+          const turnDuration = Math.max(250, Math.abs(turn) * 5);
+          const turnStride = Math.abs(turn) * Math.PI / 180 * 10;
           previousBearing = targetBearing;
           // Turn in place before advancing; never slide diagonally while looking up.
           const turnStarted = performance.now();
           const turning = (now: number) => {
-            const t = Math.min(1, (now - turnStarted) / 300);
+            const t = Math.min(1, (now - turnStarted) / turnDuration);
             angle = initialAngle + turn * t * t * (3 - 2 * t);
-            draw(position, frameFor("walk", 0, distance));
+            draw(position, frameFor("walk", 0, initialDistance + turnStride * t));
             if (t < 1) animation = requestAnimationFrame(turning);
-            else { movementStarted = performance.now(); animation = requestAnimationFrame(tick); }
+            else {
+              distance = initialDistance + turnStride;
+              initialDistance = distance;
+              movementStarted = performance.now();
+              animation = requestAnimationFrame(tick);
+            }
           };
           animation = requestAnimationFrame(turning);
         } else animation = requestAnimationFrame(tick);
