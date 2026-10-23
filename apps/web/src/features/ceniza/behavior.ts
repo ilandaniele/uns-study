@@ -28,10 +28,19 @@ export function nextAction(position: Point, previous: Pose, random: () => number
   return { pose: "walk", target, duration: Math.hypot(target.x - position.x, target.y - position.y) / (20 + random() * 10) * 1_000 };
 }
 
-export function frameFor(pose: Pose, elapsed: number): number {
-  if (pose === "walk") return Math.floor(elapsed / 140) % 5;
-  if (pose === "sleep") return 5;
-  if (pose === "lie") return 6;
-  if (pose === "bark") return Math.floor(elapsed / 220) % 2 === 0 ? 7 : 8;
-  return 8;
+export type Heading = "side" | "up" | "down";
+export const SLEEP_FRAME = 23;
+export const SPRITE_FRAMES = 27;
+// Full gait cycle in photo pixels: slowing travel also slows the paws.
+export const STRIDE = 28;
+export function frameFor(pose: Pose, elapsed: number, distance = 0, heading: Heading = "side"): number {
+  if (pose === "walk") {
+    const count = heading === "up" ? 7 : 8;
+    const start = heading === "up" ? 8 : heading === "down" ? 15 : 0;
+    return start + Math.floor(((distance % STRIDE) / STRIDE) * count);
+  }
+  if (pose === "sleep") return SLEEP_FRAME;
+  if (pose === "lie") return 24;
+  if (pose === "bark") return Math.floor(elapsed / 220) % 2 === 0 ? 25 : 26;
+  return 26;
 }

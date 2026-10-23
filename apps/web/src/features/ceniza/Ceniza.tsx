@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useEffect, useId, useRef } from "react";
-import { frameFor, nextAction, START, type Point, type Pose } from "./behavior";
+import { frameFor, nextAction, SLEEP_FRAME, SPRITE_FRAMES, START, type Heading, type Point, type Pose } from "./behavior";
 
 interface TableRect { x: number; y: number; width: number; height: number }
 
@@ -11,6 +11,7 @@ export const Ceniza = memo(function Ceniza({ tables }: { tables: ReadonlyMap<str
   const location = useRef<SVGGElement>(null);
   const facing = useRef<SVGGElement>(null);
   const sprite = useRef<SVGImageElement>(null);
+  const shadow = useRef<SVGEllipseElement>(null);
 
   useEffect(() => {
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -19,10 +20,13 @@ export const Ceniza = memo(function Ceniza({ tables }: { tables: ReadonlyMap<str
     let position: Point = { ...START };
     let previous: Pose = "rest";
     let direction = 1;
+    let heading: Heading = "side";
+    let distance = 0;
     const draw = (point: Point, frame: number) => {
       location.current?.setAttribute("transform", `translate(${point.x} ${point.y})`);
       facing.current?.setAttribute("transform", `scale(${direction} 1)`);
       sprite.current?.setAttribute("x", String(-frame * 96));
+      shadow.current?.setAttribute("rx", String(heading === "side" ? 23 : 13));
     };
     const stop = () => {
       clearTimeout(timer);
@@ -32,13 +36,18 @@ export const Ceniza = memo(function Ceniza({ tables }: { tables: ReadonlyMap<str
       const action = nextAction(position, previous);
       previous = action.pose;
       const from = position;
-      if (action.target.x !== from.x) direction = action.target.x < from.x ? -1 : 1;
-      draw(position, frameFor(action.pose, 0));
+      if (action.pose === "walk") {
+        heading = action.target.x !== from.x ? "side" : action.target.y < from.y ? "up" : "down";
+        direction = heading === "side" && action.target.x < from.x ? -1 : 1;
+      }
+      draw(position, frameFor(action.pose, 0, distance, heading));
       if (action.pose === "sleep" || action.pose === "lie" || action.pose === "rest") {
         timer = setTimeout(step, action.duration);
         return;
       }
       const started = performance.now();
+      const segmentLength = Math.hypot(action.target.x - from.x, action.target.y - from.y);
+      const initialDistance = distance;
       let lastDraw = -Infinity;
       const tick = (now: number) => {
         const elapsed = now - started;
@@ -46,8 +55,9 @@ export const Ceniza = memo(function Ceniza({ tables }: { tables: ReadonlyMap<str
         // Soft acceleration/deceleration, with a steady walking speed in between.
         const progress = t < 0.1 ? 5 * t * t / 0.9 : t > 0.9 ? 1 - 5 * (1 - t) ** 2 / 0.9 : (t - 0.05) / 0.9;
         position = { x: from.x + (action.target.x - from.x) * progress, y: from.y + (action.target.y - from.y) * progress };
-        if (now - lastDraw >= 50 || t === 1) {
-          draw(position, frameFor(action.pose, elapsed));
+        distance = initialDistance + segmentLength * progress;
+        if (now - lastDraw >= 1000 / 30 || t === 1) {
+          draw(position, frameFor(action.pose, elapsed, distance, heading));
           lastDraw = now;
         }
         if (t < 1) animation = requestAnimationFrame(tick);
@@ -60,8 +70,9 @@ export const Ceniza = memo(function Ceniza({ tables }: { tables: ReadonlyMap<str
       if (motion.matches) {
         position = { ...START };
         direction = 1;
+        heading = "side";
         previous = "rest";
-        draw(position, 5);
+        draw(position, SLEEP_FRAME);
       } else if (!document.hidden) {
         // Pause while hidden; resume locally without catching up hours of animation.
         previous = "rest";
@@ -88,10 +99,10 @@ export const Ceniza = memo(function Ceniza({ tables }: { tables: ReadonlyMap<str
       </defs>
       <g mask={`url(#${id})`}>
         <g ref={location} transform={`translate(${START.x} ${START.y})`}>
-          <ellipse cx={0} cy={-3} rx={23} ry={7} fill="black" opacity={0.16} />
+          <ellipse ref={shadow} cx={0} cy={-3} rx={23} ry={7} fill="black" opacity={0.16} />
           <g ref={facing}>
             <svg x={-32} y={-57} width={64} height={64} viewBox="0 0 96 96" overflow="hidden" className="dark:brightness-75">
-              <image ref={sprite} href="/room/ceniza.webp" x={-5 * 96} y={0} width={864} height={96} />
+              <image ref={sprite} href="/room/ceniza-v2.webp" x={-SLEEP_FRAME * 96} y={0} width={SPRITE_FRAMES * 96} height={96} />
             </svg>
           </g>
         </g>
