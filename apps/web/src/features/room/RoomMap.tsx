@@ -2,6 +2,7 @@
 
 import type { RoomMapDto, SeatAvatarDto, SeatDto } from "@sala/contracts";
 import { memo, useCallback, useMemo } from "react";
+import { Ceniza } from "../ceniza/Ceniza";
 import { photoSkinFor, type PhotoSkin } from "./photo-skin";
 import { Seat, type SeatFacing } from "./Seat";
 import { StudyTable } from "./StudyTable";
@@ -85,6 +86,8 @@ export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, on
           )}
         </>
       )}
+
+      {skin ? <Ceniza tables={skin.tables} /> : null}
 
       {displaySeats.map((seat) => {
         const meta = seatMeta.get(seat.id)!;
