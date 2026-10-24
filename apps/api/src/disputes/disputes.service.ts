@@ -233,6 +233,10 @@ export class DisputeService {
 
     const dto = this.toDtoById(created.id, input.userId);
     this.realtime.emitDisputeOpened(input.roomId, stripPrivate(dto));
+    const voters = this.notifications.disputeVoters(input.roomId, [input.userId, ...(created.incumbentUserId ? [created.incumbentUserId] : [])], now);
+    const invitation = { disputeId: created.id, roomId: input.roomId, roomSlug: room.slug, seatId: input.seatId, seatCode: seat.code, closesAt: created.closesAt.toISOString() };
+    for (const userId of voters) this.realtime.emitDisputeVoteAvailable(userId, invitation);
+    runInBackground(this.logger, "room vote invitations", () => this.notifications.notifyDisputeVoters(voters, invitation));
     if (created.incumbentUserId) {
       this.realtime.emitDisputeChallenge(created.incumbentUserId, {
         disputeId: created.id,
@@ -718,6 +722,9 @@ export class DisputeService {
     await this.realtime.broadcastSeatChanges(row.roomId, changes);
     const dto = this.toDtoById(row.id, null);
     this.realtime.emitDisputeResolved(row.roomId, stripPrivate(dto));
+    for (const userId of this.notifications.disputeVoters(row.roomId, [], now)) {
+      this.realtime.emitDisputeVoteClosed(userId, stripPrivate(dto));
+    }
 
     // CLAIM win: the incumbent's check-in was just cancelled above, freeing the seat — but the
     // opener still has to self-check-in (fresh presence), same as anyone else claiming a free

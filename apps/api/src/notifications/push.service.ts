@@ -41,6 +41,8 @@ export type PushPayload = {
   url: string;
   /** Replaces any earlier notification of the same tag instead of stacking (per `sw.js`). */
   tag: string;
+  /** Deadline for short-lived invitations; also checked by the service worker. */
+  expiresAt?: string;
 };
 
 /** Per-device result counts of one `sendToUser` call. */
@@ -73,6 +75,7 @@ export class PushService {
 
   /** Sends `payload` to every subscription on record for `userId`, best-effort per device. */
   async sendToUser(userId: string, payload: PushPayload): Promise<PushSendSummary | null> {
+    if (payload.expiresAt && Date.parse(payload.expiresAt) <= Date.now()) return null;
     const jwk = this.ensureConfigured();
     if (!jwk) return null;
     const subs = await this.db.select().from(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.userId, userId));
@@ -94,7 +97,7 @@ export class PushService {
       const request = await buildPushHTTPRequest({
         privateJWK: jwk,
         subscription: { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-        message: { payload, adminContact: env.vapidSubject, options: { ttl: PUSH_TTL_S, urgency: "high" } },
+        message: { payload, adminContact: env.vapidSubject, options: { ttl: payload.expiresAt ? Math.max(0, Math.min(PUSH_TTL_S, Math.floor((Date.parse(payload.expiresAt) - Date.now()) / 1000))) : PUSH_TTL_S, urgency: "high" } },
       });
       const res = await fetch(request.endpoint, {
         method: "POST",

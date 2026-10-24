@@ -1,7 +1,7 @@
 import { randomInt } from "node:crypto";
 import { and, eq, gt, inArray, ne, notExists, sql } from "drizzle-orm";
 import { chunk, schema, type Db } from "@sala/database";
-import { DISPUTE_MINUTES, seatLabel, type QuietRoomAlertEvent, type RoomSummary } from "@sala/contracts";
+import { DISPUTE_MINUTES, seatLabel, type DisputeVoteAvailableEvent, type QuietRoomAlertEvent, type RoomSummary } from "@sala/contracts";
 import { isMissingSchemaError } from "../common/sqlite-errors.js";
 import { Logger } from "../platform/logger.js";
 import type { Scheduler } from "../platform/scheduler.js";
@@ -314,6 +314,32 @@ export class NotificationService {
       body,
       url: await this.roomUrl(input.roomId),
       tag: `seat-challenge-${input.seatId}`,
+    });
+  }
+
+  /** Only current, unexpired holders in this room; never anonymous visitors or departed users. */
+  disputeVoters(roomId: string, excludedUserIds: readonly string[], now = new Date()): string[] {
+    const rows = this.db.selectDistinct({ userId: schema.checkIns.userId }).from(schema.checkIns)
+      .where(and(eq(schema.checkIns.roomId, roomId), eq(schema.checkIns.status, "ACTIVE"), gt(schema.checkIns.expiresAt, now))).all();
+    return rows.map((row) => row.userId).filter((id) => !excludedUserIds.includes(id));
+  }
+
+  /** One push per eligible user at opening, not one per countdown tick or vote update. */
+  async notifyDisputeVoters(userIds: readonly string[], event: DisputeVoteAvailableEvent): Promise<void> {
+    const ends = new Intl.DateTimeFormat("es-AR", { timeZone: "America/Argentina/Buenos_Aires", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(event.closesAt));
+    await mapWithConcurrency(userIds, 5, async (userId) => {
+      if (Date.parse(event.closesAt) <= Date.now()) return;
+      try {
+        await this.push.sendToUser(userId, {
+          title: "Hay una votación en tu sala",
+          body: `Lugar ${event.seatCode}. Termina a las ${ends}. Entrá para confirmar si está ocupado, libre o guardado.`,
+          url: `/sala/${encodeURIComponent(event.roomSlug)}?seat=${encodeURIComponent(event.seatId)}`,
+          tag: `dispute-vote-${event.disputeId}`,
+          expiresAt: event.closesAt,
+        });
+      } catch (error) {
+        this.logger.error("Failed to send vote invitation", error instanceof Error ? error.stack : String(error));
+      }
     });
   }
 

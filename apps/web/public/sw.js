@@ -59,6 +59,7 @@ self.addEventListener("push", (event) => {
     return;
   }
   const { title, body, url, tag } = payload;
+  if (payload.expiresAt && Date.parse(payload.expiresAt) <= Date.now()) return;
   event.waitUntil(
     (async () => {
       // A message already arrives in-app over the socket: don't also buzz while the user is looking at the app.

@@ -23,6 +23,7 @@ import { DailyResetJob, resetInstantFor } from "../jobs/daily-reset.job.js";
 import { NotificationService } from "../notifications/notification.service.js";
 import { PushService } from "../notifications/push.service.js";
 import { flushBackground } from "../common/background.js";
+import { SocketEvents } from "@sala/contracts/events";
 import { DisputeService } from "./disputes.service.js";
 
 
@@ -33,7 +34,8 @@ async function build(db: Db) {
   const security = new SecurityEventService(db, reputation);
   const studySessions = new StudySessionService(db);
   const restrictions = new RestrictionService(db);
-  const gateway = new RoomRealtimeGateway(new RecordingHub(), roomState, buildNotificationService(db), null); // no @WebSocketServer() attached — emits are no-ops in tests
+  const hub = new RecordingHub();
+  const gateway = new RoomRealtimeGateway(hub, roomState, buildNotificationService(db), null);
   const qr = new QrService(db);
   const rateLimit = new RateLimitService();
   const abusePolicy = new AbusePolicyService(db, new TurnstileService());
@@ -44,7 +46,7 @@ async function build(db: Db) {
   const checkIns = new CheckInService(db, roomState, presence, security, studySessions, qr, disputes, new RolesService(db));
   const observations = new ObservationService(db, roomState, presence, security, abusePolicy, qr, reputation, notifications, disputes);
   const dailyReset = new DailyResetJob(db, gateway, studySessions);
-  return { disputes, checkIns, observations, reputation, roomState, dailyReset, send };
+  return { disputes, checkIns, observations, reputation, roomState, dailyReset, send, hub };
 }
 
 describe("DisputeService", () => {
@@ -55,13 +57,14 @@ describe("DisputeService", () => {
   let roomState: RoomStateService;
   let dailyReset: DailyResetJob;
   let send: MockInstance<PushService["sendToUser"]>;
+  let hub: RecordingHub;
   let roomId: string;
   let seatIds: string[];
   let location: { latitude: number; longitude: number; accuracy: number; capturedAt: string };
 
   beforeEach(async () => {
     db = freshDb();
-    ({ disputes: svc, checkIns, observations, roomState, dailyReset, send } = await build(db));
+    ({ disputes: svc, checkIns, observations, roomState, dailyReset, send, hub } = await build(db));
     const room = await getRoom(db);
     roomId = room.id;
     location = { latitude: room.latitude, longitude: room.longitude, accuracy: 10, capturedAt: new Date().toISOString() };
@@ -72,6 +75,35 @@ describe("DisputeService", () => {
   async function forceClosed(disputeId: string): Promise<void> {
     await db.update(schema.seatDisputes).set({ closesAt: new Date(Date.now() - 1000) }).where(eq(schema.seatDisputes.id, disputeId));
   }
+
+  it("invites other seated members once, including privately outside the room page, and closes their notice", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    await checkIns.checkIn({ userId: "u2", roomId, seatId: seatIds[1]!, location, showIdentity: false });
+    await checkIns.checkIn({ userId: "u3", roomId, seatId: seatIds[2]!, location, showIdentity: false });
+    const { dispute } = await svc.open({ userId: "u2", roomId, seatId: seatIds[0]!, kind: "ABSENT", location });
+    await flushBackground();
+    const invitations = hub.eventsFor(SocketEvents.DisputeVoteAvailable);
+    expect(invitations).toHaveLength(1);
+    expect(invitations[0]).toMatchObject({ to: "user:u3", payload: { disputeId: dispute.id, roomId, closesAt: dispute.closesAt } });
+    expect(send).toHaveBeenCalledWith("u3", expect.objectContaining({ tag: `dispute-vote-${dispute.id}`, expiresAt: dispute.closesAt, url: expect.stringContaining(`seat=${seatIds[0]}`) }));
+    await svc.vote(dispute.id, "u3", "SAVED", location);
+    await flushBackground();
+    expect(hub.eventsFor(SocketEvents.DisputeVoteAvailable)).toHaveLength(1);
+    expect(send.mock.calls.filter(([id, payload]) => id === "u3" && payload.tag === `dispute-vote-${dispute.id}`)).toHaveLength(1);
+    await forceClosed(dispute.id);
+    await svc.resolveDue();
+    expect(hub.eventsFor(SocketEvents.SeatDisputeResolved).some((event) => event.to === "user:u3")).toBe(true);
+  });
+
+  it("does not invite an expired seat holder or someone without a seat", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    const { checkIn } = await checkIns.checkIn({ userId: "u3", roomId, seatId: seatIds[2]!, location, showIdentity: false });
+    await db.update(schema.checkIns).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.checkIns.id, checkIn.id));
+    await svc.open({ userId: "u2", roomId, seatId: seatIds[0]!, kind: "ABSENT", location });
+    await flushBackground();
+    expect(hub.eventsFor(SocketEvents.DisputeVoteAvailable)).toEqual([]);
+    expect(send.mock.calls.some(([id]) => id === "u3")).toBe(false);
+  });
 
   it("opening a CLAIM against an active check-in makes the seat UNCERTAIN", async () => {
     await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });

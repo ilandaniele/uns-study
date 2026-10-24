@@ -47,6 +47,11 @@ const focused = (): FakeClient => ({ visibilityState: "visible", focused: true, 
 const background = (): FakeClient => ({ visibilityState: "hidden", focused: false, focus: vi.fn() });
 
 describe("sw.js push", () => {
+  it("does not show a vote invitation delivered after its deadline", async () => {
+    const w = loadWorker();
+    await dispatch(w.listeners.push!, pushEvent({ title: "Votación", body: "Votá", url: "/sala/principal", tag: "vote", expiresAt: "2000-01-01T00:00:00Z" }));
+    expect(w.showNotification).not.toHaveBeenCalled();
+  });
   it("shows the notification with title, body, tag and a same-origin url", async () => {
     const w = loadWorker();
     await dispatch(w.listeners.push!, pushEvent({ title: "Hola", body: "b", url: "/mensajes?x=1", tag: "t1" }));

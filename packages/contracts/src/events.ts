@@ -37,6 +37,7 @@ export const SocketEvents = {
   SeatDisputeResolved: "seat:dispute-resolved",
   DisputeYouAreChallenged: "dispute:you-are-challenged",
   DisputeYouWon: "dispute:you-won",
+  DisputeVoteAvailable: "dispute:vote-available",
   TableNicknameChanged: "table:nickname-changed",
   RoomAdminPresent: "room:admin-present",
   SeatFreedAlert: "seat:freed-alert",

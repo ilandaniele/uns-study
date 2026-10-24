@@ -341,6 +341,7 @@ Exact SQL should match the final Drizzle schema and naming conventions.
 - ABSENT and SAVED together determine whether the person left. If absence wins, close the old check-in and record its study session. Then choose FREE or SAVED by their respective vote weights; a tie about belongings leaves SAVED.
 - A holder's GPS-validated STILL_HERE response, or a currently protected verification photo, requires at least two absence confirmations besides the opener before ending the check-in. CLAIM cannot displace a photo-protected holder.
 - Existing disputes and old clients remain compatible: missing saved vote totals mean zero. The SQLite vote column is unrestricted TEXT, so the additional vote needs no destructive table migration.
+- Opening a vote privately invites the room's other unexpired check-in holders. The opener and incumbent are excluded; the incumbent keeps their dedicated challenge. The app shows the deadline as a live countdown on every page and recovers missed invitations on reconnect. Push invitations carry the same deadline and expire with it; votes and timer ticks do not resend them.
 
 ## 8. Seed geometry
 

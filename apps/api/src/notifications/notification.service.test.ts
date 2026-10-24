@@ -106,6 +106,20 @@ describe("NotificationService", () => {
     });
   }
 
+  it("vote invitations are scoped to the occupied room and can exclude participants", async () => {
+    await addActiveCheckIn("checked-in-subscriber", seatIds[0]!);
+    expect(svc.disputeVoters(roomId, [])).toEqual(["checked-in-subscriber"]);
+    expect(svc.disputeVoters("another-room", [])).toEqual([]);
+    expect(svc.disputeVoters(roomId, ["checked-in-subscriber"])).toEqual([]);
+  });
+
+  it("does not send a vote push after its deadline", async () => {
+    await addPushSubscription("subscriber");
+    const result = await new PushService(db).sendToUser("subscriber", { title: "Votación", body: "Votá", url: "/sala/principal", tag: "vote", expiresAt: "2000-01-01T00:00:00Z" });
+    expect(result).toBeNull();
+    expect(sendNotification).not.toHaveBeenCalled();
+  });
+
   describe("handleSeatFreed", () => {
     it("ignores changes that aren't a freeing transition", async () => {
       await addPushSubscription("subscriber");

@@ -3,6 +3,7 @@ import {
   type ChatMessageDto,
   type DirectMessageDto,
   type DisputeChallengedEvent,
+  type DisputeVoteAvailableEvent,
   type GroupMessageDto,
   type GroupUpdatedEvent,
   type CheckInExpiringEvent,
@@ -215,6 +216,14 @@ export class RoomRealtimeGateway {
 
   emitDisputeOpened(roomId: string, dispute: SeatDisputeLiteDto): void {
     this.hub.publishToRoom(roomId, SocketEvents.SeatDisputeOpened, dispute);
+  }
+
+  emitDisputeVoteAvailable(userId: string, payload: DisputeVoteAvailableEvent): void {
+    this.hub.publishToUser(userId, SocketEvents.DisputeVoteAvailable, payload);
+  }
+
+  emitDisputeVoteClosed(userId: string, payload: SeatDisputeLiteDto): void {
+    this.hub.publishToUser(userId, SocketEvents.SeatDisputeResolved, payload);
   }
 
   emitDisputeUpdated(roomId: string, dispute: SeatDisputeLiteDto): void {

@@ -206,6 +206,12 @@ export interface DisputeChallengedEvent {
   closesAt: string;
 }
 
+/** Private invitation for a different, currently seated member of the room. */
+export interface DisputeVoteAvailableEvent extends DisputeChallengedEvent {
+  roomId: string;
+  roomSlug: string;
+}
+
 /** Sent to a CLAIM opener's private `user:{userId}` channel once their claim resolves
  *  RESOLVED_ABSENT — the incumbent's check-in is cancelled, but the opener still has to
  *  self-check-in (fresh presence) rather than being auto-seated. */
