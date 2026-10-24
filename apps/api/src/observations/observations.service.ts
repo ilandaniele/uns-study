@@ -10,7 +10,6 @@ import { ReputationService } from "../reputation/reputation.service.js";
 import { ApiErrors } from "../common/api-error.js";
 import type { RoomHours } from "../rooms/room-hours.js";
 import { RoomCache } from "../common/cache/room-cache.service.js";
-import { isCheckInVerified } from "../checkins/verification.js";
 import { runInBackground } from "../common/background.js";
 import { Logger } from "../platform/logger.js";
 import { NotificationService } from "../notifications/notification.service.js";
@@ -113,6 +112,7 @@ export class ObservationService {
       .where(
         and(
           eq(schema.checkIns.status, "ACTIVE"),
+          gt(schema.checkIns.expiresAt, now),
           or(eq(schema.checkIns.seatId, input.seatId), eq(schema.checkIns.userId, input.userId)),
         ),
       )
@@ -130,13 +130,6 @@ export class ObservationService {
         : [];
 
     if (activeCheckIns.some((c) => c.userId === input.userId && c.seatId === input.seatId)) throw ApiErrors.ownSeatObservation();
-
-    if (input.status === "FREE") {
-      const seatCheckIn = activeCheckIns.find((c) => c.seatId === input.seatId);
-      if (seatCheckIn && isCheckInVerified(seatCheckIn.verifiedAt, seatCheckIn.expiresAt)) {
-        throw ApiErrors.seatVerified();
-      }
-    }
 
     const adminMark = input.adminMark === true && input.status !== "SAVED";
     const minutes = adminMark
@@ -214,9 +207,14 @@ export class ObservationService {
     }
     let { changes } = outcome;
     let dispute: SeatDisputeDto | null = null;
+    const holder = activeCheckIns.find((c) => c.seatId === input.seatId && c.userId !== input.userId);
+    const observationVote = input.status === "FREE" ? "ABSENT" : input.status === "SAVED" ? "SAVED" : "PRESENT";
+    dispute = await this.disputes.findOpenForSeat(input.seatId, input.userId);
+    if (dispute) {
+      dispute = await this.disputes.vote(dispute.id, input.userId, observationVote, input.location, true);
+    }
 
-    if (input.status === "FREE") {
-      const holder = activeCheckIns.find((c) => c.seatId === input.seatId && c.userId !== input.userId);
+    if (input.status === "FREE" || (input.status === "SAVED" && holder)) {
       const prior = priorStates[0];
       const after = changes.find((c) => c.seatId === input.seatId)?.status ?? prior?.status;
       // An ABSENT vote on the holder's check-in, or a SAVED vote on a seat that other reports call
@@ -235,6 +233,7 @@ export class ObservationService {
           roomId: input.roomId,
           seatId: input.seatId,
           kind,
+          initialVote: observationVote,
           location: input.location,
           // Presence was enforced above for this same request: the vote doesn't check it again.
           presence,

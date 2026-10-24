@@ -3,6 +3,7 @@ import { schema, type Db, type Tx } from "@sala/database";
 import {
   DISPUTE_MINUTES,
   FREE_OBS_MINUTES,
+  SAVED_OBS_MINUTES,
   type DisputeKind,
   type DisputeStatus,
   type DisputeVote,
@@ -44,6 +45,8 @@ export interface OpenDisputeInput {
   location?: LocationInput | null;
   /** Presence already enforced for this request (router pre-check, or the "Está libre" observation); skips a second check. */
   presence?: PresenceGrant | null;
+  /** Initial report; not accepted from the public open-dispute request. */
+  initialVote?: DisputeVote;
 }
 
 /** Same bucket and numbers `disputesRouter` enforces on `POST /disputes`. */
@@ -170,14 +173,14 @@ export class DisputeService {
         const activeCheckIn = tx
           .select()
           .from(schema.checkIns)
-          .where(and(eq(schema.checkIns.seatId, input.seatId), eq(schema.checkIns.status, "ACTIVE")))
+          .where(and(eq(schema.checkIns.seatId, input.seatId), eq(schema.checkIns.status, "ACTIVE"), gt(schema.checkIns.expiresAt, now)))
           .limit(1)
           .get();
 
         if (activeCheckIn?.userId === input.userId) {
           throw ApiErrors.disputeNotAllowed("No podés abrir una disputa en tu propio asiento.");
         }
-        if (activeCheckIn && isCheckInVerified(activeCheckIn.verifiedAt, activeCheckIn.expiresAt)) {
+        if (input.kind === "CLAIM" && activeCheckIn && isCheckInVerified(activeCheckIn.verifiedAt, activeCheckIn.expiresAt)) {
           throw ApiErrors.disputeNotAllowed("Este lugar está verificado con foto.");
         }
         if ((input.kind === "CLAIM" || input.kind === "ABSENT") && !activeCheckIn) {
@@ -210,7 +213,7 @@ export class DisputeService {
           .returning()
           .get();
         if (!row) throw new Error("Failed to create dispute");
-        tx.insert(schema.seatDisputeVotes).values({ disputeId: row.id, userId: input.userId, vote: "ABSENT", weight: 1, createdAt: now, updatedAt: now }).run();
+        tx.insert(schema.seatDisputeVotes).values({ disputeId: row.id, userId: input.userId, vote: input.initialVote ?? "ABSENT", weight: 1, createdAt: now, updatedAt: now }).run();
         return row;
       });
     } catch (err: unknown) {
@@ -259,7 +262,7 @@ export class DisputeService {
    */
   async openFromFreeObservation(input: OpenDisputeInput): Promise<{ dispute: SeatDisputeDto; changes: SeatStateChange[] } | null> {
     try {
-      return await this.open(input, { checkRateLimit: true, challengeReason: input.kind === "SAVED" ? "dispute" : "marked-free-vote" });
+      return await this.open(input, { checkRateLimit: true, challengeReason: input.kind === "SAVED" || input.initialVote === "SAVED" ? "dispute" : "marked-free-vote" });
     } catch (err) {
       if (err instanceof ApiException && ["DISPUTE_NOT_ALLOWED", "DISPUTE_ALREADY_OPEN", "RATE_LIMITED"].includes(err.code)) return null;
       throw err;
@@ -299,7 +302,7 @@ export class DisputeService {
 
   // ---- Voting ----
 
-  async vote(disputeId: string, userId: string, vote: DisputeVote, location?: LocationInput | null): Promise<SeatDisputeDto> {
+  async vote(disputeId: string, userId: string, vote: DisputeVote, location?: LocationInput | null, fromObservation = false): Promise<SeatDisputeDto> {
     await this.restrictions.assertNot(userId, ["RESTRICT_OBSERVATIONS", "SUSPENDED", "BANNED"]);
 
     const row = this.db.select().from(schema.seatDisputes).where(eq(schema.seatDisputes.id, disputeId)).limit(1).get();
@@ -316,10 +319,10 @@ export class DisputeService {
     const voterCheckIn = this.db
       .select({ id: schema.checkIns.id })
       .from(schema.checkIns)
-      .where(and(eq(schema.checkIns.userId, userId), eq(schema.checkIns.status, "ACTIVE"), eq(schema.checkIns.roomId, row.roomId)))
+      .where(and(eq(schema.checkIns.userId, userId), eq(schema.checkIns.status, "ACTIVE"), gt(schema.checkIns.expiresAt, new Date()), eq(schema.checkIns.roomId, row.roomId)))
       .limit(1)
       .get();
-    if (!voterCheckIn) {
+    if (!voterCheckIn && !fromObservation) {
       throw ApiErrors.disputeNotAllowed("Para votar tenés que tener un lugar marcado en la sala.");
     }
 
@@ -588,7 +591,6 @@ export class DisputeService {
    *  (ABSENT/SAVED: "no está" / "se fue" means the seat is free), or null for a CLAIM — there the
    *  opener is about to sit down themselves, so the seat must not be advertised to the room as free. */
   private async freeSignalWeight(row: SeatDisputeRow): Promise<number | null> {
-    if (row.kind === "CLAIM") return null;
     return this.reputation.observationWeight(row.openerUserId);
   }
 
@@ -630,15 +632,17 @@ export class DisputeService {
         .where(eq(schema.seatDisputeVotes.disputeId, disputeId))
         .all();
       const present = voteRows.filter((v) => v.vote === "PRESENT").reduce((sum, v) => sum + v.weight, 0);
-      const absent = voteRows.filter((v) => v.vote === "ABSENT").reduce((sum, v) => sum + v.weight, 0);
+      const absent = voteRows.filter((v) => v.vote !== "PRESENT").reduce((sum, v) => sum + v.weight, 0);
       // The incumbent affirmatively responded STILL_HERE (with a valid, freshly-validated
       // presence check) — overturning that takes more than a bare majority: at least two ABSENT
       // votes from people other than the opener (whose own ABSENT vote is automatic on open).
       const incumbentRespondedPresent = pre.incumbentUserId != null && voteRows.some((v) => v.userId === pre.incumbentUserId && v.vote === "PRESENT");
-      const nonOpenerAbsentCount = voteRows.filter((v) => v.vote === "ABSENT" && v.userId !== pre.openerUserId).length;
+      const nonOpenerAbsentCount = voteRows.filter((v) => v.vote !== "PRESENT" && v.userId !== pre.openerUserId).length;
+      const holder = pre.checkInId ? tx.select().from(schema.checkIns).where(eq(schema.checkIns.id, pre.checkInId)).get() : null;
+      const photoProtected = holder != null && isCheckInVerified(holder.verifiedAt, holder.expiresAt, now);
 
       let finalStatus: DisputeStatus;
-      const absentWins = absent > present && (!incumbentRespondedPresent || nonOpenerAbsentCount >= 2);
+      const absentWins = absent > present && (!(incumbentRespondedPresent || photoProtected) || nonOpenerAbsentCount >= 2);
       if (absentWins) finalStatus = "RESOLVED_ABSENT";
       else if (present > absent) finalStatus = "RESOLVED_PRESENT";
       // SAVED never ties: a tie means nobody could confirm it's actually saved, so it stays PRESENT.
@@ -646,7 +650,7 @@ export class DisputeService {
       else if (pre.kind === "SAVED") finalStatus = "RESOLVED_PRESENT";
       // ABSENT ("no está") is answered outright by the incumbent's GPS-validated "Sigo acá": the
       // seat stays theirs instead of lingering as "Dudoso" until they extend.
-      else if (pre.kind === "ABSENT" && incumbentRespondedPresent) finalStatus = "RESOLVED_PRESENT";
+      else if (pre.kind === "ABSENT" && (incumbentRespondedPresent || photoProtected)) finalStatus = "RESOLVED_PRESENT";
       else finalStatus = "TIED";
 
       const claimed = tx
@@ -663,7 +667,7 @@ export class DisputeService {
       } else {
         // The room (or the incumbent) said the seat is not free: the "Está libre" reports on it are
         // overruled, so they can't keep it "Dudoso" against the "guardado"/"ocupado" ones.
-        this.expireFreeObservations(tx, pre.seatId, now);
+        this.expireFreeObservations(tx, pre.seatId, now, pre.incumbentUserId != null);
       }
 
       return { finalStatus };
@@ -740,10 +744,10 @@ export class DisputeService {
   }
 
   /** Expires every still-live FREE observation on the seat (a vote just decided it isn't free). */
-  private expireFreeObservations(tx: Tx, seatId: string, now: Date): void {
+  private expireFreeObservations(tx: Tx, seatId: string, now: Date, personPresent = false): void {
     tx.update(schema.seatObservations)
       .set({ expiresAt: now, updatedAt: now })
-      .where(and(eq(schema.seatObservations.seatId, seatId), eq(schema.seatObservations.observedStatus, "FREE"), gt(schema.seatObservations.expiresAt, now)))
+      .where(and(eq(schema.seatObservations.seatId, seatId), inArray(schema.seatObservations.observedStatus, personPresent ? ["FREE", "SAVED"] : ["FREE"]), gt(schema.seatObservations.expiresAt, now)))
       .run();
   }
 
@@ -753,12 +757,19 @@ export class DisputeService {
    *  reputation-derived observation confidence weight — this is functionally equivalent to them
    *  filing a FREE observation. */
   private applyFreeSignal(tx: Tx, row: SeatDisputeRow, now: Date, weight: number): void {
+    const votes = tx.select().from(schema.seatDisputeVotes).where(eq(schema.seatDisputeVotes.disputeId, row.id)).all();
+    const free = votes.filter((vote) => vote.vote === "ABSENT").reduce((sum, vote) => sum + vote.weight, 0);
+    const saved = votes.filter((vote) => vote.vote === "SAVED").reduce((sum, vote) => sum + vote.weight, 0);
+    // Both mean the person left. In a tie about belongings, do not advertise a free seat.
+    const status = saved > 0 && saved >= free ? "SAVED" : "FREE";
+    // A won claim invites a fresh check-in; never advertise it as free in between.
+    if (row.kind === "CLAIM" && status === "FREE") return;
     tx.update(schema.seatObservations)
       .set({ expiresAt: now, updatedAt: now })
       .where(
         and(
           eq(schema.seatObservations.seatId, row.seatId),
-          inArray(schema.seatObservations.observedStatus, ["OCCUPIED", "SAVED"]),
+          inArray(schema.seatObservations.observedStatus, ["FREE", "OCCUPIED", "SAVED"]),
           gt(schema.seatObservations.expiresAt, now),
         ),
       )
@@ -768,12 +779,12 @@ export class DisputeService {
         userId: row.openerUserId,
         roomId: row.roomId,
         seatId: row.seatId,
-        observedStatus: "FREE",
+        observedStatus: status,
         presenceVerified: true,
         qrVerified: false,
         confidenceWeight: weight,
         observedAt: now,
-        expiresAt: new Date(now.getTime() + FREE_OBS_MINUTES * 60_000),
+        expiresAt: new Date(now.getTime() + (status === "SAVED" ? SAVED_OBS_MINUTES : FREE_OBS_MINUTES) * 60_000),
       })
       .run();
   }
@@ -792,6 +803,7 @@ export class DisputeService {
       .all();
     const present = voteRows.filter((v) => v.vote === "PRESENT").reduce((sum, v) => sum + v.weight, 0);
     const absent = voteRows.filter((v) => v.vote === "ABSENT").reduce((sum, v) => sum + v.weight, 0);
+    const saved = voteRows.filter((v) => v.vote === "SAVED").reduce((sum, v) => sum + v.weight, 0);
     const mine = viewerId ? voteRows.find((v) => v.userId === viewerId) : undefined;
 
     return {
@@ -801,7 +813,7 @@ export class DisputeService {
       status: row.status,
       openedAt: new Date(row.openedAt).toISOString(),
       closesAt: new Date(row.closesAt).toISOString(),
-      votes: { present, absent },
+      votes: { present, absent, ...(saved ? { saved } : {}) },
       myVote: mine ? mine.vote : null,
       iAmIncumbent: viewerId != null && row.incumbentUserId === viewerId,
       iAmOpener: viewerId != null && row.openerUserId === viewerId,

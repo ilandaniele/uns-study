@@ -59,8 +59,8 @@ export interface UseSeatActionsResult {
    * `dispute` is that vote, so the reporter can see it. Null when the request failed.
    */
   markFree: (seatId: string, options?: SeatActionOptions) => Promise<{ dispute: SeatDisputeDto | null } | null>;
-  markOccupied: (seatId: string, options?: SeatActionOptions) => Promise<boolean>;
-  markSaved: (seatId: string, options?: SeatActionOptions) => Promise<boolean>;
+  markOccupied: (seatId: string, options?: SeatActionOptions) => Promise<{ dispute: SeatDisputeDto | null } | null>;
+  markSaved: (seatId: string, options?: SeatActionOptions) => Promise<{ dispute: SeatDisputeDto | null } | null>;
   extend: (durationMinutes?: number) => Promise<boolean>;
   checkOut: () => Promise<boolean>;
   /** Retries the last action (check-in/observation) with a solved Turnstile token. */
@@ -277,10 +277,10 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
 
   const markFree = useCallback((seatId: string, options?: SeatActionOptions) => observe(seatId, "FREE", options), [observe]);
   const markOccupied = useCallback(
-    (seatId: string, options?: SeatActionOptions) => observe(seatId, "OCCUPIED", options).then((v) => v != null),
+    (seatId: string, options?: SeatActionOptions) => observe(seatId, "OCCUPIED", options),
     [observe],
   );
-  const markSaved = useCallback((seatId: string, options?: SeatActionOptions) => observe(seatId, "SAVED", options).then((v) => v != null), [observe]);
+  const markSaved = useCallback((seatId: string, options?: SeatActionOptions) => observe(seatId, "SAVED", options), [observe]);
 
   const extend = useCallback(
     (durationMinutes?: number) =>

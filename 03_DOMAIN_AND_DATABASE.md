@@ -334,6 +334,14 @@ WHERE room_id = $1;
 
 Exact SQL should match the final Drizzle schema and naming conventions.
 
+### Seat reports and presence votes
+
+- Reporting FREE or SAVED on another person's active check-in opens or joins a five-minute ABSENT dispute. OCCUPIED joins an existing vote as PRESENT; it does not challenge a matching occupied state.
+- Each reporter has one replaceable vote: PRESENT (person there), ABSENT (empty seat), or SAVED (person absent, belongings remain). Reports require server-validated room presence and retain the observation rate limits.
+- ABSENT and SAVED together determine whether the person left. If absence wins, close the old check-in and record its study session. Then choose FREE or SAVED by their respective vote weights; a tie about belongings leaves SAVED.
+- A holder's GPS-validated STILL_HERE response, or a currently protected verification photo, requires at least two absence confirmations besides the opener before ending the check-in. CLAIM cannot displace a photo-protected holder.
+- Existing disputes and old clients remain compatible: missing saved vote totals mean zero. The SQLite vote column is unrestricted TEXT, so the additional vote needs no destructive table migration.
+
 ## 8. Seed geometry
 
 The seed must create:

@@ -79,25 +79,28 @@ function ActiveDispute({
         Se decide en {disputeCountdownLabel(dispute.closesAt, now)}
       </p>
       <p role="status" className="mt-1 text-sm text-muted">
-        Está ahí: {dispute.votes.present} · No está: {dispute.votes.absent}
+        Ocupado: {dispute.votes.present} · Libre: {dispute.votes.absent} · Guardado: {dispute.votes.saved ?? 0}
       </p>
       {dispute.iAmOpener ? (
         <p className="mt-2 text-sm text-muted">
           {dispute.kind === "CLAIM"
             ? "Abriste esta votación. Si nadie vota antes de que termine, ganás vos."
-            : "Abriste esta votación. Si nadie vota antes de que termine, el lugar queda libre."}
+            : "Abriste esta votación para confirmar si la persona sigue ahí y si el lugar está libre o guardado. Una foto reciente requiere más confirmaciones."}
         </p>
       ) : dispute.myVote ? (
-        <p className="mt-2 text-sm text-muted">Votaste: {dispute.myVote === "PRESENT" ? "Está ahí" : "No está"}</p>
+        <p className="mt-2 text-sm text-muted">Votaste: {dispute.myVote === "PRESENT" ? "Está ocupado" : dispute.myVote === "SAVED" ? "Está guardado" : "Está libre"}</p>
       ) : dispute.iAmIncumbent ? null : !canVote ? (
         <p className="mt-2 text-sm text-muted">Marcá tu lugar para votar.</p>
       ) : (
         <div className="mt-2 flex gap-2">
           <VoteButton onClick={() => onVote("PRESENT")} disabled={pending}>
-            Está ahí
+            Está ocupado
           </VoteButton>
           <VoteButton onClick={() => onVote("ABSENT")} disabled={pending}>
-            No está
+            Está libre
+          </VoteButton>
+          <VoteButton onClick={() => onVote("SAVED")} disabled={pending}>
+            Está guardado
           </VoteButton>
         </div>
       )}

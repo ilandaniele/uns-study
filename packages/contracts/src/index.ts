@@ -180,7 +180,7 @@ export interface PhotoVerificationResultDto {
 
 export type DisputeKind = "CLAIM" | "ABSENT" | "SAVED";
 export type DisputeStatus = "OPEN" | "RESOLVED_ABSENT" | "RESOLVED_PRESENT" | "TIED" | "CANCELLED";
-export type DisputeVote = "PRESENT" | "ABSENT";
+export type DisputeVote = "PRESENT" | "ABSENT" | "SAVED";
 
 export interface SeatDisputeDto {
   id: string;
@@ -190,7 +190,7 @@ export interface SeatDisputeDto {
   openedAt: string;
   closesAt: string;
   /** Aggregate vote weights only — voter identities are never exposed. */
-  votes: { present: number; absent: number };
+  votes: { present: number; absent: number; saved?: number };
   myVote: DisputeVote | null;
   iAmIncumbent: boolean;
   iAmOpener: boolean;
@@ -325,7 +325,7 @@ export const openDisputeSchema = z.object({
 });
 
 export const voteDisputeSchema = z.object({
-  vote: z.enum(["PRESENT", "ABSENT"]),
+  vote: z.enum(["PRESENT", "ABSENT", "SAVED"]),
   location: locationInputSchema.optional(),
 });
 

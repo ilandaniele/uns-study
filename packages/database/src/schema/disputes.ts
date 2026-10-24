@@ -6,7 +6,7 @@ import { user } from "./auth.js";
 
 export const disputeKindEnum = { enumValues: ["CLAIM", "ABSENT", "SAVED"] as const };
 export const disputeStatusEnum = { enumValues: ["OPEN", "RESOLVED_ABSENT", "RESOLVED_PRESENT", "TIED", "CANCELLED"] as const };
-export const disputeVoteEnum = { enumValues: ["ABSENT", "PRESENT"] as const };
+export const disputeVoteEnum = { enumValues: ["ABSENT", "PRESENT", "SAVED"] as const };
 
 export const seatDisputes = sqliteTable(
   "seat_disputes",

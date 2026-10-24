@@ -57,7 +57,7 @@ function seatChallengeCopy(reason: SeatChallengeReason, seatCode: string): { tit
         body: `Asiento ${seatCode}. Si todavía lo estás usando, entrá a la sala.`,
       };
     case "lost":
-      return { title: "Perdiste tu lugar", body: `Asiento ${seatCode}. La votación decidió que el lugar está libre.` };
+      return { title: "Perdiste tu lugar", body: `Asiento ${seatCode}. La votación confirmó que ya no estás ahí y cerró tu registro.` };
   }
 }
 

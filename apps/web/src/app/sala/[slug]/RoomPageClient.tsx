@@ -374,19 +374,21 @@ export function RoomPageClient({ slug }: { slug: string }) {
   }
 
   async function handleMarkOccupied(seatId: string) {
-    const ok = await markOccupied(seatId, { qrToken });
-    if (ok) {
+    const result = await markOccupied(seatId, { qrToken });
+    if (result) {
       trackEvent("observation", { roomSlug: slug, seatId, status: "OCCUPIED" });
       todayStats.bumpContribution();
+      if (result.dispute && result.dispute.seatId === selectedSeat?.id) setSelectedDispute(result.dispute);
     }
   }
 
   async function handleMarkSaved(seatId: string) {
-    const ok = await markSaved(seatId, { qrToken });
-    if (ok) {
+    const result = await markSaved(seatId, { qrToken });
+    if (result) {
       trackEvent("observation", { roomSlug: slug, seatId, status: "SAVED" });
       todayStats.bumpContribution();
-      setSavedPromptSeatId(seatId);
+      if (result.dispute && result.dispute.seatId === selectedSeat?.id) setSelectedDispute(result.dispute);
+      else setSavedPromptSeatId(seatId);
     }
   }
 
