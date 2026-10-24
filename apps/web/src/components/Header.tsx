@@ -41,19 +41,19 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-app bg-surface/95 px-4 py-2.5 max-[360px]:px-3 backdrop-blur supports-[backdrop-filter]:bg-surface/85">
-      <div className="flex min-w-0 items-center gap-3 lg:shrink-0">
+      <div className="header-brand flex min-w-0 flex-1 items-center lg:flex-none">
         <Link href="/" aria-label="Sala de Estudio" className="flex min-w-0 items-center gap-2.5 whitespace-nowrap text-main max-[360px]:gap-2">
           {/* Brand mark: black-and-orange book over a table; the dark variant swaps black for off-white. */}
           {/* eslint-disable-next-line @next/next/no-img-element -- tiny static PNG, no optimizer needed */}
-          <img src="/icons/logo-mark.webp" alt="" aria-hidden="true" width={44} height={36} className="h-9 w-auto dark:hidden" />
+          <img src="/icons/logo-mark.webp" alt="" aria-hidden="true" width={44} height={36} className="h-9 w-auto shrink-0 dark:hidden" />
           {/* eslint-disable-next-line @next/next/no-img-element -- tiny static PNG, no optimizer needed */}
-          <img src="/icons/logo-mark-dark.webp" alt="" aria-hidden="true" width={44} height={36} className="hidden h-9 w-auto dark:block" />
-          <span aria-hidden="true" className="flex flex-col leading-none">
-            {/* Under 420px the wordmark stacks on two lines so it never runs under the header buttons; under 360px it also shrinks. */}
-            <span className="font-display text-[15px] font-extrabold uppercase tracking-[0.01em] max-[420px]:w-[5.8em] max-[420px]:whitespace-normal max-[420px]:leading-[1.05] max-[360px]:text-[13px]">
+          <img src="/icons/logo-mark-dark.webp" alt="" aria-hidden="true" width={44} height={36} className="hidden h-9 w-auto shrink-0 dark:block" />
+          <span aria-hidden="true" className="header-wordmark flex-col leading-none">
+            {/* Use the space left by the actions, including a running focus timer. */}
+            <span className="font-display text-[15px] font-extrabold uppercase tracking-[0.01em] max-lg:w-[5.8em] max-lg:whitespace-normal max-lg:leading-[1.05]">
               Sala de <span className="text-main">Estudio</span>
             </span>
-            <span className="t-label mt-1 !text-[10px] text-muted max-[420px]:hidden">Bahía Blanca</span>
+            <span className="t-label mt-1 !text-[10px] text-muted max-lg:hidden">Bahía Blanca</span>
           </span>
         </Link>
       </div>

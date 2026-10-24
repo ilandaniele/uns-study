@@ -1,5 +1,27 @@
 @import "tailwindcss";
 
+/* Let the brand respond to the room left by the header actions, not the device
+   width. Keep the full-size mark and touch targets on the narrowest phones. */
+.header-brand {
+  container: header-brand / inline-size;
+}
+.header-wordmark {
+  display: none;
+}
+@container header-brand (min-width: 148px) {
+  .header-wordmark {
+    display: flex;
+  }
+}
+@media (min-width: 1024px) {
+  .header-brand {
+    container-type: normal;
+  }
+  .header-wordmark {
+    display: flex;
+  }
+}
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
