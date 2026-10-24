@@ -16,7 +16,10 @@ export const Ceniza = memo(function Ceniza({ tables, chairs }: { tables: Readonl
   const sprite = useRef<SVGImageElement>(null);
   const shadow = useRef<SVGEllipseElement>(null);
   const viewport = useRef<SVGSVGElement>(null);
-  const trigger = useRef<SVGForeignObjectElement>(null);
+  const trigger = useRef<SVGRectElement>(null);
+  const hitSize = useRef(84);
+  const pointerStart = useRef<{ x: number; y: number } | null>(null);
+  const dragged = useRef(false);
   const [memorialOpen, setMemorialOpen] = useState(false);
 
   useEffect(() => {
@@ -28,10 +31,16 @@ export const Ceniza = memo(function Ceniza({ tables, chairs }: { tables: Readonl
     let angle = 0;
     let previousBearing: number | undefined;
     let distance = 0;
+    let currentFrame = SLEEP_FRAME;
     const draw = (point: Point, frame: number) => {
+      currentFrame = frame;
       location.current?.setAttribute("transform", `translate(${point.x} ${point.y})`);
       const walking = frame < WALK_FRAMES;
-      trigger.current?.setAttribute("y", walking ? "-42" : "-68");
+      const size = hitSize.current;
+      trigger.current?.setAttribute("x", String(-size / 2));
+      trigger.current?.setAttribute("y", String((walking ? 0 : -26) - size / 2));
+      trigger.current?.setAttribute("width", String(size));
+      trigger.current?.setAttribute("height", String(size));
       facing.current?.setAttribute("transform", walking ? `rotate(${angle})` : "");
       viewport.current?.setAttribute("y", walking ? "-35" : "-63");
       sprite.current?.setAttribute("x", String(-(frame % SPRITE_COLUMNS) * 96));
@@ -135,11 +144,24 @@ export const Ceniza = memo(function Ceniza({ tables, chairs }: { tables: Readonl
     };
     motion.addEventListener("change", resume);
     document.addEventListener("visibilitychange", resume);
+    // Keep at least a 44 CSS-pixel target as the SVG shrinks to a phone screen.
+    // Native SVG hit testing also avoids a transformed/masked foreignObject on Safari.
+    const resizeTarget = () => {
+      const matrix = location.current?.ownerSVGElement?.getScreenCTM();
+      const scale = matrix ? Math.hypot(matrix.a, matrix.b) : 0;
+      if (scale > 0) hitSize.current = Math.max(84, 44 / scale);
+      draw(position, currentFrame);
+    };
+    const observer = new ResizeObserver(resizeTarget);
+    const svg = location.current?.ownerSVGElement;
+    if (svg) observer.observe(svg);
+    resizeTarget();
     resume();
     return () => {
       stop();
       motion.removeEventListener("change", resume);
       document.removeEventListener("visibilitychange", resume);
+      observer.disconnect();
     };
   }, [chairs]);
 
@@ -160,17 +182,40 @@ export const Ceniza = memo(function Ceniza({ tables, chairs }: { tables: Readonl
               <image ref={sprite} href="/room/ceniza-v6.webp" x={-(SLEEP_FRAME % SPRITE_COLUMNS) * 96} y={-Math.floor(SLEEP_FRAME / SPRITE_COLUMNS) * 96} width={SPRITE_COLUMNS * 96} height={SPRITE_ROWS * 96} />
             </svg>
           </g>
-          <foreignObject ref={trigger} x={-42} y={-68} width={84} height={84} pointerEvents="all">
-            <button
-              type="button"
+          <g
+              role="button"
+              tabIndex={0}
               aria-label="En memoria de Ceniza, el perro de la sala"
               aria-haspopup="dialog"
-              title="En memoria de Ceniza"
-              className="pointer-events-auto h-full w-full cursor-pointer rounded-full bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => { event.stopPropagation(); setMemorialOpen(true); }}
-            />
-          </foreignObject>
+              pointerEvents="all"
+              className="pointer-events-auto cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              onTouchStart={(event) => event.stopPropagation()}
+              onPointerDown={(event) => {
+                event.stopPropagation();
+                pointerStart.current = { x: event.clientX, y: event.clientY };
+                dragged.current = false;
+                event.currentTarget.setPointerCapture(event.pointerId);
+              }}
+              onPointerMove={(event) => {
+                const start = pointerStart.current;
+                if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 10) dragged.current = true;
+              }}
+              onPointerUp={() => { pointerStart.current = null; }}
+              onPointerCancel={() => { pointerStart.current = null; dragged.current = true; }}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (!dragged.current) setMemorialOpen(true);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setMemorialOpen(true);
+                }
+              }}
+          >
+            <title>En memoria de Ceniza</title>
+            <rect ref={trigger} x={-42} y={-68} width={84} height={84} rx={8} fill="transparent" />
+          </g>
         </g>
       </g>
     </g>
