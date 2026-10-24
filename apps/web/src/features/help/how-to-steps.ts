@@ -31,7 +31,7 @@ export const HOW_TO_STEPS: HowToStep[] = [
   {
     icon: CheckCircleIcon,
     title: "Ayudá a los demás",
-    body: "Si ves un lugar que no es tuyo, tocalo y marcá «Está libre», «Está ocupado» o «Está guardado». «Está guardado» es cuando hay cosas (mochila, apuntes, campera) pero no hay nadie sentado.",
+    body: "Si ves un lugar que no es tuyo, tocalo y marcá «Está libre», «Está ocupado» o «Está guardado». Un reporte de «Está ocupado» dura 2 horas y podés actualizarlo si cambia la situación. «Está guardado» es cuando hay cosas (mochila, apuntes, campera) pero no hay nadie sentado.",
   },
   {
     icon: FlagIcon,
@@ -41,7 +41,7 @@ export const HOW_TO_STEPS: HowToStep[] = [
   {
     icon: HandPalmIcon,
     title: "Votaciones",
-    body: "Pedir que liberen un lugar abre una votación de 5 minutos. Si tenés tu lugar marcado, podés votar «Está ahí» o «No está» desde el mapa. Si nadie vota, gana quien la abrió y el lugar queda libre. Podés abrir hasta 3 por hora.",
+    body: "Pedir que liberen un lugar abre una votación de 5 minutos. Si tenés tu lugar marcado, podés votar «Está ocupado», «Está libre» o «Está guardado». El resultado confirma si la persona sigue ahí y si quedaron pertenencias. Una foto reciente o la respuesta «Sigo acá» requieren más confirmaciones para retirar al titular. Podés abrir hasta 3 por hora.",
   },
   {
     icon: SignOutIcon,

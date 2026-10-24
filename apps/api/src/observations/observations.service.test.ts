@@ -178,7 +178,7 @@ describe("ObservationService", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("a single OCCUPIED observation sets the seat OCCUPIED with 20-minute expiry", async () => {
+  it("a single OCCUPIED observation sets the seat OCCUPIED with two-hour expiry", async () => {
     const before = Date.now();
     await observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "OCCUPIED", location });
 
@@ -187,8 +187,25 @@ describe("ObservationService", () => {
 
     const [obs] = await db.select().from(schema.seatObservations).where(eq(schema.seatObservations.seatId, seatIds[0]!));
     const minutes = (new Date(obs!.expiresAt).getTime() - before) / 60_000;
-    expect(minutes).toBeGreaterThan(19.9);
-    expect(minutes).toBeLessThanOrEqual(20.01);
+    expect(minutes).toBeGreaterThan(119.9);
+    expect(minutes).toBeLessThanOrEqual(120.01);
+
+    const live = new RoomStateService(db);
+    for (const elapsedMinutes of [5, 20, 60, 119]) {
+      const states = await live.getLiveSeatStates(roomId, new Date(before + elapsedMinutes * 60_000));
+      expect(states.get(seatIds[0]!)?.status).toBe("OCCUPIED");
+    }
+    const expired = await live.getLiveSeatStates(roomId, new Date(obs!.expiresAt));
+    expect(expired.get(seatIds[0]!)?.status).toBe("UNKNOWN");
+  });
+
+  it("refreshing an occupied report renews its full two-hour window", async () => {
+    const now = Date.now();
+    await db.insert(schema.seatObservations).values({ userId: "u1", roomId, seatId: seatIds[0]!, observedStatus: "OCCUPIED", presenceVerified: true, confidenceWeight: 1, observedAt: new Date(now - 90 * 60_000), expiresAt: new Date(now + 30 * 60_000) });
+    await observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "OCCUPIED", location });
+    const live = new RoomStateService(db);
+    expect((await live.getLiveSeatStates(roomId, new Date(now + 119 * 60_000))).get(seatIds[0]!)?.status).toBe("OCCUPIED");
+    expect((await live.getLiveSeatStates(roomId, new Date(now + 121 * 60_000))).get(seatIds[0]!)?.status).toBe("UNKNOWN");
   });
 
   it("an admin OCCUPIED mark is an admin_override that holds the seat for one check-in block", async () => {

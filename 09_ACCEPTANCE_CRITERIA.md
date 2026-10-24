@@ -46,7 +46,7 @@
 - [ ] Present registered user can submit OCCUPIED.
 - [ ] Observation is persisted.
 - [ ] FREE observation initially expires after 15 minutes.
-- [ ] OCCUPIED observation initially expires after 20 minutes.
+- [ ] OCCUPIED observation expires after 120 minutes (2 hours); refreshing it restarts that window, and a newer correction or resolved vote may supersede it earlier.
 - [ ] Active self check-in has priority.
 - [ ] Conflicting evidence can produce UNCERTAIN.
 - [ ] No fresh evidence produces UNKNOWN.

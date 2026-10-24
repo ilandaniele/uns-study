@@ -40,6 +40,19 @@ describe("ExpirationJob", () => {
     await insertUsers(db, ["u1"]);
   });
 
+  it("does not clear a two-hour occupied report at the old twenty-minute deadline", async () => {
+    const now = new Date();
+    const deadline = new Date(now.getTime() + 120 * 60_000);
+    await db.insert(schema.seatObservations).values({ userId: "u1", roomId, seatId, observedStatus: "OCCUPIED", presenceVerified: true, confidenceWeight: 1, observedAt: now, expiresAt: deadline });
+    new RoomStateService(db).recomputeSeats([seatId], { roomId, now, eventType: "OBSERVATION", actingUserId: "u1" });
+    for (const minutes of [5, 20, 60, 119]) {
+      await job.runSweep(new Date(now.getTime() + minutes * 60_000));
+      expect(db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatId)).get()?.status).toBe("OCCUPIED");
+    }
+    await job.runSweep(deadline);
+    expect(db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatId)).get()?.status).toBe("UNKNOWN");
+  });
+
   it("expires an ACTIVE check-in past its expires_at and recomputes the seat back to UNKNOWN", async () => {
     await checkIns.checkIn({ userId: "u1", roomId, seatId, location, showIdentity: false });
 
