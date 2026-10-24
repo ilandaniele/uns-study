@@ -63,7 +63,7 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     (async () => {
       // A message already arrives in-app over the socket: don't also buzz while the user is looking at the app.
-      if (typeof tag === "string" && tag.startsWith("dm-") && (await hasFocusedWindow())) return;
+      if (typeof tag === "string" && (tag.startsWith("dm-") || tag.startsWith("dispute-vote-")) && (await hasFocusedWindow())) return;
       try {
         await self.navigator.setAppBadge?.();
       } catch {

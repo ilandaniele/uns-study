@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { TimerIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
-import type { DisputeVoteAvailableEvent, SeatDisputeDto, SeatDisputeLiteDto } from "@sala/contracts";
+import type { CheckInDto, DisputeVoteAvailableEvent, SeatDisputeDto, SeatDisputeLiteDto } from "@sala/contracts";
 import { SocketEvents } from "@sala/contracts/events";
 import { apiFetch } from "@/lib/api";
 import { useMe } from "@/lib/me-store";
@@ -15,7 +15,11 @@ import { eligibleVoteNotice } from "./vote-notices";
 /** Personal-channel invitations work on every page, not only the room map. */
 export function VoteNotification() {
   const { me } = useMe();
-  const checkIn = me?.activeCheckIn ?? null;
+  if (!me?.user || !me.activeCheckIn) return null;
+  return <VoteNotificationSession key={`${me.user.id}:${me.activeCheckIn.id}`} checkIn={me.activeCheckIn} />;
+}
+
+function VoteNotificationSession({ checkIn }: { checkIn: CheckInDto }) {
   const [notices, setNotices] = useState<DisputeVoteAvailableEvent[]>([]);
   const dismissed = useRef(new Set<string>());
   const roomId = checkIn?.roomId;
