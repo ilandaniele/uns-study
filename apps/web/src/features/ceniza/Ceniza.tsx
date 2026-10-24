@@ -189,7 +189,7 @@ export const Ceniza = memo(function Ceniza({ tables, chairs }: { tables: Readonl
               aria-haspopup="dialog"
               pointerEvents="all"
               className="pointer-events-auto cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-              onTouchStart={(event) => event.stopPropagation()}
+              onTouchStartCapture={(event) => event.stopPropagation()}
               onPointerDown={(event) => {
                 event.stopPropagation();
                 pointerStart.current = { x: event.clientX, y: event.clientY };
