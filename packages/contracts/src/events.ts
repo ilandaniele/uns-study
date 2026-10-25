@@ -27,6 +27,7 @@ export const SocketEvents = {
   ChatJoin: "chat:join",
   ChatLeave: "chat:leave",
   ChatMessageCreated: "chat:message-created",
+  MessageReactionChanged: "chat:reaction-changed",
   ChatMessageDeleted: "chat:message-deleted",
   ChatCleared: "chat:cleared",
   DmMessageCreated: "dm:message-created",

@@ -19,6 +19,7 @@ export * from "./events";
 export * from "./feedback";
 export * from "./pro";
 export * from "./garden";
+export * from "./reactions";
 
 // ---- Domain enums ----
 

@@ -1,12 +1,11 @@
 "use client";
 
 import type { DisputeKind, DisputeVote, MeDto, SeatDisputeDto, SeatDto, SeatOccupantDto, TableDto } from "@sala/contracts";
-import { ArmchairIcon, CaretDownIcon, ChairIcon, EyeIcon, ShieldCheckIcon, StarIcon, TableIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
+import { CaretDownIcon, EyeIcon, ShieldCheckIcon, StarIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { frameOf, nameColorStyle } from "@/components/flair";
-import { SeatWatchButton } from "@/features/seat-watch/SeatWatchButton";
 import { ProBadge, proLabel } from "@/features/subscriptions/ProBadge";
 import { proLockState } from "@/features/subscriptions/pro";
 import { MessageOccupantButton } from "./MessageOccupantButton";
@@ -121,7 +120,7 @@ export function SeatDetail({
   nearbyOccupants = [],
   viewBoxWidth = 1000,
   roomId = "",
-  roomSlug = "",
+
   showSavedPrompt = false,
   onDismissSavedPrompt,
   isFavorite = false,
@@ -172,26 +171,6 @@ export function SeatDetail({
 
   const extras = (
     <>
-      <div className="border-t border-app pt-3">
-        <h3 className="t-label">Información</h3>
-        <ul className="mt-2 flex flex-col gap-2 text-sm text-muted">
-          <li className="flex items-center gap-2">
-            <TableIcon aria-hidden="true" size={18} />
-            {tableDisplayName(table, seat.code)}
-            {table?.nickname ? ` · "${table.nickname}"` : ""}
-            {side ? ` (${side})` : ""}
-          </li>
-          <li className="flex items-center gap-2">
-            <ChairIcon aria-hidden="true" size={18} />
-            {isBar ? `Lugar ${seat.seatNumber} de 3` : `Asiento ${seat.seatNumber} de 8`}
-          </li>
-          <li className="flex items-center gap-2">
-            <ArmchairIcon aria-hidden="true" size={18} />
-            Tipo: {isBar ? "Barra" : "Mesa principal"}
-          </li>
-        </ul>
-      </div>
-
       {!isBar && table ? <TableNameSection tableId={table.id} loggedIn={me?.user != null} /> : null}
 
       <NearbyOccupants occupants={nearbyOccupants} />
@@ -228,56 +207,6 @@ export function SeatDetail({
           </button>
         </div>
       </div>
-      {roomSlug && seat.status !== "FREE" ? (
-        <SeatWatchButton roomSlug={roomSlug} seat={seat} tableSeats={tableSeats} checkedInHere={mySeatId !== null} />
-      ) : null}
-      <div className="-mt-1 flex items-center gap-3">
-        <div className="shrink-0 rounded-control border border-app p-1.5">
-          <TableLocator table={table} seats={tableSeats} selectedSeatId={seat.id} mySeatId={mySeatId} onSelectSeat={onSelectSeat} />
-        </div>
-        <div className="@container min-w-0 flex-1">
-          <h2 className="t-heading text-[clamp(18px,15cqi,26px)]">
-            <span className="sr-only">{label}</span>
-            <span aria-hidden="true">
-              {unit} {seat.seatNumber}
-            </span>
-          </h2>
-          <StatusPill status={seat.status} isMySeat={isMySeat} />
-        </div>
-      </div>
-
-      {showOccupant || showMarkedBy || showOccupiedUntil || (facts && !peek) ? (
-        <div className="-mt-1 flex flex-col divide-y divide-[var(--border)] text-sm text-muted">
-          {showOccupant && occupant ? (
-            <div className="flex flex-wrap items-center gap-2 py-2">
-              {occupant.userId ? (
-                <Link href={`/u/${occupant.userId}`} aria-hidden="true" tabIndex={-1} className="shrink-0 rounded-full">
-                  <OccupantAvatar avatar={occupant.avatar} size={32} adminBadge={occupant.adminBadge} proBadge={occupant.proBadge} frame={frameOf(occupant.flair)} />
-                </Link>
-              ) : (
-                <OccupantAvatar avatar={occupant.avatar} size={32} adminBadge={occupant.adminBadge} proBadge={occupant.proBadge} frame={frameOf(occupant.flair)} />
-              )}
-              <span className="min-w-0 flex-1 break-words">
-                {occupant.userId ? (
-                  <Link href={`/u/${occupant.userId}`} className="font-semibold text-primary hover:underline" style={nameColorStyle(occupant.flair)}>
-                    {occupant.displayName}
-                  </Link>
-                ) : (
-                  <span className="font-semibold text-main" style={nameColorStyle(occupant.flair)}>
-                    {occupant.displayName}
-                  </span>
-                )}{" "}
-                está acá
-              </span>
-              {occupant.userId && me?.user && me.user.id !== occupant.userId ? <MessageOccupantButton userId={occupant.userId} /> : null}
-            </div>
-          ) : null}
-          {showMarkedBy && markedBy ? <p className="py-2">{markedByLabel(markedBy.displayName, markedBy.observedAt, now, markedBy.kind)}</p> : null}
-          {showOccupiedUntil && seat.occupiedUntil ? <p className="py-2">Ocupado hasta las {clockLabel(seat.occupiedUntil)}</p> : null}
-          {facts && !peek ? <p className="py-2 text-[13px]">{facts}</p> : null}
-        </div>
-      ) : null}
-
       {actionError ? (
         <p role="alert" className="rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">
           {actionError}
@@ -346,14 +275,6 @@ export function SeatDetail({
           </>
         ) : (
           <>
-            <PrimaryButton
-              onClick={() => setDialogOpen(true)}
-              disabled={pending}
-              hint={searching("checkin") ? undefined : checkInHint}
-            >
-              {searching("checkin") ? "Buscando tu ubicación…" : "Estoy acá"}
-            </PrimaryButton>
-            {locationHint}
             <p className="t-label mt-1">¿Cómo ves este lugar?</p>
             <div className="grid grid-cols-3 gap-2">
               <ObservationChip tone="free" onClick={run("free", onMarkFree)} disabled={pending}>
@@ -366,6 +287,14 @@ export function SeatDetail({
                 {searching("saved") ? "Buscando…" : "Está guardado"}
               </ObservationChip>
             </div>
+            <PrimaryButton
+              onClick={() => setDialogOpen(true)}
+              disabled={pending}
+              hint={searching("checkin") ? undefined : checkInHint}
+            >
+              {searching("checkin") ? "Buscando tu ubicación…" : "Estoy acá"}
+            </PrimaryButton>
+            {locationHint}
             {canReportLeft(seat) ? (
               <button
                 type="button"
@@ -390,6 +319,54 @@ export function SeatDetail({
           }}
         />
       ) : null}
+
+      <div className="-mt-1 flex items-center gap-3">
+        <div className="shrink-0 rounded-control border border-app p-1.5">
+          <TableLocator table={table} seats={tableSeats} selectedSeatId={seat.id} mySeatId={mySeatId} onSelectSeat={onSelectSeat} />
+        </div>
+        <div className="@container min-w-0 flex-1">
+          <h2 className="t-heading text-[clamp(18px,15cqi,26px)]">
+            <span className="sr-only">{label}</span>
+            <span aria-hidden="true">
+              {unit} {seat.seatNumber}
+            </span>
+          </h2>
+          <StatusPill status={seat.status} isMySeat={isMySeat} />
+        </div>
+      </div>
+
+      {showOccupant || showMarkedBy || showOccupiedUntil || (facts && !peek) ? (
+        <div className="-mt-1 flex flex-col divide-y divide-[var(--border)] text-sm text-muted">
+          {showOccupant && occupant ? (
+            <div className="flex flex-wrap items-center gap-2 py-2">
+              {occupant.userId ? (
+                <Link href={`/u/${occupant.userId}`} aria-hidden="true" tabIndex={-1} className="shrink-0 rounded-full">
+                  <OccupantAvatar avatar={occupant.avatar} size={32} adminBadge={occupant.adminBadge} proBadge={occupant.proBadge} frame={frameOf(occupant.flair)} />
+                </Link>
+              ) : (
+                <OccupantAvatar avatar={occupant.avatar} size={32} adminBadge={occupant.adminBadge} proBadge={occupant.proBadge} frame={frameOf(occupant.flair)} />
+              )}
+              <span className="min-w-0 flex-1 break-words">
+                {occupant.userId ? (
+                  <Link href={`/u/${occupant.userId}`} className="font-semibold text-primary hover:underline" style={nameColorStyle(occupant.flair)}>
+                    {occupant.displayName}
+                  </Link>
+                ) : (
+                  <span className="font-semibold text-main" style={nameColorStyle(occupant.flair)}>
+                    {occupant.displayName}
+                  </span>
+                )}{" "}
+                está acá
+              </span>
+              {occupant.userId && me?.user && me.user.id !== occupant.userId ? <MessageOccupantButton userId={occupant.userId} /> : null}
+            </div>
+          ) : null}
+          {showMarkedBy && markedBy ? <p className="py-2">{markedByLabel(markedBy.displayName, markedBy.observedAt, now, markedBy.kind)}</p> : null}
+          {showOccupiedUntil && seat.occupiedUntil ? <p className="py-2">Ocupado hasta las {clockLabel(seat.occupiedUntil)}</p> : null}
+          {facts && !peek ? <p className="py-2 text-[13px]">{facts}</p> : null}
+        </div>
+      ) : null}
+
 
       <DisputeSection
         seat={seat}

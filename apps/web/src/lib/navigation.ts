@@ -3,7 +3,7 @@ export const PRIMARY_NAV = [
   { label: "Sala", href: "/" },
   { label: "Foco", href: "/foco" },
   { label: "Jardín", href: "/jardin" },
-  { label: "Comunidad", href: "/comunidad" },
+  { label: "Ranking", href: "/ranking" },
   { label: "Más", href: "/mas" },
 ] as const;
 
@@ -13,7 +13,6 @@ export function isNavActive(href: string, pathname: string): boolean {
     return [
       "/mas",
       "/personas",
-      "/ranking",
       "/guias",
       "/perfil",
       "/admin",
@@ -21,6 +20,5 @@ export function isNavActive(href: string, pathname: string): boolean {
       "/como-usar",
       "/sugerencias",
     ].some((p) => pathname === p || pathname.startsWith(`${p}/`));
-  if (href === "/comunidad" && pathname.startsWith("/chat")) return true;
   return pathname === href || pathname.startsWith(`${href}/`);
 }

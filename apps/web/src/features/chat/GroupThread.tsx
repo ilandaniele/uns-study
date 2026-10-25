@@ -1,4 +1,5 @@
 "use client";
+import { ReactionsProvider, MessageReactionBar } from "./MessageReactions";
 
 import { CaretLeftIcon, DotsThreeVerticalIcon, UsersThreeIcon } from "@phosphor-icons/react/dist/ssr";
 import { GROUP_MESSAGE_MAX_LENGTH, type GroupConversationDto } from "@sala/contracts";
@@ -59,6 +60,7 @@ export function GroupThread({ groupId, group, currentUserId, onBack, onLeft, hea
   }
 
   return (
+    <ReactionsProvider scope="GROUP" threadId={groupId} messageIds={messages.filter((m) => !m.deleted).map((m) => m.id)}>
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center justify-between gap-3 border-b border-app bg-surface py-2.5 pl-2 pr-2">
         <div className="flex min-w-0 items-center gap-1">
@@ -196,6 +198,7 @@ export function GroupThread({ groupId, group, currentUserId, onBack, onLeft, hea
                       {message.deleted ? "Mensaje eliminado" : message.content}
                     </p>
                     <p className="mt-1 text-right font-mono text-[11px] text-muted">{formatMessageTime(message.createdAt)}</p>
+                    <MessageReactionBar messageId={message.id} deleted={message.deleted} />
                   </div>
                 </div>
               </div>
@@ -208,5 +211,6 @@ export function GroupThread({ groupId, group, currentUserId, onBack, onLeft, hea
       {sendError ? <p className="px-4 text-sm text-red-600">{sendError}</p> : null}
       <ChatComposer maxLength={GROUP_MESSAGE_MAX_LENGTH} onSend={send} analyticsEvent="group_sent" variant="widget" />
     </div>
+    </ReactionsProvider>
   );
 }

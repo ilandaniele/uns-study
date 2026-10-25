@@ -13,6 +13,7 @@ import { apiFetch, apiPost, ApiRequestError } from "@/lib/api";
 import { conversationErrorMessage, startConversation } from "@/features/chat/start-conversation";
 import { openChatWidget } from "@/features/chat/widget-store";
 import { useSession } from "@/lib/auth-client";
+import { instagramHref } from "@/features/profile/instagram";
 
 /** Public profile view: "Enviar mensaje", "Bloquear"/"Desbloquear", "Reportar". */
 export default function PublicProfilePage() {
@@ -125,7 +126,7 @@ export default function PublicProfilePage() {
           {profile.instagram ? (
             <div>
               <dt className="inline font-medium text-main">Instagram: </dt>
-              <dd className="inline">@{profile.instagram}</dd>
+              <dd className="inline">{instagramHref(profile.instagram) ? <a href={instagramHref(profile.instagram)!} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center font-semibold text-primary underline underline-offset-2">@{profile.instagram} ↗</a> : profile.instagram}</dd>
             </div>
           ) : null}
           {profile.studentNumber ? (

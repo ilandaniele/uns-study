@@ -12,6 +12,7 @@
 //
 // The caller then does `createApp({ services, auth: buildAuth(db) })`.
 import type { Db } from "@sala/database";
+import { ReactionsService } from "./chat/reactions.service.js";
 import { GardenService } from "./garden/garden.service.js";
 import { GardenPurchasesService } from "./garden/garden-purchases.service.js";
 import { env as defaultEnv, type Env } from "./env.js";
@@ -148,6 +149,7 @@ export function buildServices(deps: ContainerDeps): Services {
   // Rooms and social.
   const roomStats = new RoomStatsService(db, rooms);
   const blocks = new BlocksService(db, alias);
+  const reactions = new ReactionsService(db, blocks, restriction, hub);
   const study = new StudyService(db, restriction, roomHours);
   const profiles = new ProfilesService(db, study, alias, restriction, roles, pro, cosmetics);
   const avatars = new AvatarsService(db, restriction);
@@ -209,7 +211,7 @@ export function buildServices(deps: ContainerDeps): Services {
     db,
     rooms, roomState, roomStats, roomCache, presence, checkIns, photoVerification, observations,
     disputes, tableNames, reputation, rankings, studySessions, study, roomPeople,
-    chat, dm, groups, blocks, profiles, avatars, alias, roles, restriction,
+    chat, dm, groups, blocks, profiles, avatars, alias, roles, restriction, reactions,
     adminUsers, adminReports, adminRooms, adminAudit, adminStudySessions, moderation,
     announcements, reports, qr, feedback,
     notifications, push, pushSubscriptions, notificationPreferences, emailCampaigns, resend,

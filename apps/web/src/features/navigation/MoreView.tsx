@@ -9,7 +9,6 @@ import {
   HeartIcon,
   QuestionIcon,
   ShieldCheckIcon,
-  TrophyIcon,
   UserCircleIcon,
   UsersThreeIcon,
 } from "@phosphor-icons/react/dist/ssr";
@@ -28,12 +27,6 @@ const LINKS = [
     title: "Personas",
     detail: "Encontrá con quién compartir el estudio",
     icon: UsersThreeIcon,
-  },
-  {
-    href: "/ranking",
-    title: "Ranking",
-    detail: "Horas de estudio y aportes a la sala",
-    icon: TrophyIcon,
   },
   {
     href: "/guias",

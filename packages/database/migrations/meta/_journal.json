@@ -57,6 +57,13 @@
       "when": 1792915963770,
       "tag": "0007_garden_payments",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1792953323717,
+      "tag": "0008_message_reactions",
+      "breakpoints": true
     }
   ]
 }

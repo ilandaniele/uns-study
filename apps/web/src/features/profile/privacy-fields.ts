@@ -18,7 +18,7 @@ export const PRIVACY_FIELDS: PrivacyFieldDef[] = [
   { key: "showAdminBadge", label: "Mostrar insignia de admin", hint: "Tu foto lleva la insignia dorada de Admin.", adminOnly: true },
   { key: "showCareer", label: "Mostrar carrera", hint: "Tu carrera aparece en tu perfil público." },
   { key: "showCurrentSubject", label: "Mostrar materia actual", hint: "La materia que estás cursando aparece en tu perfil público." },
-  { key: "showInstagram", label: "Mostrar Instagram", hint: "Tu usuario de Instagram aparece en tu perfil público." },
+  { key: "showInstagram", label: "Mostrar Instagram", hint: "Mostrá un enlace a tu Instagram en tu perfil público." },
   { key: "showStudentNumber", label: "Mostrar legajo", hint: "Tu número de legajo aparece en tu perfil público." },
   { key: "showAvatar", label: "Mostrar foto de perfil", hint: "Tu foto aparece en tu perfil y en la sala." },
   { key: "allowDirectMessages", label: "Permitir mensajes directos", hint: "Otras personas registradas pueden enviarte mensajes privados." },

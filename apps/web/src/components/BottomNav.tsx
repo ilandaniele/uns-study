@@ -1,12 +1,12 @@
 "use client";
 
-import { DotsThreeIcon, MegaphoneIcon, PlantIcon, SquaresFourIcon, TimerIcon } from "@phosphor-icons/react/dist/ssr";
+import { DotsThreeIcon, TrophyIcon, PlantIcon, SquaresFourIcon, TimerIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PRIMARY_NAV, isNavActive } from "@/lib/navigation";
 import { prefetchHandlers } from "@/lib/prefetch";
 
-const ICONS = [SquaresFourIcon, TimerIcon, PlantIcon, MegaphoneIcon, DotsThreeIcon];
+const ICONS = [SquaresFourIcon, TimerIcon, PlantIcon, TrophyIcon, DotsThreeIcon];
 
 export function BottomNav() {
   const pathname = usePathname();

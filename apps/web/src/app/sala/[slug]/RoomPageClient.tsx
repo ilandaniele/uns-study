@@ -13,28 +13,26 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FIRST_VISIT_HOW_TO_CLOSED, markHowToSeen, shouldShowHowToOnFirstVisit } from "@/features/help/how-to-seen";
 import { showPreCheckInAd } from "@/features/ads/ads";
-import { AnnouncementsBanner } from "@/components/AnnouncementsBanner";
 import { ActiveCheckInBanner } from "@/features/room/ActiveCheckInBanner";
 import { RoomSkeleton } from "@/features/room/RoomSkeleton";
 import { AdminPresentBanner } from "@/features/room/AdminPresentBanner";
 import { Hero } from "@/features/room/Hero";
 import { RoomInfoPanel } from "@/features/room/RoomInfoPanel";
 import { RoomMap } from "@/features/room/RoomMap";
-import { RoomQuickActions } from "@/features/room/RoomQuickActions";
-import { RoomSocialProof, UpdatedAgo } from "@/features/room/RoomSocialProof";
+import { ShareRoomButton } from "@/features/room/ShareRoomButton";
+import { UpdatedAgo } from "@/features/room/RoomSocialProof";
 import { useRoomTodayStats } from "@/features/room/useRoomTodayStats";
 import { useFavoriteSeats } from "@/features/room/useFavoriteSeat";
 import { dueFavoriteToasts, freedFavorites } from "@/features/room/favorite-seats";
 import { usePro } from "@/features/subscriptions/usePro";
 import { RightPanelEmptyState } from "@/features/room/RightPanelEmptyState";
 import { SummaryCounters } from "@/features/room/SummaryCounters";
-import { freedSeatsToastMessage, seatDisplayLabel, todayLabel } from "@/features/room/format";
+import { freedSeatsToastMessage, seatDisplayLabel } from "@/features/room/format";
 import { useDisputeWon } from "@/features/room/useDisputeWon";
 import { useIncumbentChallenge } from "@/features/room/useIncumbentChallenge";
 import { useRoomAlerts } from "@/features/room/useRoomAlerts";
 import { ROOM_NOT_FOUND, useRoomState } from "@/features/room/useRoomState";
 import { useHouseInterstitial } from "@/features/ads/ad-overlay-store";
-import { QuestionIcon } from "@phosphor-icons/react/dist/ssr";
 import { useSeatActions } from "@/features/room/useSeatActions";
 import { useSeatDispute } from "@/features/room/useSeatDispute";
 import { MarkAllOccupiedCard } from "@/features/admin/MarkAllOccupiedCard";
@@ -47,7 +45,6 @@ import { usePeople } from "@/features/people/usePeople";
 import { trackEvent } from "@/lib/analytics";
 import { hasCheckedInBefore, markCheckedIn } from "@/lib/engagement";
 import { useQrContext } from "@/lib/qr-context";
-import { getSocket } from "@/lib/socket";
 import { useMediaQuery } from "@/lib/use-media-query";
 
 // A loading option gives each split chunk its own Suspense boundary. Without it, the first render
@@ -83,7 +80,6 @@ export function RoomPageClient({ slug }: { slug: string }) {
   const { people: reportedPeople } = usePeople(slug);
   const people = map?.room.operatingHours?.open === false ? [] : reportedPeople;
   const { highlightTableCode, qrToken } = useQrContext();
-  const socket = useMemo(() => getSocket(), []);
   const { toast, dismissToast, adminBanner, dismissAdminBanner, quietAlert, dismissQuietAlert } = useRoomAlerts();
   const searchParams = useSearchParams();
 
@@ -163,7 +159,6 @@ export function RoomPageClient({ slug }: { slug: string }) {
   const [multiSeatIds, setMultiSeatIds] = useState<ReadonlySet<string>>(() => new Set());
   // Seat the viewer just marked "Está guardado" — SeatDetail offers to report / ask to free it.
   const [savedPromptSeatId, setSavedPromptSeatId] = useState<string | null>(null);
-  const [onlyFree, setOnlyFree] = useState(false);
   const { favoriteSeatIds, isFavorite, toggleFavorite, needsPro: favoriteNeedsPro, notice: favoriteNotice } = useFavoriteSeats(slug);
   const { lock: proLock } = usePro();
 
@@ -454,27 +449,10 @@ export function RoomPageClient({ slug }: { slug: string }) {
       highlightTableCode={highlightTableCode}
       avatarBySeatId={avatarBySeatId}
       adminBadgeSeatIds={adminBadgeSeatIds}
-      onlyFree={onlyFree}
+      onlyFree={false}
       favoriteSeatIds={favoriteSeatIds}
       multiSelectedSeatIds={multiSelect ? multiSeatIds : undefined}
     />
-  );
-
-  const favoriteSeats = favoriteSeatIds.map((id) => seatById.get(id)).filter((seat): seat is SeatDto => seat !== undefined);
-  const favoriteSeat = favoriteSeats.find((seat) => seat.status === "FREE") ?? favoriteSeats[0] ?? null;
-  const quickActions = (
-    <>
-      <RoomQuickActions
-        map={map}
-        onlyFree={onlyFree}
-        onToggleOnlyFree={() => setOnlyFree((value) => !value)}
-        favoriteSeat={favoriteSeat}
-        favoriteSeatIds={favoriteSeatIds}
-        favoriteTable={favoriteSeat ? tableById.get(favoriteSeat.tableId) ?? null : null}
-        onSelectSeat={openSeat}
-      />
-      <RoomSocialProof visitorsToday={todayStats.visitorsToday} myContributionsToday={todayStats.myContributionsToday} />
-    </>
   );
 
   const detail = selectedSeat ? (
@@ -539,7 +517,6 @@ export function RoomPageClient({ slug }: { slug: string }) {
         />
       ) : null}
       {map.summary.free === 0 ? <EnableSeatFreedCta /> : null}
-      <AnnouncementsBanner roomSlug={slug} socket={socket} />
     </>
   );
 
@@ -625,49 +602,19 @@ export function RoomPageClient({ slug }: { slug: string }) {
         />
       ) : null}
 
-      {/* Mobile/tablet: compact header + counters above the map. Desktop (lg+) gets the info rail instead. */}
-      {!isLargeDesktop ? (
-        <section className="order-1 flex flex-col gap-4">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <h1 className="t-heading">{map.room.name}</h1>
-              <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted">
-                <span className="flex items-center gap-1.5 whitespace-nowrap">
-                  <span
-                    aria-hidden="true"
-                    className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-[var(--seat-free)]" : "bg-[var(--seat-unknown)]"}`}
-                  />
-                  {connected ? "En vivo" : "Reconectando…"}
-                </span>
-                <span className="whitespace-nowrap">· {todayLabel()}</span>
-                <UpdatedAgo seats={map.seats} />
-                <span className="sr-only" aria-live="polite">
-                  {connected ? "" : "Reconectando, el mapa puede estar desactualizado"}
-                </span>
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={openHowTo}
-              aria-label="Cómo usar la app"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-control text-muted hover:bg-[var(--surface-2)]"
-            >
-              <QuestionIcon size={20} />
-            </button>
-          </div>
-          <Hero summary={map.summary} seats={map.seats} operatingHours={map.room.operatingHours} />
-          {quickActions}
-          {notices}
-          <SummaryCounters summary={map.summary} />
-        </section>
-      ) : null}
+      {!isLargeDesktop ? <section className="order-1 flex items-center justify-between gap-3" aria-label="Estado de conexión de la sala">
+        <div className="min-w-0"><h1 className="text-lg font-bold leading-tight">{map.room.name}</h1><p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted"><span className={connected ? "text-primary" : "text-muted"}>{connected ? "En vivo" : "Reconectando…"}</span><UpdatedAgo seats={map.seats} />{map.room.operatingHours?.open === false ? <span className="font-semibold">· Sala cerrada</span> : null}</p></div>
+        <ShareRoomButton summary={map.summary} name={map.room.name} />
+      </section> : null}
 
-      <section className="order-2 flex min-w-0 flex-col gap-3 lg:sticky lg:top-[81px] lg:order-2 lg:col-start-1">
+      <section aria-label="Plano interactivo de la sala" className="order-2 flex min-w-0 flex-col gap-2 lg:sticky lg:top-[81px] lg:order-2 lg:col-start-1">
+        <p className="text-center text-xs font-medium text-muted">Tocá un asiento para ver sus opciones y marcar tu lugar.</p>
         <div className="lg:mx-auto lg:w-fit lg:max-w-full">
           <div
             onPointerDownCapture={preloadSeatDetail}
-            className="relative h-[70dvh] w-full overflow-hidden rounded-control border border-app bg-surface md:h-[80dvh] lg:mx-auto lg:aspect-[1090/1536] lg:h-[calc(100dvh-140px)] lg:w-auto lg:max-w-full"
+            className="relative h-[min(calc(100svh-272px),calc((100vw-2rem)*1.4092))] min-h-[180px] w-full overflow-hidden rounded-control border border-app bg-surface lg:mx-auto lg:aspect-[1090/1536] lg:h-[calc(100dvh-140px)] lg:w-auto lg:max-w-full"
           >
+            <ShareRoomButton summary={map.summary} name={map.room.name} className="absolute right-3 top-3 z-10 hidden lg:block" />
             {isDesktop || !mounted ? (
               <div className="flex h-full w-full items-center justify-center">{roomMap}</div>
             ) : (
@@ -691,7 +638,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
         </div>
       </section>
 
-      {!isLargeDesktop ? <section className="order-3 flex flex-col gap-4">{proCards}</section> : null}
+      {!isLargeDesktop ? <section className="order-3 flex flex-col gap-4"><details className="rounded-2xl border border-app bg-surface p-4"><summary className="cursor-pointer py-1 font-semibold">Estado y detalles de la sala</summary><div className="mt-4 flex flex-col gap-4"><Hero summary={map.summary} seats={map.seats} operatingHours={map.room.operatingHours} /><SummaryCounters summary={map.summary} />{proCards}</div></details>{notices}</section> : null}
 
       {/* Mobile/tablet: people list below the map (desktop shows it in RoomInfoPanel instead). */}
       {!isLargeDesktop ? (
@@ -723,7 +670,6 @@ export function RoomPageClient({ slug }: { slug: string }) {
             people={people}
             connected={connected}
             onOpenHowTo={openHowTo}
-            quickActions={quickActions}
             detailKey={selectedSeat?.id ?? "empty"}
             detailSlot={detail ?? <RightPanelEmptyState hasActiveCheckIn={activeCheckIn != null} />}
           />

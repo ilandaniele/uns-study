@@ -1,5 +1,5 @@
 /** Per-device memory of announcements ("novedades") the user closed with the banner's X. Keyed by
- *  announcement id, so a new announcement shows again; the full list stays on /comunidad. */
+ *  announcement id, so a new announcement shows again; the full list stays in the notification bell. */
 
 const STORAGE_KEY = "sala:dismissed-announcements";
 /** Ids kept at most; older ones belong to announcements that ended long ago. */

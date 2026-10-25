@@ -1,7 +1,7 @@
 # Jardín nativo
 
 El jardín vive en `/jardin`, separado del mapa de ocupación. Cada cuenta tiene
-25 parcelas privadas. Sala, Foco, Jardín, Comunidad y Más forman la navegación
+25 parcelas privadas. Sala, Foco, Jardín, Ranking y Más forman la navegación
 principal; las páginas secundarias conservan sus rutas en Más.
 
 ## Reglas

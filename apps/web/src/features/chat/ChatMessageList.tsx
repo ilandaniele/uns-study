@@ -1,4 +1,5 @@
 "use client";
+import { ReactionsProvider, MessageReactionBar } from "./MessageReactions";
 
 import type { ChatMessageDto } from "@sala/contracts";
 import Link from "next/link";
@@ -36,6 +37,7 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock, on
   );
 
   return (
+    <ReactionsProvider scope="ROOM" threadId={messages[0]?.chatRoomId ?? null} messageIds={messages.filter((m) => !m.deleted).map((m) => m.id)}>
     <div ref={scrollRef} role="log" aria-live="polite" className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
       {messages.length === 0 ? (
         <p className="m-auto p-6 text-center text-sm text-muted">Todavía no hay mensajes. Escribí el primero.</p>
@@ -74,6 +76,7 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock, on
                     {message.deleted ? "Mensaje eliminado" : message.content}
                   </p>
                   <p className="mt-0.5 text-right text-[11px] text-muted">{formatMessageTime(message.createdAt)}</p>
+                  <MessageReactionBar messageId={message.id} deleted={message.deleted} />
                 </div>
               </div>
             </div>
@@ -124,6 +127,7 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock, on
                 <p className={`whitespace-pre-wrap break-words text-sm ${message.deleted ? "italic text-muted" : "text-main"}`}>
                   {message.deleted ? "Mensaje eliminado" : message.content}
                 </p>
+                <MessageReactionBar messageId={message.id} deleted={message.deleted} />
               </div>
               {!message.deleted ? (
                 <div className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100">
@@ -140,5 +144,6 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock, on
         );
       })}
     </div>
+    </ReactionsProvider>
   );
 }

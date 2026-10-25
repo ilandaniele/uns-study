@@ -1,6 +1,7 @@
 import type { MyProfileDto, PrivacySettingsDto } from "@sala/contracts";
 import { OccupantAvatar } from "@/features/room/OccupantAvatar";
 import { computeAppearance } from "./appearance";
+import { instagramHref } from "./instagram";
 
 /** "Cómo te ven los demás": preview of the SAVED profile + privacy, drawn with the same avatars as the map. */
 export function AppearancePreview({ profile, privacy }: { profile: MyProfileDto; privacy: PrivacySettingsDto }) {
@@ -16,7 +17,7 @@ export function AppearancePreview({ profile, privacy }: { profile: MyProfileDto;
               {appearance.rows.map((row) => (
                 <div key={row.label} className="flex gap-1.5">
                   <dt className="text-muted">{row.label}:</dt>
-                  <dd className="min-w-0 truncate text-main">{row.value}</dd>
+                  <dd className="min-w-0 truncate text-main">{row.label === "Instagram" && instagramHref(row.value) ? <a href={instagramHref(row.value)!} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline underline-offset-2">{row.value} ↗</a> : row.value}</dd>
                 </div>
               ))}
             </dl>

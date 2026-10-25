@@ -1,4 +1,5 @@
 "use client";
+import { ReactionsProvider, MessageReactionBar } from "./MessageReactions";
 
 import { CaretLeftIcon } from "@phosphor-icons/react/dist/ssr";
 import type { ConversationDto } from "@sala/contracts";
@@ -47,6 +48,7 @@ export function DmThread({ conversationId, currentUserId, conversation, variant 
   const scrollRef = useStickToBottom<HTMLDivElement>(lastMessage?.id ?? null, lastMessage?.senderId === currentUserId);
 
   return (
+    <ReactionsProvider scope="DM" threadId={conversationId} messageIds={messages.filter((m) => !m.deleted).map((m) => m.id)}>
     <div className="flex min-h-0 flex-1 flex-col">
       <div className={`flex items-center justify-between gap-3 border-b border-app bg-surface ${widget ? "py-2.5 pl-2 pr-2" : "px-4 py-3"}`}>
         <div className="flex min-w-0 items-center gap-1">
@@ -145,6 +147,7 @@ export function DmThread({ conversationId, currentUserId, conversation, variant 
                       {message.deleted ? "Mensaje eliminado" : message.content}
                     </p>
                     <p className="mt-1 text-right font-mono text-[11px] text-muted">{formatMessageTime(message.createdAt)}</p>
+                    <MessageReactionBar messageId={message.id} deleted={message.deleted} />
                   </div>
                 </div>
               </div>
@@ -156,5 +159,6 @@ export function DmThread({ conversationId, currentUserId, conversation, variant 
       {sendError ? <p className="px-4 text-sm text-red-600">{sendError}</p> : null}
       <ChatComposer maxLength={DM_MESSAGE_MAX_LENGTH} onSend={send} analyticsEvent="dm_sent" variant={variant} />
     </div>
+    </ReactionsProvider>
   );
 }
