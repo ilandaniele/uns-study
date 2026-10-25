@@ -71,7 +71,7 @@ export function GardenView() {
             Iniciá sesión y empezá con 30 semillas de regalo. Plantá en tus 25
             parcelas y mirá cómo crecen con tus horas registradas en la sala.
           </p>
-          <Link href="/login?callbackURL=/jardin" className={`${primary} mt-5`}>
+          <Link href="/login?next=/jardin" className={`${primary} mt-5`}>
             Empezar mi jardín
             <PlantIcon size={19} aria-hidden="true" />
           </Link>
