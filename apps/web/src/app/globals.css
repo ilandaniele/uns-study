@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Reserve the test-environment notice before fitting the room into a phone viewport. */
+body:has(> .room-staging-banner) { --room-banner-space: 48px; }
+
 .garden-landscape, .garden-welcome { background: linear-gradient(160deg, var(--surface), var(--garden-bg)); }
 .garden-plots { background: var(--garden-soil); }
 .garden-plot { background: var(--garden-tile); border-color: var(--garden-tile-border); box-shadow: 0 3px 0 var(--garden-tile-border); }

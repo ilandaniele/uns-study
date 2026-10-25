@@ -67,7 +67,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       </head>
       <body className="min-h-dvh bg-app pb-safe-28 text-main antialiased lg:pb-24">
         {IS_STAGING ? (
-          <div className="bg-amber-400 px-4 py-1 text-center text-xs font-semibold text-black">
+          <div className="room-staging-banner bg-amber-400 px-4 py-1 text-center text-xs font-semibold text-black">
             Sitio de prueba: los datos no son reales y pueden borrarse.
           </div>
         ) : null}
