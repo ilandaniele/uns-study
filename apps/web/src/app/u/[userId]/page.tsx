@@ -102,6 +102,7 @@ export default function PublicProfilePage() {
   return (
     <main className="mx-auto max-w-lg p-4">
       <BackButton fallbackHref="/personas" />
+      {!profile.blockedByMe ? <Link href={`/u/${encodeURIComponent(userId)}/jardin`} className="my-4 flex min-h-11 items-center justify-between rounded-2xl border border-app bg-surface px-5 font-semibold text-primary">Visitar jardín <span aria-hidden="true">?</span></Link> : null}
       <div className="border-t border-app pt-5">
         <div className="flex items-center gap-4">
           <WithAdminBadge show={profile.adminBadge} size={64}>

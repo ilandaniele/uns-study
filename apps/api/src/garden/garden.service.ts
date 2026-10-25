@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { schema, type Db, type Tx } from "@sala/database";
 import {
   GARDEN_MINUTES_PER_SEED,
@@ -8,6 +8,7 @@ import {
   type GardenPlant,
   type GardenPlantRequest,
   type GardenRedeemRequest,
+  type SharedGardenDto,
 } from "@sala/contracts";
 import { ApiErrors } from "../common/api-error.js";
 import { isMissingSchemaError } from "../common/sqlite-errors.js";
@@ -22,6 +23,7 @@ interface StoredPlant {
   baselineMinutes: number;
 }
 interface GardenState {
+  shared: boolean;
   spentSeeds: number;
   bonusSeeds: number;
   plants: StoredPlant[];
@@ -51,6 +53,27 @@ export class GardenService {
   async get(userId: string): Promise<GardenDto> {
     const minutes = await this.studyMinutes(userId);
     return this.dto(this.read(userId), minutes);
+  }
+
+  async setVisibility(userId: string, shared: boolean): Promise<GardenDto> {
+    const minutes = await this.studyMinutes(userId);
+    return this.mutate(userId, minutes, (state) => { state.shared = shared; });
+  }
+
+  async visit(viewerId: string, userId: string): Promise<SharedGardenDto> {
+    const dto = await this.get(userId);
+    const exists = this.db.select({ id: schema.user.id }).from(schema.user).where(eq(schema.user.id, userId)).get();
+    const block = this.db.select().from(schema.userBlocks).where(or(
+      and(eq(schema.userBlocks.blockerId, viewerId), eq(schema.userBlocks.blockedId, userId)),
+      and(eq(schema.userBlocks.blockerId, userId), eq(schema.userBlocks.blockedId, viewerId)),
+    )).get();
+    // Recheck after the awaited study ledger, so revocation cannot race an in-flight visit.
+    const shared = this.read(userId).shared;
+    if (!exists || block || (!shared && viewerId !== userId)) throw ApiErrors.notFound();
+    return {
+      plants: dto.plants.map(({ plot, speciesId, stage, progress }) => ({ plot, speciesId, stage, progress })),
+      collection: dto.collection,
+    };
   }
 
   async plant(userId: string, input: GardenPlantRequest): Promise<GardenDto> {
@@ -125,12 +148,13 @@ export class GardenService {
         .get();
       return row
         ? {
+            shared: row.shared,
             spentSeeds: row.spentSeeds,
             bonusSeeds: row.bonusSeeds,
             plants: JSON.parse(row.plants) as StoredPlant[],
             collection: JSON.parse(row.collection) as Record<string, number>,
           }
-        : { spentSeeds: 0, bonusSeeds: 0, plants: [], collection: {} };
+        : { shared: false, spentSeeds: 0, bonusSeeds: 0, plants: [], collection: {} };
     } catch (error) {
       if (isMissingSchemaError(error))
         throw ApiErrors.featureDisabled(
@@ -151,6 +175,7 @@ export class GardenService {
 
   private dto(state: GardenState, minutes: number): GardenDto {
     return {
+      shared: state.shared,
       seeds: this.balance(state, minutes),
       studyMinutes: minutes,
       nextSeedMinutes:
@@ -190,6 +215,7 @@ export class GardenService {
       const state = this.read(userId);
       change(state);
       const values = {
+        shared: state.shared,
         spentSeeds: state.spentSeeds,
         bonusSeeds: state.bonusSeeds,
         plants: JSON.stringify(state.plants),

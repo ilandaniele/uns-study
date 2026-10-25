@@ -1,0 +1,1 @@
+ALTER TABLE `user_gardens` ADD `shared` integer DEFAULT false NOT NULL;

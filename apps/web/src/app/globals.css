@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+.forest-diorama { background: radial-gradient(ellipse at 50% 30%, var(--garden-tile), var(--garden-bg) 72%); }
+.forest-parcel:hover > path, .forest-parcel:focus-visible > path { stroke: var(--garden-accent); stroke-width: 3px; }
+
 /* Reserve the test-environment notice before fitting the room into a phone viewport. */
 body:has(> .room-staging-banner) { --room-banner-space: 48px; }
 

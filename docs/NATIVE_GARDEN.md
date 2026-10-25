@@ -71,3 +71,22 @@ Las donaciones y suscripciones conservan su tratamiento independiente.
 
 El Pomodoro básico ahora es gratuito; combinaciones guardadas, sonidos avanzados,
 estadísticas y herramientas de ventana conservan sus gates Pro.
+
+## Bosque en perspectiva y visitas
+
+El jardin usa una isla isometrica con ilustraciones SVG originales de las mismas
+12 especies nativas. Las 25 parcelas mantienen su numero, saldo, crecimiento y
+canjes. Bosque, Vivero y Coleccion son accesos a las secciones de la pagina.
+La seleccion tambien funciona por teclado y con un selector tactil de 44 px.
+
+Mostrar mi jardin es una opcion individual, desactivada por defecto y persistida
+en user_gardens.shared (migracion 0009_shared_gardens). El enlace Visitar jardin
+del perfil abre /u/[userId]/jardin. Las visitas requieren sesion y respetan
+bloqueos en ambos sentidos; la respuesta es private, no-store y no contiene
+saldo, compras, minutos exactos, fechas de plantacion ni identidad del usuario.
+La identidad visible se obtiene del perfil existente con sus permisos actuales.
+Desactivar la opcion revoca las siguientes consultas, incluidas las que estaban
+cargando el historial. Compartir copia/envia el enlace cuando esta activada.
+
+Referencia de composicion: https://www.forestapp.cc/ (bosque isometrico y resumen
+compacto). No se agregan dependencias ni imagenes de terceros para esta vista.

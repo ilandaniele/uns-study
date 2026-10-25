@@ -4,10 +4,8 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRightIcon,
-  CheckCircleIcon,
   LeafIcon,
   PlantIcon,
-  PlusIcon,
   TreeIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import {
@@ -19,6 +17,8 @@ import { useMe } from "@/lib/me-store";
 import { TreeArt } from "./TreeArt";
 import { useGarden } from "./useGarden";
 import { SeedShop } from "./SeedShop";
+import { GardenScene } from "./GardenScene";
+import { GardenSharing } from "./GardenSharing";
 
 const STAGES = {
   seed: "Recién plantado",
@@ -35,20 +35,20 @@ export function GardenView() {
   const { me, loading } = useMe();
   return (
     <main className="mx-auto max-w-6xl px-4 pb-28 pt-7 sm:px-6 sm:pt-10">
-      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-4 sm:mb-7">
         <div>
-          <p className="t-label text-primary">Un ratito cada día</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-            Tu tiempo florece
+          <p className="t-label hidden text-primary sm:block">Un ratito cada día</p>
+          <h1 className="text-2xl font-bold tracking-tight sm:mt-2 sm:text-4xl">
+            Mi bosque nativo
           </h1>
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted">
+          <p className="mt-3 hidden max-w-xl text-sm leading-relaxed text-muted sm:block">
             Cada hora en la sala hace crecer tu jardín de árboles nativos
             argentinos.
           </p>
         </div>
         <Link
           href="/foco"
-          className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary"
+          className="hidden min-h-11 items-center gap-2 text-sm font-semibold text-primary sm:inline-flex"
         >
           Ir a concentrarme
           <ArrowRightIcon size={18} aria-hidden="true" />
@@ -60,7 +60,7 @@ export function GardenView() {
           className="h-96 animate-pulse rounded-2xl bg-surface-2"
         />
       ) : me?.user ? (
-        <GardenAccount key={me.user.id} />
+        <GardenAccount key={me.user.id} userId={me.user.id} />
       ) : (
         <section className="garden-welcome rounded-2xl border border-app p-6 text-center sm:p-10">
           <div className="mx-auto mb-4 h-40 w-40">
@@ -109,7 +109,7 @@ export function GardenView() {
   );
 }
 
-function GardenAccount() {
+function GardenAccount({ userId }: { userId: string }) {
   const { garden, error, pending, refresh, act } = useGarden();
   const [selected, setSelected] = useState<number | null>(null);
   const [speciesId, setSpeciesId] = useState(GARDEN_SPECIES[0].id);
@@ -170,6 +170,7 @@ function GardenAccount() {
   const mature = garden.plants.filter((p) => p.stage === "mature").length;
   return (
     <>
+      <nav aria-label="Secciones del jardín" className="mb-5 flex gap-2 rounded-full border border-app bg-surface p-1"><a href="#mi-bosque" className="flex min-h-11 flex-1 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white">Bosque</a><a href="#nursery-title" className="flex min-h-11 flex-1 items-center justify-center rounded-full text-sm font-semibold">Vivero</a><a href="#garden-collection" className="flex min-h-11 flex-1 items-center justify-center rounded-full text-sm font-semibold">Colección</a></nav>
       <div className="mb-5 flex flex-wrap gap-3 sm:gap-6">
         <span className="inline-flex min-h-11 items-center gap-2 rounded-full border border-app bg-surface px-4 text-sm font-semibold">
           <LeafIcon size={19} className="text-primary" aria-hidden="true" />
@@ -186,13 +187,13 @@ function GardenAccount() {
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section
           aria-label="Mi jardín: 25 parcelas"
-          className="garden-landscape overflow-hidden rounded-[24px] border border-app p-3 sm:p-7"
+          className="garden-landscape overflow-hidden rounded-[24px] border border-app p-3 sm:p-5"
         >
           <div className="mb-5 flex items-center justify-between gap-3 px-1">
             <div>
               <h2 className="font-semibold">Mi rincón nativo</h2>
               <p className="mt-1 text-xs text-muted">
-                Tocá un cuadrado para plantar o ver tu árbol.
+                Tocá una parcela para plantar o ver tu árbol.
               </p>
             </div>
             <PlantIcon
@@ -201,47 +202,7 @@ function GardenAccount() {
               aria-hidden="true"
             />
           </div>
-          <div className="garden-plots grid grid-cols-5 gap-1.5 rounded-[18px] p-2 sm:gap-3 sm:p-4">
-            {Array.from({ length: GARDEN_SIZE }, (_, plot) => {
-              const plant = garden.plants.find((p) => p.plot === plot);
-              const s = plant
-                ? GARDEN_SPECIES.find((s) => s.id === plant.speciesId)!
-                : null;
-              return (
-                <button
-                  key={plot}
-                  type="button"
-                  aria-label={`Parcela ${plot + 1}: ${plant && s ? `${s.name}, ${STAGES[plant.stage]}, ${Math.floor(plant.progress * 100)}%` : "vacía, plantar"}`}
-                  aria-pressed={selected === plot}
-                  onClick={() => choose(plot)}
-                  className={`garden-plot relative flex aspect-square min-h-11 min-w-0 items-center justify-center rounded-lg border transition-[border-color,box-shadow] ${selected === plot ? "ring-2 ring-[var(--primary)] ring-offset-2 ring-offset-[var(--surface)]" : ""}`}
-                >
-                  {plant && s ? (
-                    <span className="pointer-events-none absolute inset-x-0 bottom-1 top-0">
-                      <TreeArt species={s} stage={plant.stage} />
-                    </span>
-                  ) : (
-                    <PlusIcon
-                      size={19}
-                      className="text-[var(--garden-empty)]"
-                      aria-hidden="true"
-                    />
-                  )}
-                  <span className="absolute bottom-0.5 left-1 text-[9px] font-medium text-[var(--garden-empty)] sm:text-[10px]">
-                    {plot + 1}
-                  </span>
-                  {plant?.stage === "mature" ? (
-                    <CheckCircleIcon
-                      weight="fill"
-                      size={14}
-                      className="absolute right-0.5 top-0.5 text-primary"
-                      aria-hidden="true"
-                    />
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
+          <GardenScene plants={garden.plants} selected={selected} onSelect={choose} />
           <div className="mt-5 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted">
             <span>
               {mature
@@ -252,6 +213,7 @@ function GardenAccount() {
               Próxima semilla: {garden.nextSeedMinutes} min de estudio
             </span>
           </div>
+          <GardenSharing shared={garden.shared} userId={userId} pending={pending} onChange={shared => act("visibility", { shared })} />
         </section>
         <section
           ref={panel}
@@ -431,7 +393,7 @@ function GardenAccount() {
           ))}
         </div>
       </section>
-      <details className="mt-6 rounded-2xl border border-app bg-surface p-5">
+      <details id="garden-collection" className="mt-6 scroll-mt-24 rounded-2xl border border-app bg-surface p-5">
         <summary className="cursor-pointer py-1 font-semibold">
           Mi colección · {collected}{" "}
           {collected === 1 ? "árbol canjeado" : "árboles canjeados"}

@@ -8,6 +8,7 @@ export const userGardens = sqliteTable("user_gardens", {
     .references(() => user.id, { onDelete: "cascade" }),
   spentSeeds: integer("spent_seeds").notNull().default(0),
   bonusSeeds: integer("bonus_seeds").notNull().default(0),
+  shared: integer("shared", { mode: "boolean" }).notNull().default(false),
   plants: text("plants").notNull().default("[]"),
   collection: text("collection").notNull().default("{}"),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),

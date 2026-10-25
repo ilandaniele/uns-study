@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { eq, sql } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import { FixedClock } from "../platform/clock.js";
@@ -35,6 +35,26 @@ describe("GardenService", () => {
         source,
       });
   }
+  it("shares only trees after opt-in, revokes access, preserves balances and respects blocks both ways", async () => {
+    await expect(garden.visit("u2", "u1")).rejects.toThrow();
+    await garden.plant("u1", { plot: 0, speciesId: "ceibo" });
+    const before = await garden.get("u1");
+    expect(before.shared).toBe(false);
+    expect(await garden.setVisibility("u1", true)).toEqual({ ...before, shared: true });
+    const visible = await garden.visit("u2", "u1");
+    expect(Object.keys(visible).sort()).toEqual(["collection", "plants"]);
+    expect(Object.keys(visible.plants[0]!).sort()).toEqual(["plot", "progress", "speciesId", "stage"]);
+    for (const [blockerId, blockedId] of [["u1", "u2"], ["u2", "u1"]]) {
+      db.insert(schema.userBlocks).values({ blockerId: blockerId!, blockedId: blockedId!, createdAt: NOW }).run();
+      await expect(garden.visit("u2", "u1")).rejects.toThrow();
+      db.delete(schema.userBlocks).run();
+    }
+    await garden.setVisibility("u1", false);
+    await expect(garden.visit("u2", "u1")).rejects.toThrow();
+    expect((await garden.visit("u1", "u1")).plants).toHaveLength(1);
+    expect(await garden.get("u1")).toEqual(before);
+    await expect(garden.visit("u1", "missing-user")).rejects.toThrow();
+  });
   it("starts free, reads existing study credit, excludes manual adjustments, and never writes on reads", async () => {
     expect(await garden.get("u1")).toMatchObject({
       seeds: 30,
@@ -50,6 +70,16 @@ describe("GardenService", () => {
       nextSeedMinutes: 5,
     });
     expect(db.select().from(schema.userGardens).all()).toHaveLength(0);
+  });
+  it("honors revocation while a visit is loading its study ledger", async () => {
+    await garden.setVisibility("u1", true);
+    const get = garden.get.bind(garden);
+    vi.spyOn(garden, "get").mockImplementationOnce(async id => {
+      const result = await get(id);
+      await garden.setVisibility(id, false);
+      return result;
+    });
+    await expect(garden.visit("u2", "u1")).rejects.toThrow();
   });
   it("deducts purchases atomically and rejects overspend and double planting", async () => {
     const bought = await Promise.allSettled([

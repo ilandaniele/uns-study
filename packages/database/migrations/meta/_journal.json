@@ -64,6 +64,13 @@
       "when": 1792953323717,
       "tag": "0008_message_reactions",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1792956767001,
+      "tag": "0009_shared_gardens",
+      "breakpoints": true
     }
   ]
 }

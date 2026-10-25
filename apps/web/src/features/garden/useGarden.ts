@@ -65,8 +65,8 @@ export function useGarden() {
   }, [refresh, invalidateRequest]);
 
   async function act(
-    action: "plant" | "redeem",
-    input: GardenPlantRequest | GardenRedeemRequest,
+    action: "plant" | "redeem" | "visibility",
+    input: GardenPlantRequest | GardenRedeemRequest | { shared: boolean },
   ): Promise<boolean> {
     if (busy.current) return false;
     busy.current = true;

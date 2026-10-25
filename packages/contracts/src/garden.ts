@@ -245,12 +245,19 @@ export interface GardenPlant {
 }
 
 export interface GardenDto {
+  shared: boolean;
   seeds: number;
   studyMinutes: number;
   nextSeedMinutes: number;
   plants: GardenPlant[];
   collection: Record<string, number>;
 }
+
+export interface SharedGardenDto {
+  plants: Pick<GardenPlant, "plot" | "speciesId" | "stage" | "progress">[];
+  collection: Record<string, number>;
+}
+export const gardenVisibilitySchema = z.object({ shared: z.boolean() }).strict();
 
 const plotSchema = z
   .number()
