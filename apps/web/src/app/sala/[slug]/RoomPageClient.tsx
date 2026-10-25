@@ -614,7 +614,9 @@ export function RoomPageClient({ slug }: { slug: string }) {
             onPointerDownCapture={preloadSeatDetail}
             className="relative h-[min(calc(100svh-272px-var(--room-banner-space,0px)),calc((100vw-2rem)*1.4092))] min-h-[180px] w-full overflow-hidden rounded-control border border-app bg-surface lg:mx-auto lg:aspect-[1090/1536] lg:h-[calc(100dvh-140px)] lg:w-auto lg:max-w-full"
           >
-            <ShareRoomButton summary={map.summary} name={map.room.name} className="absolute right-3 top-3 z-10 hidden lg:block" />
+            <div className="absolute right-3 top-3 z-10 hidden lg:block">
+              <ShareRoomButton summary={map.summary} name={map.room.name} />
+            </div>
             {isDesktop || !mounted ? (
               <div className="flex h-full w-full items-center justify-center">{roomMap}</div>
             ) : (
