@@ -12,7 +12,7 @@ const WINDOW_S = 3600;
 /**
  * `/donations/checkout`: public, anonymous one-time donation. Creates a Mercado Pago Checkout Pro
  * preference for a bounded whole-peso amount and returns its URL; nothing is stored, the money goes
- * straight to the MP account. The webhook ignores `payment` events, so donations never touch user rows.
+ * straight to the MP account. Donations have no garden external reference and never award seeds.
  */
 export const donationsRouter = new Hono<AppEnv>();
 

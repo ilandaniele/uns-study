@@ -36,7 +36,7 @@ export function applyTheme(theme: ThemePreference) {
   const isDark = resolveIsDark(theme);
   document.documentElement.classList.toggle("dark", isDark);
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", isDark ? "#0d1110" : "#eceee9");
+  if (meta) meta.setAttribute("content", isDark ? "#101714" : "#f4f6f2");
 }
 
 /** Reads the stored accent palette; unknown or missing values are `"default"`. */

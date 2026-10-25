@@ -45,7 +45,7 @@ import {
 } from "./widget-store";
 
 /** Routes where the floating chat would cover the chat itself or a full-screen form. */
-const HIDDEN_PREFIXES = ["/chat", "/login", "/recuperar"];
+const HIDDEN_PREFIXES = ["/chat", "/login", "/recuperar", "/foco", "/jardin", "/mas", "/comunidad"];
 const LAST_SEEN_KEY = "sala:room-chat-last-seen";
 const PHONE_QUERY = "(max-width: 639px)";
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';

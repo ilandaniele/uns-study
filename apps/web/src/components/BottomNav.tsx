@@ -1,56 +1,25 @@
 "use client";
 
-import {
-  MegaphoneIcon,
-  ShieldCheckIcon,
-  SquaresFourIcon,
-  TrophyIcon,
-  UserCircleIcon,
-  UsersThreeIcon,
-} from "@phosphor-icons/react/dist/ssr";
+import { DotsThreeIcon, MegaphoneIcon, PlantIcon, SquaresFourIcon, TimerIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
-import { prefetchHandlers } from "@/lib/prefetch";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
-import { useAdminAccess } from "@/features/admin/useAdminAccess";
+import { PRIMARY_NAV, isNavActive } from "@/lib/navigation";
+import { prefetchHandlers } from "@/lib/prefetch";
 
-const ICON_SIZE = 22;
+const ICONS = [SquaresFourIcon, TimerIcon, PlantIcon, MegaphoneIcon, DotsThreeIcon];
 
-const ITEMS: { label: string; href: string; icon: ReactNode }[] = [
-  { label: "Sala", href: "/", icon: <SquaresFourIcon size={ICON_SIZE} /> },
-  { label: "Comunidad", href: "/comunidad", icon: <MegaphoneIcon size={ICON_SIZE} /> },
-  { label: "Personas", href: "/personas", icon: <UsersThreeIcon size={ICON_SIZE} /> },
-  { label: "Ranking", href: "/ranking", icon: <TrophyIcon size={ICON_SIZE} /> },
-  { label: "Perfil", href: "/perfil", icon: <UserCircleIcon size={ICON_SIZE} /> },
-];
-
-/** Mobile-only bottom tab bar, mirrors the desktop header nav. Hidden on `sm:` and up. */
 export function BottomNav() {
   const pathname = usePathname();
-  const { isAdmin } = useAdminAccess();
-  const items = isAdmin ? [...ITEMS, { label: "Admin", href: "/admin", icon: <ShieldCheckIcon size={ICON_SIZE} /> }] : ITEMS;
-
   return (
-    <nav aria-label="Secciones" className="fixed inset-x-0 bottom-0 z-30 flex border-t border-app bg-surface/95 pb-safe backdrop-blur supports-[backdrop-filter]:bg-surface/85 lg:hidden">
-      {items.map((item) => {
-        const active = item.href === "/" ? pathname === "/" : pathname?.startsWith(item.href);
+    <nav aria-label="Secciones" className="fixed inset-x-0 bottom-0 z-30 flex border-t border-app bg-surface/95 px-2 pb-safe backdrop-blur lg:hidden">
+      {PRIMARY_NAV.map((item, index) => {
+        const active = isNavActive(item.href, pathname);
+        const Icon = ICONS[index];
         return (
-          <Link
-            key={item.label}
-            href={item.href}
-            {...prefetchHandlers(item.href)}
-            aria-current={active ? "page" : undefined}
-            className={`relative flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 pb-1.5 pt-2.5 text-[10px] min-[380px]:text-[11px] transition-colors ${
-              active ? "font-bold text-main" : "font-medium text-muted hover:text-main"
-            }`}
-          >
-            {/* Active tab: a short petrol bar on the top edge, like a tab plate. */}
-            <span
-              aria-hidden="true"
-              className={`absolute inset-x-1/2 top-0 h-[3px] -translate-x-1/2 rounded-none bg-primary w-8 origin-center transition-transform duration-150 ${active ? "scale-x-100" : "scale-x-0"}`}
-            />
-            <span aria-hidden="true" className={active ? "text-primary" : undefined}>
-              {item.icon}
+          <Link key={item.href} href={item.href} {...prefetchHandlers(item.href)} aria-current={active ? "page" : undefined}
+            className={`flex min-h-16 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] transition-colors ${active ? "font-bold text-primary" : "font-medium text-muted hover:text-main"}`}>
+            <span aria-hidden="true" className={`flex h-8 w-14 items-center justify-center rounded-full ${active ? "bg-[color-mix(in_srgb,var(--primary)_12%,transparent)]" : ""}`}>
+              <Icon size={23} weight={active ? "fill" : "regular"} />
             </span>
             <span>{item.label}</span>
           </Link>

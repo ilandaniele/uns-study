@@ -1,0 +1,44 @@
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { user } from "./auth.js";
+
+/** A bounded, private 25-plot garden. One atomic row update per purchase/redemption. */
+export const userGardens = sqliteTable("user_gardens", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  spentSeeds: integer("spent_seeds").notNull().default(0),
+  bonusSeeds: integer("bonus_seeds").notNull().default(0),
+  plants: text("plants").notNull().default("[]"),
+  collection: text("collection").notNull().default("{}"),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const gardenOrders = sqliteTable(
+  "garden_orders",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    seeds: integer("seeds").notNull(),
+    priceArs: integer("price_ars").notNull(),
+    preferenceId: text("preference_id"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [index("idx_garden_orders_user_created").on(t.userId, t.createdAt)],
+);
+
+/** Each provider payment has one credit, adjusted by deltas on refunds/chargebacks. */
+export const gardenPayments = sqliteTable(
+  "garden_payments",
+  {
+    paymentId: text("payment_id").primaryKey(),
+    orderId: text("order_id")
+      .notNull()
+      .references(() => gardenOrders.id, { onDelete: "cascade" }),
+    creditedSeeds: integer("credited_seeds").notNull(),
+    status: text("status").notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [index("idx_garden_payments_order").on(t.orderId)],
+);

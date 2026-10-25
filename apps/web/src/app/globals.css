@@ -1,5 +1,22 @@
 @import "tailwindcss";
 
+.garden-landscape, .garden-welcome { background: linear-gradient(160deg, var(--surface), var(--garden-bg)); }
+.garden-plots { background: var(--garden-soil); }
+.garden-plot { background: var(--garden-tile); border-color: var(--garden-tile-border); box-shadow: 0 3px 0 var(--garden-tile-border); }
+.garden-plot:hover { border-color: var(--garden-accent); }
+.garden-specimen { background: radial-gradient(ellipse at bottom, var(--garden-bg), var(--surface)); }
+.garden-progress { accent-color: var(--garden-accent); }
+.garden-progress::-webkit-progress-bar { background: var(--surface-2); border-radius: 8px; }
+.garden-progress::-webkit-progress-value { background: var(--garden-accent); border-radius: 8px; }
+.garden-progress::-moz-progress-bar { background: var(--garden-accent); border-radius: 8px; }
+.focus-stage { background-image: radial-gradient(ellipse at top, color-mix(in srgb, var(--garden-accent) 7%, transparent), transparent 70%); }
+@media (prefers-reduced-motion: no-preference) {
+  .garden-tree-crown { transform-origin: 48px 99px; animation: garden-breeze 7s ease-in-out infinite; }
+  .garden-plot:nth-child(3n) .garden-tree-crown { animation-delay: -2s; }
+  .garden-plot:nth-child(3n + 1) .garden-tree-crown { animation-delay: -4s; }
+  @keyframes garden-breeze { 0%, 100% { transform: rotate(-1deg); } 50% { transform: rotate(1deg); } }
+}
+
 /* Let the brand respond to the room left by the header actions, not the device
    width. Keep the full-size mark and touch targets on the narrowest phones. */
 .header-brand {
@@ -41,8 +58,8 @@
   --radius-sm: 4px;
   --radius-md: 4px;
   --radius-lg: 4px;
-  --radius-xl: 4px;
-  --radius-2xl: 8px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
   --radius-3xl: 8px;
   --radius-control: 4px; /* rounded-control */
   --radius-float: 8px; /* rounded-float */
@@ -93,10 +110,10 @@
   /* Cool graphite on a grey-green "pizarra clara" paper — no navy, no cream. */
   --ink: #131816;
   --muted: #535b57;
-  --bg: #eceee9;
-  --surface: #fbfbf9;
-  --surface-2: #e3e6e0;
-  --border: #d6dad3;
+  --bg: #f4f6f2;
+  --surface: #ffffff;
+  --surface-2: #eaf0e9;
+  --border: #dce4db;
   --border-strong: #b9bfb6;
   --text: var(--ink);
   --text-muted: var(--muted);
@@ -105,6 +122,12 @@
   --primary: #0f6e7e;
   --primary-dark: #0a5562;
   --shadow-tint: 19 24 22;
+  --garden-accent: #367952;
+  --garden-bg: #edf3e7;
+  --garden-soil: #d4e2c4;
+  --garden-tile: #e8efd9;
+  --garden-tile-border: #c3d3ad;
+  --garden-empty: #647954;
 
   --oak: #c8955c;
   --oak-border: #a56a3a;
@@ -164,10 +187,10 @@
   --flair-frame-duo-b: #a78bfa;
   --ink: #e7ebe8;
   --muted: #a0aaa5;
-  --bg: #0d1110;
-  --surface: #151a19;
-  --surface-2: #1d2422;
-  --border: #29312e;
+  --bg: #101714;
+  --surface: #18221d;
+  --surface-2: #223027;
+  --border: #304036;
   --border-strong: #3a4441;
   --text: var(--ink);
   --text-muted: var(--muted);
@@ -176,6 +199,12 @@
   --primary: #5fc4d3;
   --primary-dark: #8ed7e2;
   --shadow-tint: 0 0 0;
+  --garden-accent: #91c4a0;
+  --garden-bg: #1c2b21;
+  --garden-soil: #273d2c;
+  --garden-tile: #344a32;
+  --garden-tile-border: #4a6141;
+  --garden-empty: #c0cfae;
 
   --oak: #7a5a37;
   --oak-border: #9a774a;

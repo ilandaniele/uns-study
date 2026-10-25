@@ -34,12 +34,11 @@ function announce(last: Completion, s: FocusSettings) {
  * running (and ringing) while the user moves between the room, chat or ranking.
  */
 export function FocusRuntime() {
-  // Foco is Pro-only: without the plan nothing ticks, rings or plays.
-  const { lock } = usePro();
-  return lock === "unlocked" ? <FocusEngine /> : null;
+  return <FocusEngine />;
 }
 
 function FocusEngine() {
+  const { lock } = usePro();
   const focus = useFocus();
   const { timer, layers, volume } = focus;
   const titleRef = useRef<{ base: string; set: string } | null>(null);
@@ -65,7 +64,7 @@ function FocusEngine() {
 
   // Ambient noise plays only during a running focus block; breaks are quiet.
   const running = timer.status === "running" && timer.phase === "focus";
-  const playing = useMemo(() => (running ? playableLayers(layers, "unlocked") : []), [running, layers]);
+  const playing = useMemo(() => (running ? playableLayers(layers, lock) : []), [running, layers, lock]);
   useEffect(() => {
     if (playing.length > 0) setLayers(playing, volume);
     else stopAmbient();

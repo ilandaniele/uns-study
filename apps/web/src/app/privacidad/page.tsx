@@ -22,6 +22,10 @@ export default function PrivacyPage() {
         <li>Actividad en la sala: check-ins (&quot;Estoy acá&quot;), observaciones de lugares, mensajes de chat y reportes.</li>
       </ul>
 
+      <h2 className="pt-2 text-lg font-semibold text-main">Jardín virtual y compras</h2>
+      <p>El jardín es privado. Guardamos tus parcelas, árboles, colección y saldo de semillas en tu cuenta. Para calcular el crecimiento usamos el tiempo de presencia ya registrado en la sala.</p>
+      <p>Si comprás semillas, Mercado Pago procesa el pago. Guardamos la referencia de compra, el importe, el identificador y estado del pago y las semillas acreditadas; no recibimos ni guardamos los datos de tu tarjeta. El jardín y sus registros de compra en la app se eliminan al borrar tu cuenta.</p>
+
       <h2 className="pt-2 text-lg font-semibold text-main">Ubicación</h2>
       <p>
         Usamos tu ubicación sólo en el momento de marcar un lugar, para comprobar que estás cerca de la sala. No

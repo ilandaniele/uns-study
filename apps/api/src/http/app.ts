@@ -1,6 +1,7 @@
 // `createApp({ services, auth })` builds the whole Hono app (middleware + every router under
 // /api/v1 + the Better Auth handler under /api/auth). The Worker runs it inside the AppDO.
 import { Hono } from "hono";
+import { gardenRouter } from "../garden/garden.router.js";
 import { cors } from "hono/cors";
 import type { Auth } from "../auth/auth.instance.js";
 import { meRouter } from "../auth/me.router.js";
@@ -159,6 +160,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
     cosmeticsRouter,
     quietRoomRouter,
     groupRankingRouter,
+    gardenRouter,
     e2eTestHooksRouter,
   ]) {
     api.route("/", router);

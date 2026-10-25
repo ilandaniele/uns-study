@@ -1,0 +1,73 @@
+# Jardín nativo
+
+El jardín vive en `/jardin`, separado del mapa de ocupación. Cada cuenta tiene
+25 parcelas privadas. Sala, Foco, Jardín, Comunidad y Más forman la navegación
+principal; las páginas secundarias conservan sus rutas en Más.
+
+## Reglas
+
+- 30 semillas iniciales, sin escribir una fila hasta la primera acción.
+- Una semilla por cada 6 minutos de estudio registrado (10 por hora).
+- Las sesiones históricas cuentan para ganar semillas. Los créditos administrativos
+  `MANUAL` y el tiempo del Pomodoro local no cuentan.
+- El crecimiento usa el incremento de minutos registrados después de plantar.
+  Todos los árboles crecen en paralelo. No crecen por comprar semillas ni por
+  dejar el navegador abierto. Los check-ins activos se limitan a su vencimiento
+  mediante el mismo cálculo de tiempo que el ranking; una sesión ya registrada
+  nunca se cuenta otra vez como check-in activo.
+- Cada especie tiene un precio, tiempo de crecimiento y recompensa de canje.
+  Se pueden conservar árboles adultos o canjearlos para liberar su parcela.
+  El canje agrega el ejemplar a la colección y se identifica por UUID del árbol,
+  para que un reintento no canjee una nueva plantación en esa misma parcela.
+- Las etapas son recién plantado, brote, joven y adulto. Los tiempos son reglas
+  del juego, no tasas de crecimiento biológico.
+- No hay transferencias de semillas, retiro de dinero ni plantaciones reales.
+
+El catálogo compartido está en `packages/contracts/src/garden.ts`: doce especies
+nativas con nombre científico, región argentina y enlace botánico oficial.
+Las ilustraciones SVG tienen dimensiones fijas y siluetas por especie; su leve
+movimiento se desactiva con `prefers-reduced-motion`.
+
+## Compras opcionales
+
+El paquete aprobado es **100 semillas por $5.000 ARS**, en un pago único con
+Checkout Pro de Mercado Pago. El precio y la cantidad se fijan en el servidor.
+
+El checkout requiere sesión y las dos configuraciones de Mercado Pago ya usadas
+por la app: acceso a la API y verificación de webhooks. El estado `enabled` de la
+tienda indica si ambas están disponibles; el frontend deshabilita las compras si
+falta alguna. Staging conserva su configuración separada.
+
+1. El servidor guarda una orden con UUID y términos fijos, y crea la preferencia.
+2. `external_reference` contiene `garden:<UUID de orden>`, sin datos personales.
+3. El regreso del comprador sólo muestra el estado y reconsulta. Los parámetros
+   de la URL nunca acreditan semillas.
+4. El webhook existente verifica la firma y vuelve a consultar `/v1/payments/:id`.
+5. Se comprueban orden, identificador de pago, moneda, importe y estado aprobado.
+   La recepción y el ajuste del saldo se guardan en una misma transacción.
+6. El identificador del proveedor evita créditos repetidos. Los reintegros
+   parciales descuentan semillas proporcionalmente; los totales y contracargos
+   revierten el crédito. Una notificación anterior a la última actualización del
+   proveedor no restaura semillas reintegradas. Si ya se gastaron, el saldo puede
+   quedar negativo hasta ganar o comprar más semillas.
+
+No se guardan tarjetas, tokens de pago, email del pagador ni el payload completo.
+La eliminación de la cuenta elimina sus parcelas, órdenes y recibos en la app.
+Las donaciones y suscripciones conservan su tratamiento independiente.
+
+## Implementación y validación
+
+- `GET /api/v1/me/garden`: saldo, tiempo registrado, parcelas y colección.
+- `POST /api/v1/me/garden/plant` y `/redeem`: mutaciones transaccionales.
+- `GET /api/v1/me/garden/shop`: disponibilidad, precio y últimas cinco compras.
+- `POST /api/v1/me/garden/checkout`: preferencia de pago única.
+- Todas estas rutas requieren autenticación y responden `private, no-store`.
+- Migraciones aditivas `0006_native_garden` y `0007_garden_payments`, incluidas
+  en el bundle de migraciones del Durable Object existente.
+- Pruebas de dominio e integración HTTP cubren saldo, concurrencia, crecimiento,
+  propiedad de parcelas, validaciones, CSRF, firma de webhook, duplicados,
+  importe/moneda, reintegros, reversión atómica y eliminación de cuenta.
+- La revisión del navegador usa cuentas y pagos simulados. No realiza cobros.
+
+El Pomodoro básico ahora es gratuito; combinaciones guardadas, sonidos avanzados,
+estadísticas y herramientas de ventana conservan sus gates Pro.

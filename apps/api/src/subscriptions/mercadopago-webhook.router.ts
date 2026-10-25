@@ -33,7 +33,8 @@ mercadopagoWebhookRouter.post("/webhooks/mercadopago", async (c) => {
   if (!dataId) return reply(c, { ok: true });
 
   try {
-    await c.var.services.subscriptions.handleWebhook({ type, dataId });
+    if (type === "payment") await c.var.services.gardenPurchases.handlePayment(dataId);
+    else await c.var.services.subscriptions.handleWebhook({ type, dataId });
   } catch (err) {
     // Rethrown so the response is 500 and Mercado Pago retries the notification.
     logger.error(`webhook ${type ?? "?"} ${dataId} failed: ${err instanceof Error ? err.message : String(err)}`);

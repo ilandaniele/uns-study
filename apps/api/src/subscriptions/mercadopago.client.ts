@@ -34,6 +34,18 @@ export interface MpPreferenceBody {
   back_urls: { success: string; failure: string; pending: string };
   auto_return: "approved";
   statement_descriptor: string;
+  external_reference?: string;
+  notification_url?: string;
+}
+
+export interface MpPayment {
+  id: string | number;
+  status: string;
+  external_reference: string | null;
+  currency_id: string;
+  transaction_amount: number;
+  transaction_amount_refunded?: number;
+  date_last_updated?: string;
 }
 
 export type MpPreference = { id: string; init_point: string };
@@ -59,6 +71,10 @@ export class MercadoPagoClient {
 
   getPreapproval(id: string): Promise<MpPreapproval> {
     return this.request<MpPreapproval>("GET", `/preapproval/${encodeURIComponent(id)}`);
+  }
+
+  getPayment(id: string): Promise<MpPayment> {
+    return this.request<MpPayment>("GET", `/v1/payments/${encodeURIComponent(id)}`);
   }
 
   getAuthorizedPayment(id: string): Promise<{ preapproval_id: string }> {

@@ -13,7 +13,7 @@ function PhaseTabs({ compact }: { compact?: boolean }) {
   const { timer } = useFocus();
   const index = PHASES.indexOf(timer.phase);
   return (
-    <div role="tablist" aria-label="Fase" className="relative grid w-full max-w-sm grid-cols-3 rounded-lg bg-[var(--surface-2)] p-1">
+    <div role="group" aria-label="Fase" className="relative grid w-full max-w-sm grid-cols-3 rounded-lg bg-[var(--surface-2)] p-1">
       <span
         aria-hidden="true"
         className="focus-ease focus-ease-move absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-control bg-surface transition-transform duration-[240ms]"
@@ -23,8 +23,7 @@ function PhaseTabs({ compact }: { compact?: boolean }) {
         <button
           key={p}
           type="button"
-          role="tab"
-          aria-selected={timer.phase === p}
+          aria-pressed={timer.phase === p}
           onClick={() => focusActions.selectPhase(p)}
           className={`relative z-10 rounded-control px-2 font-semibold transition-colors ${compact ? "min-h-8 text-xs" : "min-h-10 text-sm"} ${
             timer.phase === p ? "text-main" : "text-muted hover:text-main"
@@ -45,25 +44,16 @@ function Clock({ big }: { big?: boolean }) {
   const progress = total > 0 ? 1 - left / total : 0;
   const clock = formatClock(left);
   return (
-    <>
-      <p
-        className={`font-mono font-semibold leading-none tracking-[-0.04em] text-main ${
-          big ? "text-[clamp(5.5rem,22vw,15rem)]" : "text-[clamp(4.75rem,21vw,8.5rem)]"
-        } ${timer.status === "paused" ? "opacity-60" : ""}`}
-        // Screen readers get the phase, not a number that changes every second.
-        aria-hidden="true"
-      >
-        {clock}
-      </p>
-      <div aria-hidden="true" className="h-1.5 w-full max-w-sm overflow-hidden rounded-full bg-[var(--surface-2)]">
-        <div
-          className={`h-full w-full origin-left rounded-full transition-transform duration-[250ms] ease-linear ${
-            timer.phase === "focus" ? "bg-primary" : "bg-[var(--text-faint)]"
-          }`}
-          style={{ transform: `scaleX(${Math.min(1, Math.max(0, progress))})` }}
-        />
+    <div className={`relative grid aspect-square w-full place-items-center ${big ? "max-w-[min(65vh,560px)]" : "max-w-[300px] sm:max-w-[330px]"}`}>
+      <svg aria-hidden="true" viewBox="0 0 300 300" className="absolute inset-0 h-full w-full -rotate-90">
+        <circle cx="150" cy="150" r="137" fill="none" stroke="var(--border)" strokeWidth="8" opacity="0.6" />
+        <circle cx="150" cy="150" r="137" fill="none" stroke={timer.phase === "focus" ? "var(--garden-accent)" : "var(--primary)"} strokeWidth="8" strokeLinecap="round" pathLength="100" strokeDasharray="100" strokeDashoffset={Math.min(100, Math.max(0, progress * 100))} className="transition-[stroke-dashoffset] duration-250 motion-reduce:transition-none" />
+      </svg>
+      <div className="relative flex flex-col items-center gap-3 px-5">
+        <p aria-hidden="true" className={`font-mono text-[clamp(3.5rem,15vw,5.25rem)] font-semibold leading-none tracking-[-0.06em] text-main ${timer.status === "paused" ? "opacity-60" : ""}`}>{clock}</p>
+        <span className="text-sm font-medium text-muted">{timer.status === "paused" ? "En pausa" : timer.phase === "focus" ? "Tiempo para vos" : "Respirá un momento"}</span>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -116,7 +106,7 @@ function TimerControls({ compact }: { compact?: boolean }) {
           focusActions.toggle();
         }}
         aria-keyshortcuts="Space"
-        className={`flex items-center justify-center gap-2 rounded-control bg-primary font-semibold text-white transition-[transform,background-color] duration-150 ease-out hover:bg-primary-dark active:scale-[0.97] ${
+        className={`flex items-center justify-center gap-2 rounded-full bg-primary font-semibold text-white transition-[transform,background-color] duration-150 ease-out hover:bg-primary-dark active:scale-[0.97] ${
           compact ? "h-10 min-w-28 px-4 text-sm" : "h-14 min-w-44 px-6 text-base"
         }`}
       >

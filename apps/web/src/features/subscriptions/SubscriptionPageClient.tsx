@@ -1,4 +1,5 @@
 "use client";
+import { DonateCard } from "@/features/room/Donate";
 
 import type { SubscriptionDto } from "@sala/contracts";
 import Link from "next/link";
@@ -164,6 +165,7 @@ export function SubscriptionPageClient() {
         )}
       </section>
 
+      <section id="donar" className="scroll-mt-24 rounded-2xl border border-app bg-surface p-5"><DonateCard /></section>
       {confirming && <CancelSubscriptionDialog pending={busy} onConfirm={() => void handleCancel()} onCancel={() => setConfirming(false)} />}
     </main>
   );

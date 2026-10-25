@@ -16,7 +16,7 @@ export type ProFeatureId =
   | "profile_flair" | "group_ranking" | "quiet_room" | "checkin_duration";
 
 export const PRO_FEATURES: Record<ProFeatureId, { title: string; description: string }> = {
-  focus: { title: "Foco", description: "Temporizador Pomodoro con tareas, sonidos ambiente y avisos para estudiar en bloques." },
+  focus: { title: "Foco avanzado", description: "Combinaciones guardadas, sonidos y herramientas extra para el Pomodoro gratuito." },
   focus_pip: { title: "Ventana flotante", description: "Tené el temporizador siempre a la vista mientras estudiás en otra pestaña." },
   focus_fullscreen: { title: "Pantalla completa", description: "Un temporizador grande y sin distracciones para concentrarte de verdad." },
   focus_sounds: { title: "Sonidos ambiente", description: "Lluvia, océano o fuego de fondo mientras corre cada bloque de foco." },
@@ -47,7 +47,7 @@ export const PRO_BENEFITS: string[] = [
   "Estudio en grupo: ubicación del grupo y foco compartido",
   "Meta semanal de horas con recordatorio",
   "Congelar la racha una vez por mes",
-  "Foco: Pomodoro con tareas, temporizador a medida, ventana flotante y sonidos ambiente",
+  "Foco avanzado: combinaciones guardadas para el temporizador, ventana flotante y sonidos ambiente",
   "Plan de exámenes con horas por día",
   "Sigo acá automático",
   "Paletas de color",

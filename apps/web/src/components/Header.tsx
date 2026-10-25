@@ -8,28 +8,14 @@ import { useAdminAccess } from "@/features/admin/useAdminAccess";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { FocusHeaderButton } from "@/features/focus/FocusHeaderButton";
 import { NotificationBell } from "@/features/notifications/NotificationBell";
-import { ProBadge } from "@/features/subscriptions/ProBadge";
-import { proLockState } from "@/features/subscriptions/pro";
+import { PRIMARY_NAV, isNavActive } from "@/lib/navigation";
 import { invalidateMe } from "@/lib/me-store";
 import { resetSocket } from "@/lib/socket";
 
-const NAV_ITEMS: { label: string; href: string; pro?: boolean }[] = [
-  { label: "Sala", href: "/" },
-  { label: "Personas", href: "/personas" },
-  { label: "Comunidad", href: "/comunidad" },
-  { label: "Ranking", href: "/ranking" },
-  { label: "Foco", href: "/foco", pro: true },
-  { label: "Guías", href: "/guias" },
-  { label: "Perfil", href: "/perfil" },
-];
-
 export function Header() {
-  const { isAdmin, loading, me } = useAdminAccess();
+  const { loading, me } = useAdminAccess();
   const user = me?.user ?? null;
   const pathname = usePathname();
-  const proLocked = proLockState(me, loading) === "locked";
-
-  const items = isAdmin ? [...NAV_ITEMS, { label: "Admin", href: "/admin" }] : NAV_ITEMS;
 
   // The socket carries the caller's identity in its auth token; reconnect it right after
   // sign-out so it drops the user's channels and rejoins anonymous instead of lingering.
@@ -58,9 +44,9 @@ export function Header() {
         </Link>
       </div>
 
-      <nav className="hidden min-w-0 items-center gap-0.5 text-sm font-semibold lg:flex xl:gap-1">
-        {items.map((item) => {
-          const active = item.href === "/" ? pathname === "/" : pathname?.startsWith(item.href);
+      <nav aria-label="Secciones de escritorio" className="hidden min-w-0 items-center gap-0.5 text-sm font-semibold lg:flex xl:gap-1">
+        {PRIMARY_NAV.map((item) => {
+          const active = isNavActive(item.href, pathname);
           return (
             <Link
               key={item.label}
@@ -69,10 +55,9 @@ export function Header() {
               aria-current={active ? "page" : undefined}
               className={`whitespace-nowrap rounded-control px-1.5 py-2 transition-colors xl:px-3 ${
                 active ? "bg-transparent text-main shadow-[inset_0_-2px_0_var(--text)]" : "text-muted hover:bg-[var(--surface-2)] hover:text-main"
-              } ${item.pro && proLocked ? "inline-flex items-center gap-1.5" : ""}`}
+              }`}
             >
               {item.label}
-              {item.pro && proLocked ? <ProBadge inline /> : null}
             </Link>
           );
         })}

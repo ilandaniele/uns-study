@@ -12,6 +12,8 @@
 //
 // The caller then does `createApp({ services, auth: buildAuth(db) })`.
 import type { Db } from "@sala/database";
+import { GardenService } from "./garden/garden.service.js";
+import { GardenPurchasesService } from "./garden/garden-purchases.service.js";
 import { env as defaultEnv, type Env } from "./env.js";
 import type { Clock } from "./platform/clock.js";
 import type { Scheduler } from "./platform/scheduler.js";
@@ -128,6 +130,8 @@ export function buildServices(deps: ContainerDeps): Services {
 
   const pro = new ProService(db, roles, { subscriptionsEnabled: Boolean(cfg.mpAccessToken), clock });
   const cosmetics = new UserCosmeticsService(db, pro, clock);
+  const garden = new GardenService(db, clock);
+  const gardenPurchases = new GardenPurchasesService(db, garden, clock, mercadoPago, { webhookEnabled: !!cfg.mpWebhookSecret, webUrl: cfg.publicWebUrl });
 
   // Rooms come before notifications: the seat watch (a notification dependency) needs them.
   const rooms = new RoomsService(db, roomState, roomCache, roomHours);
@@ -212,7 +216,7 @@ export function buildServices(deps: ContainerDeps): Services {
     subscriptions, mercadoPago, rateLimit, antiAbuse, securityEvents, abusePolicy, turnstile,
     storage, seatPhotoVerifier,
     pro, seatWatch, studyHistory, forecast, favoriteSeats, groupStudy, weeklyGoal, streakBadges, exams,
-    cosmetics, quietRoom, groupRanking,
+    cosmetics, quietRoom, groupRanking, garden, gardenPurchases,
     realtime, scheduler, clock,
     jobs,
   };

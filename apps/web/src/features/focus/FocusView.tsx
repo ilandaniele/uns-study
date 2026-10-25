@@ -2,6 +2,7 @@
 
 import { ArrowsInIcon, ArrowsOutIcon, PictureInPictureIcon } from "@phosphor-icons/react/dist/ssr";
 import { useRef } from "react";
+import Link from "next/link";
 import { createPortal } from "react-dom";
 import { NotifyCard, PresetChips, SoundCard, StatsCard, TasksCard, TimesCard } from "./cards";
 import { FocusTimer, MiniTimer } from "./FocusTimer";
@@ -39,8 +40,8 @@ export function FocusView() {
         <div className="flex items-start gap-1">
           <BackButton fallbackHref="/" />
           <div className="flex flex-col gap-1">
-          <h1 className="t-heading">Foco</h1>
-          <p className="text-sm text-muted">Bloques de estudio con pausas. Sigue corriendo aunque cambies de pantalla.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Un bloque a la vez</h1>
+          <p className="text-sm text-muted">Elegí una tarea. El resto puede esperar.</p>
           </div>
         </div>
         <div className="flex shrink-0 gap-2">
@@ -77,7 +78,7 @@ export function FocusView() {
           <section
             ref={stageRef}
             aria-label="Temporizador"
-            className="relative flex flex-col items-center gap-6 rounded-control border border-app bg-surface px-4 py-7 sm:py-10 [&:fullscreen]:justify-center [&:fullscreen]:rounded-none [&:fullscreen]:border-0 [&:fullscreen]:bg-app"
+            className="focus-stage relative flex flex-col items-center gap-6 rounded-[24px] border border-app bg-surface px-4 py-7 sm:py-10 [&:fullscreen]:justify-center [&:fullscreen]:rounded-none [&:fullscreen]:border-0 [&:fullscreen]:bg-app"
           >
             {fs.on ? (
               <button type="button" onClick={fs.toggle} className={`${iconBtn} absolute right-4 top-4`} aria-label="Salir de pantalla completa" title="Salir (F)">
@@ -99,10 +100,11 @@ export function FocusView() {
         </div>
 
         <div className="flex min-w-0 flex-col gap-4">
-          <StatsCard />
-          <NotifyCard />
-          <SoundCard />
-          <TimesCard />
+          <aside className="rounded-2xl border border-app bg-surface p-5"><p className="t-label text-primary">Estudiá y hacé crecer algo</p><h2 className="mt-3 text-lg font-bold">Tu jardín te espera</h2><p className="mt-2 text-sm leading-relaxed text-muted">Si estás en la sala, marcá “Estoy acá”. Ese tiempo hace crecer tus árboles, aunque cambies de pantalla.</p><Link href="/jardin" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-primary">Visitar mi jardín →</Link></aside>
+          <details className="rounded-2xl border border-app bg-surface p-5"><summary className="cursor-pointer py-1 font-semibold">Sonidos y avisos</summary><div className="mt-4 space-y-5"><NotifyCard /><SoundCard /></div></details>
+          <details className="rounded-2xl border border-app bg-surface p-5"><summary className="cursor-pointer py-1 font-semibold">Ajustar mis bloques</summary><div className="mt-4"><TimesCard /></div></details>
+          <details className="rounded-2xl border border-app bg-surface p-5"><summary className="cursor-pointer py-1 font-semibold">Mi ritmo de estudio</summary><div className="mt-4"><StatsCard /></div></details>
+          <p className="px-2 text-xs leading-relaxed text-muted">El Pomodoro básico es gratuito. Las herramientas avanzadas tienen su distintivo Pro.</p>
         </div>
       </div>
 
