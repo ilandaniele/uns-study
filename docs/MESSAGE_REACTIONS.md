@@ -62,5 +62,6 @@ acreditada a **@elgordoceniza** y publicada en
 <https://bahiablanca.substack.com/p/ricoteros-goleador-nutria-y-mas>.
 El texto resume su vínculo con la comunidad de la UNS; no agrega fechas,
 diagnósticos ni detalles biográficos no confirmados. El modal enlaza al perfil
-<https://www.instagram.com/elgordoceniza/> y muestra el crédito de la foto.
+<https://www.instagram.com/elgordoceniza/>. La procedencia de la foto queda
+documentada aquí; el modal no muestra el pie editorial.
 No se incluye WhatsApp, por indicación del usuario.

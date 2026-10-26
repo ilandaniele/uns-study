@@ -78,17 +78,6 @@ export function CenizaMemorial({ onClose }: { onClose: () => void }) {
           <InstagramLogoIcon size={20} aria-hidden="true" />
           @elgordoceniza
         </a>
-        <p className="mt-3 text-[11px] text-muted">
-          Foto: @elgordoceniza ·{" "}
-          <a
-            href="https://bahiablanca.substack.com/p/ricoteros-goleador-nutria-y-mas"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline"
-          >
-            publicada en 8000
-          </a>
-        </p>
         <button
           type="button"
           aria-label="Cerrar recuerdo"
