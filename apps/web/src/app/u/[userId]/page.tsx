@@ -1,11 +1,12 @@
 "use client";
 
 import type { ProfileFrameId, PublicProfileDto } from "@sala/contracts";
+import { ArrowRightIcon, ArrowUpRightIcon, BookOpenIcon, ChatCircleIcon, InstagramLogoIcon, PlantIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { BackButton } from "@/components/BackButton";
-import { WithAdminBadge } from "@/components/AdminBadge";
+import { AdminTag } from "@/components/AdminBadge";
 import { avatarRingShadow } from "@/components/avatar-ring";
 import { frameOf, nameColorStyle } from "@/components/flair";
 import { PhotoViewer } from "@/components/PhotoViewer";
@@ -14,6 +15,7 @@ import { conversationErrorMessage, startConversation } from "@/features/chat/sta
 import { openChatWidget } from "@/features/chat/widget-store";
 import { useSession } from "@/lib/auth-client";
 import { instagramHref } from "@/features/profile/instagram";
+import { ProfileActionsMenu } from "@/features/profile/ProfileActionsMenu";
 
 /** Public profile view: "Enviar mensaje", "Bloquear"/"Desbloquear", "Reportar". */
 export default function PublicProfilePage() {
@@ -82,7 +84,7 @@ export default function PublicProfilePage() {
   if (!session?.user) {
     return (
       <main className="mx-auto max-w-lg p-4">
-        <BackButton fallbackHref="/personas" />
+        <BackButton fallbackHref="/personas" showLabel />
         <p className="p-6 text-center text-muted">Iniciá sesión para ver este perfil.</p>
       </main>
     );
@@ -91,7 +93,7 @@ export default function PublicProfilePage() {
   if (error || !profile) {
     return (
       <main className="mx-auto max-w-lg p-4">
-        <BackButton fallbackHref="/personas" />
+        <BackButton fallbackHref="/personas" showLabel />
         <p className="p-6 text-center text-red-600">{error ?? "No encontramos ese perfil."}</p>
       </main>
     );
@@ -100,87 +102,84 @@ export default function PublicProfilePage() {
   const isSelf = session.user.id === userId;
 
   return (
-    <main className="mx-auto max-w-lg p-4">
-      <BackButton fallbackHref="/personas" />
-      {!profile.blockedByMe ? <Link href={`/u/${encodeURIComponent(userId)}/jardin`} className="my-4 flex min-h-11 items-center justify-between rounded-2xl border border-app bg-surface px-5 font-semibold text-primary">Visitar jardín <span aria-hidden="true">?</span></Link> : null}
-      <div className="border-t border-app pt-5">
-        <div className="flex items-center gap-4">
-          <WithAdminBadge show={profile.adminBadge} size={64}>
+    <main className="mx-auto w-full max-w-2xl px-4 pb-28 pt-5 sm:pt-8">
+      <div className="mb-5"><BackButton fallbackHref="/personas" showLabel /></div>
+      <article aria-labelledby="profile-name" className="rounded-3xl border border-app bg-surface p-5 sm:p-8">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-4 gap-y-4 sm:items-center">
             <PersonAvatar name={profile.displayName} avatarUrl={profile.avatarUrl} proBadge={profile.proBadge} frame={frameOf(profile.flair)} />
-          </WithAdminBadge>
-          <div className="min-w-0">
-            <h1 className="truncate t-title text-xl" style={nameColorStyle(profile.flair)}>
-              {profile.displayName}
-            </h1>
-            {profile.career || profile.currentSubject ? (
-              <div className="mt-1 flex flex-wrap gap-1.5">
-                {profile.career ? <Chip>{profile.career}</Chip> : null}
-                {profile.currentSubject ? <Chip>{profile.currentSubject}</Chip> : null}
+            <div className="col-span-3 min-w-0 sm:col-span-1 sm:col-start-2 sm:row-start-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 id="profile-name" className="text-xl font-bold leading-tight [overflow-wrap:anywhere] sm:text-2xl" style={nameColorStyle(profile.flair)}>
+                  {profile.displayName}
+                </h1>
+                {profile.adminBadge ? <AdminTag /> : null}
               </div>
-            ) : null}
-          </div>
+            </div>
+          {!isSelf ? <ProfileActionsMenu userId={userId} blocked={profile.blockedByMe} busy={busy} onBlockToggle={() => void handleBlockToggle()} /> : null}
         </div>
 
-        {profile.bio ? <p className="mt-4 whitespace-pre-wrap break-words text-sm text-main">{profile.bio}</p> : null}
+        {profile.career || profile.currentSubject ? (
+          <div className="mt-5 flex flex-wrap gap-2">
+            {profile.career ? <Chip>{profile.career}</Chip> : null}
+            {profile.currentSubject ? <Chip>{profile.currentSubject}</Chip> : null}
+          </div>
+        ) : null}
 
-        <dl className="mt-3 flex flex-col gap-1 text-sm text-muted">
+        {profile.bio ? <p className="mt-5 whitespace-pre-wrap break-words text-sm leading-relaxed text-main">{profile.bio}</p> : null}
+
+        {profile.instagram || profile.studentNumber ? <dl className="mt-5 grid gap-3 border-t border-app pt-4 text-sm text-muted sm:grid-cols-2">
           {profile.instagram ? (
-            <div>
-              <dt className="inline font-medium text-main">Instagram: </dt>
-              <dd className="inline">{instagramHref(profile.instagram) ? <a href={instagramHref(profile.instagram)!} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center font-semibold text-primary underline underline-offset-2">@{profile.instagram} ↗</a> : profile.instagram}</dd>
+            <div className="min-w-0">
+              <dt className="sr-only">Instagram</dt>
+              <dd>{instagramHref(profile.instagram) ? <a href={instagramHref(profile.instagram)!} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 max-w-full items-center gap-2 font-semibold text-primary hover:underline underline-offset-4"><InstagramLogoIcon aria-hidden="true" size={20} className="shrink-0" /><span className="truncate">@{profile.instagram.replace(/^@/, "")}</span><ArrowUpRightIcon aria-hidden="true" size={16} className="shrink-0" /></a> : profile.instagram}</dd>
             </div>
           ) : null}
           {profile.studentNumber ? (
             <div>
-              <dt className="inline font-medium text-main">Legajo: </dt>
-              <dd className="inline font-mono">{profile.studentNumber}</dd>
+              <dt className="text-xs">Legajo</dt>
+              <dd className="mt-1 break-words font-mono text-main">{profile.studentNumber}</dd>
             </div>
           ) : null}
-        </dl>
+        </dl> : null}
 
         {profile.studyStatus ? (
-          <p className="mt-4 rounded-xl bg-[var(--surface-2)] px-3 py-2 text-sm text-main whitespace-pre-wrap break-words">
-            En Modo Estudio{profile.studyStatus.subject ? `: ${profile.studyStatus.subject}` : ""}
-            {profile.studyStatus.message ? <span className="mt-1 block text-muted">{profile.studyStatus.message}</span> : null}
-          </p>
+          <div className="mt-5 flex items-start gap-3 rounded-2xl bg-surface-2 p-4 text-sm">
+            <BookOpenIcon aria-hidden="true" size={20} className="shrink-0 text-primary" />
+            <p className="min-w-0 whitespace-pre-wrap break-words text-main"><span className="font-semibold">En modo estudio</span>{profile.studyStatus.subject ? ` · ${profile.studyStatus.subject}` : ""}
+              {profile.studyStatus.message ? <span className="mt-1 block text-muted">{profile.studyStatus.message}</span> : null}
+            </p>
+          </div>
         ) : null}
 
-        {actionMessage ? <p className="mt-4 text-sm text-red-600">{actionMessage}</p> : null}
+        {actionMessage ? <p role="alert" className="mt-4 text-sm text-[var(--seat-occupied)]">{actionMessage}</p> : null}
 
         {!isSelf ? (
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="mt-6 border-t border-app pt-5">
             <button
               type="button"
               onClick={() => void handleMessage()}
               disabled={busy || !profile.allowsDirectMessages || profile.blockedByMe}
-              className="min-h-11 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50 sm:w-auto"
             >
-              Enviar mensaje
+              <ChatCircleIcon aria-hidden="true" size={20} />Enviar mensaje
             </button>
-            <button
-              type="button"
-              onClick={() => void handleBlockToggle()}
-              disabled={busy}
-              className="min-h-11 rounded-lg border border-app px-4 py-2 text-sm font-semibold text-main hover:bg-[var(--surface-2)] disabled:opacity-50"
-            >
-              {profile.blockedByMe ? "Desbloquear" : "Bloquear"}
-            </button>
-            <Link
-              href={`/reportar/${userId}?context=PROFILE`}
-              className="flex min-h-11 items-center rounded-lg px-4 py-2 text-sm font-semibold text-[var(--seat-occupied)] hover:bg-[var(--surface-2)]"
-            >
-              Reportar
-            </Link>
+            {profile.blockedByMe ? <p className="mt-3 text-xs text-muted">Bloqueaste este perfil. Podés desbloquearlo desde el menú de opciones.</p>
+              : !profile.allowsDirectMessages ? <p className="mt-3 text-xs text-muted">Esta persona no recibe mensajes directos.</p> : null}
           </div>
         ) : null}
-      </div>
+      </article>
+      {!profile.blockedByMe ? <Link href={`/u/${encodeURIComponent(userId)}/jardin`} className="group mt-4 flex min-h-24 items-center gap-4 rounded-3xl border border-app bg-surface px-5 py-5 transition-colors hover:bg-surface-2 sm:px-6">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-surface-2 text-primary"><PlantIcon aria-hidden="true" size={26} /></span>
+        <span className="min-w-0 flex-1"><span className="block text-base font-semibold text-main">{isSelf ? "Mi jardín" : "Visitar jardín"}</span><span className="mt-1 block text-sm leading-relaxed text-muted">Un rincón de árboles nativos que crece con el estudio.</span></span>
+        <ArrowRightIcon aria-hidden="true" size={20} className="shrink-0 text-primary transition-transform group-hover:translate-x-1 motion-reduce:transform-none" />
+      </Link> : null}
     </main>
   );
 }
 
 function Chip({ children }: { children: string }) {
   return (
-    <span className="rounded-control border border-app px-2 py-0.5 text-xs font-medium text-muted">{children}</span>
+    <span className="max-w-full break-words rounded-full bg-surface-2 px-3 py-1.5 text-xs font-medium text-muted">{children}</span>
   );
 }
 
