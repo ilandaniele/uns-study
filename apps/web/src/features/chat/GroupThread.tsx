@@ -183,7 +183,8 @@ export function GroupThread({ groupId, group, currentUserId, onBack, onLeft, hea
                     </div>
                   ) : null}
                   <div
-                    className={`min-w-0 max-w-[75%] rounded-float px-3 py-2 text-sm ${
+                    data-message-bubble={message.id}
+                    className={`min-w-0 max-w-[75%] rounded-2xl px-3 py-2 text-sm ${
                       isOwn ? "bg-primary/10 text-main" : "bg-[var(--surface-2)] text-main"
                     }`}
                   >
@@ -197,10 +198,12 @@ export function GroupThread({ groupId, group, currentUserId, onBack, onLeft, hea
                     <p className={`whitespace-pre-wrap break-words ${message.deleted ? "italic opacity-70" : ""}`}>
                       {message.deleted ? "Mensaje eliminado" : message.content}
                     </p>
-                    <p className="mt-1 text-right font-mono text-[11px] text-muted">{formatMessageTime(message.createdAt)}</p>
-                    <MessageReactionBar messageId={message.id} deleted={message.deleted} />
+                    <div className="mt-0.5 flex h-6 items-center justify-end gap-2">
+                      <MessageReactionBar messageId={message.id} deleted={message.deleted} inline />
+                      <time className="ml-auto shrink-0 font-mono text-[10px] text-muted">{formatMessageTime(message.createdAt)}</time>
+                    </div>
                   </div>
-                  {!message.deleted ? <div className={`shrink-0 self-end pb-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100 ${isOwn ? "order-first" : ""}`}><MessageReactionButton messageId={message.id} deleted={message.deleted} /></div> : null}
+                  {!message.deleted ? <div className={`shrink-0 self-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100 ${isOwn ? "order-first" : ""}`}><MessageReactionButton messageId={message.id} deleted={message.deleted} /></div> : null}
                 </div>
               </div>
             );

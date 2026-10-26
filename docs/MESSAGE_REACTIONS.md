@@ -37,7 +37,8 @@ El selector funciona con teclado, Escape, clic exterior y controles táctiles.
 Los errores de escritura se muestran sin cambiar visualmente el estado guardado.
 
 La acción para reaccionar vive junto al mensaje y sólo se muestran contadores
-debajo cuando existen reacciones. El menú usa un popover nativo sobre la capa
+cuando existen reacciones. En las burbujas comparten una línea de altura fija
+con la hora: agregar reacciones no aumenta su altura. El menú usa un popover nativo sobre la capa
 superior: cinco emojis frecuentes y un acceso al selector completo de veinte,
 sin agrandar el historial. El mismo selector permite insertar emojis en el
 campo de escritura, conservando el cursor, la selección y el límite de texto.

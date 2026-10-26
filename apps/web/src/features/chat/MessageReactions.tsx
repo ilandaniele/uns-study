@@ -151,17 +151,17 @@ export function MessageReactionButton({ messageId, deleted }: { messageId: strin
     onSelect={emoji => void context.set(messageId, mine === emoji ? null : emoji)} />;
 }
 
-export function MessageReactionBar({ messageId, deleted }: { messageId: string; deleted: boolean }) {
+export function MessageReactionBar({ messageId, deleted, inline = false }: { messageId: string; deleted: boolean; inline?: boolean }) {
   const context = useContext(Context);
   const counts = context?.counts[messageId] ?? [];
   if (!context || deleted || !counts.length) return null;
-  return <div className="mt-1 flex flex-wrap gap-1.5" aria-label="Reacciones del mensaje">
+  return <div className={inline ? "flex min-w-10 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none]" : "mt-1 flex flex-wrap gap-1"} aria-label="Reacciones del mensaje">
     {counts.map(reaction => <button key={reaction.emoji} type="button" disabled={context.pending.has(messageId)}
       aria-pressed={reaction.mine}
       aria-label={`${reaction.emoji}, ${reaction.count} ${reaction.count === 1 ? "reacción" : "reacciones"}${reaction.mine ? ", tu reacción" : ""}`}
       onClick={() => void context.set(messageId, reaction.mine ? null : reaction.emoji)}
-      className={`relative inline-flex min-h-8 items-center justify-center gap-1 rounded-full border px-2 text-sm before:absolute before:-inset-y-1.5 before:inset-x-0 before:content-[''] disabled:opacity-50 ${reaction.mine ? "border-primary/40 bg-primary/10" : "border-app bg-surface"}`}>
-      <span aria-hidden="true">{reaction.emoji}</span><span aria-hidden="true" className="text-[11px] font-semibold">{reaction.count}</span>
+      className={`relative inline-flex h-6 shrink-0 items-center justify-center gap-1 rounded-full border px-1.5 text-xs disabled:opacity-50 ${reaction.mine ? "border-primary/40 bg-primary/10" : "border-app bg-surface"}`}>
+      <span aria-hidden="true">{reaction.emoji}</span><span aria-hidden="true" className="text-[10px] font-semibold">{reaction.count}</span>
     </button>)}
   </div>;
 }

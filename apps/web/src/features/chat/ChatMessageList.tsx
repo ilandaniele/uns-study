@@ -72,12 +72,14 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock, on
                     />
                   </div>
                 ) : null}
-                <div className="min-w-0 max-w-[80%] rounded-float rounded-tr-xs bg-primary/15 px-3 py-1.5">
+                <div data-message-bubble={message.id} className="min-w-0 max-w-[80%] rounded-2xl rounded-tr-xs bg-primary/15 px-3 py-1.5">
                   <p className={`whitespace-pre-wrap break-words text-sm ${message.deleted ? "italic text-muted" : "text-main"}`}>
                     {message.deleted ? "Mensaje eliminado" : message.content}
                   </p>
-                  <p className="mt-0.5 text-right text-[11px] text-muted">{formatMessageTime(message.createdAt)}</p>
-                  <MessageReactionBar messageId={message.id} deleted={message.deleted} />
+                  <div className="mt-0.5 flex h-6 items-center justify-end gap-2">
+                    <MessageReactionBar messageId={message.id} deleted={message.deleted} inline />
+                    <time className="ml-auto shrink-0 text-[10px] text-muted">{formatMessageTime(message.createdAt)}</time>
+                  </div>
                 </div>
               </div>
             </div>
