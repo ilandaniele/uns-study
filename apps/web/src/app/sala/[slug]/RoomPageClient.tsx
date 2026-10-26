@@ -623,20 +623,6 @@ export function RoomPageClient({ slug }: { slug: string }) {
               <ZoomableMap>{roomMap}</ZoomableMap>
             )}
           </div>
-          {/* Title block under the drawing: lg only, decorative (the h1 and live status live in the rail). */}
-          <div
-            aria-hidden="true"
-            className="t-caption hidden text-muted lg:mt-2 lg:flex lg:w-full lg:items-center lg:justify-between lg:border-t lg:border-app lg:pt-2"
-          >
-            <span className="t-label">{map.room.name}</span>
-            <span className="t-data flex items-center gap-1.5">
-              <span
-                className={`inline-block h-1.5 w-1.5 rounded-full ${connected ? "bg-[var(--seat-free)]" : "bg-[var(--seat-unknown)]"}`}
-              />
-              {connected ? "En vivo" : "Reconectando…"}
-              <UpdatedAgo seats={map.seats} />
-            </span>
-          </div>
         </div>
       </section>
 
