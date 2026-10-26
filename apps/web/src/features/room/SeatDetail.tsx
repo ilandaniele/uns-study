@@ -53,7 +53,7 @@ export interface SeatDetailProps {
   actionError: string | null;
   /** True while the API is waiting for a solved Turnstile challenge to retry the last action. */
   turnstileRequired: boolean;
-  onTurnstileToken: (token: string) => void;
+  onTurnstileToken: (token: string) => Promise<boolean>;
   /** Shown only right after a successful "Estoy acá" on this seat; never for observations. */
   onClose: () => void;
   /** `durationMinutes` is how long the user chose to occupy the seat. */

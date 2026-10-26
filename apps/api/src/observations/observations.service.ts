@@ -203,7 +203,7 @@ export class ObservationService {
         ip: input.ip,
         metadata: { distinctSeats: outcome.spread },
       });
-      throw ApiErrors.rateLimited();
+      throw ApiErrors.rateLimited("Actualizaste muchos lugares distintos. Esperá hasta 10 minutos antes de marcar otro lugar. Verificar que sos una persona no elimina este límite temporal.");
     }
     let { changes } = outcome;
     let dispute: SeatDisputeDto | null = null;

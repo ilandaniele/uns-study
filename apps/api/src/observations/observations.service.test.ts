@@ -428,9 +428,21 @@ describe("ObservationService", () => {
     );
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(2);
     for (const r of results.filter((r) => r.status === "rejected")) {
-      expect((r as PromiseRejectedResult).reason).toMatchObject({ code: "RATE_LIMITED" });
+      expect((r as PromiseRejectedResult).reason).toMatchObject({ code: "RATE_LIMITED", message: expect.stringContaining("10 minutos") });
     }
     const rows = await db.select().from(schema.seatObservations).where(eq(schema.seatObservations.userId, "u1"));
     expect(new Set(rows.map((r) => r.seatId)).size).toBe(2);
+  });
+
+  it("allows a new seat again when the spread window has elapsed", async () => {
+    const limits = { perMinuteLimit: 6, distinctSeatCap: 2 } as unknown as ObservationLimits;
+    for (const seatId of seatIds.slice(0, 2)) {
+      await observations.observe({ userId: "u1", roomId, seatId, status: "OCCUPIED", location, limits });
+    }
+    await expect(observations.observe({ userId: "u1", roomId, seatId: seatIds[2]!, status: "OCCUPIED", location, limits }))
+      .rejects.toMatchObject({ code: "RATE_LIMITED" });
+    await db.update(schema.seatObservations).set({ createdAt: new Date(Date.now() - 11 * 60_000) }).where(eq(schema.seatObservations.userId, "u1"));
+    await expect(observations.observe({ userId: "u1", roomId, seatId: seatIds[2]!, status: "OCCUPIED", location, limits }))
+      .resolves.toMatchObject({ roomId });
   });
 });

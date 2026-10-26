@@ -53,7 +53,9 @@ export function describeActionError(error: unknown): string {
       return "Otra persona ya marcó este lugar. Elegí otro del mapa.";
     }
     if (error.code === "RATE_LIMITED") {
-      return "Hiciste muchas acciones seguidas. Esperá unos segundos y probá de nuevo.";
+      return error.message && error.message !== "Demasiados intentos, esperá un momento."
+        ? error.message
+        : "Hiciste muchas acciones seguidas. Esperá un minuto sin enviar más cambios y probá de nuevo. Verificar que sos una persona no elimina este límite temporal.";
     }
     if (error.code === "UNAUTHENTICATED") {
       return "Iniciá sesión para colaborar.";

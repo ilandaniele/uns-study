@@ -47,7 +47,7 @@ export const ApiErrors = {
   seatNotFound: () => new ApiException("SEAT_NOT_FOUND", "Asiento no encontrado.", 404),
   roomNotFound: () => new ApiException("SEAT_NOT_FOUND", "Sala no encontrada.", 404),
   noActiveCheckIn: () => new ApiException("NO_ACTIVE_CHECKIN", "No tenés un check-in activo.", 404),
-  rateLimited: () => new ApiException("RATE_LIMITED", "Demasiados intentos, esperá un momento.", 429),
+  rateLimited: (message = "Demasiados intentos, esperá un momento.") => new ApiException("RATE_LIMITED", message, 429),
   featureDisabled: (message = "Esta función no está disponible en este momento.") => new ApiException("FEATURE_DISABLED", message, 503),
   validation: (message = "Datos inválidos.") => new ApiException("VALIDATION_ERROR", message, 400),
   ownSeatObservation: () =>

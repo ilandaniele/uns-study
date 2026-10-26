@@ -64,7 +64,7 @@ export interface UseSeatActionsResult {
   extend: (durationMinutes?: number) => Promise<boolean>;
   checkOut: () => Promise<boolean>;
   /** Retries the last action (check-in/observation) with a solved Turnstile token. */
-  submitTurnstileToken: (token: string) => void;
+  submitTurnstileToken: (token: string) => Promise<boolean>;
   /** POST `/disputes` — opens "Me senté acá" / "Esa persona no está" / "Está guardado" on a seat. */
   openDispute: (seatId: string, kind: DisputeKind) => Promise<SeatDisputeDto | null>;
   /** POST `/disputes/:id/votes` — casts the caller's PRESENT/ABSENT vote. */
@@ -97,7 +97,8 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
   const [turnstileRequired, setTurnstileRequired] = useState(false);
   const [locationHelp, setLocationHelp] = useState(false);
   const dismissLocationHelp = useCallback(() => setLocationHelp(false), []);
-  const retryRef = useRef<((token: string) => void) | null>(null);
+  const retryRef = useRef<((token: string) => Promise<unknown | null>) | null>(null);
+  const pendingRef = useRef(false);
   // Latest map, so optimistic patches capture the seat as the user sees it right now.
   const mapRef = useRef(map);
   useEffect(() => {
@@ -117,6 +118,8 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
 
   const run = useCallback(
     async <T,>(factory: (turnstileToken?: string) => Promise<T>, turnstileToken?: string): Promise<T | null> => {
+      if (pendingRef.current) return null;
+      pendingRef.current = true;
       setPending(true);
       setActionError(null);
       try {
@@ -128,7 +131,7 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
       } catch (error) {
         if (error instanceof ApiRequestError && error.code === "TURNSTILE_REQUIRED") {
           setTurnstileRequired(true);
-          retryRef.current = (token: string) => void runRef.current?.(factory, token);
+          retryRef.current = (token: string) => runRef.current?.(factory, token) ?? Promise.resolve(null);
         } else {
           setTurnstileRequired(false);
           retryRef.current = null;
@@ -138,6 +141,7 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
         }
         return null;
       } finally {
+        pendingRef.current = false;
         setPending(false);
       }
     },
@@ -310,8 +314,12 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
     [optimisticMe, optimisticSeats, run, withOptimistic],
   );
 
-  const submitTurnstileToken = useCallback((token: string) => {
-    retryRef.current?.(token);
+  const submitTurnstileToken = useCallback(async (token: string) => {
+    if (pendingRef.current) return false;
+    const retry = retryRef.current;
+    // Tokens are single-use: only one submission may consume the pending action.
+    retryRef.current = null;
+    return retry ? (await retry(token)) !== null : false;
   }, []);
 
   const openDispute = useCallback(

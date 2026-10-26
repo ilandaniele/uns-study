@@ -36,7 +36,12 @@ export default defineConfig({
     {
       command: "pnpm --filter @sala/web dev",
       url: "http://localhost:3000",
-      env: { API_PROXY_TARGET: "http://localhost:4000", NEXT_PUBLIC_SOCKET_URL: "ws://localhost:4000" },
+      env: {
+        API_PROXY_TARGET: "http://localhost:4000",
+        NEXT_PUBLIC_SOCKET_URL: "ws://localhost:4000",
+        // Cloudflare's public test site key; never used in deployment builds.
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+      },
       reuseExistingServer: true,
       timeout: 120_000,
     },
