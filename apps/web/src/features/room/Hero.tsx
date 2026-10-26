@@ -2,6 +2,7 @@
 
 import type { RoomDto, RoomSummary, SeatDto } from "@sala/contracts";
 import { useEffect, useState } from "react";
+import { ROOM_HOURS_COPY } from "@/features/help/room-hours-copy";
 import { latestSeatUpdateMs, updatedAgoLabel } from "./room-social";
 
 export interface HeroProps {
@@ -30,10 +31,10 @@ export function Hero({ summary, seats, operatingHours }: HeroProps) {
 
   if (operatingHours?.open === false) {
     headline = <>La sala está cerrada</>;
-    subline = "Abre todos los días a las 08:00. Cierra a las 00:00; sábados, domingos y feriados a las 22:00.";
+    subline = ROOM_HOURS_COPY;
   } else if (!hasData) {
     headline = <>Todavía no hay datos de hoy</>;
-    subline = "Los datos se reinician cada medianoche. Si estás en la sala, tocá tu lugar y marcá «Estoy acá».";
+    subline = "Todavía no hay reportes vigentes. Si estás en la sala, tocá tu lugar y marcá «Estoy acá».";
   } else if (summary.free === 0 && mostlyKnown) {
     headline = <>La sala está llena</>;
     subline = latestUpdateLabel(seats, now) ?? "Sin información reciente";

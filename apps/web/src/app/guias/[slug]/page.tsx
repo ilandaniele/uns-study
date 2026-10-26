@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { AdSlot } from "@/components/AdSlot";
 import { BackButton } from "@/components/BackButton";
 import { GUIDES, getGuide } from "@/features/guides/guides";
+import { GUIDE_RESOURCES, GUIDE_RESOURCES_CHECKED } from "@/features/guides/guide-resources";
 
 export function generateStaticParams() {
   return GUIDES.map((guide) => ({ slug: guide.slug }));
@@ -46,6 +47,7 @@ export default async function GuidePage(props: Props) {
           </p>
           <h1 className="t-heading">{guide.title}</h1>
           <p className="text-muted">{guide.description}</p>
+          <p className="text-sm text-muted">Una guía de Sala de Estudio · <Link href="/proyecto#contenido" className="text-primary underline underline-offset-4">Sobre este material</Link></p>
           <p className="font-mono text-xs text-faint">
             {guide.readingMinutes} min de lectura · actualizado <time dateTime={guide.updated}>{formatDate(guide.updated)}</time>
           </p>
@@ -68,6 +70,17 @@ export default async function GuidePage(props: Props) {
           </section>
         ))}
       </article>
+
+      <section aria-labelledby="guide-resources" className="space-y-3 rounded-2xl border border-app bg-surface p-5">
+        <h2 id="guide-resources" className="text-lg font-semibold">Lecturas complementarias</h2>
+        <p className="text-sm text-muted">Recursos para profundizar y contrastar las ideas de esta guía. Algunas lecturas están en inglés.</p>
+        <ul className="space-y-2">
+          {(GUIDE_RESOURCES[guide.slug] ?? []).map((resource) => <li key={resource.url}><a href={resource.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center break-words text-sm font-semibold text-primary underline underline-offset-4">{resource.title}</a></li>)}
+        </ul>
+        <p className="text-xs text-muted">Enlaces consultados el <time dateTime={GUIDE_RESOURCES_CHECKED}>{formatDate(GUIDE_RESOURCES_CHECKED)}</time>. No implican un aval de esas instituciones a Sala de Estudio.</p>
+      </section>
+
+      <p className="text-sm text-muted">¿Encontraste un error en esta guía? <Link href="/sugerencias" className="font-semibold text-primary underline underline-offset-4">Enviá una corrección</Link>.</p>
 
       <nav aria-label="Otras guías" className="space-y-2 border-t border-app pt-4">
         <h2 className="text-base font-semibold text-main">Seguí leyendo</h2>

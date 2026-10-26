@@ -7,6 +7,7 @@ import {
   ChatCircleIcon,
   CrownSimpleIcon,
   HeartIcon,
+  InfoIcon,
   QuestionIcon,
   ShieldCheckIcon,
   UserCircleIcon,
@@ -16,6 +17,7 @@ import { useAdminAccess } from "@/features/admin/useAdminAccess";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const LINKS = [
+  { href: "/proyecto", title: "El proyecto y contacto", detail: "Cómo funciona la sala y quién la mantiene", icon: InfoIcon },
   {
     href: "/perfil",
     title: "Mi perfil",

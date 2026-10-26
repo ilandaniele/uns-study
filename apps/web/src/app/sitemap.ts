@@ -6,6 +6,7 @@ export const SITE_URL = "https://saladeestudio.com.ar";
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: `${SITE_URL}/`, changeFrequency: "always", priority: 1 },
+    { url: `${SITE_URL}/proyecto`, lastModified: "2026-10-26", changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE_URL}/foco`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE_URL}/suscripcion`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${SITE_URL}/guias`, changeFrequency: "weekly", priority: 0.8 },

@@ -60,7 +60,8 @@ export function AdSlot({ placement }: { placement: AdPlacement }) {
         src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
         crossOrigin="anonymous"
       />
-      <div data-ad-box className="min-h-[100px]">
+      <aside data-ad-box aria-label="Publicidad" className="my-6 min-h-[100px] border-y border-app py-3">
+        <p aria-hidden="true" className="mb-2 text-[10px] uppercase tracking-wider text-muted">Publicidad</p>
         <ins
           ref={insRef}
           data-ad-placement={placement}
@@ -71,7 +72,7 @@ export function AdSlot({ placement }: { placement: AdPlacement }) {
           data-ad-format="auto"
           data-full-width-responsive="true"
         />
-      </div>
+      </aside>
     </>
   );
 }

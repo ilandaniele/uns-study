@@ -2,16 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BackButton } from "@/components/BackButton";
 import { HOW_TO_STEPS } from "@/features/help/how-to-steps";
+import { ROOM_HOURS_COPY } from "@/features/help/room-hours-copy";
 
 export const metadata: Metadata = { title: "Cómo usar" };
 
 const FAQ: { q: string; a: string }[] = [
   { q: "¿Puedo reservar un lugar?", a: "No, no hay reservas. Los lugares son para quien está sentado ahí." },
+  { q: "¿Cuál es el horario de la sala?", a: ROOM_HOURS_COPY },
   {
     q: "¿Por qué me pide la ubicación?",
     a: "Para comprobar que estás cerca de la sala cuando marcás «Estoy acá». No guardamos tus coordenadas exactas ni las mostramos a nadie.",
   },
-  { q: "¿Qué pasa si me olvido de liberar mi lugar?", a: "Se libera solo a las 3 horas, salvo que toques «Sigo acá» para renovar. Con Pro elegís hasta qué hora te quedás (hasta 12 h). Además, todos los lugares se liberan a medianoche." },
+  { q: "¿Qué pasa si me olvido de liberar mi lugar?", a: "Tu registro de presencia vence a las 3 horas, salvo que toques «Sigo acá» para renovar o hayas elegido otra duración habilitada en la app. Las presencias también terminan cuando cierra la sala: a las 00:00 de lunes a viernes, o a las 22:00 los sábados, domingos y feriados. Otros reportes vigentes pueden seguir indicando el estado del lugar." },
+  { q: "¿Sin datos quiere decir que el asiento está libre?", a: "No. Significa que no hay información vigente. Tocá el asiento para ver el detalle y, si estás en la sala, podés informar lo que ves." },
   { q: "¿Tengo que escanear un QR?", a: "No. Alcanza con tocar tu lugar en el mapa." },
 ];
 
@@ -21,6 +24,7 @@ export default function HowToUsePage() {
       <BackButton fallbackHref="/" />
       <h1 className="t-heading">Cómo usar Sala de Estudio</h1>
       <p className="text-muted">Mirá qué lugares están libres antes de ir, y ayudá a mantener el mapa al día.</p>
+      <p className="text-muted">La disponibilidad es colaborativa y no garantiza un asiento al llegar. Podés leer más sobre <Link href="/proyecto" className="font-semibold text-primary underline underline-offset-4">el proyecto y sus límites</Link>.</p>
 
       <ol className="flex flex-col divide-y divide-[var(--border)] border-y border-app">
         {HOW_TO_STEPS.map((step, i) => (

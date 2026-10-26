@@ -16,11 +16,14 @@ export default function GuidesIndexPage() {
       <BackButton fallbackHref="/" />
       <h1 className="text-3xl font-bold tracking-tight">Ideas para estudiar mejor</h1>
       <p className="text-muted">
-        Técnicas concretas para rendir mejor en la cursada y en los finales, escritas por quienes usan la sala todos los
-        días.
+        Guías de Sala de Estudio con ejemplos para organizar la cursada y los finales. Cada artículo incluye lecturas complementarias para profundizar.
       </p>
 
       <GuideLibrary guides={GUIDES.map(({ slug, title, description, readingMinutes }) => ({ slug, title, description, readingMinutes }))} />
+
+      <p className="text-muted">
+        <Link href="/proyecto#contenido" className="font-semibold text-primary underline underline-offset-2">Cómo se prepara este material y cómo pedir una corrección</Link>.
+      </p>
 
       <p className="text-muted">
         ¿Querés saber cómo funciona el mapa de la sala?{" "}
