@@ -16,12 +16,6 @@ body:has(> .room-staging-banner) { --room-banner-space: 48px; }
 .garden-progress::-webkit-progress-value { background: var(--garden-accent); border-radius: 8px; }
 .garden-progress::-moz-progress-bar { background: var(--garden-accent); border-radius: 8px; }
 .focus-stage { background-image: radial-gradient(ellipse at top, color-mix(in srgb, var(--garden-accent) 7%, transparent), transparent 70%); }
-@media (prefers-reduced-motion: no-preference) {
-  .garden-tree-crown { transform-origin: 48px 99px; animation: garden-breeze 7s ease-in-out infinite; }
-  .garden-plot:nth-child(3n) .garden-tree-crown { animation-delay: -2s; }
-  .garden-plot:nth-child(3n + 1) .garden-tree-crown { animation-delay: -4s; }
-  @keyframes garden-breeze { 0%, 100% { transform: rotate(-1deg); } 50% { transform: rotate(1deg); } }
-}
 
 /* Let the brand respond to the room left by the header actions, not the device
    width. Keep the full-size mark and touch targets on the narrowest phones. */
