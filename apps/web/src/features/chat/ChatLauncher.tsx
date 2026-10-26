@@ -208,6 +208,8 @@ function useChatShell(pathname: string): ChatShellState {
   useEffect(() => {
     if (!visible) return;
     function onKeyDown(event: KeyboardEvent) {
+      // Nested controls (e.g. the emoji popover) consume Escape before the chat does.
+      if (event.defaultPrevented) return;
       if (event.key === "Escape") {
         requestClose();
         return;

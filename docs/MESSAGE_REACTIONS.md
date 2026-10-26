@@ -36,6 +36,13 @@ la fecha del mensaje ni generan mensajes nuevos, unread o push.
 El selector funciona con teclado, Escape, clic exterior y controles táctiles.
 Los errores de escritura se muestran sin cambiar visualmente el estado guardado.
 
+La acción para reaccionar vive junto al mensaje y sólo se muestran contadores
+debajo cuando existen reacciones. El menú usa un popover nativo sobre la capa
+superior: cinco emojis frecuentes y un acceso al selector completo de veinte,
+sin agrandar el historial. El mismo selector permite insertar emojis en el
+campo de escritura, conservando el cursor, la selección y el límite de texto.
+Escape cierra primero el selector; el chat flotante permanece abierto.
+
 ## Cambios de interfaz asociados
 
 - Navegación: Sala, Foco, Jardín, Ranking y Más. Guías permanece en Más.

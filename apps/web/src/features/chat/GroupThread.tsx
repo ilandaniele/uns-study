@@ -1,5 +1,5 @@
 "use client";
-import { ReactionsProvider, MessageReactionBar } from "./MessageReactions";
+import { ReactionsProvider, MessageReactionBar, MessageReactionButton } from "./MessageReactions";
 
 import { CaretLeftIcon, DotsThreeVerticalIcon, UsersThreeIcon } from "@phosphor-icons/react/dist/ssr";
 import { GROUP_MESSAGE_MAX_LENGTH, type GroupConversationDto } from "@sala/contracts";
@@ -166,7 +166,7 @@ export function GroupThread({ groupId, group, currentUserId, onBack, onLeft, hea
                 {showDaySeparator ? (
                   <p className="my-2 text-center text-xs font-semibold text-muted">{formatDaySeparator(message.createdAt)}</p>
                 ) : null}
-                <div className={`flex items-end gap-2 ${isOwn ? "justify-end" : "justify-start"} ${showHeader ? "mt-2" : ""}`}>
+                <div className={`group flex items-end gap-2 ${isOwn ? "justify-end" : "justify-start"} ${showHeader ? "mt-2" : ""}`}>
                   {!isOwn ? (
                     <div className="w-8 shrink-0">
                       {showHeader ? (
@@ -183,7 +183,7 @@ export function GroupThread({ groupId, group, currentUserId, onBack, onLeft, hea
                     </div>
                   ) : null}
                   <div
-                    className={`max-w-[75%] rounded-float px-3 py-2 text-sm ${
+                    className={`min-w-0 max-w-[75%] rounded-float px-3 py-2 text-sm ${
                       isOwn ? "bg-primary/10 text-main" : "bg-[var(--surface-2)] text-main"
                     }`}
                   >
@@ -200,6 +200,7 @@ export function GroupThread({ groupId, group, currentUserId, onBack, onLeft, hea
                     <p className="mt-1 text-right font-mono text-[11px] text-muted">{formatMessageTime(message.createdAt)}</p>
                     <MessageReactionBar messageId={message.id} deleted={message.deleted} />
                   </div>
+                  {!message.deleted ? <div className={`shrink-0 self-end pb-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100 ${isOwn ? "order-first" : ""}`}><MessageReactionButton messageId={message.id} deleted={message.deleted} /></div> : null}
                 </div>
               </div>
             );

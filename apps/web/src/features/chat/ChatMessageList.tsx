@@ -1,5 +1,5 @@
 "use client";
-import { ReactionsProvider, MessageReactionBar } from "./MessageReactions";
+import { ReactionsProvider, MessageReactionBar, MessageReactionButton } from "./MessageReactions";
 
 import type { ChatMessageDto } from "@sala/contracts";
 import Link from "next/link";
@@ -63,7 +63,8 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock, on
               {separator}
               <div className={`group flex items-start justify-end gap-1.5 ${showHeader ? "mt-2.5" : ""}`}>
                 {!message.deleted ? (
-                  <div className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100">
+                  <div className="flex shrink-0 items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100">
+                    <MessageReactionButton messageId={message.id} deleted={message.deleted} />
                     <MessageMenu
                       isOwn
                       onDelete={() => onDelete(message.id)}
@@ -71,7 +72,7 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock, on
                     />
                   </div>
                 ) : null}
-                <div className="max-w-[80%] rounded-float rounded-tr-xs bg-primary/15 px-3 py-1.5">
+                <div className="min-w-0 max-w-[80%] rounded-float rounded-tr-xs bg-primary/15 px-3 py-1.5">
                   <p className={`whitespace-pre-wrap break-words text-sm ${message.deleted ? "italic text-muted" : "text-main"}`}>
                     {message.deleted ? "Mensaje eliminado" : message.content}
                   </p>
@@ -130,7 +131,8 @@ export function ChatMessageList({ messages, currentUserId, onDelete, onBlock, on
                 <MessageReactionBar messageId={message.id} deleted={message.deleted} />
               </div>
               {!message.deleted ? (
-                <div className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100">
+                <div className="flex shrink-0 items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100">
+                  <MessageReactionButton messageId={message.id} deleted={message.deleted} />
                   <MessageMenu
                     isOwn={isOwn}
                     onDelete={() => onDelete(message.id)}

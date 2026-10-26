@@ -7,9 +7,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { SmileyIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
+import { EmojiPicker } from "./EmojiPicker";
 import {
-  CHAT_REACTION_EMOJIS,
   SocketEvents,
   type MessageReactionChanged,
   type MessageReactionsDto,
@@ -144,116 +143,25 @@ export function ReactionsProvider({
   );
 }
 
-export function MessageReactionBar({
-  messageId,
-  deleted,
-}: {
-  messageId: string;
-  deleted: boolean;
-}) {
+export function MessageReactionButton({ messageId, deleted }: { messageId: string; deleted: boolean }) {
   const context = useContext(Context);
-  const [open, setOpen] = useState(false);
-  const picker = useRef<HTMLDivElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    picker.current?.querySelector<HTMLButtonElement>("button")?.focus();
-    picker.current?.scrollIntoView({ block: "nearest", behavior: "instant" });
-    const outside = (event: PointerEvent) => {
-      if (
-        !picker.current?.contains(event.target as Node) &&
-        !trigger.current?.contains(event.target as Node)
-      )
-        setOpen(false);
-    };
-    const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-        trigger.current?.focus();
-      }
-    };
-    document.addEventListener("pointerdown", outside);
-    document.addEventListener("keydown", escape);
-    return () => {
-      document.removeEventListener("pointerdown", outside);
-      document.removeEventListener("keydown", escape);
-    };
-  }, [open]);
   if (!context || deleted) return null;
-  const counts = context.counts[messageId] ?? [];
-  const mine = counts.find((c) => c.mine)?.emoji;
-  const pending = context.pending.has(messageId);
-  return (
-    <div
-      className="mt-1 flex flex-wrap items-center gap-1"
-      aria-label="Reacciones del mensaje"
-    >
-      {counts.map((r) => (
-        <button
-          key={r.emoji}
-          type="button"
-          disabled={pending}
-          aria-pressed={r.mine}
-          aria-label={`${r.emoji}, ${r.count} ${r.count === 1 ? "reacción" : "reacciones"}${r.mine ? ", tu reacción" : ""}`}
-          onClick={() => void context.set(messageId, r.mine ? null : r.emoji)}
-          className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full border px-2 text-sm disabled:opacity-50 ${r.mine ? "border-[var(--primary)] bg-primary/10" : "border-app bg-surface"}`}
-        >
-          <span aria-hidden="true">{r.emoji}</span>
-          <span aria-hidden="true" className="text-xs">
-            {r.count}
-          </span>
-        </button>
-      ))}
-      <button
-        ref={trigger}
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        disabled={pending}
-        aria-expanded={open}
-        aria-label="Reaccionar al mensaje"
-        className="flex h-11 w-11 items-center justify-center rounded-full text-muted hover:bg-surface-2 disabled:opacity-50"
-      >
-        <SmileyIcon size={19} aria-hidden="true" />
-      </button>
-      {open ? (
-        <div
-          ref={picker}
-          role="group"
-          aria-label="Elegí una reacción"
-          className="basis-full min-w-[194px] rounded-2xl border border-app bg-surface p-2 shadow-sm"
-        >
-          <div className="grid grid-cols-4">
-            {CHAT_REACTION_EMOJIS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                aria-label={`Reaccionar ${emoji}`}
-                aria-pressed={mine === emoji}
-                disabled={pending}
-                onClick={() => {
-                  setOpen(false);
-                  void context.set(messageId, mine === emoji ? null : emoji);
-                  trigger.current?.focus();
-                }}
-                className="flex min-h-11 min-w-0 items-center justify-center rounded-xl text-xl hover:bg-surface-2"
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              trigger.current?.focus();
-            }}
-            className="mt-1 flex min-h-11 w-full items-center justify-center gap-2 rounded-full text-xs text-muted"
-          >
-            <XIcon size={14} aria-hidden="true" />
-            Cerrar reacciones
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
+  const mine = context.counts[messageId]?.find(reaction => reaction.mine)?.emoji;
+  return <EmojiPicker label="Reaccionar al mensaje" selected={mine} disabled={context.pending.has(messageId)}
+    onSelect={emoji => void context.set(messageId, mine === emoji ? null : emoji)} />;
+}
+
+export function MessageReactionBar({ messageId, deleted }: { messageId: string; deleted: boolean }) {
+  const context = useContext(Context);
+  const counts = context?.counts[messageId] ?? [];
+  if (!context || deleted || !counts.length) return null;
+  return <div className="mt-1 flex flex-wrap gap-1.5" aria-label="Reacciones del mensaje">
+    {counts.map(reaction => <button key={reaction.emoji} type="button" disabled={context.pending.has(messageId)}
+      aria-pressed={reaction.mine}
+      aria-label={`${reaction.emoji}, ${reaction.count} ${reaction.count === 1 ? "reacción" : "reacciones"}${reaction.mine ? ", tu reacción" : ""}`}
+      onClick={() => void context.set(messageId, reaction.mine ? null : reaction.emoji)}
+      className={`relative inline-flex min-h-8 items-center justify-center gap-1 rounded-full border px-2 text-sm before:absolute before:-inset-y-1.5 before:inset-x-0 before:content-[''] disabled:opacity-50 ${reaction.mine ? "border-primary/40 bg-primary/10" : "border-app bg-surface"}`}>
+      <span aria-hidden="true">{reaction.emoji}</span><span aria-hidden="true" className="text-[11px] font-semibold">{reaction.count}</span>
+    </button>)}
+  </div>;
 }

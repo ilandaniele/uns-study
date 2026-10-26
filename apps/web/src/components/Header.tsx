@@ -11,6 +11,9 @@ import { NotificationBell } from "@/features/notifications/NotificationBell";
 import { PRIMARY_NAV, isNavActive } from "@/lib/navigation";
 import { invalidateMe } from "@/lib/me-store";
 import { resetSocket } from "@/lib/socket";
+import { DotsThreeIcon, PlantIcon, SquaresFourIcon, TimerIcon, TrophyIcon } from "@phosphor-icons/react/dist/ssr";
+
+const NAV_ICONS = [SquaresFourIcon, TimerIcon, PlantIcon, TrophyIcon, DotsThreeIcon];
 
 export function Header() {
   const { loading, me } = useAdminAccess();
@@ -44,19 +47,21 @@ export function Header() {
         </Link>
       </div>
 
-      <nav aria-label="Secciones de escritorio" className="hidden min-w-0 items-center gap-0.5 text-sm font-semibold lg:flex xl:gap-1">
-        {PRIMARY_NAV.map((item) => {
+      <nav aria-label="Secciones de escritorio" className="hidden min-w-0 shrink-0 items-center gap-0.5 rounded-full border border-app bg-surface-2 p-1 text-sm font-semibold lg:flex">
+        {PRIMARY_NAV.map((item, index) => {
           const active = isNavActive(item.href, pathname);
+          const Icon = NAV_ICONS[index];
           return (
             <Link
               key={item.label}
               href={item.href}
               {...prefetchHandlers(item.href)}
               aria-current={active ? "page" : undefined}
-              className={`whitespace-nowrap rounded-control px-1.5 py-2 transition-colors xl:px-3 ${
-                active ? "bg-transparent text-main shadow-[inset_0_-2px_0_var(--text)]" : "text-muted hover:bg-[var(--surface-2)] hover:text-main"
+              className={`inline-flex min-h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary xl:px-3.5 ${
+                active ? "bg-primary text-white shadow-sm" : "text-muted hover:bg-surface hover:text-main"
               }`}
             >
+              <Icon size={18} weight={active ? "fill" : "regular"} aria-hidden="true" className="hidden xl:block" />
               {item.label}
             </Link>
           );
@@ -77,7 +82,7 @@ export function Header() {
         <ThemeToggle />
         {loading ? null : user ? (
           <div className="flex items-center gap-3">
-            <span className="hidden max-w-[16ch] truncate text-main xl:inline">{user.name ?? user.email}</span>
+            <span className="hidden max-w-[16ch] truncate text-main 2xl:inline">{user.name ?? user.email}</span>
             <button
               type="button"
               onClick={() => void handleSignOut()}
