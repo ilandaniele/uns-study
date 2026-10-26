@@ -285,24 +285,9 @@ function GardenAccount({ userId }: { userId: string }) {
                 </>
               ) : (
                 <>
-                  <label
-                    htmlFor="garden-species"
-                    className="mt-4 block text-sm font-semibold"
-                  >
-                    Elegí del vivero
-                  </label>
-                  <select
-                    id="garden-species"
-                    value={speciesId}
-                    onChange={(e) => setSpeciesId(e.target.value)}
-                    className="mt-2 min-h-11 w-full rounded-lg border border-app bg-surface px-3 text-sm"
-                  >
-                    {GARDEN_SPECIES.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} · {s.cost} semillas
-                      </option>
-                    ))}
-                  </select>
+                  <a href="#nursery-title" className="mt-4 inline-flex min-h-11 w-full items-center justify-between gap-3 rounded-full border border-app bg-surface-2 px-4 text-sm font-semibold text-primary hover:border-primary">
+                    Elegir otra especie <ArrowRightIcon size={18} aria-hidden="true" />
+                  </a>
                   <p className="mt-3 text-sm text-muted">
                     Adulto en {hours(species.growthMinutes)} de estudio. Canje:{" "}
                     {species.reward} semillas.
@@ -363,7 +348,7 @@ function GardenAccount({ userId }: { userId: string }) {
             <p className="t-label text-primary">De acá, de Argentina</p>
             <h2
               id="nursery-title"
-              className="mt-2 text-2xl font-bold tracking-tight"
+              className="mt-2 scroll-mt-28 text-2xl font-bold tracking-tight"
             >
               El vivero nativo
             </h2>

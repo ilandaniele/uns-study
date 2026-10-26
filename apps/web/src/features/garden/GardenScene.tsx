@@ -2,6 +2,7 @@
 
 import { GARDEN_SIZE, GARDEN_SPECIES, type SharedGardenDto } from "@sala/contracts";
 import { TreeArt } from "./TreeArt";
+import { PlotPicker } from "./PlotPicker";
 
 const stages = { seed: "semilla", sprout: "brote", young: "joven", mature: "adulto" };
 
@@ -39,10 +40,7 @@ export function GardenScene({ plants, selected, onSelect }: {
       })}
       <g fill="var(--garden-empty)" opacity=".4"><path d="m99 306 4-7 3 8 5-5-2 10M480 125l3-9 4 10 5-4-3 11" /></g>
     </svg>
-    {!plants.length ? <p className="absolute inset-x-4 bottom-5 text-center text-sm text-muted">Tu bosque empieza con una semilla.</p> : null}
-    {onSelect ? <div className="px-5 pb-5"><label className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-muted">Elegir parcela
-      <select aria-label="Elegir parcela" value={selected ?? ""} onChange={e => onSelect(Number(e.target.value))} className="min-h-11 max-w-full rounded-full border border-app bg-surface px-4 text-sm text-main">
-        <option value="" disabled>Tocá una parcela</option>{Array.from({ length: GARDEN_SIZE }, (_, i) => <option key={i} value={i}>Parcela {i + 1} · {plants.some(p => p.plot === i) ? "plantada" : "disponible"}</option>)}
-      </select></label></div> : null}
+    {!plants.length ? <p className="px-4 pb-4 text-center text-sm text-muted">Tu bosque empieza con una semilla.</p> : null}
+    {onSelect ? <div className="px-2 pb-4 sm:px-5"><PlotPicker plants={plants} selected={selected} onSelect={onSelect} /></div> : null}
   </div>;
 }

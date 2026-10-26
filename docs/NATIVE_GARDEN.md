@@ -106,3 +106,12 @@ https://sib.gob.ar/index.php/especies/araucaria-araucana), Argentina.gob.ar
 (ceibo, https://www.argentina.gob.ar/pais/ceibo) y Buenos Aires Ciudad
 (jacaranda, https://buenosaires.gob.ar/gcaba_historico/arboles-nativos/jacaranda).
 Son ilustraciones del juego, no representaciones de tiempos biologicos.
+
+## Seleccion visual de parcelas
+
+PlotPicker reemplaza el select nativo por una cuadricula desplegable de 5 x 5,
+debajo de la escena: no superpone una lista encima del bosque. Las casillas
+muestran numero, planta y seleccion, con botones tactiles y nombres accesibles.
+Se cierra al elegir; admite flechas, Inicio/Fin y Escape, y devuelve el foco
+al control. El panel permite cambiar de especie desde las tarjetas existentes
+del vivero, conservando la parcela libre elegida. No cambia las reglas de juego.
