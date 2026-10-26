@@ -8,7 +8,7 @@ import { Hero } from "./Hero";
 import { PeopleList } from "@/features/people/PeopleList";
 import { UpdatedAgo } from "./RoomSocialProof";
 import { SummaryCounters } from "./SummaryCounters";
-import { roomCapacityBreakdown, todayLabel } from "./format";
+import { todayLabel } from "./format";
 
 export interface RoomInfoPanelProps {
   map: RoomMapDto;
@@ -23,7 +23,7 @@ export interface RoomInfoPanelProps {
   detailKey?: string;
 }
 
-/** Desktop (lg+) left column: room header, honest headline, counters, capacity breakdown and the "who's here" preview. */
+/** Desktop room header, status counters, seat details and the "who's here" preview. */
 export function RoomInfoPanel({ map, people, connected, onOpenHowTo, quickActions, detailSlot, detailKey }: RoomInfoPanelProps) {
   const detailRef = useRef<HTMLDivElement>(null);
   const lastDetailKey = useRef(detailKey);
@@ -37,7 +37,6 @@ export function RoomInfoPanel({ map, people, connected, onOpenHowTo, quickAction
       easing: "cubic-bezier(0.23, 1, 0.32, 1)",
     });
   }, [detailKey]);
-  const breakdown = roomCapacityBreakdown(map);
 
   return (
     <div className="flex flex-col gap-4">
@@ -64,17 +63,6 @@ export function RoomInfoPanel({ map, people, connected, onOpenHowTo, quickAction
         </div>
       ) : null}
       {quickActions ? <div className="flex flex-col gap-4 border-t border-app pt-4">{quickActions}</div> : null}
-
-      <div className="border-t border-app pt-4">
-        <p className="t-title text-base">Total: {map.summary.total} lugares</p>
-        <ul className="t-data mt-1.5 flex flex-col gap-0.5 text-xs text-muted">
-          {breakdown.map((group) => (
-            <li key={group.label}>
-              {group.tableCount} {group.label} ({group.seatsPerTable} lugares c/u) = {group.tableCount * group.seatsPerTable}
-            </li>
-          ))}
-        </ul>
-      </div>
 
       <button
         type="button"
