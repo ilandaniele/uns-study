@@ -239,6 +239,7 @@ function GardenAccount({ userId }: { userId: string }) {
                 <TreeArt
                   species={selectedSpecies}
                   stage={selectedPlant?.stage ?? "mature"}
+                  variant={selectedPlant?.plot ?? 0}
                 />
               </div>
               <h2 className="text-xl font-bold">{selectedSpecies.name}</h2>
@@ -438,7 +439,7 @@ function SpeciesCard({
       className={`flex min-w-0 flex-col rounded-2xl border bg-surface p-3 sm:p-4 ${selected ? "border-[var(--primary)]" : "border-app"}`}
     >
       <div className="garden-specimen relative mb-3 flex aspect-[4/3] items-center justify-center rounded-xl">
-        <div className="h-full w-24">
+        <div className="h-full w-36 max-w-[85%] sm:w-40">
           <TreeArt species={species} />
         </div>
         {count ? (

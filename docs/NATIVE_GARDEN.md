@@ -90,3 +90,19 @@ cargando el historial. Compartir copia/envia el enlace cuando esta activada.
 
 Referencia de composicion: https://www.forestapp.cc/ (bosque isometrico y resumen
 compacto). No se agregan dependencias ni imagenes de terceros para esta vista.
+
+## Ilustracion botanica del vivero
+
+TreeArt y tree-geometry dibujan copas irregulares, hojas agrupadas, ramas,
+corteza y floracion con SVG. Las formas se calculan una sola vez para tres
+variantes deterministas por especie; la parcela determina la variante para que
+el propietario y sus visitantes vean el mismo ejemplar. No se descargan fotos,
+texturas ni fuentes nuevas. Las cuatro etapas mantienen el apoyo en y=99,
+y las flores aparecen en el ejemplar adulto. El viento sigue respetando
+prefers-reduced-motion.
+
+Referencias de forma: SIB de Parques Nacionales (Araucaria araucana,
+https://sib.gob.ar/index.php/especies/araucaria-araucana), Argentina.gob.ar
+(ceibo, https://www.argentina.gob.ar/pais/ceibo) y Buenos Aires Ciudad
+(jacaranda, https://buenosaires.gob.ar/gcaba_historico/arboles-nativos/jacaranda).
+Son ilustraciones del juego, no representaciones de tiempos biologicos.

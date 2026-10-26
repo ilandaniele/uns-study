@@ -33,7 +33,7 @@ export function GardenScene({ plants, selected, onSelect }: {
           <title>{label}</title>
           <path d={`M${x} ${y - 25}l48 25-48 25-48-25Z`} fill={selected === plot ? "var(--garden-accent)" : (row + col) % 2 ? "var(--garden-tile)" : "var(--garden-soil)"}
             stroke={selected === plot ? "var(--garden-accent)" : "var(--garden-tile-border)"} strokeWidth={selected === plot ? 3 : 1} />
-          {plant && species ? <svg x={x - 34} y={y - 74} width="68" height="78" className="pointer-events-none overflow-visible"><TreeArt species={species} stage={plant.stage} /></svg> :
+          {plant && species ? <svg x={x - 34} y={y - 74} width="68" height="78" className="pointer-events-none overflow-visible"><TreeArt species={species} stage={plant.stage} variant={plot} /></svg> :
             <g pointerEvents="none" opacity=".45" stroke="var(--garden-empty)" strokeWidth="2"><path d={`M${x - 5} ${y}h10m-5-5v10`} /></g>}
         </g>;
       })}
