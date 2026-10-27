@@ -9,6 +9,7 @@ Estado: documentación preparatoria y avisos del proyecto. **No hay constancia d
 ## Documentos
 
 - [Presentación paso a paso](PRESENTACION_PASO_A_PASO.md): portales, orden de los trámites y documentación ya preparada.
+- [Mantenimiento y pendientes](MANTENIMIENTO.md): permisos, privacidad, compras, futuras versiones y seguimiento de registros.
 - [Preparación DNDA](DNDA.md): descripción, alcance de la versión, datos pendientes y presentación.
 - [Evaluación de marca](INPI.md): signo actual, clases candidatas, búsqueda pendiente y campos del trámite.
 - [Inventario de recursos](ASSETS.md): procedencia y límites de las declaraciones.
@@ -21,7 +22,7 @@ Estado: documentación preparatoria y avisos del proyecto. **No hay constancia d
 
 `node scripts/legal/create-evidence.mjs --output <carpeta-absoluta-fuera-del-repo>` genera una copia de fuentes rastreadas por Git, un inventario con SHA-256, historia técnica sin emails de colaboradores, copias de los documentos y recursos de marca para revisión. Sólo funciona con el árbol limpio y toma una versión exacta de Git. No lee archivos de entorno, bases de datos, backups, credenciales ni imágenes de usuarios.
 
-Con `--api-executable` compila además el módulo JavaScript del servidor con esbuild ya instalado, sin cargar archivos de entorno ni llamar a un despliegue de Wrangler. El módulo requiere el runtime y los bindings de Workers; no es un ejecutable autónomo ni sustituye el build del cliente o las instrucciones de depósito que establezca DNDA. El generador también prepara seis PDF de revisión. Requiere bsdtar (incluido en Windows) y el Chromium de Playwright ya instalado en el proyecto.
+Con `--api-executable` compila además el módulo JavaScript del servidor con esbuild ya instalado, sin cargar archivos de entorno ni llamar a un despliegue de Wrangler. El módulo requiere el runtime y los bindings de Workers; no es un ejecutable autónomo ni sustituye el build del cliente o las instrucciones de depósito que establezca DNDA. El generador prepara un PDF por cada Markdown rastreado directamente en `docs/legal/`, incluyendo las guías de presentación y mantenimiento. Requiere bsdtar (incluido en Windows) y el Chromium de Playwright ya instalado en el proyecto.
 
 Después de ejecutar `pnpm --filter @sala/web build`, `--web-build` incorpora los módulos compilados del cliente y servidor Next, sin copiar cachés, entornos ni trazas. El build debe corresponder a las fuentes de la versión elegida. Incluye sus requisitos de runtime y la advertencia de que no es una copia autónoma de producción ni sustituye el formato que indique DNDA. Los tres flags se pueden combinar en una misma exportación.
 

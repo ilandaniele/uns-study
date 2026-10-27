@@ -45,8 +45,8 @@ writeFileSync(path.join(output, "manifest.json"), JSON.stringify({ format: 2, co
 writeFileSync(path.join(output, "historia-tecnica.txt"), git("log", "--format=%H %aI %s") + "\n");
 const documents = path.join(output, "documentos");
 mkdirSync(path.join(documents, "docs/legal"), { recursive: true });
-for (const file of tracked.filter(p => p.startsWith("docs/legal/") && /\.(?:md|json)$/.test(p))) copyFileSync(path.join(root, file), path.join(documents, file));
-for (const file of ["LICENSE", "THIRD_PARTY_NOTICES.md"]) copyFileSync(path.join(root, file), path.join(documents, file));
+for (const file of selected.filter(p => p.startsWith("docs/legal/") && /\.(?:md|json)$/.test(p))) copyFileSync(path.join(root, file), path.join(documents, file));
+for (const file of ["LICENSE", "SECURITY.md", "THIRD_PARTY_NOTICES.md"]) copyFileSync(path.join(root, file), path.join(documents, file));
 const brand = path.join(output, "marca-en-evaluacion");
 mkdirSync(brand);
 for (const file of ["logo-mark.webp", "logo-mark-dark.webp", "icon-512.png"]) copyFileSync(path.join(root, "apps/web/public/icons", file), path.join(brand, file));
@@ -112,7 +112,7 @@ function html(markdown) {
   return parts.join("\n");
 }
 try {
-  for (const file of ["README.md", "DNDA.md", "INPI.md", "ASSETS.md", "DECLARACION_ORIGEN.md", "COLABORADORES.md"]) {
+  for (const file of selected.filter(file => /^docs\/legal\/[^/]+\.md$/.test(file)).sort().map(file => path.posix.basename(file))) {
     const page = await browser.newPage();
     await page.setContent(`<!doctype html><html lang="es"><meta charset="utf-8"><title>${escape(file)}</title><style>@page{size:A4;margin:18mm}body{font:11pt/1.5 Arial,sans-serif;color:#17251e}h1{font-size:22pt;line-height:1.2;border-bottom:2px solid #126c78;padding-bottom:12px}h2{font-size:15pt;margin-top:24px;break-after:avoid}h3{font-size:12pt;break-after:avoid}p{white-space:pre-wrap;overflow-wrap:anywhere;orphans:3;widows:3}code{font-size:9pt;background:#eef2ef}table{width:100%;border-collapse:collapse;font-size:9pt;table-layout:fixed}th,td{border:1px solid #b7c5bd;padding:7px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#edf3ef}tr{break-inside:avoid}footer{font-size:8pt;color:#68766e}</style><body>${html(readFileSync(path.join(root, "docs/legal", file), "utf8"))}<footer>Versión técnica ${commit}. Preparación para revisión; no presentada.</footer></body></html>`);
     await page.pdf({ path: path.join(output, file.replace(/\.md$/, ".pdf")), format: "A4", printBackground: true });

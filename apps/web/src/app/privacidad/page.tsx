@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BackButton } from "@/components/BackButton";
+import { LEGAL_CONTACT, LEGAL_DATE_LABEL, PROJECT_HOLDER } from "@/lib/legal";
 
 export const metadata: Metadata = { title: "Política de privacidad" };
 
@@ -9,11 +10,13 @@ export default function PrivacyPage() {
     <main className="mx-auto max-w-prose space-y-4 px-4 py-8 text-sm leading-relaxed text-main">
       <BackButton fallbackHref="/" />
       <h1 className="t-heading">Política de privacidad</h1>
+      <p className="text-xs text-muted">Actualizada el {LEGAL_DATE_LABEL}.</p>
       <p>
         Sala de Estudio es un proyecto independiente de estudiantes para compartir en tiempo real la
         disponibilidad de lugares en la sala de estudio. No es un servicio oficial de la Universidad Nacional del
         Sur.
       </p>
+      <p>El responsable del tratamiento es {PROJECT_HOLDER}. Podés contactarlo en <a href={`mailto:${LEGAL_CONTACT}`} className="break-all text-primary underline">{LEGAL_CONTACT}</a>.</p>
 
       <h2 className="pt-2 text-lg font-semibold text-main">Qué datos guardamos</h2>
       <ul className="list-disc space-y-1 pl-5">
@@ -36,8 +39,17 @@ export default function PrivacyPage() {
       <h2 className="pt-2 text-lg font-semibold text-main">Quién ve tus datos</h2>
       <p>
         Otras personas registradas sólo ven lo que vos elijas mostrar en tu perfil. La evidencia de reportes es privada
-        y sólo la ve el equipo de moderación. No vendemos tus datos ni los compartimos con terceros, salvo lo que se explica sobre cookies y publicidad.
+        y sólo la ve el equipo de moderación. No vendemos tus datos. Para prestar el servicio usamos los proveedores que se indican a continuación, además de las herramientas de publicidad y estadísticas descritas en esta política.
       </p>
+
+      <h2 className="pt-2 text-lg font-semibold text-main">Proveedores que intervienen</h2>
+      <ul className="list-disc space-y-2 pl-5">
+        <li>Cloudflare aloja la app, la API y el almacenamiento, y proporciona la comprobación de seguridad Turnstile en los flujos que la requieren.</li>
+        <li>Resend procesa el envío de códigos de acceso y otros correos de la app, incluyendo la dirección destinataria y el contenido necesario para el envío.</li>
+        <li>Si elegís entrar con Google, Google interviene en la autenticación. Google Analytics y AdSense tienen las finalidades indicadas en la sección de cookies.</li>
+        <li>Mercado Pago procesa las compras y suscripciones opcionales. Borrar tu cuenta en esta app no elimina por sí mismo los registros que conserve el proveedor de pagos.</li>
+      </ul>
+      <p>Estos servicios pueden implicar tratamiento de información fuera de Argentina. Para consultas sobre los destinatarios o el tratamiento de tus datos, usá el canal de privacidad indicado abajo.</p>
 
       <h2 className="pt-2 text-lg font-semibold text-main">Cookies, publicidad y estadísticas</h2>
       <p>
@@ -70,6 +82,13 @@ export default function PrivacyPage() {
         resuelto el reporte.
       </p>
 
+      <section id="tus-derechos" className="scroll-mt-24 space-y-3 rounded-3xl border border-app bg-surface p-5">
+        <h2 className="text-lg font-semibold text-main">Tus derechos sobre los datos</h2>
+        <p>Podés solicitar acceso, rectificación, actualización o supresión de tus datos escribiendo a <a href={`mailto:${LEGAL_CONTACT}?subject=${encodeURIComponent("Solicitud sobre mis datos — Sala de Estudio")}`} className="break-all text-primary underline">{LEGAL_CONTACT}</a>. Indicá qué necesitás y el correo de tu cuenta. Para protegerla, podremos comprobar tu identidad por un medio razonable; no envíes contraseñas, códigos de acceso ni documentos de identidad en el primer mensaje.</p>
+        <p>El plazo legal de respuesta a una solicitud de acceso es de diez días corridos; para rectificación, actualización o supresión, de cinco días hábiles. La supresión puede estar sujeta a las excepciones legales aplicables.</p>
+        <p>La Agencia de Acceso a la Información Pública es la autoridad de control en Argentina. Podés consultar <a href="https://www.argentina.gob.ar/aaip/datospersonales/derechos" target="_blank" rel="noopener noreferrer" className="text-primary underline">cómo ejercer tus derechos y presentar un reclamo ante la AAIP</a>.</p>
+      </section>
+
       <h2 className="pt-2 text-lg font-semibold text-main">Créditos</h2>
       <p>
         Las ilustraciones de animales y los emojis gráficos son de Twemoji (Graphics by Twemoji, © Twitter, Inc. y
@@ -85,8 +104,8 @@ export default function PrivacyPage() {
       <h2 className="pt-2 text-lg font-semibold text-main">Contacto</h2>
       <p>
         Por consultas sobre tus datos escribí a{" "}
-        <a className="text-primary underline" href="mailto:ilan.daniele@gmail.com">
-          ilan.daniele@gmail.com
+        <a className="break-all text-primary underline" href={`mailto:${LEGAL_CONTACT}`}>
+          {LEGAL_CONTACT}
         </a>
         . También podés usar el formulario de{" "}
         <Link className="text-primary underline" href="/sugerencias">

@@ -51,9 +51,23 @@ export default function IntellectualPropertyPage() {
       <p>Se utilizan herramientas de IA para asistir el desarrollo y la redacción, y para generar ilustraciones como las plantas del jardín. No se afirma exclusividad autoral automática sobre todos esos resultados ni se atribuye al proyecto la autoría de obras ajenas usadas como referencia. Las imágenes, fotografías y textos de terceros conservan sus derechos.</p>
     </section>
 
+    <section id="autenticidad" className="scroll-mt-24 space-y-3 rounded-3xl border border-app bg-surface p-5 sm:p-6">
+      <h2 className="text-xl font-bold">Reconocer el proyecto y avisar sobre suplantaciones</h2>
+      <p>El sitio de este proyecto es <a href="https://saladeestudio.com.ar" className={`${link} break-all`}>saladeestudio.com.ar</a>. Que otra página use un nombre, logo o captura parecidos no acredita una relación con {PROJECT_HOLDER}. La app sigue siendo un proyecto independiente de la universidad.</p>
+      <p>Si encontrás una página o cuenta que se presenta como parte de este proyecto y te genera dudas, enviá su enlace al contacto de abajo. No compartas contraseñas, códigos de acceso ni datos de pago para demostrar lo ocurrido.</p>
+    </section>
+
+    <section id="seguridad" className="scroll-mt-24 space-y-3">
+      <h2 className="text-xl font-bold">Reportar un problema de seguridad</h2>
+      <p>Si detectás un acceso indebido o una falla que pueda exponer datos, escribí en privado a <a href={`mailto:${LEGAL_CONTACT}?subject=${encodeURIComponent("Reporte de seguridad — Sala de Estudio")}`} className={`${link} break-all`}>{LEGAL_CONTACT}</a>. Indicá qué función está afectada, los pasos para reproducirla con tus propias cuentas y el impacto observado, sin adjuntar información de otras personas ni credenciales.</p>
+      <p>Detené la prueba si aparecen datos ajenos. Para coordinar una comprobación adicional, usá ese mismo contacto antes de intervenir. Un error común de uso puede informarse desde <Link href="/sugerencias" className={link}>sugerencias y contacto</Link>.</p>
+    </section>
+
     <section className="space-y-3 border-t border-app pt-6">
       <h2 className="text-xl font-bold">Permisos y consultas sobre derechos</h2>
-      <p>Para solicitar autorización o señalar un recurso que consideres utilizado sin permiso, escribí a <a href={`mailto:${LEGAL_CONTACT}`} className={`${link} break-all`}>{LEGAL_CONTACT}</a>. Indicá el recurso, el enlace y la información que permita revisar tu solicitud. No publiques documentos de identidad ni datos sensibles en comentarios o repositorios.</p>
+      <p>Para solicitar autorización o señalar un recurso que consideres utilizado sin permiso, escribí a <a href={`mailto:${LEGAL_CONTACT}?subject=${encodeURIComponent("Consulta sobre derechos — Sala de Estudio")}`} className={`${link} break-all`}>{LEGAL_CONTACT}</a>. Indicá el enlace o recurso concreto, qué derecho o permiso querés consultar y un medio para responderte. Si pedís reutilizar material, describí dónde y para qué lo usarías.</p>
+      <p>Revisaremos la procedencia, las licencias y el contexto antes de decidir sobre una autorización o un reclamo. Una solicitud no concede permiso automáticamente ni implica la retirada automática de un contenido. No publiques documentos de identidad ni datos sensibles en comentarios o repositorios.</p>
+      <p>Para acceder a tus datos, corregirlos o solicitar su eliminación, consultá <Link href="/privacidad#tus-derechos" className={link}>tus derechos y el canal de privacidad</Link>.</p>
       <p className="text-xs text-muted">© 2026 {PROJECT_HOLDER}. Derechos reservados sobre los aportes propios protegibles, con las licencias y excepciones aquí indicadas.</p>
     </section>
   </main>;
