@@ -104,4 +104,16 @@ describe("authRateLimit", () => {
       expect((await post("/sign-out", { email: "a@example.com" })).status).toBe(200);
     }
   });
+
+  it("shares the email-code cooldown across casing and client IPs", async () => {
+    expect((await post("/email-otp/send-verification-otp", { email: "Code@Example.test", type: "sign-in" })).status).toBe(200);
+    expect((await post("/email-otp/send-verification-otp/", { email: "code@example.test", type: "sign-in" }, { "cf-connecting-ip": "203.0.113.201" })).status).toBe(429);
+    expect((await post("/email-otp/send-verification-otp", { email: "different-code@example.test", type: "sign-in" })).status).toBe(200);
+  });
+
+  it("limits code redemption per email even when the IP changes or a new code is requested", async () => {
+    for (let i = 0; i < 10; i++) expect((await post("/sign-in/email-otp", { email: "attempts@example.test", otp: "000000" }, { "cf-connecting-ip": `203.0.113.${i}` })).status).toBe(200);
+    expect((await post("/sign-in/email-otp/", { email: "ATTEMPTS@example.test", otp: "111111" }, { "cf-connecting-ip": "203.0.113.200" })).status).toBe(429);
+    expect((await post("/sign-in/email-otp", { email: "other-attempts@example.test", otp: "111111" })).status).toBe(200);
+  });
 });

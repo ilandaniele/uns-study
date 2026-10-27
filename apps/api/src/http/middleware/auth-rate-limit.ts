@@ -16,7 +16,9 @@ const SIGN_IN_PATH = "/sign-in/email";
 const SIGN_UP_PATH = "/sign-up/email";
 const RESET_REQUEST_PATH = "/request-password-reset";
 const RESET_PATH = "/reset-password";
-const LIMITED_PATHS = new Set([SIGN_IN_PATH, SIGN_UP_PATH, RESET_REQUEST_PATH, RESET_PATH]);
+const CODE_REQUEST_PATH = "/email-otp/send-verification-otp";
+const CODE_SIGN_IN_PATH = "/sign-in/email-otp";
+const LIMITED_PATHS = new Set([SIGN_IN_PATH, SIGN_UP_PATH, RESET_REQUEST_PATH, RESET_PATH, CODE_REQUEST_PATH, CODE_SIGN_IN_PATH, "/send-verification-email"]);
 
 // Per lowercased email: slows credential stuffing against one account.
 const SIGN_IN_EMAIL_LIMIT = 10;
@@ -65,6 +67,19 @@ export function authRateLimit(rateLimit: AuthRateLimiter): MiddlewareHandler<App
     const ip = c.var.ip;
     const ipResult = await rateLimit.check(`auth-ip:${digest(ip)}`, IP_LIMIT, IP_WINDOW_S);
     if (!ipResult.allowed) throw ApiErrors.rateLimited();
+
+    if (path === CODE_REQUEST_PATH || path === CODE_SIGN_IN_PATH || path === "/send-verification-email") {
+      const send = path !== CODE_SIGN_IN_PATH;
+      const ipResult = await rateLimit.check(`auth-code-${send ? "send" : "verify"}-ip:${digest(ip)}`, send ? 60 : 120, 600);
+      if (!ipResult.allowed) throw ApiErrors.rateLimited();
+      if (typeof body?.email === "string" && body.email.trim()) {
+        const key = digest(body.email.trim().toLowerCase());
+        const allowed = await rateLimit.check(`auth-code-${send ? "send" : "verify"}-email:${key}`, send ? 5 : 10, send ? 3600 : 900);
+        if (!allowed.allowed) throw ApiErrors.rateLimited("Esperá un momento antes de pedir otro código o volver a intentarlo.");
+        if (send && !(await rateLimit.check(`auth-code-cooldown:${key}`, 1, 60)).allowed) throw ApiErrors.rateLimited("Esperá un minuto antes de pedir otro código.");
+      }
+      return next();
+    }
 
     if (path === RESET_PATH) {
       const resetIp = await rateLimit.check(`auth-reset-ip:${digest(ip)}`, RESET_IP_LIMIT, RESET_IP_WINDOW_S);

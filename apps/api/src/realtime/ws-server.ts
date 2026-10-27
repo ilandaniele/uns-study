@@ -3,6 +3,7 @@ import { z } from "zod";
 import { SocketEvents } from "@sala/contracts";
 import { inChunks, schema, type Db } from "@sala/database";
 import type { Auth } from "../auth/auth.instance.js";
+import { env } from "../env.js";
 import { ApiException } from "../common/api-error.js";
 import { Logger } from "../platform/logger.js";
 import type { RestrictionService } from "../users/restriction.service.js";
@@ -57,7 +58,8 @@ export function dbSessionLookup(db: Db): SessionLookup {
       db
         .select({ id: schema.session.id })
         .from(schema.session)
-        .where(and(eq(schema.session.id, sessionId), eq(schema.session.userId, userId), gt(schema.session.expiresAt, new Date())))
+        .innerJoin(schema.user, eq(schema.user.id, schema.session.userId))
+        .where(and(eq(schema.session.id, sessionId), eq(schema.session.userId, userId), gt(schema.session.expiresAt, new Date()), env.isProduction ? eq(schema.user.emailVerified, true) : undefined))
         .limit(1)
         .all().length > 0,
     live: (userIds) =>
@@ -65,7 +67,8 @@ export function dbSessionLookup(db: Db): SessionLookup {
         db
           .select({ id: schema.session.id, userId: schema.session.userId })
           .from(schema.session)
-          .where(and(inArray(schema.session.userId, part), gt(schema.session.expiresAt, new Date())))
+          .innerJoin(schema.user, eq(schema.user.id, schema.session.userId))
+          .where(and(inArray(schema.session.userId, part), gt(schema.session.expiresAt, new Date()), env.isProduction ? eq(schema.user.emailVerified, true) : undefined))
           .all(),
       ),
   };

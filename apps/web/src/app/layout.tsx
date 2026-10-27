@@ -7,6 +7,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { NavigationTracker } from "@/components/NavigationTracker";
 import { ChatLauncher } from "@/features/chat/ChatLauncher";
 import { Header } from "@/components/Header";
+import { EmailVerificationNotice } from "@/features/auth/EmailVerificationNotice";
 import { VoteNotification } from "@/features/room/VoteNotification";
 import { AutoExtendRuntime } from "@/features/auto-extend/AutoExtendRuntime";
 import { FocusRuntime } from "@/features/focus/FocusRuntime";
@@ -73,6 +74,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         ) : null}
         <OfflineBanner />
         <Header />
+        <EmailVerificationNotice />
         {children}
         <ChatLauncher />
         <BottomNav />

@@ -16,6 +16,7 @@ import {
   type TableNicknameChangedEvent,
 } from "@sala/contracts";
 import type { Auth } from "../auth/auth.instance.js";
+import { hasEmailOwnership } from "../auth/email-ownership.js";
 import type { NotificationService } from "../notifications/notification.service.js";
 import { Logger } from "../platform/logger.js";
 import type { Scheduler } from "../platform/scheduler.js";
@@ -60,7 +61,7 @@ export async function resolveSocketUserId(
     const headers = new Headers();
     if (cookieHeader) headers.set("cookie", cookieHeader);
     const session = await deps.auth.api.getSession({ headers });
-    return session?.user?.id ?? null;
+    return hasEmailOwnership(session?.user) ? session?.user?.id ?? null : null;
   } catch {
     return null;
   }

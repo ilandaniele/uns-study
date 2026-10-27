@@ -11,5 +11,7 @@ authProvidersRouter.get("/auth-providers", (c) =>
     google: Boolean(env.googleClientId && env.googleClientSecret),
     passwordReset: Boolean(env.resendApiKey && env.emailFrom),
     emailVerification: Boolean(env.resendApiKey && env.emailFrom),
+    emailOtp: Boolean(env.resendApiKey && env.emailFrom),
+    emailVerificationRequired: env.isProduction,
   }),
 );

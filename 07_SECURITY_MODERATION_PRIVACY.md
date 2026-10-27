@@ -110,6 +110,8 @@ Better Auth controls sessions.
 
 The API must validate auth/session for protected REST and WebSocket actions.
 
+Deployed accounts must prove email ownership before authenticated access. Email registration uses a single-use six-digit code; creating a pending password account is disabled. Legacy unverified accounts must use code sign-in, which revokes their unproven credentials and sessions. See [EMAIL_OWNERSHIP.md](docs/EMAIL_OWNERSHIP.md).
+
 Do not trust `userId` from request body.
 
 ## 10. Database security

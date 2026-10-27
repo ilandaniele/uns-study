@@ -1,5 +1,6 @@
 import type { Context, MiddlewareHandler } from "hono";
 import type { Auth } from "../auth/auth.instance.js";
+import { hasEmailOwnership } from "../auth/email-ownership.js";
 import { ApiErrors } from "../common/api-error.js";
 import type { Role } from "../users/roles.service.js";
 import type { AppEnv, RequestUser } from "./context.js";
@@ -12,6 +13,7 @@ const blockedCache = new Map<string, { blocked: boolean; at: number }>();
 
 async function resolveUser(auth: Auth, c: Context<AppEnv>): Promise<RequestUser | null> {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!hasEmailOwnership(session?.user)) return null;
   if (!session?.user) return null;
   return {
     id: session.user.id,
@@ -55,6 +57,7 @@ function roleGuard(allowedRoles: Role[]): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
     const session = await c.var.auth.api.getSession({ headers: c.req.raw.headers });
     if (!session?.user) throw ApiErrors.unauthenticated();
+    if (!hasEmailOwnership(session.user)) throw ApiErrors.unauthenticated();
 
     const user: RequestUser = { id: session.user.id, name: session.user.name, email: session.user.email, image: session.user.image ?? null };
     const allowed = await c.var.services.roles.hasRole(user.id, allowedRoles);

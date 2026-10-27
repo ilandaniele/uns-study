@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
+import { emailOTP } from "better-auth/plugins";
 import { and, eq, gt, isNull, or } from "drizzle-orm";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import type { Db } from "@sala/database";
@@ -7,7 +8,8 @@ import { schema } from "@sala/database";
 import { env } from "../env.js";
 import { ResendClient } from "../email/resend.client.js";
 import { createPasswordResetSender } from "./password-reset-email.js";
-import { createVerificationEmailSender } from "./verification-email.js";
+import { createEmailCodeSender, EMAIL_CODE_SECONDS } from "./email-otp.js";
+import { hasEmailOwnership } from "./email-ownership.js";
 
 export type Auth = ReturnType<typeof buildAuth>;
 
@@ -43,11 +45,13 @@ export function buildAuth(db: Db) {
     env.resendApiKey && env.emailFrom ? new ResendClient(env.resendApiKey) : null,
     { from: env.emailFrom, webUrl: env.publicWebUrl },
   );
-  // Same gating as reset. Not `requireEmailVerification`: existing unverified users keep signing in.
-  const sendVerificationEmail = createVerificationEmailSender(
+  const sendEmailCode = createEmailCodeSender(
     env.resendApiKey && env.emailFrom ? new ResendClient(env.resendApiKey) : null,
-    { from: env.emailFrom },
+    env.emailFrom,
   );
+  // Better Auth deliberately catches delivery callback failures. Keep their result request-local
+  // so the UI can offer a retry rather than claiming the message was sent.
+  const deliveryFailures = new WeakSet<object>();
 
   return betterAuth({
     database: drizzleAdapter(db, {
@@ -61,19 +65,32 @@ export function buildAuth(db: Db) {
     trustedOrigins: env.webOrigins,
     emailAndPassword: {
       enabled: true,
+      // Deployed sign-up is code-first: the user row is only created after mailbox proof.
+      disableSignUp: env.isProduction,
+      requireEmailVerification: env.isProduction,
       revokeSessionsOnPasswordReset: true,
       ...(sendResetPassword ? { sendResetPassword, resetPasswordTokenExpiresIn: 60 * 60 } : {}),
     },
-    ...(sendVerificationEmail
-      ? {
-          emailVerification: {
-            sendVerificationEmail,
-            sendOnSignUp: true,
-            autoSignInAfterVerification: true,
-            expiresIn: 60 * 60 * 24,
-          },
-        }
-      : {}),
+    plugins: [emailOTP({ sendVerificationOTP: async (data, ctx) => {
+      try { await sendEmailCode(data); }
+      catch (error) { if (ctx) deliveryFailures.add(ctx.context); throw error; }
+    }, otpLength: 6, expiresIn: EMAIL_CODE_SECONDS,
+      allowedAttempts: 5, storeOTP: "hashed", resendStrategy: "rotate" })],
+    hooks: { before: createAuthMiddleware(async (ctx) => {
+      // OTP sign-in safely strips unproven credentials and old sessions before verifying legacy
+      // accounts. The separate verification endpoint would leave a squatter's password active.
+      const path = ctx.path?.replace(/\/+$/, "");
+      if (path === "/email-otp/send-verification-otp" && (!env.resendApiKey || !env.emailFrom)) {
+        throw new APIError("SERVICE_UNAVAILABLE", { code: "EMAIL_UNAVAILABLE", message: "El envío de códigos no está disponible en este momento." });
+      }
+      if (path === "/verify-email" || path === "/send-verification-email" ||
+          (path === "/email-otp/send-verification-otp" && ctx.body?.type !== "sign-in") ||
+          (path?.startsWith("/email-otp/") && path !== "/email-otp/send-verification-otp")) {
+        throw new APIError("FORBIDDEN", { code: "EMAIL_CODE_REQUIRED", message: "Ingresá con el código enviado a tu email para verificar tu cuenta." });
+      }
+    }), after: createAuthMiddleware(async (ctx) => {
+      if (deliveryFailures.delete(ctx.context)) throw new APIError("SERVICE_UNAVAILABLE", { code: "EMAIL_DELIVERY_FAILED", message: "No pudimos enviar el código. Esperá un momento y volvé a pedirlo." });
+    }) },
     // In-memory per-instance limiter: a cheap first layer. The per-email/IP layer (SQLite-backed) is
     // `authRateLimit`, mounted before this handler in `createApp`.
     rateLimit: {
@@ -86,6 +103,8 @@ export function buildAuth(db: Db) {
         "/request-password-reset": { window: 60, max: 3 },
         "/reset-password": { window: 60, max: 5 },
         "/send-verification-email": { window: 60, max: 3 },
+        "/email-otp/send-verification-otp": { window: 60, max: 3 },
+        "/sign-in/email-otp": { window: 60, max: 10 },
       },
     },
     // Signed cookie cache: most requests skip the session+user DB lookup. Bans/restrictions are
@@ -96,6 +115,8 @@ export function buildAuth(db: Db) {
       session: {
         create: {
           before: async (session) => {
+            const [user] = await db.select({ emailVerified: schema.user.emailVerified }).from(schema.user).where(eq(schema.user.id, session.userId)).limit(1);
+            if (!hasEmailOwnership(user)) throw new APIError("FORBIDDEN", { code: "EMAIL_NOT_VERIFIED", message: "Confirmá el código enviado a tu email antes de ingresar." });
             if (await hasActiveBan(db, session.userId)) {
               throw new APIError("FORBIDDEN", { message: "Tu cuenta está suspendida.", code: "ACCOUNT_BANNED" });
             }

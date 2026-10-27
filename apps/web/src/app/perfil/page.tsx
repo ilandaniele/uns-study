@@ -25,7 +25,7 @@ import { FlairSection } from "@/features/flair/FlairSection";
 import { PaletteSection } from "@/features/theme/PaletteSection";
 import { WeeklyGoalCard } from "@/features/weekly-goal/WeeklyGoalCard";
 import { apiFetch, apiPost } from "@/lib/api";
-import { authClient, signOut, useSession } from "@/lib/auth-client";
+import { signOut, useSession } from "@/lib/auth-client";
 import { invalidateMe } from "@/lib/me-store";
 import { resetSocket } from "@/lib/socket";
 
@@ -41,7 +41,6 @@ export default function PerfilPage() {
   const [deleting, setDeleting] = useState(false);
   const [privacyError, setPrivacyError] = useState<string | null>(null);
   const [verifyAvailable, setVerifyAvailable] = useState(false);
-  const [verifySent, setVerifySent] = useState(false);
   const { me } = useMe();
   const { adFree, snoozedUntil } = useAdFree();
   const { lock } = usePro();
@@ -60,13 +59,6 @@ export default function PerfilPage() {
     if (!session?.user) return;
     void apiFetch<PublicProfileDto>(`/api/v1/profiles/${session.user.id}`).then((pub) => setStudyStatus(pub.studyStatus));
   }, [session?.user]);
-
-  async function handleVerifyEmail() {
-    if (!session?.user) return;
-    setVerifySent(true);
-    const { error: verifyError } = await authClient.sendVerificationEmail({ email: session.user.email, callbackURL: "/perfil" });
-    if (verifyError) setVerifySent(false);
-  }
 
   async function handleDelete() {
     setDeleting(true);
@@ -89,7 +81,7 @@ export default function PerfilPage() {
     return (
       <main className="mx-auto flex max-w-md flex-col items-center gap-3 p-10 text-center">
         <p className="text-muted">{error ?? "Iniciá sesión para ver tu perfil."}</p>
-        {!session?.user ? (
+        {!session?.user || !me?.user ? (
           <Link href="/login" className="rounded-control bg-primary px-4 py-2 text-sm font-semibold text-white">
             Ingresar
           </Link>
@@ -107,14 +99,7 @@ export default function PerfilPage() {
         <h1 className="t-heading">Perfil</h1>
         <p className="mt-2 text-sm text-muted">{profile.email}</p>
         {verifyAvailable && !session.user.emailVerified ? (
-          <button
-            type="button"
-            onClick={() => void handleVerifyEmail()}
-            disabled={verifySent}
-            className="mt-1 text-sm font-semibold text-main underline disabled:no-underline disabled:opacity-60"
-          >
-            {verifySent ? "Te enviamos un mail para verificar" : "Verificar email"}
-          </button>
+          <Link href="/login?next=/perfil" className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-primary underline">Confirmar email con un código</Link>
         ) : null}
       </div>
 

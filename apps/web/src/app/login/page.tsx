@@ -2,9 +2,10 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import type { FormEvent } from "react";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
-import { signIn, signUp } from "@/lib/auth-client";
+import { authClient, signIn, signUp, useSession } from "@/lib/auth-client";
+import { EmailCodeForm, emailCodeError } from "@/features/auth/EmailCodeForm";
 import { invalidateMe } from "@/lib/me-store";
 import { safeNextPath } from "@/lib/safe-next";
 import { resetSocket } from "@/lib/socket";
@@ -23,6 +24,7 @@ function authErrorMessage(error: { code?: string; status?: number }): string {
   if (code.startsWith("USER_ALREADY_EXISTS")) return "Ya hay una cuenta con ese email. Tocá «Ingresar».";
   if (code === "PASSWORD_TOO_SHORT") return "La contraseña tiene que tener al menos 8 caracteres.";
   if (code === "INVALID_EMAIL") return "Email inválido.";
+  if (code === "EMAIL_NOT_VERIFIED") return "Confirmá tu email con un código para continuar.";
   return "No pudimos ingresar. Revisá tu conexión y probá de nuevo.";
 }
 
@@ -30,45 +32,72 @@ export default function LoginPage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("signin");
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [emailInput, setEmail] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [googleEnabled, setGoogleEnabled] = useState(false);
   const [passwordResetEnabled, setPasswordResetEnabled] = useState(false);
+  const [providers, setProviders] = useState({ loaded: false, otp: false, required: true });
+  const [methodInput, setMethod] = useState<"password" | "code" | null>(null);
+  const [verification, setVerification] = useState<{ email: string; name?: string } | null>(null);
+  const busy = useRef(false);
+  const { data: session } = useSession();
+  const legacyEmail = session?.user && !session.user.emailVerified && providers.required ? session.user.email : "";
+  const email = emailInput ?? legacyEmail;
+  const method = methodInput ?? (legacyEmail ? "code" : "password");
 
   useEffect(() => {
-    apiFetch<{ google: boolean; passwordReset?: boolean }>("/api/v1/auth-providers")
+    apiFetch<{ google: boolean; passwordReset?: boolean; emailOtp?: boolean; emailVerificationRequired?: boolean }>("/api/v1/auth-providers")
       .then((p) => {
         setGoogleEnabled(p.google);
         setPasswordResetEnabled(Boolean(p.passwordReset));
+        setProviders({ loaded: true, otp: Boolean(p.emailOtp), required: p.emailVerificationRequired !== false });
       })
-      .catch(() => setGoogleEnabled(false));
+      .catch(() => { setGoogleEnabled(false); setProviders({ loaded: true, otp: false, required: true }); });
   }, []);
+
+  function completeSignIn() {
+    invalidateMe(); resetSocket();
+    router.push(safeNext() ?? "/"); router.refresh();
+  }
+
+  async function requestCode() {
+    const address = email.trim().toLowerCase();
+    const result = await authClient.emailOtp.sendVerificationOtp({ email: address, type: "sign-in" });
+    if (result.error) { setError(emailCodeError(result.error)); return; }
+    setPassword("");
+    setVerification({ email: address, ...(tab === "signup" && name.trim() ? { name: name.trim() } : {}) });
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (busy.current) return;
+    busy.current = true;
     setError(null);
     setPending(true);
     try {
+      if ((tab === "signup" && providers.required) || (tab === "signin" && method === "code")) {
+        await requestCode();
+        return;
+      }
       const result =
         tab === "signin"
           ? await signIn.email({ email, password })
           : await signUp.email({ email, password, name: name || email.split("@")[0] });
 
       if (result.error) {
+        if (result.error.code === "EMAIL_NOT_VERIFIED" && providers.otp) { await requestCode(); return; }
         setError(authErrorMessage(result.error));
         return;
       }
       // Picks up the new session's token instead of carrying an anonymous socket into the room page.
-      invalidateMe();
-      resetSocket();
-      router.push(safeNext() ?? "/");
-      router.refresh();
+      completeSignIn();
     } catch {
       setError("No pudimos ingresar. Revisá tu conexión y probá de nuevo.");
     } finally {
       setPending(false);
+      busy.current = false;
     }
   }
 
@@ -93,10 +122,13 @@ export default function LoginPage() {
           Marcá tu lugar. Ayudá a que otros encuentren el suyo.
         </h1>
 
+        {verification ? <EmailCodeForm {...verification} onComplete={completeSignIn} onBack={() => { setVerification(null); setError(null); }} /> : <>
+
         <div className="mt-6 mb-4 flex rounded-control bg-surface-2 p-1 text-sm font-semibold">
           <button
             type="button"
-            onClick={() => setTab("signin")}
+            onClick={() => { setTab("signin"); setError(null); }}
+            disabled={pending}
             aria-pressed={tab === "signin"}
             className={`flex-1 rounded-control py-2 transition-colors ${
               tab === "signin" ? "bg-primary text-white" : "text-muted"
@@ -106,7 +138,8 @@ export default function LoginPage() {
           </button>
           <button
             type="button"
-            onClick={() => setTab("signup")}
+            onClick={() => { setTab("signup"); setError(null); }}
+            disabled={pending}
             aria-pressed={tab === "signup"}
             className={`flex-1 rounded-control py-2 transition-colors ${
               tab === "signup" ? "bg-primary text-white" : "text-muted"
@@ -158,7 +191,7 @@ export default function LoginPage() {
             onChange={(event) => setEmail(event.target.value)}
             className="w-full rounded-control border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
           />
-          <input
+          {(tab === "signin" && method === "password") || (tab === "signup" && !providers.required) ? <input
             type="password"
             required
             minLength={8}
@@ -169,9 +202,12 @@ export default function LoginPage() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             className="w-full rounded-control border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
-          />
+          /> : null}
 
-          {tab === "signin" && passwordResetEnabled ? (
+          {(tab === "signup" && providers.required) || method === "code" ? <p className="text-sm text-muted">Te enviaremos un código de 6 dígitos. Tu cuenta se habilita sólo al confirmar que el email es tuyo.</p> : null}
+          {providers.loaded && providers.required && !providers.otp && (tab === "signup" || method === "code") ? <p role="alert" className="text-sm text-muted">El envío de códigos no está disponible en este momento. Probá más tarde{googleEnabled ? " o ingresá con Google" : ""}.</p> : null}
+
+          {tab === "signin" && method === "password" && passwordResetEnabled ? (
             <a href="/recuperar" className="self-end text-xs text-muted underline">
               ¿Olvidaste tu contraseña?
             </a>
@@ -186,12 +222,14 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || !providers.loaded || (providers.required && !providers.otp && (tab === "signup" || method === "code"))}
             className="min-h-11 rounded-control bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
           >
-            {pending ? (tab === "signin" ? "Ingresando…" : "Creando cuenta…") : tab === "signin" ? "Ingresar" : "Crear cuenta"}
+            {pending ? "Un momento…" : ((tab === "signup" && providers.required) || method === "code") ? "Enviar código" : tab === "signin" ? "Ingresar" : "Crear cuenta"}
           </button>
+          {tab === "signin" && providers.otp ? <button type="button" disabled={pending} onClick={() => { setMethod(method === "code" ? "password" : "code"); setPassword(""); setError(null); }} className="min-h-11 text-sm font-semibold text-primary">{method === "code" ? "Ingresar con contraseña" : "Ingresar con un código por email"}</button> : null}
         </form>
+        </>}
 
         <p className="mt-6 text-center text-xs text-muted">
           Al continuar aceptás los{" "}
