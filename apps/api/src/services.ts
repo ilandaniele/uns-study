@@ -78,6 +78,7 @@ import type { QuietRoomService } from "./quiet-room/quiet-room.service.js";
 import type { GroupRankingService } from "./group-ranking/group-ranking.service.js";
 
 export interface Services {
+  sectionUsage: SectionUsageService;
   reactions: ReactionsService;
   garden: GardenService;
   gardenPurchases: GardenPurchasesService;
@@ -167,3 +168,4 @@ export interface Services {
     weeklyGoalReminder: WeeklyGoalReminderJob;
   };
 }
+import type { SectionUsageService } from "./usage/section-usage.service.js";

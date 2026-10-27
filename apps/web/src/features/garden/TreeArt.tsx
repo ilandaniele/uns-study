@@ -1,6 +1,7 @@
-import { useId } from "react";
+import { useId, type CSSProperties } from "react";
 import type { GardenPlant, GardenSpecies } from "@sala/contracts";
 import { treeSprite } from "./tree-sprites";
+import { plantMotion, usePlantVisibility } from "./plant-motion";
 const WIDTH = 256;
 const HEIGHT = 288;
 
@@ -15,21 +16,26 @@ export function TreeArt({ species, stage = "mature", decorative = true, variant 
 }) {
   const clipId = `tree-sprite-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const { file, columns, rows, frame } = treeSprite(species, stage);
+  const visibilityRef = usePlantVisibility();
+  const motion = plantMotion(species, stage, variant);
+  const motionStyle = { "--plant-angle": `${motion.angle}deg`, animationDuration: `${motion.duration}s`, animationDelay: `${motion.delay}s` } as CSSProperties;
 
   return (
-    <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width={viewport?.width ?? WIDTH} height={viewport?.height ?? HEIGHT}
+    <svg ref={visibilityRef} viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width={viewport?.width ?? WIDTH} height={viewport?.height ?? HEIGHT}
       x={viewport?.x} y={viewport?.y}
       aria-hidden={decorative || undefined} role={decorative ? undefined : "img"}
       aria-label={decorative ? undefined : species.name}
       data-tree-species={species.id} data-tree-stage={stage}
       className={viewport ? "pointer-events-none overflow-hidden" : "h-full w-full overflow-hidden"}>
       <defs><clipPath id={clipId}><rect width={WIDTH} height={HEIGHT} /></clipPath></defs>
+      <g className="garden-plant-motion" data-motion-kind={motion.kind} style={motionStyle}>
       <g clipPath={`url(#${clipId})`}>
         <g transform={variant % 2 ? `translate(${WIDTH} 0) scale(-1 1)` : undefined}>
           <image href={`/garden/${file}`}
             x={-(frame % columns) * WIDTH} y={-Math.floor(frame / columns) * HEIGHT}
             width={columns * WIDTH} height={rows * HEIGHT} />
         </g>
+      </g>
       </g>
     </svg>
   );

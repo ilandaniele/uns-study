@@ -1,6 +1,29 @@
 @import "tailwindcss";
 
 .forest-diorama { background: radial-gradient(ellipse at 50% 30%, var(--garden-tile), var(--garden-bg) 72%); }
+.garden-plant-motion {
+  transform-box: view-box;
+  transform-origin: 128px 270px;
+  animation: garden-wind 10s ease-in-out infinite;
+  animation-play-state: paused;
+}
+[data-motion-visible="true"] > .garden-plant-motion { animation-play-state: running; }
+.garden-plant-motion[data-motion-kind="floating"] { animation-name: garden-float; }
+.garden-stream-current { animation: garden-current 12s linear infinite; animation-play-state: paused; }
+[data-motion-visible="true"] .garden-stream-current { animation-play-state: running; }
+@keyframes garden-wind {
+  0%, 100% { transform: rotate(calc(var(--plant-angle) * -.7)) skewX(calc(var(--plant-angle) * -.25)); }
+  35% { transform: rotate(var(--plant-angle)) skewX(calc(var(--plant-angle) * .4)); }
+  70% { transform: rotate(calc(var(--plant-angle) * -.2)); }
+}
+@keyframes garden-float {
+  0%, 100% { transform: translateY(0) rotate(-.45deg); }
+  50% { transform: translateY(-1px) rotate(.45deg); }
+}
+@keyframes garden-current { to { stroke-dashoffset: -48; } }
+@media (prefers-reduced-motion: reduce) {
+  .garden-plant-motion, .garden-stream-current { animation: none !important; transform: none !important; }
+}
 .forest-parcel:hover > path, .forest-parcel:focus-visible > path { stroke: var(--garden-accent); stroke-width: 3px; }
 
 /* Reserve the test-environment notice before fitting the room into a phone viewport. */
@@ -128,6 +151,9 @@ body:has(> .room-staging-banner) { --room-banner-space: 48px; }
   --garden-tile: #e8efd9;
   --garden-tile-border: #c3d3ad;
   --garden-empty: #647954;
+  --garden-water: #8ec9cd;
+  --garden-water-deep: #4d9fa9;
+  --garden-water-light: #e4f7ed;
 
   --oak: #c8955c;
   --oak-border: #a56a3a;
@@ -205,6 +231,9 @@ body:has(> .room-staging-banner) { --room-banner-space: 48px; }
   --garden-tile: #344a32;
   --garden-tile-border: #4a6141;
   --garden-empty: #c0cfae;
+  --garden-water: #376a73;
+  --garden-water-deep: #244d58;
+  --garden-water-light: #9dd8d2;
 
   --oak: #7a5a37;
   --oak-border: #9a774a;

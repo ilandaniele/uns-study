@@ -3,8 +3,8 @@ import { baseHeaders, buildTestApp } from "../http/test-app.js";
 
 /**
  * Routes reachable without a session on purpose. Everything else under /api/v1 must answer 401
- * when called anonymously. Add an entry here only for read-only public data or token/signature
- * authenticated endpoints, and say why.
+ * when called anonymously. Public reads, tightly bounded anonymous counters/forms, and token/signature
+ * authenticated endpoints must be declared explicitly with their reason.
  */
 const PUBLIC_ROUTES: Record<string, string> = {
   "GET /api/v1/health": "liveness probe",
@@ -17,6 +17,7 @@ const PUBLIC_ROUTES: Record<string, string> = {
   "GET /api/v1/rooms/:idOrSlug": "public room data",
   "GET /api/v1/rooms/:idOrSlug/map": "public seat map and state",
   "POST /api/v1/rooms/:idOrSlug/visits": "anonymous visit counter; stores only a salted hash, rate limited",
+  "POST /api/v1/usage/section": "anonymous section-open counter; allowlisted enum only, no visitor data, rate limited in memory",
   "GET /api/v1/rooms/:idOrSlug/stats/today": "public visitor count, own contribution count only when signed in",
   "GET /api/v1/rooms/:idOrSlug/announcements": "public banner copy",
   "GET /api/v1/rooms/:idOrSlug/rankings": "public rankings, own row only when signed in",

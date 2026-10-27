@@ -1,7 +1,7 @@
 "use client";
 
 import { FEEDBACK_MESSAGE_MAX, FEEDBACK_MESSAGE_MIN, type FeedbackCategory } from "@sala/contracts";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import { ApiRequestError } from "@/lib/api";
 import { describeActionError } from "@/lib/errors";
 import { useMe } from "@/lib/me-store";
@@ -9,14 +9,14 @@ import { TurnstileChallenge } from "@/features/room/TurnstileChallenge";
 import { FEEDBACK_CATEGORY_OPTIONS, feedbackCategoryLabel } from "./categories";
 import { submitFeedback } from "./submitFeedback";
 
-export function FeedbackForm() {
+export function FeedbackForm({ compact = false }: { compact?: boolean }) {
   const { me, loading: meLoading } = useMe();
-  const signedIn = Boolean(me);
+  const signedIn = Boolean(me?.user);
   const [category, setCategory] = useState<FeedbackCategory>("SUGGESTION");
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
   const [turnstileRequired, setTurnstileRequired] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const busy = useRef(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
@@ -25,7 +25,12 @@ export function FeedbackForm() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (pending || tooShort) return;
+    await send(null);
+  }
+
+  async function send(turnstileToken: string | null): Promise<boolean> {
+    if (busy.current || tooShort) return false;
+    busy.current = true;
     setPending(true);
     setError(null);
     try {
@@ -36,11 +41,11 @@ export function FeedbackForm() {
         turnstileToken,
       });
       setSent(true);
+      return true;
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === "TURNSTILE_REQUIRED") {
         // Anonymous senders get the widget only when the API asks for it; the token is single-use.
         setTurnstileRequired(true);
-        setTurnstileToken(null);
         setError(turnstileToken ? "No pudimos confirmar que sos una persona. Probá de nuevo." : null);
       } else if (err instanceof ApiRequestError && err.code === "RATE_LIMITED") {
         setError("Ya enviaste varios mensajes. Probá de nuevo en unos minutos.");
@@ -49,7 +54,9 @@ export function FeedbackForm() {
       } else {
         setError(describeActionError(err));
       }
+      return false;
     } finally {
+      busy.current = false;
       setPending(false);
     }
   }
@@ -57,7 +64,7 @@ export function FeedbackForm() {
   function handleAnother() {
     setMessage("");
     setCategory("SUGGESTION");
-    setTurnstileToken(null);
+    setTurnstileRequired(false);
     setError(null);
     setSent(false);
   }
@@ -79,7 +86,7 @@ export function FeedbackForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4 border-t border-app pt-6">
-      <fieldset className="flex flex-col gap-2">
+      {!compact ? <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-semibold text-main">Sobre qué querés escribirnos</legend>
         <div className="grid grid-cols-2 gap-2">
           {FEEDBACK_CATEGORY_OPTIONS.map((option) => (
@@ -101,7 +108,7 @@ export function FeedbackForm() {
             </label>
           ))}
         </div>
-      </fieldset>
+      </fieldset> : null}
 
       <label className="flex flex-col gap-1 text-sm font-semibold text-main">
         Mensaje
@@ -109,9 +116,9 @@ export function FeedbackForm() {
           value={message}
           onChange={(event) => setMessage(event.target.value.slice(0, FEEDBACK_MESSAGE_MAX))}
           maxLength={FEEDBACK_MESSAGE_MAX}
-          rows={6}
+          rows={compact ? 3 : 6}
           required
-          placeholder="Escribí acá lo que quieras contarnos"
+          placeholder={compact ? "¿Qué cambiarías o mejorarías?" : "Escribí acá lo que quieras contarnos"}
           className="resize-y rounded-control border border-app bg-surface px-3 py-2 text-base font-normal text-main sm:text-sm"
         />
         <span className="text-right text-xs font-normal text-muted">
@@ -134,7 +141,7 @@ export function FeedbackForm() {
         </label>
       ) : null}
 
-      {turnstileRequired ? <TurnstileChallenge onToken={setTurnstileToken} /> : null}
+      {turnstileRequired && !tooShort ? <TurnstileChallenge onToken={send} /> : null}
 
       {error ? (
         <p role="alert" className="rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -144,10 +151,10 @@ export function FeedbackForm() {
 
       <button
         type="submit"
-        disabled={pending || tooShort}
+        disabled={pending || tooShort || turnstileRequired}
         className="min-h-11 rounded-control bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
       >
-        {pending ? "Enviando…" : "Enviar"}
+        {pending ? "Enviando…" : turnstileRequired ? "Verificá para enviar" : compact ? "Enviar sugerencia" : "Enviar"}
       </button>
     </form>
   );

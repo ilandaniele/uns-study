@@ -18,7 +18,7 @@ describe("native garden artwork coverage", () => {
     }
   });
   it("uses different germination drawings for palms, cacti, grasses, flowers and trees", () => {
-    const ids = ["espinillo", "pehuen", "yatay", "cardon", "cortadera", "salvia-azul"];
+    const ids = ["espinillo", "pehuen", "yatay", "cardon", "cortadera", "salvia-azul", "camalote"];
     for (const stage of ["seed", "sprout"] as const) {
       const frames = ids.map(id => treeSprite(GARDEN_SPECIES.find(s => s.id === id)!, stage));
       expect(new Set(frames.map(s => `${s.file}:${s.frame}`)).size).toBe(ids.length);

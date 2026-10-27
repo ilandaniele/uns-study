@@ -42,7 +42,7 @@ export default function PrivacyPage() {
       <h2 className="pt-2 text-lg font-semibold text-main">Cookies, publicidad y estadísticas</h2>
       <p>
         Usamos cookies propias para mantener tu sesión iniciada y recordar preferencias como el tema. Para medir el uso
-        del sitio usamos Google Analytics.
+        del sitio usamos Google Analytics. También contamos aperturas por sección para mejorar la app: guardamos únicamente el día, la sección y un total agregado durante un máximo de 30 días, sin asociarlo con tu cuenta, IP, URL privada o mensajes. Este contador respeta las señales Do Not Track y Global Privacy Control del navegador.
       </p>
       <p>
         En algunas páginas con contenido (como las guías de estudio y las novedades de la comunidad) mostramos anuncios de

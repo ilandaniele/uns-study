@@ -2,6 +2,7 @@
 
 import type { ConversationDto, GroupConversationDto } from "@sala/contracts";
 import { useSyncExternalStore } from "react";
+import { recordSectionVisit } from "@/lib/section-usage";
 
 export type ChatWidgetView =
   | { kind: "room" }
@@ -108,6 +109,7 @@ export type OpenChatWidgetTarget =
   | { view: "group"; groupId: string; group?: GroupConversationDto };
 
 export function openChatWidget(target?: OpenChatWidgetTarget): void {
+  if (!current.open) recordSectionVisit("chat");
   if (!target) return dispatch({ type: "open" });
   if (target.view === "dm") {
     return dispatch({ type: "open", view: { kind: "dm", conversationId: target.conversationId, conversation: target.conversation } });

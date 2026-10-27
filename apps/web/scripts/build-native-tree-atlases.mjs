@@ -6,7 +6,8 @@ import sharp from "sharp";
 // This only crops transparent gutters, resizes and packs GPT-generated cutouts; it never
 // paints foliage, removes backgrounds or changes the generated illustrations.
 const expansion = process.argv[2] === "--expansion";
-const sources = process.argv.slice(expansion ? 3 : 2);
+const wetland = process.argv[2] === "--wetland";
+const sources = process.argv.slice(expansion || wetland ? 3 : 2);
 if (sources.length !== (expansion ? 5 : 3)) throw new Error(expansion ? "Expected trees adult/young, plants adult/young, seedlings PNG paths." : "Expected adult, young and seedling source PNG paths.");
 const destination = fileURLToPath(new URL("../public/garden/", import.meta.url));
 const CELL_WIDTH = 256;
@@ -86,6 +87,20 @@ async function pack(source, columns, rows, filename, dimensions, quality = 74) {
 }
 
 await mkdir(destination, { recursive: true });
+if (wetland) {
+  const adults = [
+    { width: 160, height: 175 }, { width: 160, height: 186 }, { width: 150, height: 95 }, { width: 140, height: 115 },
+    { width: 135, height: 165 }, { width: 140, height: 155 }, { width: 130, height: 186 }, { width: 125, height: 186 },
+    { width: 100, height: 186 }, { width: 145, height: 115 }, { width: 145, height: 82 }, { width: 150, height: 95 },
+  ];
+  const young = adults.map(d => ({ width: Math.round(d.width * .68), height: Math.round(d.height * .68) }));
+  const bytes = await pack(sources[0], 4, 3, "pastizal-humedal-adultos-gpt-v1.webp", adults, 62)
+    + await pack(sources[1], 4, 3, "pastizal-humedal-jovenes-gpt-v1.webp", young, 58)
+    + await pack(sources[2], 2, 1, "brotes-acuaticos-gpt-v1.webp", [{ width: 40, height: 30 }, { width: 76, height: 47 }], 68);
+  console.log(`Wetland: ${bytes} bytes`);
+  if (bytes >= 500_000) throw new Error("Wetland atlas budget exceeded: keep the three new assets under 500 KB.");
+  process.exit(0);
+}
 if (expansion) {
   const trees = Array(12).fill({ width: 160, height: 186 });
   const young = Array(12).fill({ width: 110, height: 130 });

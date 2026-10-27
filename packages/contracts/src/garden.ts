@@ -35,7 +35,9 @@ export interface GardenSpecies {
   flower: string | null;
   bark: string;
   /** Older entries are trees. Used to browse the expanded native nursery. */
-  kind?: "tree" | "palm" | "shrub" | "flower" | "grass" | "cactus";
+  kind?: "tree" | "palm" | "shrub" | "flower" | "grass" | "cactus" | "aquatic";
+  /** Visual habitat; planting and growth rules stay the same in every numbered plot. */
+  habitat?: "water" | "shore";
 }
 
 const TREES = "https://www.argentina.gob.ar/node/492317";

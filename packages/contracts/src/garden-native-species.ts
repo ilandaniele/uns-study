@@ -1,6 +1,6 @@
 import type { GardenSpecies } from "./garden";
 
-// Botanical sources were checked on 2026-10-26; prices and growth times are game rules.
+// Botanical sources were checked on 2026-10-26/27; prices and growth times are game rules.
 function native(species: Omit<GardenSpecies, "source" | "crown" | "foliage" | "flower" | "bark"> & { source?: string }): GardenSpecies {
   return {
     crown: "round", foliage: "#52764b", flower: null, bark: "#80634d",
@@ -10,6 +10,83 @@ function native(species: Omit<GardenSpecies, "source" | "crown" | "foliage" | "f
 }
 
 export const EXTRA_NATIVE_SPECIES: readonly GardenSpecies[] = [
+  native({
+    id: "paja-vizcachera", name: "Paja vizcachera", scientificName: "Nassella tenuissima",
+    region: "Pastizales y ambientes abiertos de Argentina", kind: "grass",
+    description: "Forma matas finas con hojas flexibles y espigas claras que acompañan el viento.",
+    source: "https://buenosaires.gob.ar/gcaba_historico/espacio-botanico/paja-vizcachera",
+    cost: 12, growthMinutes: 120, reward: 18,
+  }),
+  native({
+    id: "paja-colorada", name: "Paja colorada", scientificName: "Paspalum quadrifarium",
+    region: "Pastizales del centro y norte argentino", kind: "grass",
+    description: "Sus grandes matas sirven de refugio a la fauna de los pastizales pampeanos.",
+    source: "https://www.iimyc.gob.ar/iimyc/es/lagunaqr5/",
+    cost: 20, growthMinutes: 240, reward: 30,
+  }),
+  native({
+    id: "pasto-bahia", name: "Pasto bahía", scientificName: "Paspalum notatum",
+    region: "Norte y centro argentino", kind: "grass",
+    description: "Un pasto de bajo porte con espigas que se abren como una pequeña horqueta.",
+    cost: 10, growthMinutes: 120, reward: 15,
+  }),
+  native({
+    id: "vinagrillo", name: "Vinagrillo rosado", scientificName: "Oxalis articulata",
+    region: "Pastizales de Argentina", kind: "flower",
+    description: "Tiene hojas de tres folíolos con forma de corazón y delicadas flores rosadas.",
+    cost: 14, growthMinutes: 180, reward: 21,
+  }),
+  native({
+    id: "carquejilla", name: "Carquejilla", scientificName: "Baccharis articulata",
+    region: "Centro y nordeste argentino", kind: "shrub",
+    description: "Sus tallos verdes y alados forman ramitas finas que casi no tienen hojas.",
+    cost: 18, growthMinutes: 180, reward: 27,
+  }),
+  native({
+    id: "marcela", name: "Marcela", scientificName: "Achyrocline satureioides",
+    region: "Centro y norte argentino", kind: "flower",
+    description: "Una planta de follaje grisáceo con grupos de pequeñas flores de tono amarillo pajizo.",
+    cost: 22, growthMinutes: 240, reward: 33,
+  }),
+  native({
+    id: "verbena-bonaerense", name: "Verbena bonaerense", scientificName: "Verbena bonariensis",
+    region: "Pastizales del centro y nordeste argentino", kind: "flower",
+    description: "Sus tallos altos y delgados sostienen pequeños grupos de flores violetas.",
+    cost: 25, growthMinutes: 300, reward: 38,
+  }),
+  native({
+    id: "totora", name: "Totora", scientificName: "Typha domingensis",
+    region: "Lagunas y humedales de Argentina", kind: "aquatic", habitat: "shore",
+    description: "Sus hojas largas crecen en los bordes del agua, junto a espigas cilíndricas castañas.",
+    cost: 28, growthMinutes: 300, reward: 42,
+  }),
+  native({
+    id: "junco", name: "Junco", scientificName: "Schoenoplectus californicus",
+    region: "Riberas y lagunas de Argentina", kind: "aquatic", habitat: "shore",
+    description: "Sus tallos verdes y erguidos forman juncales en los márgenes de los humedales.",
+    cost: 24, growthMinutes: 300, reward: 36,
+  }),
+  native({
+    id: "camalote", name: "Camalote", scientificName: "Pontederia crassipes",
+    region: "Humedales del litoral argentino", kind: "aquatic", habitat: "water",
+    description: "Flota con hojas brillantes, pecíolos engrosados y flores de tono lila.",
+    source: "https://sib.gob.ar/archivos/cartilla_faros.pdf",
+    cost: 35, growthMinutes: 420, reward: 53,
+  }),
+  native({
+    id: "repollito-de-agua", name: "Repollito de agua", scientificName: "Pistia stratiotes",
+    region: "Humedales del centro y nordeste argentino", kind: "aquatic", habitat: "water",
+    description: "Sus hojas claras y aterciopeladas forman una roseta que flota sobre el agua.",
+    source: "https://buenosaires.gob.ar/gcaba_historico/noticias/plantas-nativas-ayudan-mejorar-la-transparencia-del-agua",
+    cost: 30, growthMinutes: 360, reward: 45,
+  }),
+  native({
+    id: "estrella-de-agua", name: "Estrella de agua", scientificName: "Nymphoides indica",
+    region: "Humedales del litoral y región rioplatense", kind: "aquatic", habitat: "water",
+    description: "Tiene hojas flotantes redondeadas y flores blancas con bordes finamente desflecados.",
+    source: "https://www.sinavimo.gob.ar/plaga/nymphoides-indica",
+    cost: 40, growthMinutes: 480, reward: 60,
+  }),
   native({
     id: "ombu", name: "Ombú", scientificName: "Phytolacca dioica",
     region: "Nordeste y región rioplatense", kind: "tree",

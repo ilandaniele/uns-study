@@ -61,6 +61,7 @@ const SeatFreedToast = dynamic(() => import("@/features/room/SeatFreedToast").th
 const TurnstileChallenge = dynamic(() => import("@/features/room/TurnstileChallenge").then((m) => m.TurnstileChallenge), { loading: noFallback });
 import { SeatSheet } from "@/features/room/SeatSheet";
 import { DonateCard, DonatePrompt } from "@/features/room/Donate";
+import { RoomFeedbackCard } from "@/features/feedback/RoomFeedbackCard";
 import { IdentityPrompt } from "@/features/profile/IdentityPrompt";
 const ZoomableMap = dynamic(() => import("@/features/room/ZoomableMap"), { loading: noFallback });
 const loadSeatDetail = () => import("@/features/room/SeatDetail").then((m) => m.SeatDetail);
@@ -643,7 +644,8 @@ export function RoomPageClient({ slug }: { slug: string }) {
         </section>
       ) : null}
       {!isLargeDesktop ? (
-        <section className="order-3">
+        <section className="order-3 flex flex-col gap-3">
+          <RoomFeedbackCard />
           <DonateCard />
         </section>
       ) : null}
@@ -663,6 +665,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
           />
           {notices}
           {proCards}
+          <RoomFeedbackCard />
           <DonateCard />
         </aside>
       ) : detail ? (

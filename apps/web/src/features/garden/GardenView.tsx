@@ -31,10 +31,13 @@ const primary =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-45";
 const FILTERS = [
   { id: "all", label: "Todas" }, { id: "tree", label: "Árboles" },
-  { id: "palm", label: "Palmeras" }, { id: "flowers", label: "Flores y arbustos" },
+  { id: "palm", label: "Palmeras" }, { id: "flowers", label: "Flores y yuyos" },
   { id: "grass", label: "Pastos" }, { id: "cactus", label: "Cactus" },
+  { id: "aquatic", label: "Acuáticas" },
 ] as const;
 type NurseryFilter = (typeof FILTERS)[number]["id"];
+const FEATURED_IDS = ["camalote", "paja-vizcachera", "vinagrillo", "repollito-de-agua", "paja-colorada", "estrella-de-agua"];
+const NURSERY_SPECIES = [...FEATURED_IDS.map(id => GARDEN_SPECIES.find(s => s.id === id)!), ...GARDEN_SPECIES.filter(s => !FEATURED_IDS.includes(s.id))];
 
 export function GardenView() {
   const { me, loading } = useMe();
@@ -48,7 +51,7 @@ export function GardenView() {
           </h1>
           <p className="mt-3 hidden max-w-xl text-sm leading-relaxed text-muted sm:block">
             Cada hora en la sala hace crecer tu jardín de plantas nativas
-            argentinos.
+            argentinas.
           </p>
         </div>
         <Link
@@ -69,7 +72,7 @@ export function GardenView() {
       ) : (
         <section className="garden-welcome rounded-2xl border border-app p-6 text-center sm:p-10">
           <div className="mx-auto mb-4 h-40 w-40">
-            <TreeArt species={GARDEN_SPECIES[5]} />
+            <TreeArt species={GARDEN_SPECIES.find(s => s.id === "paja-vizcachera")!} />
           </div>
           <h2 className="text-2xl font-bold">Un pequeño bosque, a tu ritmo</h2>
           <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted">
@@ -121,8 +124,8 @@ export function GardenView() {
 function GardenAccount() {
   const { garden, error, pending, refresh, act } = useGarden();
   const [selected, setSelected] = useState<number | null>(null);
-  const [speciesId, setSpeciesId] = useState(GARDEN_SPECIES[0].id);
-  const [filter, setFilter] = useState<NurseryFilter>("tree");
+  const [speciesId, setSpeciesId] = useState("paja-vizcachera");
+  const [filter, setFilter] = useState<NurseryFilter>("all");
   const [notice, setNotice] = useState("");
   const panel = useRef<HTMLElement>(null);
   const species = GARDEN_SPECIES.find((s) => s.id === speciesId)!;
@@ -368,7 +371,7 @@ function GardenAccount() {
           {FILTERS.map(item => <button key={item.id} type="button" aria-pressed={filter === item.id} onClick={() => setFilter(item.id)} className={`min-h-11 rounded-full border px-4 text-sm font-semibold ${filter === item.id ? "border-primary bg-primary text-white" : "border-app bg-surface text-muted hover:border-primary"}`}>{item.label}</button>)}
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-          {GARDEN_SPECIES.filter(s => filter === "all" || (filter === "flowers" ? s.kind === "flower" || s.kind === "shrub" : (s.kind ?? "tree") === filter)).map((s) => (
+          {NURSERY_SPECIES.filter(s => filter === "all" || (filter === "flowers" ? s.kind === "flower" || s.kind === "shrub" : (s.kind ?? "tree") === filter)).map((s) => (
             <SpeciesCard
               key={s.id}
               species={s}

@@ -219,7 +219,9 @@ export function buildServices(deps: ContainerDeps): Services {
     storage, seatPhotoVerifier,
     pro, seatWatch, studyHistory, forecast, favoriteSeats, groupStudy, weeklyGoal, streakBadges, exams,
     cosmetics, quietRoom, groupRanking, garden, gardenPurchases,
+    sectionUsage: new SectionUsageService(db, clock),
     realtime, scheduler, clock,
     jobs,
   };
 }
+import { SectionUsageService } from "./usage/section-usage.service.js";

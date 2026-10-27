@@ -24,10 +24,11 @@ principal; las páginas secundarias conservan sus rutas en Más.
 - No hay transferencias de semillas, retiro de dinero ni plantaciones reales.
 
 El catálogo compartido está en `packages/contracts/src/garden.ts` y
-`garden-native-species.ts`: 36 especies nativas con nombre científico, región y
-enlace botánico oficial. Incluye árboles, palmeras, arbustos, flores, pastos y cactus.
+`garden-native-species.ts`: 48 especies nativas con nombre científico, región y
+enlace botánico oficial. Incluye árboles, palmeras, arbustos, flores, pastos, cactus y acuáticas.
 Las ilustraciones GPT se empaquetan en atlas WebP transparentes y se muestran
-con dimensiones fijas, sin animación de follaje.
+con dimensiones fijas y movimiento suave desde su punto de apoyo. Se pausan fuera
+de pantalla y con la pestaña oculta; prefers-reduced-motion muestra un frame estático.
 
 ## Compras opcionales
 
@@ -76,7 +77,8 @@ estadísticas y herramientas de ventana conservan sus gates Pro.
 ## Bosque en perspectiva y visitas
 
 El jardin usa una isla isometrica con ilustraciones originales de las mismas
-36 especies nativas. Las 25 parcelas mantienen su numero, saldo, crecimiento y
+48 especies nativas. Un arroyo separa las dos orillas del jardin y las acuaticas
+tienen una superficie de agua. Las 25 parcelas mantienen su numero, saldo, crecimiento y
 canjes. Bosque, Vivero y Coleccion son accesos a las secciones de la pagina.
 La seleccion tambien funciona por teclado y con un selector tactil de 44 px.
 
@@ -103,7 +105,8 @@ palmeras, cactus, hierbas y pastos. Las cuatro etapas mantienen el apoyo en
 La parcela determina el reflejo del dibujo para que propietario y visitantes
 vean el mismo ejemplar. No se agregan dependencias ni fuentes.
 Los prompts, fuentes, archivos y presupuestos se documentan en
-[garden-tree-art.md](garden-tree-art.md) y [garden-expansion.md](garden-expansion.md).
+[garden-tree-art.md](garden-tree-art.md), [garden-expansion.md](garden-expansion.md)
+y [living-garden-video.md](living-garden-video.md).
 
 Referencias de forma: SIB de Parques Nacionales (Araucaria araucana,
 https://sib.gob.ar/index.php/especies/araucaria-araucana), Argentina.gob.ar

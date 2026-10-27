@@ -9,6 +9,7 @@ import type { StudySessionService } from "../rankings/study-session.service.js";
 import type { ForecastService } from "../forecast/forecast.service.js";
 import type { SeatWatchService } from "../seat-watch/seat-watch.service.js";
 import type { QuietRoomService } from "../quiet-room/quiet-room.service.js";
+import { sectionUsageCutoff } from "../usage/section-usage.service.js";
 
 const SEAT_STATE_EVENT_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 const VISITOR_RETENTION_DAYS = 7;
@@ -56,6 +57,12 @@ export class DailyResetJob {
     if (anyReset) {
       await this.deleteExpiredSeatWatches(now);
       await this.deleteExpiredQuietWatches(now);
+      // Aggregate analytics cleanup is isolated: it must never undo a room reset.
+      try {
+        this.db.delete(schema.appSectionDailyViews).where(lt(schema.appSectionDailyViews.localDate, sectionUsageCutoff(now))).run();
+      } catch (err) {
+        if (!isMissingSchemaError(err)) console.error(JSON.stringify({ evt: "section_usage_cleanup_failed" }));
+      }
     }
   }
 

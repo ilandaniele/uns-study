@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@sala/database";
 import { schema } from "@sala/database";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { buildDisputeService, buildNotificationService, freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { PresenceService } from "../presence/presence.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
@@ -43,6 +43,21 @@ describe("DailyResetJob", () => {
     location = { latitude: room.latitude, longitude: room.longitude, accuracy: 10, capturedAt: new Date().toISOString() };
     seatId = (await getSeats(db))[0]!.id;
     await insertUsers(db, ["u1"]);
+  });
+
+  it("purges old anonymous section totals outside the room reset transaction", async () => {
+    db.insert(schema.appSectionDailyViews).values([
+      { localDate: "2000-01-01", section: "jardin", views: 4 },
+      { localDate: localDateOf(new Date(), "America/Argentina/Buenos_Aires"), section: "sala", views: 3 },
+    ]).run();
+    await job.tick();
+    expect(db.select().from(schema.appSectionDailyViews).all()).toMatchObject([{ section: "sala", views: 3 }]);
+    expect((await getRoom(db)).lastResetAt).not.toBeNull();
+  });
+  it("still resets the room when the optional aggregate table is not installed", async () => {
+    db.run(sql`DROP TABLE app_section_daily_views`);
+    await expect(job.tick()).resolves.toBeUndefined();
+    expect((await getRoom(db)).lastResetAt).not.toBeNull();
   });
 
   it("is a no-op before today's reset time", async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon, CopyIcon, HeartIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
+import { CaretDownIcon, CheckIcon, CopyIcon, HeartIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import { useEffect, useRef, useState } from "react";
 import { DONATION_AMOUNTS_ARS, DONATION_MAX_ARS, DONATION_MIN_ARS, donationCheckoutSchema, type DonationCheckoutDto } from "@sala/contracts";
 import { useHouseInterstitial } from "@/features/ads/ad-overlay-store";
@@ -168,7 +168,7 @@ function DonateBody() {
   return (
     <>
       <p className="text-sm leading-relaxed text-muted">
-        La app es gratis. Si te sirve, cualquier aporte ayuda a pagar el servidor para que siga andando y no se caiga.
+        Tu aporte ayuda a sostener el alojamiento y el mantenimiento de la app. Es opcional: podés seguir usando la sala sin donar.
       </p>
       <MercadoPagoAmounts />
       <span className="t-label">O por transferencia</span>
@@ -180,13 +180,14 @@ function DonateBody() {
 /** Inline card: left panel on desktop, below the people list on mobile. */
 export function DonateCard() {
   return (
-    <section aria-labelledby="donate-card-title" className="flex flex-col gap-3 border-t border-app pt-4">
-      <h2 id="donate-card-title" className="t-title flex items-center gap-2">
-        <HeartIcon aria-hidden="true" size={18} weight="fill" className="text-primary" />
-        ¿Querés donar?
-      </h2>
-      <DonateBody />
-    </section>
+    <details className="group rounded-2xl border border-app bg-surface px-4">
+      <summary className="flex min-h-16 cursor-pointer list-none items-center gap-3 py-3 [&::-webkit-details-marker]:hidden">
+        <HeartIcon aria-hidden="true" size={23} className="shrink-0 text-primary" />
+        <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Ayudanos a mantener la app</span><span className="mt-0.5 block text-xs text-muted">Un aporte opcional para que siga creciendo.</span></span>
+        <CaretDownIcon aria-hidden="true" size={17} className="shrink-0 text-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+      </summary>
+      <div className="flex flex-col gap-3 border-t border-app pb-4 pt-4"><DonateBody /></div>
+    </details>
   );
 }
 
@@ -265,7 +266,7 @@ export function DonatePrompt({ blocked }: { blocked: boolean }) {
           <HeartIcon aria-hidden="true" size={20} weight="fill" className="mt-1 shrink-0 text-muted" />
           <div className="min-w-0 flex-1">
             <h2 id="donate-prompt-title" className="font-display text-xl font-extrabold uppercase leading-tight text-main">
-              ¿Querés donar?
+              Ayudanos a mantener la app
             </h2>
             <p className="text-sm text-muted">Ayudá a que la sala siga online.</p>
           </div>
