@@ -77,9 +77,10 @@ export default function PrivacyPage() {
 
       <h2 className="pt-2 text-lg font-semibold text-main">Conservación y borrado</h2>
       <p>
-        Podés eliminar tu cuenta desde tu perfil en cualquier momento; eso borra tu perfil, check-ins y mensajes. Los
-        eventos de seguridad se conservan hasta 180 días y la evidencia de reportes hasta 180 días después de
-        resuelto el reporte.
+        Podés eliminar tu cuenta desde tu perfil; eso borra tu perfil, check-ins y mensajes. Para los eventos de seguridad
+        está previsto un plazo de 180 días y para la evidencia de reportes, 180 días después de su resolución, pero el
+        borrado periódico por esos plazos todavía no está implementado. Podés solicitar la revisión o supresión de esos
+        datos mediante el canal de privacidad; se evaluará tu pedido conforme a los derechos y excepciones legales aplicables.
       </p>
 
       <section id="tus-derechos" className="scroll-mt-24 space-y-3 rounded-3xl border border-app bg-surface p-5">

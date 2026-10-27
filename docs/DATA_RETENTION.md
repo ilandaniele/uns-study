@@ -2,7 +2,7 @@
 
 Este documento resume cuánto tiempo se conserva cada categoría de dato personal o generado por
 usuarios, y qué pasa con ella cuando una cuenta se elimina. Es la referencia para B1–B4 y para
-cualquier feature nueva que toque datos de usuarios.
+cualquier feature nueva que toque datos de usuarios. Revisión del 27/10/2026: los plazos objetivo se distinguen de los mecanismos ya implementados. Este documento no acredita una purga automática por el mero transcurso de esos plazos.
 
 ## Ubicación / geolocalización
 
@@ -14,14 +14,13 @@ cualquier feature nueva que toque datos de usuarios.
 
 ## Eventos de seguridad (`security_events`)
 
-- Se retienen 180 días desde su creación. Pasado ese plazo pueden purgarse (job futuro; no
-  implementado en el MVP de este batch).
+- Objetivo de política: 180 días desde su creación. La purga periódica por antigüedad no está implementada; el responsable debe atender solicitudes de supresión y completar el mecanismo antes de prometer ese límite como comportamiento efectivo.
 
 ## Evidencia de reportes (`user_report_attachments` + objetos en R2)
 
-- Se retiene 180 días **después de que el reporte se resuelve** (`RESOLVED` o `DISMISSED`), para
+- Objetivo de política: 180 días **después de que el reporte se resuelve** (`RESOLVED` o `DISMISSED`), para
   permitir apelaciones. Pasado ese plazo, tanto el objeto en R2 como la fila de adjunto deben
-  purgarse (job futuro).
+  purgarse (job futuro). `AttachmentSweepJob` sólo limpia adjuntos PENDING de más de una hora; no implementa este plazo. La política pública debe reflejar esa diferencia.
 
 ## Chat y mensajes directos
 
@@ -48,7 +47,7 @@ Al eliminar una cuenta:
    (`moderation_actions.actor_id/target_user_id`, `user_reports.resolved_by`,
    `announcements.created_by`, `user_restrictions.created_by`). Como resultado, la fila de
    auditoría del paso 2 queda **sin ningún identificador personal** una vez completado el borrado:
-   ninguna PII sobrevive a la eliminación de cuenta.
+   esto describe esos identificadores de auditoría, no demuestra la desaparición de toda información personal en reportes, objetos de almacenamiento, copias de respaldo o prestadores externos. Esos casos requieren revisar sus propias reglas y cumplir las obligaciones legales aplicables.
 
 ## Reputación / puntajes
 
