@@ -7,7 +7,7 @@ export function sectionOfPath(pathname: string): AppSection | null {
   if (/^\/u\/[^/]+\/?$/.test(pathname)) return "perfil";
   const segment = pathname.split("/")[1];
   const paths: Record<string, AppSection> = { foco: "foco", jardin: "jardin", ranking: "ranking", guias: "guias", personas: "personas", perfil: "perfil", mas: "mas", chat: "chat", comunidad: "chat" };
-  return paths[segment] ?? null;
+  return Object.hasOwn(paths, segment) ? paths[segment] : null;
 }
 
 const recent = new Map<AppSection, number>();

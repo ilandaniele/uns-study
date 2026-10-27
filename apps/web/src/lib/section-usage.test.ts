@@ -8,7 +8,7 @@ describe("section usage without private URLs", () => {
     for (const [path, section] of [["/", "sala"], ["/sala/principal", "sala"], ["/jardin", "jardin"], ["/foco", "foco"], ["/ranking", "ranking"], ["/guias/pomodoro", "guias"], ["/chat/dm/private-id", "chat"], ["/perfil/historial", "perfil"], ["/mas", "mas"]]) expect(sectionOfPath(path)).toBe(section);
     expect(sectionOfPath("/u/private-id/jardin")).toBe("jardin");
     expect(sectionOfPath("/u/private-id")).toBe("perfil");
-    for (const path of ["/admin/users/private-id", "/restablecer", "/baja", "/q/signed-token", "/login", "/api/v1/me"]) expect(sectionOfPath(path)).toBeNull();
+    for (const path of ["/admin/users/private-id", "/restablecer", "/baja", "/q/signed-token", "/login", "/api/v1/me", "/constructor", "/__proto__"]) expect(sectionOfPath(path)).toBeNull();
   });
   it("sends only the section enum without credentials, deduplicates Strict Mode and quick revisits", async () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-27T12:00:00Z"));
