@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { isSourceEvidencePath, isUncertainAsset } from "./source-policy.mjs";
+import { isSourceEvidencePath, isUncertainAsset, OWNER_DECLARATIONS } from "./source-policy.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const option = name => process.argv.includes(name) ? process.argv[process.argv.indexOf(name) + 1] : undefined;
@@ -41,7 +41,7 @@ execFileSync("tar", ["--format=zip", "-cf", archive, "-C", root, "-T", listFile]
 const archived = execFileSync("tar", ["-tf", archive], { encoding: "utf8" }).trim().split(/\r?\n/).sort();
 if (JSON.stringify(archived) !== JSON.stringify([...selected].sort()) || archived.some(p => !isSourceEvidencePath(p))) throw new Error("Unexpected archive contents.");
 const excluded = tracked.filter(isUncertainAsset);
-writeFileSync(path.join(output, "manifest.json"), JSON.stringify({ format: 1, commit, repository: "https://github.com/ilandaniele/uns-study", createdAt: new Date().toISOString(), holder: "Ilan Daniele", status: "Preparación; no presentado ni registrado", scope: "Tracked source bytes; not a notarized timestamp, author certification or complete official executable deposit", files: manifest, excludedPendingRights: excluded }, null, 2) + "\n");
+writeFileSync(path.join(output, "manifest.json"), JSON.stringify({ format: 2, commit, repository: "https://github.com/ilandaniele/uns-study", createdAt: new Date().toISOString(), holder: "Ilan Daniele", status: "Preparación; no presentado ni registrado", scope: "Tracked source bytes; not a notarized timestamp, author certification or complete official executable deposit", ownerDeclarations: OWNER_DECLARATIONS, files: manifest, excludedFromSubmission: excluded, expresslyExcludedByHolder: OWNER_DECLARATIONS.expresslyExcludedFromSubmission, excludedPendingRights: excluded.filter(file => !OWNER_DECLARATIONS.expresslyExcludedFromSubmission.includes(file)) }, null, 2) + "\n");
 writeFileSync(path.join(output, "historia-tecnica.txt"), git("log", "--format=%H %aI %s") + "\n");
 const documents = path.join(output, "documentos");
 mkdirSync(path.join(documents, "docs/legal"), { recursive: true });

@@ -2,6 +2,8 @@
 
 Titular indicado por el usuario: **Ilan Daniele, persona física**. Declaró que desarrolló el proyecto personalmente con asistencia de IA. Esta declaración no sustituye la comprobación de materiales externos identificados en el repositorio.
 
+Actualización del 27 de octubre de 2026: el titular declaró primera publicación el **18 de octubre de 2026, Bahía Blanca, Buenos Aires, Argentina**, y generación del logo, plano e imágenes día/noche mediante IA a partir de material propio. Pidió excluir la fotografía del recuerdo de Ceniza del paquete para registro y de la declaración de autoría. El detalle se conserva en [declarations.json](declarations.json), sin presentarlo como verificación independiente.
+
 Estado: documentación preparatoria y avisos del proyecto. **No hay constancia de solicitud presentada, pago, registro DNDA, solicitud de marca ni concesión INPI.** No usar ®, «marca registrada», «patentado» ni números de expediente inventados.
 
 ## Documentos
@@ -30,7 +32,7 @@ El paquete de fuentes es evidencia técnica; no se presenta como prueba concluye
 
 ## Pendientes que requieren al titular
 
-1. Confirmar fecha y país de primera publicación, y antecedentes registrales si los hubiera. No se deduce la publicación pública de la fecha del primer commit.
+1. Revisar la fecha y lugar ya declarados y completar antecedentes registrales si los hubiera. No se deduce la publicación pública de la fecha del primer commit ni se certifica mediante el hash del paquete.
 2. Completar identificación fiscal y domicilio en privado; revisar los materiales que no tengan autorización documentada.
 3. Revisar el alcance jurídico de los aportes con IA, de las cesiones y de la marca propuesta con un profesional argentino de propiedad intelectual.
 4. Validar el signo y los productos/servicios, acceder a TAD/INPI con la cuenta propia, revisar, firmar, pagar y conservar el expediente real.

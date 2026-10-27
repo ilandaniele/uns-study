@@ -16,7 +16,7 @@ La reserva de derechos de `LICENSE` se limita a aportes propios protegibles. No 
 | Tipografía Archivo | The Archivo Project Authors / Omnibus-Type, SIL OFL 1.1. Aviso original en `apps/web/src/fonts/Archivo-OFL.txt`. |
 | Tipografía Geist Mono | © 2023 Vercel, en colaboración con basement.studio, SIL OFL 1.1. Aviso original en `apps/web/src/fonts/GeistMono-OFL.txt`. |
 | Iconos de interfaz | Phosphor, a través de `@phosphor-icons/react`, MIT; véase su aviso original en el archivo completo. |
-| Fotografía del recuerdo de Ceniza | Documentada como publicada por 8000 y acreditada a @elgordoceniza: https://bahiablanca.substack.com/p/ricoteros-goleador-nutria-y-mas. La cita de la fuente no equivale a una licencia. No se declara obra propia; la autorización específica debe documentarse. |
+| Fotografía del recuerdo de Ceniza | Documentada como publicada por 8000 y acreditada a @elgordoceniza: https://bahiablanca.substack.com/p/ricoteros-goleador-nutria-y-mas. Excluida de la declaración de autoría y del paquete para registro por indicación del titular el 27 de octubre de 2026. La cita y esa exclusión no equivalen a una licencia de uso de la foto. |
 
 Los textos, fotografías y avatares que aporten usuarios pertenecen a quienes tengan sus derechos. No se incorporan datos ni imágenes de cuentas reales a los expedientes de registro.
 
@@ -24,7 +24,7 @@ Los textos, fotografías y avatares que aporten usuarios pertenecen a quienes te
 
 Los atlas del jardín fueron generados con GPT; su proceso y referencias están en `docs/garden-tree-art.md`, `docs/garden-expansion.md` y `docs/living-garden-video.md`. La consulta de Forest como referencia no implica una licencia de sus recursos ni una relación con sus titulares. No se atribuye al proyecto la autoría de archivos de Forest ni de las fuentes botánicas citadas.
 
-El origen concreto de planos, imágenes de la sala, logo y sprites de Ceniza se documenta por separado en el inventario de recursos. La existencia de un commit acredita la presencia de un archivo en una versión, no su autoría ni una cesión de derechos.
+El titular declaró el 27 de octubre de 2026 que el logo, el plano y las imágenes de la sala de día/noche se generaron con IA a partir de material propio. El alcance concreto se documenta en `docs/legal/declarations.json` y en el inventario de recursos; los demás archivos conservan sus estados individuales. La existencia de un commit acredita la presencia de un archivo en una versión, no su autoría ni una cesión de derechos.
 
 ## Regeneración
 

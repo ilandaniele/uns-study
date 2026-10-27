@@ -5,12 +5,18 @@ const configFiles = new Set(["apps/web/package.json", "apps/api/package.json", "
 const prohibited = /(^|\/)(\.env[^/]*|\.dev\.vars[^/]*|node_modules|private|backups)(\/|$)|\.(?:sqlite|sqlite3|db|pem|p12|key|pfx|log|csv)$/i;
 
 export function isUncertainAsset(file) {
+  if (declaredAiAssets.has(file) && !expresslyExcluded.has(file)) return false;
   return file.startsWith("reference-images/") || file.startsWith("apps/web/public/room/") || file.startsWith("apps/web/public/icons/") || file === "apps/web/public/favicon.ico";
 }
 
 export function isSourceEvidencePath(file) {
   if (!file || file.startsWith("/") || /^[a-z]:/i.test(file) || /[\\\r\n\0]/.test(file)) return false;
   if (file.split("/").some(segment => segment === ".." || segment.startsWith("."))) return false;
-  if (prohibited.test(file) || isUncertainAsset(file)) return false;
-  return roots.has(file) || configFiles.has(file) || [...prefixes, ...publicPrefixes].some(prefix => file.startsWith(prefix));
+  if (prohibited.test(file) || expresslyExcluded.has(file) || isUncertainAsset(file)) return false;
+  return declaredAiAssets.has(file) || roots.has(file) || configFiles.has(file) || [...prefixes, ...publicPrefixes].some(prefix => file.startsWith(prefix));
 }
+import { readFileSync } from "node:fs";
+
+export const OWNER_DECLARATIONS = JSON.parse(readFileSync(new URL("../../docs/legal/declarations.json", import.meta.url), "utf8"));
+const declaredAiAssets = new Set(OWNER_DECLARATIONS.aiArtwork.files);
+const expresslyExcluded = new Set(OWNER_DECLARATIONS.expresslyExcludedFromSubmission);

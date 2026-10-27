@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "holder": "Ilan Daniele",
+  "recordedOn": "2026-10-27",
+  "evidenceType": "Declaración del titular; sin comprobación independiente ni certificación de autoría",
+  "firstPublication": {
+    "date": "2026-10-18",
+    "city": "Bahía Blanca",
+    "province": "Buenos Aires",
+    "country": "Argentina"
+  },
+  "aiArtwork": {
+    "origin": "Generado con IA a partir de material propio, según declaración del titular",
+    "exclusiveHumanAuthorshipClaimed": false,
+    "files": [
+      "apps/web/public/icons/logo-mark.webp",
+      "apps/web/public/icons/logo-mark-dark.webp",
+      "reference-images/Plano.png",
+      "apps/web/public/room/principal-dia.webp",
+      "apps/web/public/room/principal-noche.webp"
+    ]
+  },
+  "expresslyExcludedFromSubmission": [
+    "apps/web/public/room/ceniza-recuerdo.webp"
+  ],
+  "officialFilingSubmitted": false
+}

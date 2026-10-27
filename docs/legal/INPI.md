@@ -8,6 +8,8 @@ Titular propuesto: Ilan Daniele, persona física. Los datos fiscales, domicilio 
 
 Signo actualmente usado: «Sala de Estudio», con un símbolo de libro abierto negro/naranja sobre una mesa. En algunas vistas figura «Bahía Blanca». Archivos de referencia: `apps/web/public/icons/logo-mark.webp`, variante oscura e iconos PWA. No se afirma que el nombre, el dibujo ni su combinación estén registrados.
 
+El 27 de octubre de 2026 el titular declaró que el logo se generó con IA a partir de material propio. Se registra ese origen en `declarations.json`; no es una certificación independiente, una declaración de creación humana exclusiva ni una conclusión sobre su registrabilidad como marca.
+
 Propuesta inicial a evaluar: **marca mixta con el nombre y el gráfico efectivamente usados**, siempre que se acrediten derechos de uso del dibujo. Antes de presentar debe aprobarse una única reproducción exacta y su descripción. Las variantes oscuras, tamaños de PWA o capturas del header no deben confundirse automáticamente con la reproducción final a registrar.
 
 «Sala de Estudio» describe el servicio o su contexto. Incorporar un logo no garantiza aceptación ni concede exclusividad sobre esas palabras genéricas por separado. Conviene evaluar un elemento denominativo más distintivo si el análisis de antecedentes o el examen lo aconsejan; este borrador no cambia el nombre del producto.
@@ -30,7 +32,7 @@ Consultas que debe completar el titular o agente en el buscador oficial: SALA DE
 
 ## Presentación posterior a la revisión
 
-1. Resolver procedencia del logo y aprobar la reproducción exacta del signo y sus colores.
+1. Revisar el origen del logo declarado por el titular y conservar los antecedentes de generación y del material de entrada; aprobar la reproducción exacta del signo y sus colores.
 2. Completar búsqueda oficial y evaluación de distintividad/semejanza. Elegir tipo de marca y productos/servicios, sin confundir «solicitud» con «concesión».
 3. Acceder personalmente al portal, vincular INPI con ARCA según la guía vigente y completar titularidad y domicilio electrónico. Nunca entregar clave fiscal a un script o al repositorio.
 4. Revisar solicitud y aranceles actuales, firmar y pagar. Mantener acta, comunicaciones, oposiciones o vistas y eventual título en el expediente privado. Usar ® sólo cuando proceda por un registro efectivamente concedido.
