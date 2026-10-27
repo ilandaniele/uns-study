@@ -8,6 +8,23 @@ import { zBody } from "../http/validate.js";
 
 export const adminUsersRouter = new Hono<AppEnv>();
 
+adminUsersRouter.get("/admin/users/:id/profile", requireAdminOnly, async (c) => {
+  c.header("Cache-Control", "private, no-store");
+  c.header("Vary", "Cookie");
+  return reply(c, await c.var.services.profiles.getAdminProfile(currentUser(c).id, c.req.param("id")));
+});
+
+adminUsersRouter.get("/admin/users/:id/profile/avatar", requireAdminOnly, async (c) => {
+  c.header("Cache-Control", "private, no-store");
+  c.header("Vary", "Cookie");
+  const targetId = c.req.param("id");
+  await c.var.services.profiles.authorizeAdminProfilePhoto(currentUser(c).id, targetId);
+  // The dedicated permission check above authorizes this read; public avatar rules stay intact.
+  const avatar = await c.var.services.avatars.getForOwner(targetId, true);
+  c.header("Content-Type", avatar.mimeType);
+  return c.body(new Uint8Array(avatar.bytes));
+});
+
 adminUsersRouter.get("/admin/users", requireAdmin, async (c) => {
   return reply(c, await c.var.services.adminUsers.search(c.req.query("q"), currentUser(c).id));
 });

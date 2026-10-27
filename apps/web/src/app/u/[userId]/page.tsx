@@ -17,12 +17,15 @@ import { useSession } from "@/lib/auth-client";
 import { instagramHref } from "@/features/profile/instagram";
 import { ProfileActionsMenu } from "@/features/profile/ProfileActionsMenu";
 import { ProfileAdminAction } from "@/features/profile/ProfileAdminAction";
+import { AdminProfileDetails } from "@/features/profile/AdminProfileDetails";
+import { useMe } from "@/lib/me-store";
 
 /** Public profile view: "Enviar mensaje", "Bloquear"/"Desbloquear", "Reportar". */
 export default function PublicProfilePage() {
   const params = useParams<{ userId: string }>();
   const userId = params.userId;
   const { data: session, isPending: sessionPending } = useSession();
+  const { me } = useMe();
 
   const [profile, setProfile] = useState<PublicProfileDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -95,7 +98,8 @@ export default function PublicProfilePage() {
     return (
       <main className="mx-auto max-w-lg p-4">
         <BackButton fallbackHref="/personas" showLabel />
-        <p className="p-6 text-center text-red-600">{error ?? "No encontramos ese perfil."}</p>
+        {!me?.roles.includes("ADMIN") ? <p className="p-6 text-center text-red-600">{error ?? "No encontramos ese perfil."}</p> : null}
+        <AdminProfileDetails userId={userId} />
       </main>
     );
   }
@@ -170,6 +174,7 @@ export default function PublicProfilePage() {
         ) : null}
         <ProfileAdminAction userId={userId} displayName={profile.displayName} onGranted={load} />
       </article>
+      <AdminProfileDetails userId={userId} />
       {!profile.blockedByMe ? <Link href={`/u/${encodeURIComponent(userId)}/jardin`} className="group mt-4 flex min-h-24 items-center gap-4 rounded-3xl border border-app bg-surface px-5 py-5 transition-colors hover:bg-surface-2 sm:px-6">
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-surface-2 text-primary"><PlantIcon aria-hidden="true" size={26} /></span>
         <span className="min-w-0 flex-1"><span className="block text-base font-semibold text-main">{isSelf ? "Mi jardín" : "Visitar jardín"}</span><span className="mt-1 block text-sm leading-relaxed text-muted">Un rincón de árboles nativos que crece con el estudio.</span></span>

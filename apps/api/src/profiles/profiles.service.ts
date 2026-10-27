@@ -1,6 +1,6 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
-import type { CheckInDto, MyProfileDto, PrivacySettingsDto, PublicProfileDto, updateProfileSchema, updatePrivacySchema } from "@sala/contracts";
+import type { AdminProfileDto, CheckInDto, MyProfileDto, PrivacySettingsDto, PublicProfileDto, updateProfileSchema, updatePrivacySchema } from "@sala/contracts";
 import type { z } from "zod";
 import { ApiErrors } from "../common/api-error.js";
 import { displayName, needsAlias, showsAdminBadge, visibleAvatarUrl } from "../users/display-name.js";
@@ -82,6 +82,45 @@ export class ProfilesService {
       .returning();
     if (!row) throw new Error("user_privacy_settings row vanished during update");
     return toPrivacyDto(row);
+  }
+
+  /** Canonical permission check and PII-free access audit, shared by JSON and private photo reads. */
+  private async adminProfileTarget(actorId: string, targetUserId: string, action: string) {
+    const [actor] = await this.db.select({ verified: schema.user.emailVerified }).from(schema.user).where(eq(schema.user.id, actorId)).limit(1);
+    if (!actor?.verified || !(await this.roles.hasRole(actorId, ["ADMIN"]))) throw ApiErrors.forbidden("Solo administradores con correo verificado pueden consultar el perfil completo.");
+    await this.restrictions.assertNot(actorId, ["SUSPENDED", "BANNED"]);
+    const [target] = await this.db.select().from(schema.user).where(eq(schema.user.id, targetUserId)).limit(1);
+    if (!target) throw ApiErrors.notFound("Usuario no encontrado.");
+    await this.db.insert(schema.moderationActions).values({ actorId, targetUserId, action, metadata: {} });
+    return target;
+  }
+
+  async authorizeAdminProfilePhoto(actorId: string, targetUserId: string): Promise<void> {
+    await this.adminProfileTarget(actorId, targetUserId, "ADMIN_PROFILE_PHOTO_VIEWED");
+  }
+
+  /** Read stored fields without applying public visibility, creating profiles or changing blocks. */
+  async getAdminProfile(actorId: string, targetUserId: string): Promise<AdminProfileDto> {
+    const user = await this.adminProfileTarget(actorId, targetUserId, "ADMIN_PROFILE_VIEWED");
+    const [[profile], [privacy], roles, studyStatus, [checkIn]] = await Promise.all([
+      this.db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, targetUserId)).limit(1),
+      this.db.select().from(schema.userPrivacySettings).where(eq(schema.userPrivacySettings.userId, targetUserId)).limit(1),
+      this.roles.rolesFor(targetUserId),
+      this.study.getActiveStatusForUser(targetUserId),
+      this.db.select({ seatCode: schema.seats.code, roomName: schema.rooms.name, showIdentity: schema.checkIns.showIdentity, startedAt: schema.checkIns.startedAt, expiresAt: schema.checkIns.expiresAt })
+        .from(schema.checkIns).innerJoin(schema.seats, eq(schema.checkIns.seatId, schema.seats.id)).innerJoin(schema.rooms, eq(schema.checkIns.roomId, schema.rooms.id))
+        .where(and(eq(schema.checkIns.userId, targetUserId), eq(schema.checkIns.status, "ACTIVE"), gt(schema.checkIns.expiresAt, new Date()))).limit(1),
+    ]);
+    const fullProfile = profile ? toMyProfileDto(profile, user.email, roles.includes("ADMIN")) : null;
+    if (fullProfile?.avatarUrl?.startsWith("/api/v1/avatars/")) fullProfile.avatarUrl = `/api/v1/admin/users/${encodeURIComponent(targetUserId)}/profile/avatar`;
+    return {
+      userId: targetUserId,
+      account: { name: user.name, email: user.email, emailVerified: user.emailVerified, avatarUrl: user.image, createdAt: user.createdAt.toISOString(), updatedAt: user.updatedAt.toISOString() },
+      profile: fullProfile && profile ? { ...fullProfile, aliasAnimal: profile.aliasAnimal, createdAt: profile.createdAt.toISOString(), updatedAt: profile.updatedAt.toISOString() } : null,
+      privacy: privacy ? toPrivacyDto(privacy) : null,
+      roles, studyStatus,
+      activeCheckIn: checkIn ? { ...checkIn, startedAt: checkIn.startedAt.toISOString(), expiresAt: checkIn.expiresAt.toISOString() } : null,
+    };
   }
 
   /** 404s (not 403) when the target has blocked the viewer, so blocking is undetectable from outside. */

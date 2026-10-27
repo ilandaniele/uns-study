@@ -42,6 +42,8 @@ export default function PrivacyPage() {
         y sólo la ve el equipo de moderación. No vendemos tus datos. Para prestar el servicio usamos los proveedores que se indican a continuación, además de las herramientas de publicidad y estadísticas descritas en esta política.
       </p>
 
+      <p>Los administradores autorizados pueden consultar los datos guardados de cuenta, perfil, preferencias y presencia actual, incluidos los ocultos en el perfil público, para administrar y moderar la app. Estas consultas quedan registradas en auditoría. Este acceso administrativo no hace públicos esos datos ni habilita esta vista a moderadores sin el rol de administrador.</p>
+
       <h2 className="pt-2 text-lg font-semibold text-main">Proveedores que intervienen</h2>
       <ul className="list-disc space-y-2 pl-5">
         <li>Cloudflare aloja la app, la API y el almacenamiento, y proporciona la comprobación de seguridad Turnstile en los flujos que la requieren.</li>

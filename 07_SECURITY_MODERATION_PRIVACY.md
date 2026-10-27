@@ -151,6 +151,8 @@ Admin actions later:
 
 All moderation actions should be audited.
 
+Verified, unrestricted ADMIN accounts may inspect stored account/profile fields, privacy preferences and current presence through the dedicated `/admin/users/:id/profile` endpoints. MODERATOR alone is insufficient. Public profiles, room lists, map identity and block behavior keep their existing privacy rules. Private profile/photo reads are audited without copying field values into metadata, use private/no-store responses and never return credentials, session tokens or coordinates. Privacy notices and profile settings disclose this administrative access.
+
 ## 14. Data deletion / retention
 
 Before production launch, define:

@@ -70,6 +70,17 @@ export interface PublicProfileDto {
   flair?: ProfileFlairDto;
 }
 
+/** Dedicated ADMIN-only response; never add these fields to public profiles or room events. */
+export interface AdminProfileDto {
+  userId: string;
+  account: { name: string; email: string; emailVerified: boolean; avatarUrl: string | null; createdAt: string; updatedAt: string };
+  profile: (MyProfileDto & { aliasAnimal: string | null; createdAt: string; updatedAt: string }) | null;
+  privacy: PrivacySettingsDto | null;
+  roles: string[];
+  studyStatus: StudyStatusDto | null;
+  activeCheckIn: { seatCode: string; roomName: string; showIdentity: boolean; startedAt: string; expiresAt: string } | null;
+}
+
 export interface RoomPersonDto {
   /** `null` for users hidden on the map who appear only as their alias animal — never linkable. */
   userId: string | null;
