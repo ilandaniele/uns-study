@@ -65,6 +65,26 @@ if (process.argv.includes("--api-executable")) {
   writeFileSync(path.join(executable, "LEEME.txt"), "Módulo JavaScript compilado del servidor de la versión indicada. Requiere el runtime Cloudflare Workers, Durable Objects y bindings configurados por separado. No contiene credenciales ni datos de producción. No equivale al depósito completo de la app web: confirmar con DNDA cómo acompañar cliente, runtime y recursos excluidos.\n");
 }
 
+if (process.argv.includes("--web-build")) {
+  const buildRoot = path.join(root, "apps/web/.next");
+  if (!existsSync(path.join(buildRoot, "BUILD_ID"))) throw new Error("Run pnpm --filter @sala/web build before exporting the web build.");
+  const web = path.join(output, "ejecutable-web");
+  const copyBuild = (source, target) => {
+    mkdirSync(target, { recursive: true });
+    for (const entry of readdirSync(source, { withFileTypes: true })) {
+      if (entry.isSymbolicLink() || entry.name.startsWith(".")) continue;
+      const full = path.join(source, entry.name);
+      if (!inside(realpathSync(buildRoot), realpathSync(full))) throw new Error("Build path outside the expected folder.");
+      if (entry.isDirectory()) copyBuild(full, path.join(target, entry.name));
+      else if (/\.(?:js|mjs|json|html|css|woff2?|wasm|rsc|txt)$/.test(entry.name) && !/\.(?:nft\.json|meta|map)$/.test(entry.name)) copyFileSync(full, path.join(target, entry.name));
+    }
+  };
+  for (const directory of ["static", "server"]) copyBuild(path.join(buildRoot, directory), path.join(web, directory));
+  copyFileSync(path.join(buildRoot, "BUILD_ID"), path.join(web, "BUILD_ID"));
+  copyFileSync(path.join(root, "apps/web/public/legal/third-party-notices.txt"), path.join(web, "third-party-notices.txt"));
+  writeFileSync(path.join(web, "LEEME.txt"), "JavaScript/CSS/fuentes del cliente y módulos de servidor generados por next build. Requieren el runtime Next.js 16 y las dependencias del lockfile; el despliegue Cloudflare utiliza además OpenNext. No es una copia de producción ni un despliegue autónomo. No se exportan cachés, entornos, trazas ni datos de usuarios. Los gráficos de origen pendiente se mantienen excluidos según el inventario. Confirmar con DNDA el formato del depósito antes de presentar.\n");
+}
+
 const webRequire = createRequire(path.join(root, "apps/web/package.json"));
 const { chromium } = webRequire("@playwright/test");
 const browser = await chromium.launch();
@@ -105,4 +125,4 @@ function allFiles(directory, prefix = "") {
 writeFileSync(path.join(output, "LEEME.txt"), `Exportación técnica completada de ${commit}. Verificar SHA256SUMS.txt antes de utilizar. Contiene borradores y evidencia para revisión; no constituye presentación, pago, registro ni certificación de autoría. Los datos personales y la presentación oficial siguen pendientes según los documentos.\n`);
 writeFileSync(path.join(output, "COMPLETADO.json"), JSON.stringify({ commit, archive: path.basename(archive), sourceFiles: selected.length, officialFiling: false }, null, 2) + "\n");
 writeFileSync(path.join(output, "SHA256SUMS.txt"), allFiles(output).sort().map(file => `${sha(readFileSync(path.join(output, file)))}  ${file}`).join("\n") + "\n");
-console.log(JSON.stringify({ output, commit, sourceFiles: selected.length, excludedAssets: excluded.length, archiveBytes: lstatSync(archive).size, apiExecutable: process.argv.includes("--api-executable"), platform: os.platform() }));
+console.log(JSON.stringify({ output, commit, sourceFiles: selected.length, excludedAssets: excluded.length, archiveBytes: lstatSync(archive).size, apiExecutable: process.argv.includes("--api-executable"), webBuild: process.argv.includes("--web-build"), platform: os.platform() }));

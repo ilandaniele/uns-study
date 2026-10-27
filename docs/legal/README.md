@@ -20,6 +20,8 @@ Estado: documentación preparatoria y avisos del proyecto. **No hay constancia d
 
 Con `--api-executable` compila además el módulo JavaScript del servidor con esbuild ya instalado, sin cargar archivos de entorno ni llamar a un despliegue de Wrangler. El módulo requiere el runtime y los bindings de Workers; no es un ejecutable autónomo ni sustituye el build del cliente o las instrucciones de depósito que establezca DNDA. El generador también prepara seis PDF de revisión. Requiere bsdtar (incluido en Windows) y el Chromium de Playwright ya instalado en el proyecto.
 
+Después de ejecutar `pnpm --filter @sala/web build`, `--web-build` incorpora los módulos compilados del cliente y servidor Next, sin copiar cachés, entornos ni trazas. El build debe corresponder a las fuentes de la versión elegida. Incluye sus requisitos de runtime y la advertencia de que no es una copia autónoma de producción ni sustituye el formato que indique DNDA. Los tres flags se pueden combinar en una misma exportación.
+
 `pnpm legal:check` comprueba la exclusión de entornos, credenciales, bases de datos, archivos privados, rutas inseguras y recursos con derechos pendientes antes de exportar.
 
 La documentación personal, los acuerdos firmados, DNI/CUIT, domicilio y comprobantes se completan y guardan **fuera del repositorio público**, en los portales oficiales o en un archivo privado. No pegar esos datos en issues, commits ni este directorio.
