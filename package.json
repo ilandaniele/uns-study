@@ -1,6 +1,7 @@
 {
   "name": "sala-de-estudio",
   "private": true,
+  "license": "UNLICENSED",
   "packageManager": "pnpm@9.15.9",
   "engines": {
     "node": ">=20"
@@ -11,6 +12,7 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "legal:check": "node --test scripts/legal/source-policy.test.mjs",
     "db:generate": "pnpm --filter @sala/database db:generate",
     "load:smoke": "k6 run tests/load/scenarios/smoke.js",
     "load:load": "k6 run tests/load/scenarios/load.js",

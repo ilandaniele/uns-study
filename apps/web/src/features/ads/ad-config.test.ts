@@ -33,6 +33,6 @@ describe("AdSense publisher-content policy", () => {
   });
 
   it("keeps reading and informational pages free of interruption/side-rail promos", () => {
-    for (const path of ["/guias", ...PUBLISHED_GUIDE_PATHS, "/proyecto", "/como-usar", "/sugerencias"]) expect(isExcludedPath(path)).toBe(true);
+    for (const path of ["/guias", ...PUBLISHED_GUIDE_PATHS, "/proyecto", "/como-usar", "/sugerencias", "/propiedad-intelectual"]) expect(isExcludedPath(path)).toBe(true);
   });
 });

@@ -79,6 +79,7 @@ export default function ProjectPage() {
           <h2 className="text-xl font-bold">Contacto y mantenimiento</h2>
           <p>Para informar un error, proponer una corrección o consultar sobre el proyecto, escribí a <a href="mailto:ilan.daniele@gmail.com" className={`${link} break-all`}>ilan.daniele@gmail.com</a> o usá el <Link href="/sugerencias" className={link}>formulario de sugerencias y contacto</Link>. Si reportás un problema de la app, contá en qué pantalla pasó y qué pasos permiten repetirlo.</p>
           <p>El código del proyecto es público: <a href="https://github.com/ilandaniele/uns-study" target="_blank" rel="noopener noreferrer" className={link}>repositorio de Sala de Estudio</a>. Allí se puede consultar cómo se mantiene la aplicación.</p>
+          <p>El responsable del proyecto es Ilan Daniele. La publicación del código no constituye una licencia general de código abierto sobre los aportes propios. Podés consultar su alcance y los avisos de terceros en <Link href="/propiedad-intelectual" className={link}>propiedad intelectual y créditos</Link>.</p>
           <Link href="/privacidad" className={`inline-flex min-h-11 items-center ${link}`}>Consultar la política de privacidad</Link>
         </section>
       </article>

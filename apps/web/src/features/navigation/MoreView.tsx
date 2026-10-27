@@ -165,6 +165,9 @@ export function MoreView() {
         <Link href="/terminos" className="min-h-11 py-3 underline">
           Términos
         </Link>
+        <Link href="/propiedad-intelectual" className="min-h-11 py-3 underline">
+          Propiedad intelectual y créditos
+        </Link>
       </div>
     </main>
   );

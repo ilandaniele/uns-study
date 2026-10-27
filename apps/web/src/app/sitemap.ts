@@ -20,5 +20,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE_URL}/sugerencias`, changeFrequency: "yearly", priority: 0.2 },
     { url: `${SITE_URL}/privacidad`, changeFrequency: "yearly", priority: 0.2 },
     { url: `${SITE_URL}/terminos`, changeFrequency: "yearly", priority: 0.2 },
+    { url: `${SITE_URL}/propiedad-intelectual`, lastModified: "2026-10-27", changeFrequency: "yearly", priority: 0.2 },
   ];
 }

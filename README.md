@@ -25,6 +25,10 @@ social features, moderation and admin tooling built on top of that vertical slic
 
 Data retention policy: see [`docs/DATA_RETENTION.md`](./docs/DATA_RETENTION.md).
 
+## Rights and third-party materials
+
+Original protectable contributions by Ilan Daniele are reserved under [LICENSE](./LICENSE); this is not an open-source license for the project as a whole. Public visibility does not grant a general exploitation license. Third-party components retain their own terms: see [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md). AI-assisted material is identified without asserting automatic exclusive copyright over all generated output. [Registration preparation](./docs/legal/README.md) is a review dossier, not proof of a DNDA or INPI filing or grant.
+
 ## Stack
 
 - Turborepo + pnpm workspaces

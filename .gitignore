@@ -26,3 +26,7 @@ backups/
 tests/load/results/*
 !tests/load/results/.gitkeep
 pentest-reports/
+
+# Personal registration dossiers and signed agreements stay outside the public repository.
+legal-evidence/
+docs/legal/private/
