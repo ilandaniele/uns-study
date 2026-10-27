@@ -13,7 +13,11 @@ En todos los Workers desplegados (`NODE_ENV=production`, incluido staging), una 
 
 ## Cuentas anteriores sin verificar
 
-No se borran cuentas ni sus jardines, sesiones de estudio, compras o perfiles. Sus sesiones sin prueba de correo dejan de dar acceso autenticado a REST, administración, tokens de realtime y canales privados de WebSocket. El mapa público sigue disponible. Se muestra un aviso que lleva a confirmar el email.
+La migración de verificación no borra cuentas ni sus jardines, sesiones de estudio, compras o perfiles. Sus sesiones sin prueba de correo dejan de dar acceso autenticado a REST, administración, tokens de realtime y canales privados de WebSocket. El mapa público sigue disponible. Se muestra un aviso que lleva a confirmar el email.
+
+El dueño puede eliminar individualmente una cuenta desde Administración → Usuarios, confirmando su correo. El servidor vuelve a comprobar la identidad verificada del dueño, bloquea cuentas del equipo/blindadas, presencias activas y cualquier historial de compras o suscripción. El borrado y la auditoría sin nombre/correo son una transacción; se aplican las políticas de borrado existentes de cada tabla. No hay borrado masivo ni una lista de correos reales en el código. Better Auth consulta la sesión canónica sin caché de cookies para que las sesiones eliminadas dejen de dar acceso REST inmediatamente; WebSocket conserva sus comprobaciones de sesión en base de datos.
+
+El código prueba control del buzón, no la identidad legal de la persona. Un correo temporal puede recibir códigos; no se bloquean automáticamente dominios ni redes compartidas de la sala. Para abuso persistente, usar moderación por comportamiento y un desafío Turnstile adaptativo, sin desactivar la verificación ni bajar sus límites.
 
 El ingreso OTP de Better Auth 1.7.8 elimina los vínculos de acceso y revoca las sesiones de una cuenta anterior sin verificar **antes** de marcar el correo como verificado y crear la sesión del dueño. Así no queda activa una contraseña que pudo elegir otra persona. Se bloquean los endpoints alternativos de verificación por enlace/OTP que marcarían el correo verificado sin esa limpieza. La recuperación por contraseña conserva su flujo de prueba por email y reemplazo de contraseña.
 

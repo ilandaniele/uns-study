@@ -1,4 +1,4 @@
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { AdminUserDto, ModerationActionType } from "@sala/contracts";
 import { ApiErrors } from "../common/api-error.js";
@@ -80,6 +80,7 @@ export class AdminUsersService {
       email: canSeeEmail ? u.email : null,
       createdAt: u.createdAt.toISOString(),
       roles: roleRows.map((r) => r.role),
+      emailVerified: u.emailVerified,
       restrictions: activeRestrictions.map((r) => ({
         id: r.id,
         type: r.type,
@@ -99,6 +100,41 @@ export class AdminUsersService {
       recentSecurityEvents: events.map((e) => ({ eventType: e.eventType, createdAt: e.createdAt.toISOString() })),
       shielded: Boolean(shield),
     };
+  }
+
+  /** Deliberate, owner-only cleanup. Guards and deletion share one synchronous SQLite transaction. */
+  async deleteUser(actorId: string, targetUserId: string, confirmationEmail: string): Promise<void> {
+    if (!(await this.roles.isOwner(actorId))) throw ApiErrors.forbidden("Solo el dueño de la app puede eliminar cuentas.");
+    if (actorId === targetUserId) throw ApiErrors.forbidden("No podés eliminar tu propia cuenta desde administración.");
+
+    this.db.transaction((tx) => {
+      const target = tx.select().from(schema.user).where(eq(schema.user.id, targetUserId)).get();
+      if (!target) throw ApiErrors.notFound("Usuario no encontrado.");
+      if (target.email.trim().toLowerCase() !== confirmationEmail.trim().toLowerCase()) {
+        throw ApiErrors.validation("El correo no coincide con la cuenta que vas a eliminar. Volvé a cargar su perfil.");
+      }
+      const staff = tx.select().from(schema.userRoles).where(eq(schema.userRoles.userId, targetUserId)).get();
+      const shield = tx.select().from(schema.userShields).where(eq(schema.userShields.userId, targetUserId)).get();
+      if (staff || shield) throw ApiErrors.forbidden("No se puede eliminar una cuenta del equipo o blindada.");
+
+      const seated = tx.select({ id: schema.checkIns.id }).from(schema.checkIns)
+        .where(and(eq(schema.checkIns.userId, targetUserId), eq(schema.checkIns.status, "ACTIVE"))).get();
+      if (seated) throw ApiErrors.validation("Esta persona tiene un lugar activo. Primero debe finalizar su presencia.");
+
+      // Keep billing records and provider subscriptions intact; deletion must never orphan a charge.
+      const subscription = tx.select({ userId: schema.userSubscriptions.userId }).from(schema.userSubscriptions)
+        .where(eq(schema.userSubscriptions.userId, targetUserId)).get();
+      const order = tx.select({ id: schema.gardenOrders.id }).from(schema.gardenOrders)
+        .where(eq(schema.gardenOrders.userId, targetUserId)).get();
+      if (subscription || order) throw ApiErrors.validation("La cuenta tiene compras o una suscripción y requiere revisión antes de eliminarla.");
+
+      tx.insert(schema.moderationActions).values({
+        actorId, targetUserId, action: "OWNER_ACCOUNT_DELETED", metadata: { emailVerified: target.emailVerified },
+      }).run();
+      // Foreign keys revoke sessions/credentials and apply the existing deletion policies to domain
+      // records. Never put the deleted name or email in moderation metadata.
+      tx.delete(schema.user).where(eq(schema.user.id, targetUserId)).run();
+    });
   }
 
   /** Owner-only: grants or revokes ADMIN. Audited in `moderation_actions` (free-text `action`). */

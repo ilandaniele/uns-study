@@ -132,6 +132,17 @@ describe("deployed email ownership", () => {
     expect((await post("/sign-in/email", { email: address, password: "unproven-password-123" })).status).toBe(200);
   });
 
+  it("rejects a deleted user's existing browser cookies immediately", async () => {
+    const response = await redeem(await send());
+    expect(response.status).toBe(200);
+    const { user } = await response.json() as { user: { id: string } };
+    const headers = baseHeaders({ cookie: cookieOf(response) });
+    expect((await fixture.app.request("/api/v1/realtime/token", { headers })).status).toBe(200);
+    await fixture.db.delete(schema.user).where(eq(schema.user.id, user.id));
+    expect((await fixture.app.request("/api/v1/realtime/token", { headers })).status).toBe(401);
+    expect(await (await fixture.app.request("/api/v1/me", { headers })).json()).toMatchObject({ user: null });
+  });
+
   it("fails closed when email delivery is unavailable", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     vi.mocked(ResendClient.prototype.sendBatch).mockRejectedValue(new Error("must-not-be-logged recipient or provider details"));

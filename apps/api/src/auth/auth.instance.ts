@@ -109,7 +109,8 @@ export function buildAuth(db: Db) {
     },
     // Signed cookie cache: most requests skip the session+user DB lookup. Bans/restrictions are
     // enforced from the restrictions table (not the session), so the 60 s staleness is harmless.
-    session: { cookieCache: { enabled: true, maxAge: 60 } },
+    // Read canonical sessions on every request: deletion/revocation must take effect immediately.
+    session: { cookieCache: { enabled: false } },
     // A banned user must not be able to log in again (`requireAuth` also rejects their requests).
     databaseHooks: {
       session: {

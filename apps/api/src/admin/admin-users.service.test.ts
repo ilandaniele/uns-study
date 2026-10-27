@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@sala/database";
 import { schema } from "@sala/database";
-import { freshDb, insertUsers } from "../test-utils.js";
+import { freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { RolesService } from "../users/roles.service.js";
 import type { ModerationActionService } from "./moderation-action.service.js";
 import { AdminUsersService } from "./admin-users.service.js";
@@ -10,6 +10,75 @@ import { AdminUsersService } from "./admin-users.service.js";
 function fakeModeration(): ModerationActionService {
   return { apply: vi.fn(async () => undefined) } as unknown as ModerationActionService;
 }
+
+describe("AdminUsersService.deleteUser", () => {
+  let db: Db;
+  let svc: AdminUsersService;
+
+  beforeEach(async () => {
+    db = freshDb();
+    svc = new AdminUsersService(db, fakeModeration(), new RolesService(db));
+    await insertUsers(db, ["owner", "admin", "plain", "neighbor"]);
+    await db.update(schema.user).set({ email: "ilan.daniele@gmail.com", emailVerified: true }).where(eq(schema.user.id, "owner"));
+    await db.insert(schema.userRoles).values([{ userId: "owner", role: "ADMIN" }, { userId: "admin", role: "ADMIN" }]);
+  });
+
+  it("deletes exactly the confirmed account, credentials and sessions with a PII-free audit", async () => {
+    await db.insert(schema.session).values({ id: "test-session", userId: "plain", token: "test-token", expiresAt: new Date(Date.now() + 60000) });
+    await db.insert(schema.account).values({ id: "test-account", userId: "plain", accountId: "plain", providerId: "credential" });
+    await svc.deleteUser("owner", "plain", "PLAIN@example.test");
+    expect(await db.select().from(schema.user).where(eq(schema.user.id, "plain"))).toEqual([]);
+    expect(await db.select().from(schema.user).where(eq(schema.user.id, "neighbor"))).toHaveLength(1);
+    expect(await db.select().from(schema.session)).toEqual([]);
+    expect(await db.select().from(schema.account)).toEqual([]);
+    const [audit] = await db.select().from(schema.moderationActions);
+    expect(audit).toMatchObject({ actorId: "owner", targetUserId: null, action: "OWNER_ACCOUNT_DELETED", metadata: { emailVerified: false } });
+    expect(JSON.stringify(audit)).not.toContain("plain");
+  });
+
+  it("rejects other admins, self deletion and an unverified owner", async () => {
+    await expect(svc.deleteUser("admin", "plain", "plain@example.test")).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(svc.deleteUser("owner", "owner", "ilan.daniele@gmail.com")).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await db.update(schema.user).set({ emailVerified: false }).where(eq(schema.user.id, "owner"));
+    await expect(svc.deleteUser("owner", "plain", "plain@example.test")).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(await db.select().from(schema.user)).toHaveLength(4);
+  });
+
+  it("rejects stale confirmations, missing targets, staff and shielded accounts without an audit", async () => {
+    await expect(svc.deleteUser("owner", "plain", "neighbor@example.test")).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await expect(svc.deleteUser("owner", "missing", "missing@example.test")).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(svc.deleteUser("owner", "admin", "admin@example.test")).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await db.insert(schema.userRoles).values({ userId: "plain", role: "MODERATOR" });
+    await expect(svc.deleteUser("owner", "plain", "plain@example.test")).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await db.delete(schema.userRoles).where(eq(schema.userRoles.userId, "plain"));
+    await db.insert(schema.userShields).values({ userId: "plain", createdBy: "owner" });
+    await expect(svc.deleteUser("owner", "plain", "plain@example.test")).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(await db.select().from(schema.moderationActions)).toEqual([]);
+  });
+
+  it("keeps billing history and live seats intact", async () => {
+    await db.insert(schema.userSubscriptions).values({ userId: "plain", providerSubscriptionId: "test-sub", status: "cancelled" });
+    await expect(svc.deleteUser("owner", "plain", "plain@example.test")).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await db.delete(schema.userSubscriptions);
+    await db.insert(schema.gardenOrders).values({ id: "test-order", userId: "plain", seeds: 100, priceArs: 5000, createdAt: new Date() });
+    await expect(svc.deleteUser("owner", "plain", "plain@example.test")).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await db.delete(schema.gardenOrders);
+    const room = await getRoom(db); const [seat] = await getSeats(db);
+    await db.insert(schema.checkIns).values({ userId: "plain", roomId: room.id, seatId: seat!.id, expiresAt: new Date(Date.now() + 60000) });
+    await expect(svc.deleteUser("owner", "plain", "plain@example.test")).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    expect(await db.select().from(schema.checkIns)).toHaveLength(1);
+    expect(await db.select().from(schema.user).where(eq(schema.user.id, "plain"))).toHaveLength(1);
+    expect(await db.select().from(schema.moderationActions)).toEqual([]);
+  });
+
+  it("rolls back the audit if deletion fails", async () => {
+    const { sql } = await import("drizzle-orm");
+    db.run(sql`CREATE TRIGGER fail_delete BEFORE DELETE ON user BEGIN SELECT RAISE(ABORT, 'test rollback'); END`);
+    await expect(svc.deleteUser("owner", "plain", "plain@example.test")).rejects.toThrow();
+    expect(await db.select().from(schema.user).where(eq(schema.user.id, "plain"))).toHaveLength(1);
+    expect(await db.select().from(schema.moderationActions)).toEqual([]);
+  });
+});
 
 describe("AdminUsersService.applyAction", () => {
   let db: Db;

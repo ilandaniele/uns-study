@@ -8,6 +8,7 @@ Estado: documentación preparatoria y avisos del proyecto. **No hay constancia d
 
 ## Documentos
 
+- [Presentación paso a paso](PRESENTACION_PASO_A_PASO.md): portales, orden de los trámites y documentación ya preparada.
 - [Preparación DNDA](DNDA.md): descripción, alcance de la versión, datos pendientes y presentación.
 - [Evaluación de marca](INPI.md): signo actual, clases candidatas, búsqueda pendiente y campos del trámite.
 - [Inventario de recursos](ASSETS.md): procedencia y límites de las declaraciones.

@@ -6,6 +6,7 @@ import { apiDelete, apiFetch, apiPost, apiPut } from "@/lib/api";
 import { buenosAiresLocalToIso } from "./manual-study-session";
 import { useMe } from "@/lib/me-store";
 import { AuditLog } from "./AuditLog";
+import { OwnerDeleteAccount } from "./OwnerDeleteAccount";
 
 const ACTIONS: { type: ModerationActionType; label: string }[] = [
   { type: "WARN", label: "Advertir" },
@@ -158,6 +159,7 @@ export function UserDetail({ userId }: { userId: string }) {
       <div className="border-t border-app pt-4">
         <h2 className="font-display text-lg font-semibold text-main">{user.name}</h2>
         <p className="text-sm text-muted">{user.email ?? "sin email"}</p>
+        {user.emailVerified !== undefined ? <p className="text-xs text-muted">{user.emailVerified ? "Correo verificado" : "Correo sin verificar"}</p> : null}
         <p className="font-mono text-xs text-muted">Miembro desde {new Date(user.createdAt).toLocaleDateString("es-AR")}</p>
         {user.roles.length > 0 ? (
           <p className="mt-2 text-xs font-semibold text-primary">{user.roles.join(", ")}</p>
@@ -258,6 +260,10 @@ export function UserDetail({ userId }: { userId: string }) {
         <p className="text-sm font-semibold text-main">Historial de moderación</p>
         <AuditLog key={historyKey} userId={userId} />
       </div>
+
+      {me?.canManageAdmins && me.user?.id !== user.userId && user.email && user.roles.length === 0 && !user.shielded ? (
+        <OwnerDeleteAccount key={user.userId} userId={user.userId} email={user.email} />
+      ) : null}
 
       <form onSubmit={(e) => void submitAction(e)} className="flex flex-col gap-3 border-t border-app pt-4">
         <p className="text-sm font-semibold text-main">Aplicar acción de moderación</p>

@@ -49,6 +49,8 @@ export interface AdminUserDto {
   name: string;
   /** Null unless the caller is an ADMIN (moderators never see emails). */
   email: string | null;
+  /** Absent on older API deployments during a rolling update. */
+  emailVerified?: boolean;
   createdAt: string;
   roles: string[];
   restrictions: { id: string; type: string; reason: string; until: string | null; createdAt: string; createdByName: string | null }[];
@@ -91,6 +93,12 @@ export const moderationActionSchema = z.object({
   /** With LIFT: lift only this restriction (e.g. unban) instead of every active one. */
   restrictionId: z.string().min(1).optional(),
 });
+
+/** The owner must confirm the exact account shown in the administration panel. */
+export const adminDeleteUserSchema = z.object({
+  email: z.string().trim().email().max(254),
+  confirmation: z.literal("ELIMINAR"),
+}).strict();
 
 /** Admin credit of study time a user really did but that wasn't recorded. Exactly one of `endedAt` / `minutes`. */
 export const manualStudySessionSchema = z
