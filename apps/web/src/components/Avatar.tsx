@@ -1,4 +1,4 @@
-import { isAnimalId, type ProfileFrameId } from "@sala/contracts";
+import { isAnimalId, type AdminBadgeLevel, type ProfileFrameId } from "@sala/contracts";
 import { WithAdminBadge } from "@/components/AdminBadge";
 import { avatarRingShadow } from "@/components/avatar-ring";
 import { OccupantAvatar } from "@/features/room/OccupantAvatar";
@@ -39,7 +39,7 @@ interface AvatarProps {
   /** Optional colored ring (e.g. a podium medal color); omitted for plain list rows. */
   ringColor?: string;
   /** Draws the gold "Admin" pill over the bottom of the avatar. */
-  adminBadge?: boolean;
+  adminBadge?: AdminBadgeLevel;
   /** Draws the Pro ring (paid subscription); combines with `ringColor` and `adminBadge`. */
   proBadge?: boolean;
   /** Pro "Perfil destacado" frame; only drawn together with `proBadge`. */

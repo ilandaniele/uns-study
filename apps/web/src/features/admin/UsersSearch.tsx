@@ -109,7 +109,7 @@ export function UsersSearch() {
                   >
                     <span className="flex min-w-0 items-center gap-2">
                       <span className="truncate font-medium text-main">{user.name}</span>
-                      {user.isAdmin ? <AdminTag /> : null}
+                      {user.isAdmin ? <AdminTag kind={user.isSuperAdmin ? "SUPERADMIN" : true} /> : null}
                     </span>
                     <span className="truncate text-muted">{user.email ?? "sin email"}</span>
                   </Link>

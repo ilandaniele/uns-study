@@ -58,6 +58,7 @@ export interface AdminUserDto {
   recentSecurityEvents: { eventType: string; createdAt: string }[];
   /** Protected by the app owner: only the owner can restrict this user. */
   shielded: boolean;
+  isSuperAdmin?: boolean;
 }
 
 export interface AnnouncementDto {

@@ -102,7 +102,7 @@ export class RoomPeopleService {
     // A visible identity mode (with its field filled) is always listed by that name; the alias is only for hidden users.
     const hasVisibleName = (r: (typeof rows)[number]) => Boolean(r.profile) && !needsAlias(r.profile!);
     const visibleIds = rows.filter(hasVisibleName).map((r) => r.userId);
-    const admins = await this.roles.adminIds(visibleIds);
+    const admins = await this.roles.adminBadges(visibleIds);
     const { paid, flair } = await this.proFlair(visibleIds);
 
     const result: RoomPersonDto[] = [];
@@ -117,7 +117,7 @@ export class RoomPeopleService {
           career: r.privacy?.showCareer ? (r.profile?.career ?? null) : null,
           seatCode: r.seatCode ?? null,
           studyStatus: r.study ? toStudyStatusDto(r.study) : null,
-          adminBadge: showsAdminBadge(admins.has(r.userId), r.profile, r.privacy),
+          adminBadge: showsAdminBadge(admins.get(r.userId) ?? false, r.profile, r.privacy),
         });
         continue;
       }
@@ -184,7 +184,7 @@ export class RoomPeopleService {
 
     const isVisible = (r: (typeof rows)[number]) => Boolean(r.profile) && !needsAlias(r.profile!) && !blocked.has(r.userId);
     const visibleIds = rows.filter(isVisible).map((r) => r.userId);
-    const admins = await this.roles.adminIds(visibleIds);
+    const admins = await this.roles.adminBadges(visibleIds);
     const { paid, flair } = await this.proFlair(visibleIds);
     const result: SeatOccupancyDto[] = [];
     for (const r of rows) {
@@ -198,7 +198,7 @@ export class RoomPeopleService {
           displayName: displayName(profileForDisplay(r.profile), null, r.userName),
           avatarUrl: url,
           avatar: url ? { kind: "photo", url } : { kind: "silhouette" },
-          adminBadge: showsAdminBadge(admins.has(r.userId), r.profile, r.privacy),
+          adminBadge: showsAdminBadge(admins.get(r.userId) ?? false, r.profile, r.privacy),
         });
         continue;
       }

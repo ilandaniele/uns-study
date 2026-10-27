@@ -239,6 +239,10 @@ export interface MeDto {
   subscriptionPriceArs: number;
   /** true only for the app owner (verified OWNER_EMAIL): may grant/revoke ADMIN. */
   canManageAdmins: boolean;
+  /** Verified owner with ADMIN, derived by the server; never a grantable role. */
+  isSuperAdmin?: boolean;
+  /** Only the unrestricted superadmin may add or subtract study time. */
+  canManageStudyTime?: boolean;
 }
 
 // ---- Socket events ----

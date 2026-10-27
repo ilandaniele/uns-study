@@ -1,3 +1,4 @@
+import type { AdminBadgeLevel } from "./profiles";
 import type { ProfileFlairDto } from "./pro";
 
 export type RankingPeriod = "today" | "week" | "month" | "all";
@@ -12,8 +13,8 @@ export interface RankingEntryDto {
   avatarUrl: string | null;
   /** Catalog id of the alias animal when the name shown is the alias (hidden user); the UI draws it instead of initials. */
   aliasAnimal?: string | null;
-  /** Draw the gold "Admin" badge (visible identities only). */
-  adminBadge?: boolean;
+  /** Visible staff badge (visible identities only). */
+  adminBadge?: AdminBadgeLevel;
   /** Draw the Pro ring: a paid subscription (staff do not get it). */
   proBadge?: boolean;
   /** Pro "Perfil destacado"; absent = draw defaults. */

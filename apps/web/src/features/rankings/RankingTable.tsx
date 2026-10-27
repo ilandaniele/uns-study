@@ -61,7 +61,7 @@ function Podium({ entries, format }: { entries: RankingEntryDto[]; format: (valu
                 proBadge={entry.proBadge}
                 frame={frameOf(entry.flair)}
               />
-              {entry.adminBadge ? <AdminBadge size={entry.rank === 1 ? 64 : 52} edge="top" /> : null}
+              {entry.adminBadge ? <AdminBadge size={entry.rank === 1 ? 64 : 52} edge="top" kind={entry.adminBadge} /> : null}
               <span
                 className="absolute -bottom-1 left-1/2 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full text-xs font-bold text-[#131816] ring-2 ring-[var(--surface)]"
                 style={{ backgroundColor: MEDAL[entry.rank] }}

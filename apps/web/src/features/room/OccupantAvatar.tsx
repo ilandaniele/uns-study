@@ -1,4 +1,4 @@
-import type { ProfileFrameId, SeatAvatarDto } from "@sala/contracts";
+import type { AdminBadgeLevel, ProfileFrameId, SeatAvatarDto } from "@sala/contracts";
 import type { CSSProperties } from "react";
 import { WithAdminBadge } from "@/components/AdminBadge";
 import { avatarRingShadow } from "@/components/avatar-ring";
@@ -13,7 +13,7 @@ export function OccupantAvatar({
   size?: number;
   className?: string;
   style?: CSSProperties;
-  adminBadge?: boolean;
+  adminBadge?: AdminBadgeLevel;
   /** Draws the Pro ring (paid subscription); `frame` only applies with it. */
   proBadge?: boolean;
   frame?: ProfileFrameId;

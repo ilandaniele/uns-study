@@ -41,6 +41,13 @@ describe("resolvedName", () => {
 });
 
 describe("computeAppearance", () => {
+  it("distinguishes the owner badge without revealing hidden identities or overriding the toggle", () => {
+    const owner = { ...profile, isAdmin: true, isSuperAdmin: true };
+    expect(computeAppearance(owner, privacy).adminBadge).toBe("SUPERADMIN");
+    expect(computeAppearance(owner, { ...privacy, showAdminBadge: false }).adminBadge).toBe(false);
+    expect(computeAppearance({ ...owner, identityMode: "HIDDEN" }, privacy).adminBadge).toBe(false);
+    expect(computeAppearance({ ...owner, isAdmin: false }, privacy).adminBadge).toBe(false);
+  });
   it("visible: photo, name and only the rows whose toggle is on", () => {
     const result = computeAppearance(profile, { ...privacy, showCareer: true, showInstagram: true });
     expect(result.identityVisible).toBe(true);

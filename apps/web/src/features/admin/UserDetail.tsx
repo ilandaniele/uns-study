@@ -162,7 +162,7 @@ export function UserDetail({ userId }: { userId: string }) {
         {user.emailVerified !== undefined ? <p className="text-xs text-muted">{user.emailVerified ? "Correo verificado" : "Correo sin verificar"}</p> : null}
         <p className="font-mono text-xs text-muted">Miembro desde {new Date(user.createdAt).toLocaleDateString("es-AR")}</p>
         {user.roles.length > 0 ? (
-          <p className="mt-2 text-xs font-semibold text-primary">{user.roles.join(", ")}</p>
+          <p className="mt-2 text-xs font-semibold text-primary">{user.isSuperAdmin ? "SUPERADMIN" : user.roles.join(", ")}</p>
         ) : null}
         {user.shielded ? <p className="mt-2 text-xs font-semibold text-primary">Blindado</p> : null}
 
@@ -313,7 +313,7 @@ export function UserDetail({ userId }: { userId: string }) {
         </button>
       </form>
 
-      {me?.canManageAdmins ? (
+      {me?.canManageStudyTime ? (
         <form onSubmit={(e) => void submitStudySession(e)} className="flex flex-col gap-3 border-t border-app pt-4">
           <p className="text-sm font-semibold text-main">Sumar o sacar horas de estudio</p>
 

@@ -1,3 +1,4 @@
+import type { AdminBadgeLevel } from "./profiles";
 import { z } from "zod";
 import type { Page } from "./social.js";
 
@@ -5,7 +6,7 @@ export interface ChatMessageDto {
   id: string;
   chatRoomId: string;
   /** `null` when the author is shown as alias (never links the alias to an account). */
-  author: { userId: string | null; displayName: string; avatarUrl: string | null; /** Alias animal id when the name shown is the alias. */ aliasAnimal?: string | null; /** Draw the gold "Admin" badge. */ adminBadge?: boolean };
+  author: { userId: string | null; displayName: string; avatarUrl: string | null; /** Alias animal id when the name shown is the alias. */ aliasAnimal?: string | null; /** Draw the gold "Admin" badge. */ adminBadge?: AdminBadgeLevel };
   /** `null` when the message was deleted. */
   content: string | null;
   deleted: boolean;

@@ -35,6 +35,7 @@ export interface AdminUserSearchResultDto {
   email: string | null;
   createdAt: string;
   isAdmin: boolean;
+  isSuperAdmin?: boolean;
 }
 
 export interface RoomQrCodeDto {

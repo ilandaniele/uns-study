@@ -1,6 +1,6 @@
 "use client";
 
-import type { ProfileFrameId, RoomPersonDto } from "@sala/contracts";
+import type { AdminBadgeLevel, ProfileFrameId, RoomPersonDto } from "@sala/contracts";
 import { WithAdminBadge } from "@/components/AdminBadge";
 import { avatarRingShadow } from "@/components/avatar-ring";
 import { frameOf, nameColorStyle } from "@/components/flair";
@@ -72,7 +72,7 @@ function PersonAvatar({
 }: {
   name: string;
   avatarUrl: string | null;
-  adminBadge?: boolean;
+  adminBadge?: AdminBadgeLevel;
   proBadge?: boolean;
   frame?: ProfileFrameId;
 }) {

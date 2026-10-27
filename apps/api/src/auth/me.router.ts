@@ -26,6 +26,8 @@ meRouter.get("/me", optionalAuth, async (c) => {
       subscriptionsEnabled,
       subscriptionPriceArs,
       canManageAdmins: false,
+      isSuperAdmin: false,
+      canManageStudyTime: false,
     };
     return c.json(anonymous);
   }
@@ -50,6 +52,7 @@ meRouter.get("/me", optionalAuth, async (c) => {
     roles: userRoles,
     now: clock.now(),
   };
+  const isSuperAdmin = canManageAdmins && userRoles.includes("ADMIN");
   const me: MeDto = {
     user,
     activeCheckIn,
@@ -61,6 +64,8 @@ meRouter.get("/me", optionalAuth, async (c) => {
     subscriptionsEnabled,
     subscriptionPriceArs,
     canManageAdmins,
+    isSuperAdmin,
+    canManageStudyTime: isSuperAdmin && !activeRestrictions.some(r => r.type === "BANNED" || r.type === "SUSPENDED"),
   };
   return c.json(me);
 });

@@ -3,6 +3,9 @@ import type { ProfileFlairDto } from "./pro";
 
 export type IdentityMode = "FULL_NAME" | "FIRST_NAME" | "NICKNAME" | "NICKNAME_AND_NAME" | "HIDDEN";
 
+/** false: no badge; true: Admin (legacy value); SUPERADMIN: verified owner, visibly distinct. */
+export type AdminBadgeLevel = boolean | "SUPERADMIN";
+
 export interface MyProfileDto {
   userId: string;
   email: string;
@@ -22,6 +25,7 @@ export interface MyProfileDto {
   alias: string | null;
   /** True when the user has the ADMIN role, so the profile page offers the admin badge toggle. */
   isAdmin: boolean;
+  isSuperAdmin?: boolean;
 }
 
 export interface PrivacySettingsDto {
@@ -62,8 +66,8 @@ export interface PublicProfileDto {
   studyStatus: StudyStatusDto | null;
   allowsDirectMessages: boolean;
   blockedByMe: boolean;
-  /** Draw the gold "Admin" badge: an admin with a visible identity who kept the badge on. */
-  adminBadge: boolean;
+  /** Visible staff badge, preserving identity and badge privacy settings. */
+  adminBadge: AdminBadgeLevel;
   /** Draw the Pro ring: a paid subscription (staff do not get it). */
   proBadge?: boolean;
   /** Pro "Perfil destacado"; absent = draw defaults. */
@@ -73,6 +77,7 @@ export interface PublicProfileDto {
 /** Dedicated ADMIN-only response; never add these fields to public profiles or room events. */
 export interface AdminProfileDto {
   userId: string;
+  isSuperAdmin?: boolean;
   account: { name: string; email: string; emailVerified: boolean; avatarUrl: string | null; createdAt: string; updatedAt: string };
   profile: (MyProfileDto & { aliasAnimal: string | null; createdAt: string; updatedAt: string }) | null;
   privacy: PrivacySettingsDto | null;
@@ -91,8 +96,8 @@ export interface RoomPersonDto {
   studyStatus: StudyStatusDto | null;
   /** Alias animal id (hidden users only, when they allow it on the map). */
   aliasAnimal?: string;
-  /** Draw the gold "Admin" badge (visible identities only). */
-  adminBadge?: boolean;
+  /** Visible staff badge (visible identities only). */
+  adminBadge?: AdminBadgeLevel;
   /** Draw the Pro ring: a paid subscription (staff do not get it). */
   proBadge?: boolean;
   /** Pro "Perfil destacado"; absent = draw defaults. */
@@ -110,8 +115,8 @@ export interface SeatOccupantDto {
   /** Photo URL when `avatar.kind === "photo"`, else `null` (kept for older consumers). */
   avatarUrl: string | null;
   avatar: SeatAvatarDto;
-  /** Draw the gold "Admin" badge (visible identities only). */
-  adminBadge?: boolean;
+  /** Visible staff badge (visible identities only). */
+  adminBadge?: AdminBadgeLevel;
   /** Draw the Pro ring: a paid subscription (staff do not get it). */
   proBadge?: boolean;
   /** Pro "Perfil destacado"; absent = draw defaults. */

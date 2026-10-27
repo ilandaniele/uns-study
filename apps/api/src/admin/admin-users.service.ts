@@ -38,13 +38,14 @@ export class AdminUsersService {
     } else {
       rows = await this.db.select(columns).from(schema.user).orderBy(desc(schema.user.createdAt)).limit(LIST_ALL_LIMIT);
     }
-    const admins = await this.roles.adminIds(rows.map((u) => u.id));
+    const admins = await this.roles.adminBadges(rows.map((u) => u.id));
     return rows.map((u) => ({
       userId: u.id,
       name: u.name,
       email: canSeeEmail ? u.email : null,
       createdAt: u.createdAt.toISOString(),
       isAdmin: admins.has(u.id),
+      isSuperAdmin: admins.get(u.id) === "SUPERADMIN",
     }));
   }
 
@@ -81,6 +82,7 @@ export class AdminUsersService {
       createdAt: u.createdAt.toISOString(),
       roles: roleRows.map((r) => r.role),
       emailVerified: u.emailVerified,
+      isSuperAdmin: roleRows.some(r => r.role === "ADMIN") && await this.roles.isOwner(userId),
       restrictions: activeRestrictions.map((r) => ({
         id: r.id,
         type: r.type,

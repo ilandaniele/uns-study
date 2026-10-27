@@ -77,6 +77,14 @@ export const requireAdmin: MiddlewareHandler<AppEnv> = roleGuard(["ADMIN", "MODE
 /** Requires an authenticated session with role ADMIN — for role-sensitive actions (bans, QR, announcements). */
 export const requireAdminOnly: MiddlewareHandler<AppEnv> = roleGuard(["ADMIN"]);
 
+/** Administrative ownership is checked canonically, never through a client-supplied flag. */
+export const requireSuperAdmin: MiddlewareHandler<AppEnv> = async (c, next) => {
+  await requireAdminOnly(c, async () => {
+    if (!(await c.var.services.roles.isSuperAdmin(c.var.user!.id))) throw ApiErrors.forbidden("Solo el superadmin puede sumar o sacar horas de estudio.");
+    await next();
+  });
+};
+
 /** Use after requireAuth(). 403 PRO_REQUIRED unless services.pro.isProUser(c.var.user.id). */
 export function requirePro(): MiddlewareHandler<AppEnv> {
   return async (c, next) => {

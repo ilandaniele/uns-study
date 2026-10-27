@@ -51,8 +51,8 @@ export class ProfilesService {
   }
 
   async getMyProfile(userId: string, email: string): Promise<MyProfileDto> {
-    const [row, isAdmin] = await Promise.all([this.ensureProfile(userId), this.roles.hasRole(userId, ["ADMIN"])]);
-    return toMyProfileDto(row, email, isAdmin);
+    const [row, isAdmin, isSuperAdmin] = await Promise.all([this.ensureProfile(userId), this.roles.hasRole(userId, ["ADMIN"]), this.roles.isSuperAdmin(userId)]);
+    return toMyProfileDto(row, email, isAdmin, isSuperAdmin);
   }
 
   async updateMyProfile(userId: string, email: string, patch: ProfilePatch): Promise<MyProfileDto> {
@@ -66,7 +66,7 @@ export class ProfilesService {
     if (!row) throw new Error("user_profiles row vanished during update");
     // The alias was assigned by `ensureProfile` and never changes, whatever identity mode is saved.
     row.alias ??= current.alias;
-    return toMyProfileDto(row, email, await this.roles.hasRole(userId, ["ADMIN"]));
+    return toMyProfileDto(row, email, await this.roles.hasRole(userId, ["ADMIN"]), await this.roles.isSuperAdmin(userId));
   }
 
   async getMyPrivacy(userId: string): Promise<PrivacySettingsDto> {
@@ -111,10 +111,12 @@ export class ProfilesService {
         .from(schema.checkIns).innerJoin(schema.seats, eq(schema.checkIns.seatId, schema.seats.id)).innerJoin(schema.rooms, eq(schema.checkIns.roomId, schema.rooms.id))
         .where(and(eq(schema.checkIns.userId, targetUserId), eq(schema.checkIns.status, "ACTIVE"), gt(schema.checkIns.expiresAt, new Date()))).limit(1),
     ]);
-    const fullProfile = profile ? toMyProfileDto(profile, user.email, roles.includes("ADMIN")) : null;
+    const isSuperAdmin = roles.includes("ADMIN") && await this.roles.isOwner(targetUserId);
+    const fullProfile = profile ? toMyProfileDto(profile, user.email, roles.includes("ADMIN"), isSuperAdmin) : null;
     if (fullProfile?.avatarUrl?.startsWith("/api/v1/avatars/")) fullProfile.avatarUrl = `/api/v1/admin/users/${encodeURIComponent(targetUserId)}/profile/avatar`;
     return {
       userId: targetUserId,
+      isSuperAdmin,
       account: { name: user.name, email: user.email, emailVerified: user.emailVerified, avatarUrl: user.image, createdAt: user.createdAt.toISOString(), updatedAt: user.updatedAt.toISOString() },
       profile: fullProfile && profile ? { ...fullProfile, aliasAnimal: profile.aliasAnimal, createdAt: profile.createdAt.toISOString(), updatedAt: profile.updatedAt.toISOString() } : null,
       privacy: privacy ? toPrivacyDto(privacy) : null,
@@ -137,7 +139,7 @@ export class ProfilesService {
 
     const [profile] = await this.db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, targetUserId)).limit(1);
     const [privacy] = await this.db.select().from(schema.userPrivacySettings).where(eq(schema.userPrivacySettings.userId, targetUserId)).limit(1);
-    const isAdmin = await this.roles.hasRole(targetUserId, ["ADMIN"]);
+    const badge = (await this.roles.adminBadges([targetUserId])).get(targetUserId) ?? false;
     const [blockedByMe] = await this.db
       .select({ blockerId: schema.userBlocks.blockerId })
       .from(schema.userBlocks)
@@ -174,7 +176,7 @@ export class ProfilesService {
       studyStatus: showsIdentity ? await this.study.getActiveStatusForUser(targetUserId) : null,
       allowsDirectMessages: privacy?.allowDirectMessages ?? true,
       blockedByMe: Boolean(blockedByMe),
-      adminBadge: showsAdminBadge(isAdmin, profile ?? null, privacy ?? null),
+      adminBadge: showsAdminBadge(badge, profile ?? null, privacy ?? null),
       proBadge,
       ...(flair ? { flair } : {}),
     };
@@ -202,7 +204,7 @@ export class ProfilesService {
   }
 }
 
-function toMyProfileDto(row: ProfileRow, email: string, isAdmin: boolean): MyProfileDto {
+function toMyProfileDto(row: ProfileRow, email: string, isAdmin: boolean, isSuperAdmin = false): MyProfileDto {
   return {
     userId: row.userId,
     email,
@@ -219,6 +221,7 @@ function toMyProfileDto(row: ProfileRow, email: string, isAdmin: boolean): MyPro
     customName: row.customName,
     alias: row.alias,
     isAdmin,
+    isSuperAdmin,
   };
 }
 

@@ -1,3 +1,4 @@
+import type { AdminBadgeLevel } from "@sala/contracts";
 import { and, eq, gte, inArray, lt, lte } from "drizzle-orm";
 import { fromZonedTime } from "date-fns-tz";
 import { inChunks, schema, type Db } from "@sala/database";
@@ -73,7 +74,7 @@ export interface RankingIdentity {
   displayName: string;
   avatarUrl: string | null;
   aliasAnimal: string | undefined;
-  adminBadge: boolean;
+  adminBadge: AdminBadgeLevel;
   /** Paid Pro subscription, shown only next to a visible identity. */
   proBadge: boolean;
   /** `false` whenever the entry must not be linkable: not opted into room visibility, or the shown
@@ -201,7 +202,7 @@ export class RankingsService {
       this.db.select().from(schema.userPrivacySettings).where(inArray(schema.userPrivacySettings.userId, part)).all(),
     );
     const aliasByUser = await this.aliases.ensureAliasesForProfiles(profiles);
-    const admins = await this.roles.adminIds(userIds);
+    const admins = await this.roles.adminBadges(userIds);
     const proIds = this.pro ? await this.pro.badgeIds(userIds) : new Set<string>();
     // Flair only for paid users shown under a visible identity, never an alias.
     const flairEligible = new Set(profiles.filter((p) => proIds.has(p.userId) && !needsAlias(p)).map((p) => p.userId));
@@ -227,7 +228,7 @@ export class RankingsService {
         // Photo only for visible-name users who enabled `showAvatar` (07_SECURITY §privacy).
         avatarUrl: profile && !needsAlias(profile) ? visibleAvatarUrl(profile, privacy) : null,
         aliasAnimal: shownAliasAnimal(profile) ?? undefined,
-        adminBadge: showsAdminBadge(admins.has(userId), profile, privacy),
+        adminBadge: showsAdminBadge(admins.get(userId) ?? false, profile, privacy),
         proBadge: !shownAsAlias && proIds.has(userId),
         linkable,
       });

@@ -18,8 +18,10 @@ export interface RoomMapProps {
   highlightTableCode?: string | null;
   /** Badge descriptor per seat id for every checked-in occupant (photo, alias animal or silhouette). */
   avatarBySeatId?: ReadonlyMap<string, SeatAvatarDto>;
-  /** Seats whose occupant carries the gold "Admin" badge. */
+  /** Seats whose occupant carries a visible staff badge. */
   adminBadgeSeatIds?: ReadonlySet<string>;
+  /** Subset with the verified owner's violet badge. */
+  superAdminBadgeSeatIds?: ReadonlySet<string>;
   /** "Solo libres": fade every seat that isn't FREE (the viewer's own and selected seat stay visible). */
   onlyFree?: boolean;
   /** The viewer's favorite seats, each drawn with a small star. */
@@ -39,7 +41,7 @@ const BACK_WINDOWS = 6;
 const SIDE_WINDOW_LENGTH = 220;
 const SIDE_WINDOW_Y = [130, 400, 670, 940, 1210];
 
-export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlightTableCode = null, avatarBySeatId, adminBadgeSeatIds, onlyFree = false, favoriteSeatIds = NO_FAVORITES, multiSelectedSeatIds }: RoomMapProps) {
+export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlightTableCode = null, avatarBySeatId, adminBadgeSeatIds, superAdminBadgeSeatIds, onlyFree = false, favoriteSeatIds = NO_FAVORITES, multiSelectedSeatIds }: RoomMapProps) {
   // Photo of the real room when one matches this layout; the drawn room otherwise.
   const skin = useMemo(() => photoSkinFor(map), [map]);
   const dogChairs = useMemo(() => skin ? Array.from(skin.seats.values()) : [], [skin]);
@@ -104,7 +106,7 @@ export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, on
             isSelected={seat.id === selectedSeatId}
             onSelect={handleSelect}
             avatar={avatarBySeatId?.get(seat.id) ?? null}
-            adminBadge={adminBadgeSeatIds?.has(seat.id) ?? false}
+            adminBadge={superAdminBadgeSeatIds?.has(seat.id) ? "SUPERADMIN" : adminBadgeSeatIds?.has(seat.id) ?? false}
             dimmed={onlyFree && seat.status !== "FREE" && seat.id !== mySeatId && seat.id !== selectedSeatId}
             isFavorite={favoriteSeatIds.includes(seat.id)}
             photo={skin !== null}

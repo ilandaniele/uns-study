@@ -117,7 +117,7 @@ export default function PublicProfilePage() {
                 <h1 id="profile-name" className="text-xl font-bold leading-tight [overflow-wrap:anywhere] sm:text-2xl" style={nameColorStyle(profile.flair)}>
                   {profile.displayName}
                 </h1>
-                {profile.adminBadge ? <AdminTag /> : null}
+                {profile.adminBadge ? <AdminTag kind={profile.adminBadge} /> : null}
               </div>
             </div>
           {!isSelf ? <ProfileActionsMenu userId={userId} blocked={profile.blockedByMe} busy={busy} onBlockToggle={() => void handleBlockToggle()} /> : null}

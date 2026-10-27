@@ -188,6 +188,11 @@ export function RoomPageClient({ slug }: { slug: string }) {
     for (const [seatId, occupant] of occupantsBySeatId) if (occupant.adminBadge) ids.add(seatId);
     return ids;
   }, [occupantsBySeatId]);
+  const superAdminBadgeSeatIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const [seatId, occupant] of occupantsBySeatId) if (occupant.adminBadge === "SUPERADMIN") ids.add(seatId);
+    return ids;
+  }, [occupantsBySeatId]);
   const seatById = useMemo(() => new Map((map?.seats ?? []).map((seat) => [seat.id, seat])), [map]);
   const tableById = useMemo(() => new Map((map?.tables ?? []).map((table) => [table.id, table])), [map]);
   // Pro: tell the viewer when one of their favorites frees up (client-only; at most once per seat per 10 min).
@@ -450,6 +455,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
       highlightTableCode={highlightTableCode}
       avatarBySeatId={avatarBySeatId}
       adminBadgeSeatIds={adminBadgeSeatIds}
+      superAdminBadgeSeatIds={superAdminBadgeSeatIds}
       onlyFree={false}
       favoriteSeatIds={favoriteSeatIds}
       multiSelectedSeatIds={multiSelect ? multiSeatIds : undefined}

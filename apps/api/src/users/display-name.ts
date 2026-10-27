@@ -1,5 +1,5 @@
 import { animalIdFromAlias } from "@sala/contracts";
-import type { IdentityMode } from "@sala/contracts";
+import type { AdminBadgeLevel, IdentityMode } from "@sala/contracts";
 
 /** Minimal shape needed from a `user_profiles` row. */
 export interface DisplayNameProfile {
@@ -99,9 +99,9 @@ export function shownAliasAnimal(profile: DisplayNameProfile | null): string | n
  * `show_admin_badge` on, and only while their real identity is shown (never on the alias).
  */
 export function showsAdminBadge(
-  isAdmin: boolean,
+  isAdmin: AdminBadgeLevel,
   profile: Pick<DisplayNameProfile, "identityMode" | "firstName" | "lastName" | "nickname" | "customName"> | null,
   privacy: { showAdminBadge: boolean } | null,
-): boolean {
-  return isAdmin && Boolean(profile) && !needsAlias(profile!) && (privacy?.showAdminBadge ?? true);
+): AdminBadgeLevel {
+  return isAdmin && Boolean(profile) && !needsAlias(profile!) && (privacy?.showAdminBadge ?? true) ? isAdmin : false;
 }

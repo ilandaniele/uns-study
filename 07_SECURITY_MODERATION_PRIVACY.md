@@ -151,6 +151,8 @@ Admin actions later:
 
 All moderation actions should be audited.
 
+SUPERADMIN is the verified `OWNER_EMAIL` account with the ADMIN role, derived on the server rather than stored as a grantable role. Only this unrestricted account may add or subtract study time. Other ADMIN and MODERATOR accounts must receive 403 even if they forge capability flags. `/me` exposes `isSuperAdmin` and `canManageStudyTime` for presentation; neither flag is an authorization input. Public badges distinguish the superadmin while retaining the existing identity and badge-visibility rules. A badge never grants permissions.
+
 Verified, unrestricted ADMIN accounts may inspect stored account/profile fields, privacy preferences and current presence through the dedicated `/admin/users/:id/profile` endpoints. MODERATOR alone is insufficient. Public profiles, room lists, map identity and block behavior keep their existing privacy rules. Private profile/photo reads are audited without copying field values into metadata, use private/no-store responses and never return credentials, session tokens or coordinates. Privacy notices and profile settings disclose this administrative access.
 
 ## 14. Data deletion / retention

@@ -121,7 +121,7 @@ export class ChatService {
     const profiles = await this.db.select().from(schema.userProfiles).where(inArray(schema.userProfiles.userId, userIds));
     const privacy = await this.db.select().from(schema.userPrivacySettings).where(inArray(schema.userPrivacySettings.userId, userIds));
     const aliasByUser = await this.aliases.ensureAliasesForProfiles(profiles);
-    const admins = await this.roles.adminIds(userIds);
+    const admins = await this.roles.adminBadges(userIds);
 
     const userById = new Map(users.map((u) => [u.id, u]));
     const profileById = new Map(profiles.map((p) => [p.userId, { ...p, alias: aliasByUser.get(p.userId) ?? p.alias }]));
@@ -143,7 +143,7 @@ export class ChatService {
           // The photo belongs to the real identity: never shown next to the alias.
           avatarUrl: visibleAvatarUrl(profile, privacy),
           aliasAnimal: shownAliasAnimal(profile) ?? undefined,
-          adminBadge: showsAdminBadge(admins.has(row.userId), profile, privacy),
+          adminBadge: showsAdminBadge(admins.get(row.userId) ?? false, profile, privacy),
         },
         content: deleted ? null : row.content,
         deleted,

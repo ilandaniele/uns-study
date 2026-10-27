@@ -15,7 +15,7 @@ export interface PrivacyFieldDef {
  * Pure data — kept out of the component so it's unit-testable and easy to reorder.
  */
 export const PRIVACY_FIELDS: PrivacyFieldDef[] = [
-  { key: "showAdminBadge", label: "Mostrar insignia de admin", hint: "Tu foto lleva la insignia dorada de Admin.", adminOnly: true },
+  { key: "showAdminBadge", label: "Mostrar insignia de administración", hint: "Tu foto lleva la insignia de Admin o Superadmin que corresponda a tu cuenta.", adminOnly: true },
   { key: "showCareer", label: "Mostrar carrera", hint: "Tu carrera aparece en tu perfil público." },
   { key: "showCurrentSubject", label: "Mostrar materia actual", hint: "La materia que estás cursando aparece en tu perfil público." },
   { key: "showInstagram", label: "Mostrar Instagram", hint: "Mostrá un enlace a tu Instagram en tu perfil público." },

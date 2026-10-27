@@ -57,7 +57,7 @@ function AdminProfileView({ userId }: { userId: string }) {
         <Detail label="Nombre de la cuenta">{data.account.name}</Detail>
         <Detail label="Correo"><a href={`mailto:${data.account.email}`} className="text-primary underline">{data.account.email}</a></Detail>
         <Detail label="Correo verificado">{data.account.emailVerified ? "Sí" : "No"}</Detail>
-        <Detail label="Roles">{data.roles.join(", ") || "Usuario"}</Detail>
+        <Detail label="Roles">{data.isSuperAdmin ? "SUPERADMIN" : data.roles.join(", ") || "Usuario"}</Detail>
         <Detail label="Registro">{date(data.account.createdAt)}</Detail>
         <Detail label="Última actualización de cuenta">{date(data.account.updatedAt)}</Detail>
         <Detail label="Identificador de cuenta">{data.userId}</Detail>

@@ -1,8 +1,8 @@
-import { animalIdFromAlias, type MyProfileDto, type PrivacySettingsDto, type SeatAvatarDto } from "@sala/contracts";
+import { animalIdFromAlias, type AdminBadgeLevel, type MyProfileDto, type PrivacySettingsDto, type SeatAvatarDto } from "@sala/contracts";
 
 type AppearanceProfile = Pick<
   MyProfileDto,
-  "firstName" | "lastName" | "nickname" | "customName" | "identityMode" | "alias" | "avatarUrl" | "career" | "currentSubject" | "instagram" | "studentNumber" | "isAdmin"
+  "firstName" | "lastName" | "nickname" | "customName" | "identityMode" | "alias" | "avatarUrl" | "career" | "currentSubject" | "instagram" | "studentNumber" | "isAdmin" | "isSuperAdmin"
 >;
 type AppearancePrivacy = Pick<
   PrivacySettingsDto,
@@ -19,7 +19,7 @@ export interface Appearance {
   identityVisible: boolean;
   name: string;
   avatar: SeatAvatarDto;
-  adminBadge: boolean;
+  adminBadge: AdminBadgeLevel;
   rows: AppearanceRow[];
 }
 
@@ -76,7 +76,7 @@ export function computeAppearance(profile: AppearanceProfile, privacy: Appearanc
     identityVisible: true,
     name,
     avatar: privacy.showAvatar && profile.avatarUrl ? { kind: "photo", url: profile.avatarUrl } : { kind: "silhouette" },
-    adminBadge: profile.isAdmin && privacy.showAdminBadge,
+    adminBadge: profile.isAdmin && privacy.showAdminBadge ? (profile.isSuperAdmin ? "SUPERADMIN" : true) : false,
     rows,
   };
 }
