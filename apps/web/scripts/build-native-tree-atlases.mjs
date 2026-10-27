@@ -5,8 +5,9 @@ import sharp from "sharp";
 // Usage: node scripts/build-native-tree-atlases.mjs adults.png young.png seedlings.png
 // This only crops transparent gutters, resizes and packs GPT-generated cutouts; it never
 // paints foliage, removes backgrounds or changes the generated illustrations.
-const sources = process.argv.slice(2);
-if (sources.length !== 3) throw new Error("Expected adult, young and seedling source PNG paths.");
+const expansion = process.argv[2] === "--expansion";
+const sources = process.argv.slice(expansion ? 3 : 2);
+if (sources.length !== (expansion ? 5 : 3)) throw new Error(expansion ? "Expected trees adult/young, plants adult/young, seedlings PNG paths." : "Expected adult, young and seedling source PNG paths.");
 const destination = fileURLToPath(new URL("../public/garden/", import.meta.url));
 const CELL_WIDTH = 256;
 const CELL_HEIGHT = 288;
@@ -35,7 +36,7 @@ function cuts(occupancy, count) {
   return [...result, occupancy.length];
 }
 
-async function pack(source, columns, rows, filename, dimensions) {
+async function pack(source, columns, rows, filename, dimensions, quality = 74) {
   const { data, info } = await sharp(source).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const rowOccupancy = Array(info.height).fill(0);
   for (let y = 0; y < info.height; y++) for (let x = 0; x < info.width; x++) {
@@ -78,13 +79,32 @@ async function pack(source, columns, rows, filename, dimensions) {
   }
   const output = `${destination}/${filename}`;
   await sharp({ create: { width: CELL_WIDTH * columns, height: CELL_HEIGHT * rows, channels: 4, background: "#00000000" } })
-    .composite(tiles).webp({ quality: 74, alphaQuality: 100, effort: 6, smartSubsample: true }).toFile(output);
+    .composite(tiles).webp({ quality, alphaQuality: 100, effort: 6, smartSubsample: true }).toFile(output);
   const bytes = (await stat(output)).size;
   console.log(`${filename}: ${bytes} bytes (${columns * CELL_WIDTH}x${rows * CELL_HEIGHT}, ${tiles.length} sprites)`);
   return bytes;
 }
 
 await mkdir(destination, { recursive: true });
+if (expansion) {
+  const trees = Array(12).fill({ width: 160, height: 186 });
+  const young = Array(12).fill({ width: 110, height: 130 });
+  const plants = [
+    ...Array(6).fill({ width: 160, height: 186 }),
+    { width: 140, height: 98 }, { width: 135, height: 150 },
+    { width: 160, height: 180 }, { width: 110, height: 186 },
+    { width: 140, height: 165 }, { width: 100, height: 100 },
+  ];
+  const plantYoung = plants.map(d => ({ width: Math.round(d.width * .65), height: Math.round(d.height * .65) }));
+  const bytes = await pack(sources[0], 4, 3, "arboles-extra-adultos-gpt-v1.webp", trees, 58)
+    + await pack(sources[1], 4, 3, "arboles-extra-jovenes-gpt-v1.webp", young, 54)
+    + await pack(sources[2], 4, 3, "plantas-nativas-adultos-gpt-v1.webp", plants, 58)
+    + await pack(sources[3], 4, 3, "plantas-nativas-jovenes-gpt-v1.webp", plantYoung, 54)
+    + await pack(sources[4], 4, 2, "brotes-nativos-gpt-v1.webp", Array.from({ length: 8 }, (_, i) => i % 2 ? { width: 72, height: 78 } : { width: 40, height: 34 }), 68);
+  console.log(`Expansion: ${bytes} bytes`);
+  if (bytes >= 500_000) throw new Error("Expansion atlas budget exceeded: keep the five new assets under 500 KB.");
+  process.exit(0);
+}
 const bytes = await pack(sources[0], 4, 3, "arboles-adultos-gpt-v1.webp", Array(12).fill({ width: 216, height: 248 }))
   + await pack(sources[1], 4, 3, "arboles-jovenes-gpt-v1.webp", Array(12).fill({ width: 162, height: 190 }))
   + await pack(sources[2], 2, 2, "brotes-gpt-v1.webp", [

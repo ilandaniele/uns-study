@@ -28,7 +28,8 @@ gardenRouter.get("/me/garden", async (c) =>
 gardenRouter.post("/me/garden/visibility", zBody(gardenVisibilitySchema), async (c) => {
   const userId = currentUser(c).id;
   await c.var.services.antiAbuse.enforceRateLimit({ key: `garden:${userId}`, limit: 40, windowSeconds: 60 });
-  return reply(c, await c.var.services.garden.setVisibility(userId, c.req.valid("json").shared));
+  // Compatibility for already-open older clients: visibility is now always enabled.
+  return reply(c, await c.var.services.garden.get(userId));
 });
 gardenRouter.get("/me/garden/shop", (c) =>
   reply(c, c.var.services.gardenPurchases.shop(currentUser(c).id)),

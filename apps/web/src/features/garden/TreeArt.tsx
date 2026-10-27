@@ -1,12 +1,6 @@
 import { useId } from "react";
 import type { GardenPlant, GardenSpecies } from "@sala/contracts";
-
-// Frame order is shared with the generation prompts in docs/garden-tree-art.md.
-const SPECIES_FRAMES: Record<string, number> = {
-  espinillo: 0, tala: 1, ceibo: 2, chanar: 3,
-  algarrobo: 4, jacaranda: 5, aguaribay: 6, "palo-borracho": 7,
-  calden: 8, lapacho: 9, arrayan: 10, pehuen: 11,
-};
+import { treeSprite } from "./tree-sprites";
 const WIDTH = 256;
 const HEIGHT = 288;
 
@@ -20,13 +14,7 @@ export function TreeArt({ species, stage = "mature", decorative = true, variant 
   viewport?: { x: number; y: number; width: number; height: number };
 }) {
   const clipId = `tree-sprite-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
-  const early = stage === "seed" || stage === "sprout";
-  const columns = early ? 2 : 4;
-  const rows = early ? 2 : 3;
-  const frame = early
-    ? (species.id === "pehuen" ? 2 : 0) + (stage === "sprout" ? 1 : 0)
-    : SPECIES_FRAMES[species.id] ?? 0;
-  const atlas = early ? "brotes" : stage === "young" ? "arboles-jovenes" : "arboles-adultos";
+  const { file, columns, rows, frame } = treeSprite(species, stage);
 
   return (
     <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width={viewport?.width ?? WIDTH} height={viewport?.height ?? HEIGHT}
@@ -38,7 +26,7 @@ export function TreeArt({ species, stage = "mature", decorative = true, variant 
       <defs><clipPath id={clipId}><rect width={WIDTH} height={HEIGHT} /></clipPath></defs>
       <g clipPath={`url(#${clipId})`}>
         <g transform={variant % 2 ? `translate(${WIDTH} 0) scale(-1 1)` : undefined}>
-          <image href={`/garden/${atlas}-gpt-v1.webp`}
+          <image href={`/garden/${file}`}
             x={-(frame % columns) * WIDTH} y={-Math.floor(frame / columns) * HEIGHT}
             width={columns * WIDTH} height={rows * HEIGHT} />
         </g>

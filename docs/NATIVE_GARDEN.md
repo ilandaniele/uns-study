@@ -1,7 +1,7 @@
 # Jardín nativo
 
 El jardín vive en `/jardin`, separado del mapa de ocupación. Cada cuenta tiene
-25 parcelas privadas. Sala, Foco, Jardín, Ranking y Más forman la navegación
+25 parcelas por cuenta. Sala, Foco, Jardín, Ranking y Más forman la navegación
 principal; las páginas secundarias conservan sus rutas en Más.
 
 ## Reglas
@@ -23,10 +23,11 @@ principal; las páginas secundarias conservan sus rutas en Más.
   del juego, no tasas de crecimiento biológico.
 - No hay transferencias de semillas, retiro de dinero ni plantaciones reales.
 
-El catálogo compartido está en `packages/contracts/src/garden.ts`: doce especies
-nativas con nombre científico, región argentina y enlace botánico oficial.
-Las ilustraciones SVG tienen dimensiones fijas y siluetas por especie; su leve
-movimiento se desactiva con `prefers-reduced-motion`.
+El catálogo compartido está en `packages/contracts/src/garden.ts` y
+`garden-native-species.ts`: 36 especies nativas con nombre científico, región y
+enlace botánico oficial. Incluye árboles, palmeras, arbustos, flores, pastos y cactus.
+Las ilustraciones GPT se empaquetan en atlas WebP transparentes y se muestran
+con dimensiones fijas, sin animación de follaje.
 
 ## Compras opcionales
 
@@ -74,32 +75,35 @@ estadísticas y herramientas de ventana conservan sus gates Pro.
 
 ## Bosque en perspectiva y visitas
 
-El jardin usa una isla isometrica con ilustraciones SVG originales de las mismas
-12 especies nativas. Las 25 parcelas mantienen su numero, saldo, crecimiento y
+El jardin usa una isla isometrica con ilustraciones originales de las mismas
+36 especies nativas. Las 25 parcelas mantienen su numero, saldo, crecimiento y
 canjes. Bosque, Vivero y Coleccion son accesos a las secciones de la pagina.
 La seleccion tambien funciona por teclado y con un selector tactil de 44 px.
 
-Mostrar mi jardin es una opcion individual, desactivada por defecto y persistida
-en user_gardens.shared (migracion 0009_shared_gardens). El enlace Visitar jardin
-del perfil abre /u/[userId]/jardin. Las visitas requieren sesion y respetan
+El jardin siempre se puede visitar desde el perfil, sin activar una opcion.
+Esto tambien se aplica a los jardines existentes con user_gardens.shared=false,
+sin migrar ni reescribir balances. El enlace Visitar jardin del perfil abre
+/u/[userId]/jardin. Las visitas requieren sesion y respetan
 bloqueos en ambos sentidos; la respuesta es private, no-store y no contiene
 saldo, compras, minutos exactos, fechas de plantacion ni identidad del usuario.
 La identidad visible se obtiene del perfil existente con sus permisos actuales.
-Desactivar la opcion revoca las siguientes consultas, incluidas las que estaban
-cargando el historial. Compartir copia/envia el enlace cuando esta activada.
+Los bloqueos se comprueban despues de cargar el historial para impedir que
+una visita en curso pase por alto un nuevo bloqueo. La ruta antigua de
+visibilidad se conserva para clientes anteriores y devuelve shared=true.
 
 Referencia de composicion: https://www.forestapp.cc/ (bosque isometrico y resumen
 compacto). No se agregan dependencias ni imagenes de terceros para esta vista.
 
 ## Ilustracion botanica del vivero
 
-TreeArt y tree-geometry dibujan copas irregulares, hojas agrupadas, ramas,
-corteza y floracion con SVG. Las formas se calculan una sola vez para tres
-variantes deterministas por especie; la parcela determina la variante para que
-el propietario y sus visitantes vean el mismo ejemplar. No se descargan fotos,
-texturas ni fuentes nuevas. Las cuatro etapas mantienen el apoyo en y=99,
-y las flores aparecen en el ejemplar adulto. El viento sigue respetando
-prefers-reduced-motion.
+TreeArt muestra recortes GPT de plantas adultas y jovenes en un SVG con clip
+por celda. Las etapas tempranas distinguen arboles de hoja ancha, coniferas,
+palmeras, cactus, hierbas y pastos. Las cuatro etapas mantienen el apoyo en
+(128,270) y un viewport explicito evita que los atlas invadan otras parcelas.
+La parcela determina el reflejo del dibujo para que propietario y visitantes
+vean el mismo ejemplar. No se agregan dependencias ni fuentes.
+Los prompts, fuentes, archivos y presupuestos se documentan en
+[garden-tree-art.md](garden-tree-art.md) y [garden-expansion.md](garden-expansion.md).
 
 Referencias de forma: SIB de Parques Nacionales (Araucaria araucana,
 https://sib.gob.ar/index.php/especies/araucaria-araucana), Argentina.gob.ar

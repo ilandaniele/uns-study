@@ -11,11 +11,17 @@ describe("native garden catalog and requests", () => {
       GARDEN_SPECIES.length,
     );
     for (const s of GARDEN_SPECIES) {
-      expect(new URL(s.source).hostname).toMatch(/(gob\.ar|conicet\.gov\.ar)$/);
+      expect(gardenPlantSchema.safeParse({ plot: 0, speciesId: s.id }).success).toBe(true);
+      expect(new URL(s.source).hostname).toMatch(/(gob\.ar|conicet\.gov\.ar|gov\.br)$/);
       expect(s.scientificName.split(" ").length).toBeGreaterThanOrEqual(2);
       expect(s.reward).toBeGreaterThan(s.cost);
       expect(s.growthMinutes).toBeGreaterThanOrEqual(120);
     }
+  });
+  it("includes trees, palms, shrubs, flowers, grasses and cacti without duplicate species", () => {
+    expect(GARDEN_SPECIES.length).toBeGreaterThanOrEqual(36);
+    expect(new Set(GARDEN_SPECIES.map(s => s.scientificName)).size).toBe(GARDEN_SPECIES.length);
+    expect(new Set(GARDEN_SPECIES.map(s => s.kind ?? "tree"))).toEqual(new Set(["tree", "palm", "shrub", "flower", "grass", "cactus"]));
   });
   it("bounds the garden and rejects stale or fabricated redemption identifiers", () => {
     expect(

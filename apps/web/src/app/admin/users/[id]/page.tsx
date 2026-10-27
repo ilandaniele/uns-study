@@ -8,7 +8,7 @@ export default function AdminUserDetailPage() {
   const params = useParams<{ id: string }>();
   return (
     <>
-      <BackButton fallbackHref="/admin/users" label="Volver a usuarios" />
+      <div className="self-start"><BackButton fallbackHref="/admin/users" label="Volver a usuarios" showLabel /></div>
       <UserDetail userId={params.id} />
     </>
   );

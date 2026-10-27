@@ -19,20 +19,18 @@ export function RankingTable({ ranking }: { ranking: RankingDto }) {
   return (
     <div className="flex flex-col gap-4">
       <Podium entries={podium} format={format} />
+      {!meInList && ranking.me ? (
+        <section aria-label="Tu posición" className="overflow-hidden rounded-2xl border border-app bg-surface">
+          <h2 className="px-4 pt-3 text-xs font-semibold text-muted">Tu posición{ranking.me.rank > 0 ? "" : " · Todavía sin puesto"}</h2>
+          <ol><RankingRow entry={ranking.me} value={format(ranking.me.value)} highlighted /></ol>
+        </section>
+      ) : null}
       {rest.length > 0 ? (
         <ol className="flex flex-col divide-y divide-[var(--border)] border-y border-app">
           {rest.map((entry) => (
             <RankingRow key={entry.userId ?? `anon-${entry.rank}`} entry={entry} value={format(entry.value)} highlighted={entry.isMe} />
           ))}
         </ol>
-      ) : null}
-      {!meInList && ranking.me ? (
-        <div className="sticky bottom-[calc(136px+env(safe-area-inset-bottom))] lg:bottom-[88px]">
-          <p className="mb-1.5 px-1 text-xs font-medium text-muted">Tu posición</p>
-          <ol className="border-y border-app bg-surface">
-            <RankingRow entry={ranking.me} value={format(ranking.me.value)} highlighted />
-          </ol>
-        </div>
       ) : null}
     </div>
   );
@@ -115,7 +113,7 @@ function RankingRow({ entry, value, highlighted }: { entry: RankingEntryDto; val
       <span
         className="w-7 text-right text-sm font-bold tabular-nums text-main"
       >
-        {entry.rank}
+        {entry.rank > 0 ? entry.rank : <span aria-label="Sin puesto">—</span>}
       </span>
       {entry.userId ? (
         <Link href={`/u/${entry.userId}`} aria-hidden="true" tabIndex={-1} className="shrink-0 rounded-full">

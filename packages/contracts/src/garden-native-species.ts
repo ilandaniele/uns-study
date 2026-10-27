@@ -1,0 +1,163 @@
+import type { GardenSpecies } from "./garden";
+
+// Botanical sources were checked on 2026-10-26; prices and growth times are game rules.
+function native(species: Omit<GardenSpecies, "source" | "crown" | "foliage" | "flower" | "bark"> & { source?: string }): GardenSpecies {
+  return {
+    crown: "round", foliage: "#52764b", flower: null, bark: "#80634d",
+    source: `https://sib.gob.ar/especies/${species.scientificName.toLowerCase().replaceAll(" ", "-")}`,
+    ...species,
+  };
+}
+
+export const EXTRA_NATIVE_SPECIES: readonly GardenSpecies[] = [
+  native({
+    id: "ombu", name: "Ombú", scientificName: "Phytolacca dioica",
+    region: "Nordeste y región rioplatense", kind: "tree",
+    description: "Su base ensanchada y sus grandes raíces sostienen una copa de sombra generosa.",
+    cost: 80, growthMinutes: 960, reward: 120,
+  }),
+  native({
+    id: "sauce-criollo", name: "Sauce criollo", scientificName: "Salix humboldtiana",
+    region: "Riberas de Argentina", kind: "tree",
+    description: "Sus hojas angostas acompañan ríos y arroyos de gran parte del país.",
+    cost: 35, growthMinutes: 420, reward: 53,
+  }),
+  native({
+    id: "timbo", name: "Timbó", scientificName: "Enterolobium contortisiliquum",
+    region: "Norte y nordeste argentino", kind: "tree",
+    description: "Tiene una copa amplia y frutos oscuros curvados con forma de oreja.",
+    cost: 75, growthMinutes: 900, reward: 113,
+  }),
+  native({
+    id: "tipa", name: "Tipa", scientificName: "Tipuana tipu",
+    region: "Yungas del noroeste argentino", kind: "tree",
+    description: "Sus flores amarillas y sus frutos alados distinguen a este árbol de gran porte.",
+    cost: 55, growthMinutes: 600, reward: 83,
+  }),
+  native({
+    id: "ibirapita", name: "Ibirapitá", scientificName: "Peltophorum dubium",
+    region: "Nordeste argentino", kind: "tree",
+    description: "Su follaje de pequeñas hojuelas se cubre de racimos de flores amarillas.",
+    source: "https://www.argentina.gob.ar/node/492317",
+    cost: 65, growthMinutes: 720, reward: 98,
+  }),
+  native({
+    id: "peteribi", name: "Peteribí", scientificName: "Cordia trichotoma",
+    region: "Selvas del norte argentino", kind: "tree",
+    description: "También llamado loro negro, tiene tronco recto y delicadas flores claras.",
+    cost: 85, growthMinutes: 1080, reward: 128,
+  }),
+  native({
+    id: "guayacan", name: "Guayacán", scientificName: "Libidibia paraguariensis",
+    region: "Región chaqueña", kind: "tree",
+    description: "Un árbol chaqueño de hojas compuestas y corteza marcada por el tiempo.",
+    cost: 95, growthMinutes: 1200, reward: 143,
+  }),
+  native({
+    id: "quebracho-colorado", name: "Quebracho colorado chaqueño", scientificName: "Schinopsis balansae",
+    region: "Chaco húmedo", kind: "tree",
+    description: "Su tronco robusto y su corteza agrietada son característicos del bosque chaqueño.",
+    cost: 110, growthMinutes: 1440, reward: 165,
+  }),
+  native({
+    id: "quebracho-blanco", name: "Quebracho blanco", scientificName: "Aspidosperma quebracho-blanco",
+    region: "Región chaqueña", kind: "tree",
+    description: "Tiene hojas estrechas y una corteza clara con surcos profundos.",
+    source: "https://www.sinavimo.gob.ar/cultivos/aspidosperma-quebracho-blanco",
+    cost: 90, growthMinutes: 1200, reward: 135,
+  }),
+  native({
+    id: "yerba-mate", name: "Yerba mate", scientificName: "Ilex paraguariensis",
+    region: "Selva paranaense", kind: "tree",
+    description: "Sus hojas brillantes y sus pequeños frutos rojos forman parte de la flora del nordeste.",
+    cost: 45, growthMinutes: 480, reward: 68,
+  }),
+  native({
+    id: "lenga", name: "Lenga", scientificName: "Nothofagus pumilio",
+    region: "Bosques andino patagónicos", kind: "tree",
+    description: "En otoño, sus hojas pequeñas toman tonos amarillos, cobrizos y rojizos.",
+    cost: 80, growthMinutes: 900, reward: 120,
+  }),
+  native({
+    id: "notro", name: "Notro", scientificName: "Embothrium coccineum",
+    region: "De Neuquén a Tierra del Fuego", kind: "tree",
+    description: "Sus flores tubulares de rojo escarlata iluminan los bordes del bosque patagónico.",
+    cost: 65, growthMinutes: 720, reward: 98,
+  }),
+  native({
+    id: "yatay", name: "Yatay", scientificName: "Butia yatay",
+    region: "Palmares de la Mesopotamia", kind: "palm",
+    description: "Sus hojas arqueadas de tono verde grisáceo forman los característicos palmares del litoral.",
+    source: "https://buenosaires.gob.ar/gcaba_historico/jardinbotanico/senderofloranativa",
+    cost: 100, growthMinutes: 1200, reward: 150,
+  }),
+  native({
+    id: "pindo", name: "Pindó", scientificName: "Syagrus romanzoffiana",
+    region: "Nordeste y litoral argentino", kind: "palm",
+    description: "Una palmera de tronco esbelto, hojas plumosas y racimos de frutos anaranjados.",
+    cost: 85, growthMinutes: 1020, reward: 128,
+  }),
+  native({
+    id: "caranday", name: "Caranday", scientificName: "Trithrinax campestris",
+    region: "Centro y norte argentino", kind: "palm",
+    description: "Sus hojas rígidas en abanico y su tronco fibroso la distinguen de las palmeras de hojas plumosas.",
+    cost: 95, growthMinutes: 1200, reward: 143,
+  }),
+  native({
+    id: "guaran", name: "Guarán", scientificName: "Tecoma stans",
+    region: "Noroeste argentino", kind: "shrub",
+    description: "Un arbusto o arbolito con vistosas flores amarillas en forma de trompeta.",
+    cost: 28, growthMinutes: 300, reward: 42,
+  }),
+  native({
+    id: "sen-del-campo", name: "Sen del campo", scientificName: "Senna corymbosa",
+    region: "Litoral y centro de Argentina", kind: "shrub",
+    description: "Sus hojas compuestas acompañan racimos de flores amarillas de cinco pétalos.",
+    cost: 22, growthMinutes: 240, reward: 33,
+  }),
+  native({
+    id: "plumerillo-rojo", name: "Plumerillo rojo", scientificName: "Calliandra tweedii",
+    region: "Nordeste y litoral argentino", kind: "shrub",
+    description: "Sus largos estambres rojos forman flores que recuerdan pequeños plumeros.",
+    cost: 35, growthMinutes: 360, reward: 53,
+  }),
+  native({
+    id: "margarita-punzo", name: "Margarita punzó", scientificName: "Glandularia peruviana",
+    region: "Norte y centro argentino", kind: "flower",
+    description: "Una hierba de bajo porte con grupos de pequeñas flores de color rojo intenso.",
+    cost: 12, growthMinutes: 120, reward: 18,
+  }),
+  native({
+    id: "salvia-azul", name: "Salvia azul", scientificName: "Salvia guaranitica",
+    region: "Litoral y región rioplatense", kind: "flower",
+    description: "Sus flores tubulares azules atraen a los picaflores.",
+    source: "https://www.gba.gob.ar/node/26830",
+    cost: 18, growthMinutes: 180, reward: 27,
+  }),
+  native({
+    id: "cortadera", name: "Cortadera", scientificName: "Cortaderia selloana",
+    region: "Pastizales y región del Plata", kind: "grass",
+    description: "Sus hojas largas y arqueadas forman matas coronadas por plumeros claros.",
+    cost: 20, growthMinutes: 240, reward: 30,
+  }),
+  native({
+    id: "cardon", name: "Cardón", scientificName: "Echinopsis terscheckii",
+    region: "Noroeste argentino", kind: "cactus",
+    description: "Este cactus columnar desarrolla costillas y grandes ramas con forma de brazos.",
+    source: "https://sib.gob.ar/especies/trichocereus-terscheckii",
+    cost: 120, growthMinutes: 1440, reward: 180,
+  }),
+  native({
+    id: "quimil", name: "Quimil", scientificName: "Opuntia quimilo",
+    region: "Chaco y noroeste argentino", kind: "cactus",
+    description: "Tiene grandes tallos aplanados de tono gris verdoso y flores rojizas.",
+    cost: 50, growthMinutes: 600, reward: 75,
+  }),
+  native({
+    id: "cactus-bola", name: "Cactus bola", scientificName: "Parodia mammulosa",
+    region: "Argentina, Brasil y Uruguay", kind: "cactus",
+    description: "Su cuerpo redondeado tiene costillas con espinas y flores amarillas.",
+    source: "https://sema.rs.gov.br/upload/arquivos/201708/25132604-cactos-do-rio-grande-do-sul-compressed.pdf",
+    cost: 25, growthMinutes: 300, reward: 38,
+  }),
+];

@@ -16,7 +16,7 @@ export function SharedGardenView({ userId }: { userId: string }) {
       .catch((e: unknown) => { if (!cancelled) {
         const login = e instanceof ApiRequestError && e.status === 401;
         setNeedsLogin(login);
-        setError(login ? "Iniciá sesión para visitar jardines de la sala." : "Este jardín es privado o no está disponible.");
+        setError(login ? "Iniciá sesión para visitar jardines de la sala." : "Este jardín no está disponible.");
       } });
     return () => { cancelled = true; };
   }, [userId]);
@@ -24,7 +24,7 @@ export function SharedGardenView({ userId }: { userId: string }) {
     <Link href={`/u/${encodeURIComponent(userId)}`} className="inline-flex min-h-11 items-center text-sm text-primary">← Volver al perfil</Link>
     <h1 className="mt-4 text-3xl font-bold">{data ? `El bosque de ${data.profile.displayName}` : "Un rincón nativo"}</h1>
     {error ? <div className="mt-6 rounded-2xl border border-app bg-surface p-6"><p role="status">{error}</p>{needsLogin ? <Link href={`/login?next=${encodeURIComponent(`/u/${userId}/jardin`)}`} className="mt-3 inline-flex min-h-11 items-center text-primary">Ingresar a la sala</Link> : null}</div> : data ? <>
-      <p className="my-4 text-sm text-muted">{data.garden.plants.length} árboles · Un bosque que crece con tiempo compartido en la sala.</p>
+      <p className="my-4 text-sm text-muted">{data.garden.plants.length} plantas · Un jardín que crece con tiempo compartido en la sala.</p>
       <GardenScene plants={data.garden.plants} />
       <Link href="/jardin" className="mt-5 inline-flex min-h-11 items-center rounded-full bg-primary px-5 font-semibold text-white">Ir a mi jardín</Link>
     </> : <div aria-busy="true" className="mt-5 aspect-[600/430] animate-pulse rounded-3xl bg-surface-2" />}

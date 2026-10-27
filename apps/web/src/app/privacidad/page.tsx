@@ -23,7 +23,7 @@ export default function PrivacyPage() {
       </ul>
 
       <h2 className="pt-2 text-lg font-semibold text-main">Jardín virtual y compras</h2>
-      <p>El jardín es privado. Guardamos tus parcelas, árboles, colección y saldo de semillas en tu cuenta. Para calcular el crecimiento usamos el tiempo de presencia ya registrado en la sala.</p>
+      <p>Tu jardín se puede visitar desde tu perfil por otras personas registradas en la app. Sólo se muestran las plantas y la colección: tu saldo, tus compras y tu tiempo de estudio no forman parte de esa visita. Los bloqueos entre usuarios también impiden visitar sus jardines. Guardamos tus parcelas, plantas, colección y saldo de semillas en tu cuenta. Para calcular el crecimiento usamos el tiempo de presencia ya registrado en la sala.</p>
       <p>Si comprás semillas, Mercado Pago procesa el pago. Guardamos la referencia de compra, el importe, el identificador y estado del pago y las semillas acreditadas; no recibimos ni guardamos los datos de tu tarjeta. El jardín y sus registros de compra en la app se eliminan al borrar tu cuenta.</p>
 
       <h2 className="pt-2 text-lg font-semibold text-main">Ubicación</h2>

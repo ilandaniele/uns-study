@@ -50,7 +50,7 @@ export interface SeatProps {
   onSelect: (seat: SeatDto) => void;
   /** What to draw for whoever is checked in here: their photo, their alias animal or a silhouette. */
   avatar?: SeatAvatarDto | null;
-  /** Draw the gold "Admin" pill under the occupant badge. */
+  /** Gold frame and crown, readable even when the room is zoomed out. */
   adminBadge?: boolean;
   /** Faded out by the "Solo libres" filter. */
   dimmed?: boolean;
@@ -67,7 +67,7 @@ export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, is
   const visualStatus = isMySeat ? "MY_SEAT" : seat.status;
   const kind = tableType === "WALL_BAR" ? "Barra" : "Mesa";
   const hasOpenDispute = seat.dispute !== null;
-  const ariaLabel = `${kind} ${tableLabel} asiento ${seat.seatNumber}: ${statusLabel(seat.status).toLowerCase()}${isMySeat ? " (tu lugar)" : ""}${hasOpenDispute ? " (en votación)" : ""}${seat.verified ? ", verificado con foto" : ""}`;
+  const ariaLabel = `${kind} ${tableLabel} asiento ${seat.seatNumber}: ${statusLabel(seat.status).toLowerCase()}${isMySeat ? " (tu lugar)" : ""}${hasOpenDispute ? " (en votación)" : ""}${seat.verified ? ", verificado con foto" : ""}${adminBadge && badge ? ", administrador" : ""}`;
   const shadowCy = facing === "up" ? RING_R * 0.55 : -RING_R * 0.55;
 
   return (
@@ -157,11 +157,14 @@ export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, is
             </>
           )}
           {adminBadge ? (
-            <g transform={`translate(0 ${PHOTO_R + 3})`} aria-hidden="true">
-              <rect x={-14} y={-6} width={28} height={12} rx={6} fill="#fbbf24" stroke="#b45309" strokeWidth={1} />
-              <text textAnchor="middle" dominantBaseline="central" y={0.5} fontSize={8} fontWeight={800} fill="#451a03">
-                ADMIN
-              </text>
+            <g aria-hidden="true" pointerEvents="none" data-admin-marker="true">
+              <circle r={PHOTO_R + 3} fill="none" stroke="#241b09" strokeWidth={8} />
+              <circle r={PHOTO_R + 3} fill="none" stroke="#ffcf3f" strokeWidth={5} />
+              <g transform={`translate(18 ${-PHOTO_R + 3})`}>
+                <circle r={12} fill="#ffcf3f" stroke="#241b09" strokeWidth={2.5} />
+                <path d="M-7-4-4 0 0-6 4 0 7-4 5 5H-5Z" fill="#241b09" stroke="#241b09" strokeLinejoin="round" />
+                <path d="M-4 8H4" stroke="#241b09" strokeWidth={2} strokeLinecap="round" />
+              </g>
             </g>
           ) : null}
         </g>

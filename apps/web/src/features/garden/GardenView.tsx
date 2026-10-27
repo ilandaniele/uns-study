@@ -18,18 +18,23 @@ import { TreeArt } from "./TreeArt";
 import { useGarden } from "./useGarden";
 import { SeedShop } from "./SeedShop";
 import { GardenScene } from "./GardenScene";
-import { GardenSharing } from "./GardenSharing";
 
 const STAGES = {
   seed: "Recién plantado",
   sprout: "Brote",
-  young: "Árbol joven",
+  young: "En crecimiento",
   mature: "Adulto",
 };
 const hours = (minutes: number) =>
   `${Number((minutes / 60).toFixed(1)).toLocaleString("es-AR")} h`;
 const primary =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-45";
+const FILTERS = [
+  { id: "all", label: "Todas" }, { id: "tree", label: "Árboles" },
+  { id: "palm", label: "Palmeras" }, { id: "flowers", label: "Flores y arbustos" },
+  { id: "grass", label: "Pastos" }, { id: "cactus", label: "Cactus" },
+] as const;
+type NurseryFilter = (typeof FILTERS)[number]["id"];
 
 export function GardenView() {
   const { me, loading } = useMe();
@@ -42,7 +47,7 @@ export function GardenView() {
             Mi bosque nativo
           </h1>
           <p className="mt-3 hidden max-w-xl text-sm leading-relaxed text-muted sm:block">
-            Cada hora en la sala hace crecer tu jardín de árboles nativos
+            Cada hora en la sala hace crecer tu jardín de plantas nativas
             argentinos.
           </p>
         </div>
@@ -60,7 +65,7 @@ export function GardenView() {
           className="h-96 animate-pulse rounded-2xl bg-surface-2"
         />
       ) : me?.user ? (
-        <GardenAccount key={me.user.id} userId={me.user.id} />
+        <GardenAccount key={me.user.id} />
       ) : (
         <section className="garden-welcome rounded-2xl border border-app p-6 text-center sm:p-10">
           <div className="mx-auto mb-4 h-40 w-40">
@@ -88,14 +93,18 @@ export function GardenView() {
             también cuenta para ese saldo inicial.
           </p>
           <p>
-            Elegí una parcela y comprá un árbol en el vivero. Todos tus árboles
+            Elegí una parcela y comprá una planta en el vivero. Todas tus plantas
             crecen mientras acumulás tiempo con “Estoy acá” activo, hasta su
             vencimiento. El tiempo de Foco por sí solo no suma horas al jardín.
           </p>
           <p>
-            Podés conservar los árboles adultos o canjearlos por semillas para
+            Podés conservar las plantas adultas o canjearlas por semillas para
             plantar otras especies. Cada canje suma el ejemplar a tu colección y
             libera la parcela. No se marchitan si descansás.
+          </p>
+          <p>
+            Otras personas registradas pueden visitar tu jardín desde tu perfil.
+            Sólo ven las plantas y la colección; tu saldo y tus horas no se muestran.
           </p>
           <p>
             Es un jardín virtual personal. Los tiempos de crecimiento son del
@@ -109,10 +118,11 @@ export function GardenView() {
   );
 }
 
-function GardenAccount({ userId }: { userId: string }) {
+function GardenAccount() {
   const { garden, error, pending, refresh, act } = useGarden();
   const [selected, setSelected] = useState<number | null>(null);
   const [speciesId, setSpeciesId] = useState(GARDEN_SPECIES[0].id);
+  const [filter, setFilter] = useState<NurseryFilter>("tree");
   const [notice, setNotice] = useState("");
   const panel = useRef<HTMLElement>(null);
   const species = GARDEN_SPECIES.find((s) => s.id === speciesId)!;
@@ -213,7 +223,6 @@ function GardenAccount({ userId }: { userId: string }) {
               Próxima semilla: {garden.nextSeedMinutes} min de estudio
             </span>
           </div>
-          <GardenSharing shared={garden.shared} userId={userId} pending={pending} onChange={shared => act("visibility", { shared })} />
         </section>
         <section
           ref={panel}
@@ -353,10 +362,13 @@ function GardenAccount({ userId }: { userId: string }) {
               El vivero nativo
             </h2>
           </div>
-          <span className="text-sm text-muted">12 especies para descubrir</span>
+          <span className="text-sm text-muted">{GARDEN_SPECIES.length} especies para descubrir</span>
+        </div>
+        <div role="group" aria-label="Tipos de plantas" className="mb-5 flex flex-wrap gap-2">
+          {FILTERS.map(item => <button key={item.id} type="button" aria-pressed={filter === item.id} onClick={() => setFilter(item.id)} className={`min-h-11 rounded-full border px-4 text-sm font-semibold ${filter === item.id ? "border-primary bg-primary text-white" : "border-app bg-surface text-muted hover:border-primary"}`}>{item.label}</button>)}
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-          {GARDEN_SPECIES.map((s) => (
+          {GARDEN_SPECIES.filter(s => filter === "all" || (filter === "flowers" ? s.kind === "flower" || s.kind === "shrub" : (s.kind ?? "tree") === filter)).map((s) => (
             <SpeciesCard
               key={s.id}
               species={s}

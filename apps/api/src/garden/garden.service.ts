@@ -55,11 +55,6 @@ export class GardenService {
     return this.dto(this.read(userId), minutes);
   }
 
-  async setVisibility(userId: string, shared: boolean): Promise<GardenDto> {
-    const minutes = await this.studyMinutes(userId);
-    return this.mutate(userId, minutes, (state) => { state.shared = shared; });
-  }
-
   async visit(viewerId: string, userId: string): Promise<SharedGardenDto> {
     const dto = await this.get(userId);
     const exists = this.db.select({ id: schema.user.id }).from(schema.user).where(eq(schema.user.id, userId)).get();
@@ -67,9 +62,8 @@ export class GardenService {
       and(eq(schema.userBlocks.blockerId, viewerId), eq(schema.userBlocks.blockedId, userId)),
       and(eq(schema.userBlocks.blockerId, userId), eq(schema.userBlocks.blockedId, viewerId)),
     )).get();
-    // Recheck after the awaited study ledger, so revocation cannot race an in-flight visit.
-    const shared = this.read(userId).shared;
-    if (!exists || block || (!shared && viewerId !== userId)) throw ApiErrors.notFound();
+    // Gardens are always visitable by signed-in users. Recheck blocks after the awaited ledger.
+    if (!exists || block) throw ApiErrors.notFound();
     return {
       plants: dto.plants.map(({ plot, speciesId, stage, progress }) => ({ plot, speciesId, stage, progress })),
       collection: dto.collection,
@@ -175,7 +169,7 @@ export class GardenService {
 
   private dto(state: GardenState, minutes: number): GardenDto {
     return {
-      shared: state.shared,
+      shared: true,
       seeds: this.balance(state, minutes),
       studyMinutes: minutes,
       nextSeedMinutes:

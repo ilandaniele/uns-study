@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { EXTRA_NATIVE_SPECIES } from "./garden-native-species";
 
 export const GARDEN_SIZE = 25;
 export const GARDEN_STARTER_SEEDS = 30;
@@ -33,6 +34,8 @@ export interface GardenSpecies {
   foliage: string;
   flower: string | null;
   bark: string;
+  /** Older entries are trees. Used to browse the expanded native nursery. */
+  kind?: "tree" | "palm" | "shrub" | "flower" | "grass" | "cactus";
 }
 
 const TREES = "https://www.argentina.gob.ar/node/492317";
@@ -232,6 +235,7 @@ export const GARDEN_SPECIES: readonly GardenSpecies[] = [
     flower: null,
     bark: "#8c8071",
   },
+  ...EXTRA_NATIVE_SPECIES,
 ];
 
 export interface GardenPlant {
@@ -245,6 +249,7 @@ export interface GardenPlant {
 }
 
 export interface GardenDto {
+  /** Legacy field: gardens are always visitable by authenticated, unblocked users. */
   shared: boolean;
   seeds: number;
   studyMinutes: number;

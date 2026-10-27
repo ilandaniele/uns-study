@@ -75,12 +75,12 @@ describe("garden HTTP", () => {
     env.mpAccessToken = priorToken;
     env.mpWebhookSecret = priorSecret;
   });
-  it("requires a session and explicit owner opt-in for visits, validates sharing and prevents CSRF", async () => {
+  it("requires a session for visits, always shows gardens, and keeps the legacy endpoint safe for older tabs", async () => {
     const meResponse = await call("GET", "/me", cookie);
     const me = await meResponse.json() as { user: { id: string } };
     const path = `/profiles/${me.user.id}/garden`;
     expect((await call("GET", path)).status).toBe(401);
-    expect((await call("GET", path, otherCookie)).status).toBe(404);
+    expect((await call("GET", path, otherCookie)).status).toBe(200);
     expect((await call("POST", "/me/garden/visibility", cookie, { shared: "yes" })).status).toBe(400);
     expect((await call("POST", "/me/garden/visibility", cookie, { shared: true }, "https://outside.example")).status).toBe(403);
     expect((await call("POST", "/me/garden/visibility", cookie, { shared: true })).status).toBe(200);
@@ -89,7 +89,9 @@ describe("garden HTTP", () => {
     expect(shared.headers.get("cache-control")).toBe("private, no-store");
     expect(Object.keys(await shared.json()).sort()).toEqual(["collection", "plants"]);
     await call("POST", "/me/garden/visibility", cookie, { shared: false });
-    expect((await call("GET", path, otherCookie)).status).toBe(404);
+    expect((await call("GET", path, otherCookie)).status).toBe(200);
+    const ownGarden = await call("GET", "/me/garden", cookie);
+    expect(await ownGarden.json()).toMatchObject({ shared: true });
   });
   it("requires auth for every read and write, and rejects cross-origin writes", async () => {
     for (const [method, path, body] of [

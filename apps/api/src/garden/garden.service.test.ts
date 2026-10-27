@@ -35,12 +35,13 @@ describe("GardenService", () => {
         source,
       });
   }
-  it("shares only trees after opt-in, revokes access, preserves balances and respects blocks both ways", async () => {
-    await expect(garden.visit("u2", "u1")).rejects.toThrow();
+  it("always shares plants and collection, including existing unshared gardens, without exposing account data", async () => {
+    expect(await garden.visit("u2", "u1")).toEqual({ plants: [], collection: {} });
     await garden.plant("u1", { plot: 0, speciesId: "ceibo" });
+    // Existing rows keep their old flag: no migration or balance mutation is needed.
+    db.update(schema.userGardens).set({ shared: false }).where(eq(schema.userGardens.userId, "u1")).run();
     const before = await garden.get("u1");
-    expect(before.shared).toBe(false);
-    expect(await garden.setVisibility("u1", true)).toEqual({ ...before, shared: true });
+    expect(before.shared).toBe(true);
     const visible = await garden.visit("u2", "u1");
     expect(Object.keys(visible).sort()).toEqual(["collection", "plants"]);
     expect(Object.keys(visible.plants[0]!).sort()).toEqual(["plot", "progress", "speciesId", "stage"]);
@@ -49,8 +50,6 @@ describe("GardenService", () => {
       await expect(garden.visit("u2", "u1")).rejects.toThrow();
       db.delete(schema.userBlocks).run();
     }
-    await garden.setVisibility("u1", false);
-    await expect(garden.visit("u2", "u1")).rejects.toThrow();
     expect((await garden.visit("u1", "u1")).plants).toHaveLength(1);
     expect(await garden.get("u1")).toEqual(before);
     await expect(garden.visit("u1", "missing-user")).rejects.toThrow();
@@ -71,12 +70,11 @@ describe("GardenService", () => {
     });
     expect(db.select().from(schema.userGardens).all()).toHaveLength(0);
   });
-  it("honors revocation while a visit is loading its study ledger", async () => {
-    await garden.setVisibility("u1", true);
+  it("honors a new block while a visit is loading its study ledger", async () => {
     const get = garden.get.bind(garden);
     vi.spyOn(garden, "get").mockImplementationOnce(async id => {
       const result = await get(id);
-      await garden.setVisibility(id, false);
+      db.insert(schema.userBlocks).values({ blockerId: id, blockedId: "u2", createdAt: NOW }).run();
       return result;
     });
     await expect(garden.visit("u2", "u1")).rejects.toThrow();
