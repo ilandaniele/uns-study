@@ -28,6 +28,7 @@ for (const file of selected) {
 }
 mkdirSync(output, { recursive: true });
 if (!inside(realpathSync(path.dirname(output)), realpathSync(output)) || inside(realpathSync(root), realpathSync(output))) throw new Error("Unsafe output folder.");
+writeFileSync(path.join(output, "LEEME.txt"), "EXPORTACIÓN INCOMPLETA. No utilizar hasta que exista COMPLETADO.json y se hayan verificado las huellas. Esto no es una presentación ni un registro oficial.\n");
 const manifest = selected.sort().map(file => {
   const bytes = readFileSync(path.join(root, file));
   return { file, bytes: bytes.length, sha256: sha(bytes) };
@@ -58,7 +59,7 @@ if (process.argv.includes("--api-executable")) {
   const { build } = buildRequire("esbuild");
   const executable = path.join(output, "ejecutable-api");
   mkdirSync(executable);
-  await build({ absWorkingDir: root, entryPoints: ["apps/api/src/worker.ts"], outfile: path.join(executable, "worker.mjs"), bundle: true, format: "esm", platform: "node", target: "es2022", external: ["cloudflare:*"], legalComments: "linked", logLevel: "warning" });
+  await build({ absWorkingDir: root, entryPoints: ["apps/api/src/worker.ts"], outfile: path.join(executable, "worker.mjs"), bundle: true, format: "esm", platform: "node", target: "es2022", external: ["cloudflare:*"], loader: { ".sql": "text" }, legalComments: "linked", logLevel: "warning" });
   execFileSync(process.execPath, ["--check", path.join(executable, "worker.mjs")], { stdio: "pipe" });
   copyFileSync(path.join(root, "apps/web/public/legal/third-party-notices.txt"), path.join(executable, "third-party-notices.txt"));
   writeFileSync(path.join(executable, "LEEME.txt"), "Módulo JavaScript compilado del servidor de la versión indicada. Requiere el runtime Cloudflare Workers, Durable Objects y bindings configurados por separado. No contiene credenciales ni datos de producción. No equivale al depósito completo de la app web: confirmar con DNDA cómo acompañar cliente, runtime y recursos excluidos.\n");
@@ -101,5 +102,7 @@ try {
 function allFiles(directory, prefix = "") {
   return readdirSync(directory, { withFileTypes: true }).flatMap(e => e.isDirectory() ? allFiles(path.join(directory, e.name), path.posix.join(prefix, e.name)) : [path.posix.join(prefix, e.name)]);
 }
+writeFileSync(path.join(output, "LEEME.txt"), `Exportación técnica completada de ${commit}. Verificar SHA256SUMS.txt antes de utilizar. Contiene borradores y evidencia para revisión; no constituye presentación, pago, registro ni certificación de autoría. Los datos personales y la presentación oficial siguen pendientes según los documentos.\n`);
+writeFileSync(path.join(output, "COMPLETADO.json"), JSON.stringify({ commit, archive: path.basename(archive), sourceFiles: selected.length, officialFiling: false }, null, 2) + "\n");
 writeFileSync(path.join(output, "SHA256SUMS.txt"), allFiles(output).sort().map(file => `${sha(readFileSync(path.join(output, file)))}  ${file}`).join("\n") + "\n");
 console.log(JSON.stringify({ output, commit, sourceFiles: selected.length, excludedAssets: excluded.length, archiveBytes: lstatSync(archive).size, apiExecutable: process.argv.includes("--api-executable"), platform: os.platform() }));
