@@ -1,8 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { googleSignInError } from "./google-sign-in";
+import { googleReturnError, googleSignInError, googleSignInUrls } from "./google-sign-in";
 import { secureWebUrl } from "@/lib/hosts";
 
 describe("Google sign-in recovery", () => {
+  it("keeps success and error returns on the same site with a validated next destination", () => {
+    const urls = googleSignInUrls("https://saladeestudio.com.ar", "/personas?tab=friends");
+    expect(urls.callbackURL).toBe("https://saladeestudio.com.ar/personas?tab=friends");
+    const error = new URL(urls.errorCallbackURL); expect(error.pathname).toBe("/login"); expect(error.searchParams.get("oauth")).toBe("google"); expect(error.searchParams.get("next")).toBe("/personas?tab=friends");
+    for (const next of ["//evil.example.test", "https://evil.example.test", "/\\evil.example.test"]) expect(googleSignInUrls("https://saladeestudio.com.ar", next).callbackURL).toBe("https://saladeestudio.com.ar/");
+  });
+
+  it("gives distinct recovery for linking, browser state, cancellation and account restrictions", () => {
+    expect(googleReturnError("account_not_linked").recovery).toBe("code");
+    expect(googleReturnError("EMAIL_NOT_VERIFIED").recovery).toBe("code");
+    expect(googleReturnError("state_mismatch").message).toContain("otra pestaña");
+    expect(googleReturnError("access_denied").recovery).toBe("retry");
+    expect(googleReturnError("ACCOUNT_BANNED").recovery).toBe("support");
+  });
+
+  it("never displays raw provider descriptions or arbitrary error strings", () => {
+    const unsafe = "private@example.test<script>";
+    expect(googleReturnError(unsafe).message).not.toContain(unsafe);
+    expect(googleReturnError("unknown_private_code").message).not.toContain("unknown_private_code");
+  });
   it("offers code sign-in rather than requiring a password a Google user may not have", () => {
     expect(googleSignInError({ code: "UNKNOWN" })).toContain("código por email");
     expect(googleSignInError()).not.toContain("contraseña");

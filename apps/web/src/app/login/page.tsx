@@ -10,7 +10,8 @@ import { invalidateMe } from "@/lib/me-store";
 import { safeNextPath } from "@/lib/safe-next";
 import { resetSocket } from "@/lib/socket";
 import { secureWebUrl } from "@/lib/hosts";
-import { googleSignInError } from "@/features/auth/google-sign-in";
+import { googleSignInError, googleSignInUrls } from "@/features/auth/google-sign-in";
+import { GoogleReturnNotice } from "@/features/auth/GoogleReturnNotice";
 
 type Tab = "signin" | "signup";
 
@@ -118,7 +119,7 @@ export default function LoginPage() {
     setError(null);
     setPending(true);
     try {
-      const result = await signIn.social({ provider: "google", callbackURL: `${origin}${safeNext() ?? "/"}` });
+      const result = await signIn.social({ provider: "google", ...googleSignInUrls(origin, safeNext()) });
       if (result?.error) setError(googleSignInError(result.error));
     } catch {
       setError(googleSignInError());
@@ -229,6 +230,7 @@ export default function LoginPage() {
           {error ? null : (
             <Suspense fallback={null}>
               <ResetDoneNotice />
+              <GoogleReturnNotice pending={pending} codeAvailable={providers.otp} onRetry={() => void handleGoogle()} onUseCode={() => { setMethod("code"); setPassword(""); setError(null); }}/>
             </Suspense>
           )}
           {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}

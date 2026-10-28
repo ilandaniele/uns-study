@@ -63,6 +63,8 @@ export function buildAuth(db: Db) {
     baseURL: env.betterAuthUrl,
     secret: env.betterAuthSecret || "dev-only-insecure-secret-change-me",
     trustedOrigins: env.webOrigins,
+    // Missing/expired state cannot always recover the per-attempt return URL (old tabs included).
+    onAPIError: { errorURL: new URL("/login?oauth=google", env.publicWebUrl).href },
     emailAndPassword: {
       enabled: true,
       // Deployed sign-up is code-first: the user row is only created after mailbox proof.

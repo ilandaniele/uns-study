@@ -13,6 +13,12 @@ En todos los Workers desplegados (`NODE_ENV=production`, incluido staging), una 
 - Resend se espera hasta aceptar el envío. Better Auth captura errores de callbacks, por lo que un WeakSet del contexto de cada petición permite propagar un 503 desde el hook posterior, sin compartir resultados entre solicitudes. El cliente muestra error y permite reintentar, sin dar por enviado un código que falló.
 - Si el correo no está configurado, se deshabilita el envío y el registro por email. No se habilitan registros sin verificar como fallback. Google y las contraseñas de cuentas ya verificadas siguen disponibles si están configurados.
 
+## Regreso desde Google
+
+El cliente indica un callback de éxito y otro de error, ambos del mismo origen, conservando sólo un destino interno seguro. Si el estado expiró o una pestaña anterior no indicó callback de error, el servidor vuelve al login de la app. Allí se distinguen cancelación, estado perdido, vinculación pendiente y restricciones, sin mostrar mensajes arbitrarios del proveedor. Se puede reiniciar Google en la misma ventana o elegir código por email cuando está disponible; una restricción no ofrece un acceso alternativo.
+
+Una cuenta local con correo ya verificado puede vincular Google conservando su usuario y datos. Una cuenta local sin verificar necesita primero probar el buzón por el flujo de recuperación; no se relajan las comprobaciones de estado, PKCE, origen ni vinculación. Las pruebas HTTP completan el callback con Better Auth, Hono y SQLite reales, simulando únicamente el intercambio externo de Google: alta, vinculación, sesión utilizable, cancelación, código fallido, estados faltantes/vencidos/reutilizados y cuentas sin verificar o bloqueadas. Estas pruebas no equivalen a ingresar a la cuenta real de otra persona.
+
 ## Cuentas anteriores sin verificar
 
 La migración de verificación no borra cuentas ni sus jardines, sesiones de estudio, compras o perfiles. Sus sesiones sin prueba de correo dejan de dar acceso autenticado a REST, administración, tokens de realtime y canales privados de WebSocket. El mapa público sigue disponible. Se muestra un aviso que lleva a confirmar el email.
