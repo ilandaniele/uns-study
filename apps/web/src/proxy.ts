@@ -1,15 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { buildCsp, generateNonce } from "@/lib/csp";
-import { CANONICAL_HOST, LEGACY_HOSTS } from "@/lib/hosts";
+import { secureWebUrl } from "@/lib/hosts";
 
-// Send every request on an old host (www) to the same path on the canonical domain. 308 keeps
-// the method, so a stale tab's POST isn't turned into a GET.
+// Upgrade HTTP before serving forms: its origin/callback is rejected by OAuth and secure cookies
+// cannot work there. 308 also keeps the method on legacy links without trusting forwarding headers.
 export function proxy(request: NextRequest) {
-  if (!LEGACY_HOSTS.includes(request.headers.get("host") ?? "")) return withCsp(request);
-  const url = new URL("https://" + CANONICAL_HOST);
-  url.pathname = request.nextUrl.pathname;
-  url.search = request.nextUrl.search;
-  return NextResponse.redirect(url, 308);
+  const secureUrl = secureWebUrl(request.url);
+  return secureUrl ? NextResponse.redirect(secureUrl, 308) : withCsp(request);
 }
 
 // Pages get a per-request CSP nonce: Next reads it from the request's own CSP header and

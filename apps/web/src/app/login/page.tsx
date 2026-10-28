@@ -9,12 +9,22 @@ import { EmailCodeForm, emailCodeError } from "@/features/auth/EmailCodeForm";
 import { invalidateMe } from "@/lib/me-store";
 import { safeNextPath } from "@/lib/safe-next";
 import { resetSocket } from "@/lib/socket";
+import { secureWebUrl } from "@/lib/hosts";
+import { googleSignInError } from "@/features/auth/google-sign-in";
 
 type Tab = "signin" | "signup";
 
 function safeNext(): string | null {
   if (typeof window === "undefined") return null;
   return safeNextPath(new URLSearchParams(window.location.search).get("next"), window.location.origin);
+}
+
+/** An already-open HTTP tab must move to HTTPS before submitting any credentials. */
+function redirectToSecureLogin(): boolean {
+  const target = secureWebUrl(window.location.href);
+  if (!target) return false;
+  window.location.replace(target);
+  return true;
 }
 
 function authErrorMessage(error: { code?: string; status?: number }): string {
@@ -72,7 +82,7 @@ export default function LoginPage() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (busy.current) return;
+    if (busy.current || redirectToSecureLogin()) return;
     busy.current = true;
     setError(null);
     setPending(true);
@@ -102,16 +112,19 @@ export default function LoginPage() {
   }
 
   async function handleGoogle() {
+    if (busy.current || redirectToSecureLogin()) return;
+    busy.current = true;
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     setError(null);
     setPending(true);
     try {
       const result = await signIn.social({ provider: "google", callbackURL: `${origin}${safeNext() ?? "/"}` });
-      if (result?.error) setError("No pudimos iniciar sesión con Google. Probá con email y contraseña.");
+      if (result?.error) setError(googleSignInError(result.error));
     } catch {
-      setError("No pudimos iniciar sesión con Google. Probá con email y contraseña.");
+      setError(googleSignInError());
     } finally {
       setPending(false);
+      busy.current = false;
     }
   }
 

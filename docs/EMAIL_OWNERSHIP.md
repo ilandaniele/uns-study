@@ -4,6 +4,8 @@ En todos los Workers desplegados (`NODE_ENV=production`, incluido staging), una 
 
 ## Ingreso y registro
 
+- Los dominios de producción y dev redirigen HTTP a HTTPS antes de mostrar formularios o procesar autenticación. Es necesario tanto para las cookies seguras como para los orígenes/callbacks de Google. También se conserva la ruta y la query de enlaces anteriores; `www` lleva al dominio canónico. No se aceptan callbacks HTTP ni se amplía la lista de orígenes permitidos como solución alternativa. Una pestaña HTTP antigua se actualiza antes de enviar el formulario. El desarrollo local sigue permitiendo HTTP.
+
 - El registro por email es primero email/nombre y después un código de seis dígitos. Better Auth crea la cuenta y su sesión sólo después de confirmar el código. No se crean cuentas pendientes por escribir una dirección ajena.
 - Los usuarios ya verificados conservan su contraseña y Google. También pueden elegir ingresar con código. Las cuentas nuevas usan código o Google; pueden establecer una contraseña mediante el flujo existente de recuperación.
 - Los códigos duran 10 minutos, tienen cinco intentos y son de un solo uso. Se guardan hasheados en la tabla de verificaciones existente. Un reenvío rota el código; el anterior deja de servir. No se guardan códigos, contraseñas ni tokens en storage del navegador, ni se imprimen en logs.

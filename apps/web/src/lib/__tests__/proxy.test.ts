@@ -48,6 +48,26 @@ describe("proxy CSP nonce", () => {
     expect(res.status).toBe(200);
   });
 
+  it.each(["saladeestudio.com.ar", "dev.saladeestudio.com.ar"])("upgrades HTTP on %s before rendering the login page", host => {
+    const res = proxy(new NextRequest(`http://${host}/login?next=%2Fjardin`, { headers: { host } }));
+    expect(res.status).toBe(308);
+    expect(res.headers.get("location")).toBe(`https://${host}/login?next=%2Fjardin`);
+    expect(res.headers.get("content-security-policy")).toBeNull();
+  });
+
+  it("keeps local HTTP development and unrecognized hosts unchanged", () => {
+    for (const host of ["localhost:3000", "127.0.0.1:3000", "example.test"]) {
+      const res = proxy(new NextRequest(`http://${host}/login`, { headers: { host } }));
+      expect(res.status).toBe(200);
+      expect(res.headers.get("location")).toBeNull();
+    }
+  });
+
+  it("does not downgrade or loop on a secure request with a forged forwarding header", () => {
+    const res = proxy(new NextRequest("https://saladeestudio.com.ar/login", { headers: { host: "saladeestudio.com.ar", "x-forwarded-proto": "http" } }));
+    expect(res.status).toBe(200);
+  });
+
   it("does not run the CSP on API paths", () => {
     const res = proxy(new NextRequest("https://example.test/api/v1/rooms", { headers: { host: "example.test" } }));
     expect(res.headers.get("content-security-policy")).toBeNull();
