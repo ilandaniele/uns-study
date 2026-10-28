@@ -175,6 +175,12 @@ export default function LoginPage() {
           </button>
         ) : null}
 
+        {error ? null : (
+          <Suspense fallback={null}>
+            <GoogleReturnNotice pending={pending} codeAvailable={providers.otp} onRetry={() => void handleGoogle()} onUseCode={() => { setMethod("code"); setPassword(""); setError(null); }} />
+          </Suspense>
+        )}
+
         {googleEnabled ? (
           <div className="my-4 flex items-center gap-2 text-xs text-muted">
             <div className="h-px flex-1 bg-app" />o<div className="h-px flex-1 bg-app" />
@@ -230,7 +236,6 @@ export default function LoginPage() {
           {error ? null : (
             <Suspense fallback={null}>
               <ResetDoneNotice />
-              <GoogleReturnNotice pending={pending} codeAvailable={providers.otp} onRetry={() => void handleGoogle()} onUseCode={() => { setMethod("code"); setPassword(""); setError(null); }}/>
             </Suspense>
           )}
           {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
