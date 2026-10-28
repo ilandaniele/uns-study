@@ -13,6 +13,7 @@ import m0010 from './0010_section_usage.sql';
 import m0011 from './0011_community_achievements.sql';
 import m0012 from './0012_garden_landscapes_focus.sql';
 import m0013 from './0013_owner_seed_gifts.sql';
+import m0014 from './0014_people_friends.sql';
 
   export default {
     journal,
@@ -30,6 +31,7 @@ m0009,
 m0010,
 m0011,
 m0012,
-m0013
+m0013,
+m0014
     }
   }

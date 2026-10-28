@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import Link from "next/link";
 import { useMe } from "@/lib/me-store";
+import { useFriendRequests } from "@/features/friends/useFriendRequests";
 import { hasUnseen, isCacheFresh, markSeen, readCache, readSeenIds, writeCache, type AnnouncementsCache } from "./notifications";
 
 const ROOM_SLUG = "principal";
@@ -51,6 +52,7 @@ export function NotificationBell() {
   const [seen, setSeen] = useState<Set<string>>(() => new Set());
   const rootRef = useRef<HTMLDivElement>(null);
   const { me } = useMe();
+  const friendRequests = useFriendRequests();
   const [applicationCount, setApplicationCount] = useState(0);
   useEffect(() => {
     if (!me?.isSuperAdmin) return;
@@ -108,7 +110,7 @@ export function NotificationBell() {
     setSeen(markSeen(getStore("local"), items.map((a) => a.id)));
   }, [open, items]);
 
-  const showDot = !open && (hasUnseen(items, seen) || (me?.isSuperAdmin && applicationCount > 0));
+  const showDot = !open && (hasUnseen(items, seen) || friendRequests > 0 || (me?.isSuperAdmin && applicationCount > 0));
 
   return (
     <div ref={rootRef} className="relative shrink-0">
@@ -130,8 +132,9 @@ export function NotificationBell() {
           className="fixed inset-x-3 top-16 z-40 max-h-[70vh] overflow-y-auto rounded-lg border border-app bg-surface p-3 text-sm text-main shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80"
         >
           {me?.isSuperAdmin && applicationCount > 0 ? <Link href="/admin/colaboradores" onClick={() => setOpen(false)} className="mb-3 block rounded-xl border border-app bg-surface-2 p-3 font-semibold text-primary">{applicationCount} {applicationCount === 1 ? "solicitud de colaboración pendiente" : "solicitudes de colaboración pendientes"}</Link> : null}
+          {friendRequests > 0 ? <Link href="/personas?tab=requests" onClick={() => setOpen(false)} className="mb-3 block rounded-xl border border-app bg-surface-2 p-3 font-semibold text-primary">{friendRequests} {friendRequests === 1 ? "solicitud de amistad" : "solicitudes de amistad"}</Link> : null}
           {items.length === 0 ? (
-            <p className="text-muted">No hay novedades por ahora.</p>
+            friendRequests === 0 ? <p className="text-muted">No hay novedades por ahora.</p> : null
           ) : (
             <ul className="flex flex-col gap-3">
               {items.map((a) => (

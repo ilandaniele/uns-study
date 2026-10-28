@@ -51,6 +51,8 @@ export const userPrivacySettings = sqliteTable("user_privacy_settings", {
   showInRoom: integer("show_in_room", { mode: "boolean" }).notNull().default(false),
   showSeat: integer("show_seat", { mode: "boolean" }).notNull().default(false),
   allowDirectMessages: integer("allow_direct_messages", { mode: "boolean" }).notNull().default(true),
+  showInPeopleSearch: integer("show_in_people_search", { mode: "boolean" }).notNull().default(true),
+  allowFriendRequests: integer("allow_friend_requests", { mode: "boolean" }).notNull().default(true),
   // Whether the user appears in rankings at all — default true so opting *out* is the deliberate
   // action. Distinct from `showInRoom`: a user can rank under their alias without being linkable.
   showInRanking: integer("show_in_ranking", { mode: "boolean" }).notNull().default(true),

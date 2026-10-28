@@ -21,6 +21,7 @@ import { AdminProfileDetails } from "@/features/profile/AdminProfileDetails";
 import { useMe } from "@/lib/me-store";
 import { PublicAchievements } from "@/features/badges/AchievementCollection";
 import { PublicModerationActions } from "@/features/admin/PublicModerationActions";
+import { FriendAction } from "@/features/friends/FriendAction";
 
 /** Public profile view: "Enviar mensaje", "Bloquear"/"Desbloquear", "Reportar". */
 export default function PublicProfilePage() {
@@ -162,7 +163,8 @@ export default function PublicProfilePage() {
         {actionMessage ? <p role="alert" className="mt-4 text-sm text-[var(--seat-occupied)]">{actionMessage}</p> : null}
 
         {!isSelf ? (
-          <div className="mt-6 border-t border-app pt-5">
+          <div className="mt-6 flex flex-wrap items-start gap-3 border-t border-app pt-5">
+            {!profile.blockedByMe ? <FriendAction target={profile.friendTarget ?? { kind: "user", userId }} name={profile.displayName}/> : null}
             <button
               type="button"
               onClick={() => void handleMessage()}

@@ -13,6 +13,8 @@ const ALL_OFF: PrivacySettingsDto = {
   showInRoom: false,
   showSeat: false,
   allowDirectMessages: true,
+  showInPeopleSearch: true,
+  allowFriendRequests: true,
   showInRanking: true,
   showAliasAnimalOnMap: true,
   showAdminBadge: true,

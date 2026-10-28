@@ -97,6 +97,8 @@ Set file-size and MIME validation.
 
 ## 8. Blocking
 
+Friends and pending requests also respect both block directions. Blocking atomically removes their relationship; unblocking never restores it. Friend lists are private to their owner, acceptance is explicit, and public-identity search never matches hidden names/email. See [FRIENDS.md](docs/FRIENDS.md).
+
 Blocking is enforced server-side.
 
 For DMs:

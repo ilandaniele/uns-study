@@ -165,6 +165,7 @@ export class ProfilesService {
     return {
       userId: targetUserId,
       displayName: name,
+      friendTarget: showsIdentity ? { kind: "user", userId: targetUserId } : aliasedProfile?.alias ? { kind: "alias", alias: aliasedProfile.alias } : undefined,
       // `bio` has no dedicated privacy flag — it rides along with the chosen identity mode: fully
       // hidden profiles (the default) never leak it.
       avatarUrl: showsIdentity ? visibleAvatarUrl(profile ?? null, privacy ?? null) : null,
@@ -237,6 +238,8 @@ function toPrivacyDto(row: PrivacyRow): PrivacySettingsDto {
     showInRoom: row.showInRoom,
     showSeat: row.showSeat,
     allowDirectMessages: row.allowDirectMessages,
+    showInPeopleSearch: row.showInPeopleSearch,
+    allowFriendRequests: row.allowFriendRequests,
     showInRanking: row.showInRanking,
     showAliasAnimalOnMap: row.showAliasAnimalOnMap,
     showAdminBadge: row.showAdminBadge,

@@ -26,6 +26,8 @@ export default function PrivacyPage() {
         <li>Insignias y colaboración: logros conseguidos, fecha de obtención, confirmación de que los viste y lugares distintos actualizados por día para calcular recompensas de semillas. No se guardan coordenadas en este registro.</li>
       </ul>
 
+      <h2 className="pt-2 text-lg font-semibold text-main">Personas y amigos</h2>
+      <p>La búsqueda usa sólo tu nombre o alias público; no permite buscar por email ni por campos ocultos. Podés ocultarte del buscador o desactivar solicitudes en Perfil → Privacidad. Guardamos solicitudes y amistades para gestionar tu lista privada y mostrarte las solicitudes pendientes. Una amistad requiere aceptación y no cambia los datos que decidiste mostrar ni habilita mensajes que desactivaste. Bloquear elimina esa relación; desbloquear no la restaura. Las relaciones cerradas se conservan para controlar reenvíos y proteger el alias, y se eliminan al borrar una cuenta o bloquear a la otra persona.</p>
       <h2 className="pt-2 text-lg font-semibold text-main">Jardín virtual y compras</h2>
       <p>La capacidad de parcelas y el paisaje de tu jardín también se muestran a sus visitantes. Las ampliaciones se compran con semillas virtuales.</p>
       <p>Tu jardín se puede visitar desde tu perfil por otras personas registradas en la app. Sólo se muestran las plantas y la colección: tu saldo, tus compras y tu tiempo de estudio no forman parte de esa visita. Los bloqueos entre usuarios también impiden visitar sus jardines. Guardamos tus parcelas, plantas, colección y saldo de semillas en tu cuenta. Para calcular el crecimiento usamos el tiempo de presencia ya registrado en la sala.</p>

@@ -17,6 +17,7 @@ import { useAdminAccess } from "@/features/admin/useAdminAccess";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const LINKS = [
+  { href: "/personas?tab=friends", title: "Amigos", detail: "Tu lista, solicitudes y personas para conocer", icon: UsersThreeIcon },
   { href: "/proyecto", title: "El proyecto y contacto", detail: "Cómo funciona la sala y quién la mantiene", icon: InfoIcon },
   {
     href: "/perfil",

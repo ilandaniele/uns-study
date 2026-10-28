@@ -14,6 +14,7 @@
 import type { Db } from "@sala/database";
 import { ReactionsService } from "./chat/reactions.service.js";
 import { FocusService } from "./focus/focus.service.js";
+import { FriendsService } from "./friends/friends.service.js";
 import { GardenGiftsService } from "./garden/garden-gifts.service.js";
 import { GardenService } from "./garden/garden.service.js";
 import { GardenPurchasesService } from "./garden/garden-purchases.service.js";
@@ -153,7 +154,7 @@ export function buildServices(deps: ContainerDeps): Services {
 
   // Rooms and social.
   const roomStats = new RoomStatsService(db, rooms);
-  const blocks = new BlocksService(db, alias);
+  const blocks = new BlocksService(db, alias, hub);
   const reactions = new ReactionsService(db, blocks, restriction, hub);
   const study = new StudyService(db, restriction, roomHours);
   const profiles = new ProfilesService(db, study, alias, restriction, roles, pro, cosmetics);
@@ -215,6 +216,7 @@ export function buildServices(deps: ContainerDeps): Services {
 
   return {
     focus: new FocusService(db, clock, hub),
+    friends: new FriendsService(db, clock, hub, alias),
     achievements, collaboration,
     db,
     rooms, roomState, roomStats, roomCache, presence, checkIns, photoVerification, observations,

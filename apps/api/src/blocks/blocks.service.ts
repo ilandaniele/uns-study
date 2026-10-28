@@ -3,6 +3,7 @@ import { inChunks, schema, type Db } from "@sala/database";
 import { ApiErrors } from "../common/api-error.js";
 import { displayName, visibleAvatarUrl } from "../users/display-name.js";
 import { AliasService } from "../users/alias.service.js";
+import type { RealtimeHub } from "../realtime/realtime-hub.js";
 
 /** Hard cap on the unpaginated blocked-users list. */
 const MAX_LIST_ROWS = 200;
@@ -19,14 +20,22 @@ export class BlocksService {
   constructor(
     private readonly db: Db,
     private readonly aliases: AliasService,
+    private readonly hub: RealtimeHub | null = null,
   ) {}
 
   async block(blockerId: string, blockedId: string): Promise<void> {
     if (blockerId === blockedId) throw ApiErrors.validation("No podés bloquearte a vos mismo.");
-    // Without this, an unknown id hits the FK and surfaces as a 500.
-    const [target] = await this.db.select({ id: schema.user.id }).from(schema.user).where(eq(schema.user.id, blockedId)).limit(1);
-    if (!target) throw ApiErrors.notFound("Usuario no encontrado.");
-    await this.db.insert(schema.userBlocks).values({ blockerId, blockedId }).onConflictDoNothing();
+    this.db.transaction(() => {
+      const target = this.db.select({ id: schema.user.id }).from(schema.user).where(eq(schema.user.id, blockedId)).get();
+      if (!target) throw ApiErrors.notFound("Usuario no encontrado.");
+      this.db.insert(schema.userBlocks).values({ blockerId, blockedId }).onConflictDoNothing().run();
+      this.db.delete(schema.friendships).where(or(
+        and(eq(schema.friendships.lowerUserId, blockerId), eq(schema.friendships.upperUserId, blockedId)),
+        and(eq(schema.friendships.lowerUserId, blockedId), eq(schema.friendships.upperUserId, blockerId)),
+      )).run();
+    });
+    this.hub?.publishToUser(blockerId, "friends:changed", {});
+    this.hub?.publishToUser(blockedId, "friends:changed", {});
   }
 
   async unblock(blockerId: string, blockedId: string): Promise<void> {

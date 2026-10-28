@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ProfileFlairDto } from "./pro";
+import type { FriendTarget } from "./friends";
 
 export type IdentityMode = "FULL_NAME" | "FIRST_NAME" | "NICKNAME" | "NICKNAME_AND_NAME" | "HIDDEN";
 
@@ -39,6 +40,9 @@ export interface PrivacySettingsDto {
   showInRoom: boolean;
   showSeat: boolean;
   allowDirectMessages: boolean;
+  /** Defaults true; only the selected public name/alias can be searched. */
+  showInPeopleSearch?: boolean;
+  allowFriendRequests?: boolean;
   /** Whether the user appears in rankings at all (default true) — under their alias when hidden. */
   showInRanking: boolean;
   /** Hidden users appear on the map as their alias animal (default true); off = generic silhouette. */
@@ -55,6 +59,7 @@ export interface StudyStatusDto {
 }
 
 export interface PublicProfileDto {
+  friendTarget?: FriendTarget;
   userId: string;
   displayName: string;
   avatarUrl: string | null;
@@ -171,6 +176,8 @@ export const updatePrivacySchema = z
     showInRoom: z.boolean(),
     showSeat: z.boolean(),
     allowDirectMessages: z.boolean(),
+    showInPeopleSearch: z.boolean(),
+    allowFriendRequests: z.boolean(),
     showInRanking: z.boolean(),
     showAliasAnimalOnMap: z.boolean(),
     showAdminBadge: z.boolean(),

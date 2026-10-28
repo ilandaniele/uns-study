@@ -16,6 +16,7 @@ const PRIVACY: Record<keyof PrivacySettingsDto, string> = {
   showCurrentSubject: "Mostrar materia", showInstagram: "Mostrar Instagram", showStudentNumber: "Mostrar legajo",
   showAvatar: "Mostrar foto", showInRoom: "Mostrar en la sala", showSeat: "Mostrar asiento",
   allowDirectMessages: "Permitir mensajes directos", showInRanking: "Aparecer en el ranking",
+  showInPeopleSearch: "Aparecer en la búsqueda de personas", allowFriendRequests: "Recibir solicitudes de amistad",
   showAliasAnimalOnMap: "Mostrar animal en el mapa", showAdminBadge: "Mostrar insignia de admin",
 };
 const date = (value: string) => new Date(value).toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" });

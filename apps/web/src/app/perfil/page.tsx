@@ -98,6 +98,7 @@ export default function PerfilPage() {
     <main className="mx-auto flex max-w-2xl flex-col gap-0 p-4 pb-16">
       <div>
         <h1 className="t-heading">Perfil</h1>
+        <Link href="/personas?tab=friends" className="inline-flex min-h-11 items-center rounded-full border border-app px-4 text-sm font-semibold text-primary">Mis amigos</Link>
         <p className="mt-2 text-sm text-muted">{profile.email}</p>
         {verifyAvailable && !session.user.emailVerified ? (
           <Link href="/login?next=/perfil" className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-primary underline">Confirmar email con un código</Link>
