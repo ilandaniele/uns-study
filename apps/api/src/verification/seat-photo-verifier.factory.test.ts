@@ -51,6 +51,13 @@ describe("createSeatPhotoVerifier", () => {
     env.seatVerifierMode = "";
 
     expect(createSeatPhotoVerifier()).toBeInstanceOf(InProcessSeatPhotoVerifier);
+    expect(createSeatPhotoVerifier()?.diagnostics?.().model).toBe("sala-seat-v1:gemini-3.8-flash");
+  });
+
+  it("preserves an explicitly configured model", () => {
+    env.geminiApiKey = "g-key";
+    env.verifierModel = "gemini-3.6-flash";
+    expect(createSeatPhotoVerifier()?.diagnostics?.().model).toBe("sala-seat-v1:gemini-3.6-flash");
   });
 
   it("uses the in-process verifier with only an Anthropic key", () => {

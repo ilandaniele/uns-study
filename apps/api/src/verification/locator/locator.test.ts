@@ -121,6 +121,16 @@ describe("GeminiSeatLocator", () => {
     expect(JSON.parse(fetchImpl.mock.calls[0]![1].body).contents[0].parts[1].inlineData.data).toBe(PLAN_WEBP_BASE64);
   });
 
+  it("uses supported low thinking on Flash 3.8 and keeps enough output budget for JSON", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(okResponse('{"seatCode":null,"confidence":0}'));
+    const locator = new GeminiSeatLocator("SYNTHETIC_KEY", "gemini-3.8-flash", () => "PLAN", fetchImpl);
+    await locator.locate(BODY as never, new AbortController().signal);
+    expect(fetchImpl.mock.calls[0]![0]).toContain("/gemini-3.8-flash:generateContent");
+    const config = JSON.parse(fetchImpl.mock.calls[0]![1].body).generationConfig;
+    expect(config.thinkingConfig).toEqual({ thinkingLevel: "LOW" });
+    expect(config.maxOutputTokens).toBe(4096);
+  });
+
   it("rejects HTTP errors and malformed answers", async () => {
     const failing = new GeminiSeatLocator("K", "m", () => "PLAN", vi.fn().mockResolvedValue(new Response("", { status: 429 })));
     await expect(failing.locate(BODY as never, new AbortController().signal)).rejects.toThrow("gemini http 429");

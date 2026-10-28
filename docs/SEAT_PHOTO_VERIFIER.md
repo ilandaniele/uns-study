@@ -31,7 +31,7 @@ The contract below is the shape of its input and output.
 | Variable | Meaning |
 |---|---|
 | `GEMINI_API_KEY` / `ANTHROPIC_API_KEY` | Worker secrets. When either is set, the verifier runs in-process in the API Worker (Gemini wins when both are set). With neither, the feature is off and the web explains its unavailability without offering an upload. |
-| `VERIFIER_MODEL` | Optional, default `gemini-2.5-flash` (`claude-sonnet-5-5` with the Anthropic key). Reported as `modelVersion: "sala-seat-v1:<model>"`. |
+| `VERIFIER_MODEL` | Optional, default `gemini-3.8-flash` (`claude-sonnet-5-5` with the Anthropic key). Explicit model overrides remain unchanged. Reported as `modelVersion: "sala-seat-v1:<model>"`. |
 | `SEAT_VERIFIER_MIN_CONFIDENCE` | Optional, default `0.8`. |
 | `SEAT_VERIFIER_MODE=mock` | Dev/test only (ignored when `NODE_ENV=production`). Accepts every photo as the claimed seat with confidence 0.9. |
 
@@ -132,8 +132,13 @@ without user/seat identifiers or provider payloads.
   and structured responses. It consumes one model request, never a personal photo,
   and never creates/verifies a check-in or changes study time. A mock is reported as
   simulated, not as a working real provider.
-- Gemini Flash 2.5 requests reserve 1024 output tokens and disable optional thinking
-  for this short structured classification. Other model families keep their own defaults.
+- The default is stable Gemini 3.8 Flash with supported LOW thinking and a 4096-token
+  output ceiling, including thinking, to avoid truncating the structured JSON. The
+  former 2.5 default returned MODEL/404 for this production project after the transport
+  fix. Google restricts 2.5 to projects with prior active usage; it has not announced
+  a universal shutdown. Explicit 2.5 Flash overrides retain a 1024-token ceiling and
+  disabled optional thinking; other overrides retain their own defaults.
+  See the [3.8 model card](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash).
   Model availability must be checked against the provider's current
   [catalog/deprecations](https://ai.google.dev/gemini-api/docs/deprecations).
 - The default Gemini transport calls `globalThis.fetch` through a wrapper. Assigning
