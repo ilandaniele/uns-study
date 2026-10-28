@@ -28,6 +28,8 @@ export interface RoomMapProps {
   favoriteSeatIds?: readonly string[];
   /** Admin multi-select: seats picked for a bulk mark, each drawn with a ring. */
   multiSelectedSeatIds?: ReadonlySet<string>;
+  multiLockedSeatIds?: ReadonlySet<string>;
+  selectionPending?: boolean;
 }
 
 const NO_FAVORITES: readonly string[] = [];
@@ -41,7 +43,7 @@ const BACK_WINDOWS = 6;
 const SIDE_WINDOW_LENGTH = 220;
 const SIDE_WINDOW_Y = [130, 400, 670, 940, 1210];
 
-export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlightTableCode = null, avatarBySeatId, adminBadgeSeatIds, superAdminBadgeSeatIds, onlyFree = false, favoriteSeatIds = NO_FAVORITES, multiSelectedSeatIds }: RoomMapProps) {
+export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, onSelectSeat, highlightTableCode = null, avatarBySeatId, adminBadgeSeatIds, superAdminBadgeSeatIds, onlyFree = false, favoriteSeatIds = NO_FAVORITES, multiSelectedSeatIds, multiLockedSeatIds, selectionPending = false }: RoomMapProps) {
   // Photo of the real room when one matches this layout; the drawn room otherwise.
   const skin = useMemo(() => photoSkinFor(map), [map]);
   const dogChairs = useMemo(() => skin ? Array.from(skin.seats.values()) : [], [skin]);
@@ -103,7 +105,8 @@ export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, on
             tableType={meta.tableType}
             facing={meta.facing}
             isMySeat={seat.id === mySeatId}
-            isSelected={seat.id === selectedSeatId}
+            isSelected={multiSelectedSeatIds ? multiSelectedSeatIds.has(seat.id) : seat.id === selectedSeatId}
+            disabled={Boolean(multiSelectedSeatIds && (selectionPending || multiLockedSeatIds?.has(seat.id)))}
             onSelect={handleSelect}
             avatar={avatarBySeatId?.get(seat.id) ?? null}
             adminBadge={superAdminBadgeSeatIds?.has(seat.id) ? "SUPERADMIN" : adminBadgeSeatIds?.has(seat.id) ?? false}
@@ -127,7 +130,11 @@ export const RoomMap = memo(function RoomMap({ map, mySeatId, selectedSeatId, on
           {displaySeats
             .filter((seat) => multiSelectedSeatIds.has(seat.id))
             .map((seat) => (
-              <circle key={seat.id} cx={seat.x} cy={seat.y} r={36} fill="none" stroke="var(--primary)" strokeWidth={7} />
+              <g key={seat.id}>
+                <circle cx={seat.x} cy={seat.y} r={33} fill="var(--primary)" fillOpacity={0.18} stroke="var(--primary)" strokeWidth={6} />
+                <circle cx={seat.x + 24} cy={seat.y - 24} r={12} fill="var(--primary)" stroke="white" strokeWidth={2}/>
+                <path d={`M${seat.x + 18} ${seat.y - 24}l4 4 8-8`} stroke="white" strokeWidth={3} fill="none"/>
+              </g>
             ))}
         </g>
       ) : null}

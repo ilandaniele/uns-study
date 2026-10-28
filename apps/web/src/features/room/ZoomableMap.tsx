@@ -23,7 +23,7 @@ export default function ZoomableMap({ children }: { children: ReactNode }) {
         initialScale={1}
         limitToBounds
         doubleClick={{ disabled: true }}
-        panning={{ disabled: !zoomed, velocityDisabled: true }}
+        panning={{ disabled: !zoomed, velocityDisabled: true, excluded: ["seat-button"] }}
         autoAlignment={{ disabled: true, sizeX: 0, sizeY: 0 }}
         velocityAnimation={{ disabled: true }}
         onTransform={(_ref, state) => setZoomed(state.scale > 1.01)}

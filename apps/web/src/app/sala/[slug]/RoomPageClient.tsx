@@ -158,6 +158,41 @@ export function RoomPageClient({ slug }: { slug: string }) {
   // Admin multi-select: while on, a map tap picks the seat for a bulk mark instead of opening its detail.
   const [multiSelect, setMultiSelect] = useState(false);
   const [multiSeatIds, setMultiSeatIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [multiPending, setMultiPending] = useState(false);
+  const [adminMessage, setAdminMessage] = useState<string | null>(null);
+  const mapSectionRef = useRef<HTMLElement>(null);
+  const mapSectionReady = map !== null;
+  useEffect(() => {
+    const header = document.querySelector("header");
+    const section = mapSectionRef.current;
+    if (!header || !section) return;
+    const update = () => {
+      const offset = `${Math.ceil(header.getBoundingClientRect().height) + 8}px`;
+      section.style.setProperty("--room-sticky-top", offset);
+      section.style.scrollMarginTop = offset;
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, [mapSectionReady]);
+  const selecting = isAdmin && multiSelect;
+  const closeMultiSelect = useCallback(() => {
+    setMultiSelect(false);
+    setMultiSeatIds(new Set());
+    window.requestAnimationFrame(() => document.querySelector<HTMLButtonElement>("[data-admin-multi-start]")?.focus({ preventScroll: true }));
+  }, []);
+  useEffect(() => {
+    if (!selecting || multiPending) return;
+    const cancel = (event: KeyboardEvent) => { if (event.key === "Escape") { event.preventDefault(); closeMultiSelect(); } };
+    window.addEventListener("keydown", cancel);
+    return () => window.removeEventListener("keydown", cancel);
+  }, [selecting, multiPending, closeMultiSelect]);
+  useEffect(() => {
+    if (!adminMessage) return;
+    const timer = window.setTimeout(() => setAdminMessage(null), 8000);
+    return () => window.clearTimeout(timer);
+  }, [adminMessage]);
   // Seat the viewer just marked "Está guardado" — SeatDetail offers to report / ask to free it.
   const [savedPromptSeatId, setSavedPromptSeatId] = useState<string | null>(null);
   const { favoriteSeatIds, isFavorite, toggleFavorite, needsPro: favoriteNeedsPro, notice: favoriteNotice } = useFavoriteSeats(slug);
@@ -178,6 +213,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
   const activeCheckIn = me?.activeCheckIn ?? null;
 
   const mySeatId = activeCheckIn?.seatId ?? null;
+  const multiLockedSeatIds = useMemo(() => new Set([...occupantsBySeatId.keys(), ...(mySeatId ? [mySeatId] : [])]), [occupantsBySeatId, mySeatId]);
   const avatarBySeatId = useMemo(() => {
     const avatars = new Map<string, SeatAvatarDto>();
     for (const [seatId, occupant] of occupantsBySeatId) avatars.set(seatId, occupant.avatar);
@@ -261,7 +297,8 @@ export function RoomPageClient({ slug }: { slug: string }) {
   const todayStats = useRoomTodayStats(slug, signedIn);
   const handleSelectSeat = useCallback(
     (seat: SeatDto) => {
-      if (multiSelect) {
+      if (selecting) {
+        if (multiPending || multiLockedSeatIds.has(seat.id)) return;
         setMultiSeatIds((current) => toggleSeatSelection(current, seat.id));
         return;
       }
@@ -271,7 +308,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
       // Warm the GPS while the person reads the seat panel, so "Estoy acá" answers instantly.
       if (signedIn) primeLocation();
     },
-    [clearError, signedIn, multiSelect],
+    [clearError, signedIn, selecting, multiPending, multiLockedSeatIds],
   );
 
   const closeDetail = useCallback(() => {
@@ -280,7 +317,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
     clearError();
   }, [clearError]);
   // A tap on the empty map floor or outside the map lets the seat go.
-  useDismissSeatOnOutsideTap(selectedSeatId !== null && !multiSelect, closeDetail);
+  useDismissSeatOnOutsideTap(selectedSeatId !== null && !selecting, closeDetail);
 
   // Programmatic open (quick actions): always selects, never toggles closed.
   const openSeat = useCallback(
@@ -458,7 +495,9 @@ export function RoomPageClient({ slug }: { slug: string }) {
       superAdminBadgeSeatIds={superAdminBadgeSeatIds}
       onlyFree={false}
       favoriteSeatIds={favoriteSeatIds}
-      multiSelectedSeatIds={multiSelect ? multiSeatIds : undefined}
+      multiSelectedSeatIds={selecting ? multiSeatIds : undefined}
+      multiLockedSeatIds={multiLockedSeatIds}
+      selectionPending={multiPending}
     />
   );
 
@@ -516,10 +555,14 @@ export function RoomPageClient({ slug }: { slug: string }) {
           roomSlug={slug}
           seats={map.seats}
           onDone={handleChanged}
+          selecting={selecting}
+          onNotice={setAdminMessage}
           onStartMultiSelect={() => {
             closeDetail();
             setMultiSeatIds(new Set());
             setMultiSelect(true);
+            setAdminMessage(null);
+            window.requestAnimationFrame(() => mapSectionRef.current?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }));
           }}
         />
       ) : null}
@@ -605,7 +648,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
           onCheckOut={() => void checkOut()}
           refetch={refetch}
           locating={locating}
-          hideBar={selectedSeatId === activeCheckIn.seatId}
+          hideBar={selectedSeatId === activeCheckIn.seatId || selecting}
         />
       ) : null}
 
@@ -614,12 +657,18 @@ export function RoomPageClient({ slug }: { slug: string }) {
         <ShareRoomButton summary={map.summary} name={map.room.name} />
       </section> : null}
 
-      <section aria-label="Plano interactivo de la sala" className="order-2 flex min-w-0 flex-col gap-2 lg:sticky lg:top-[81px] lg:order-2 lg:col-start-1">
-        <p className="text-center text-xs font-medium text-muted">Tocá un asiento para ver sus opciones y marcar tu lugar.</p>
+      <section ref={mapSectionRef} aria-label="Plano interactivo de la sala" className="order-2 flex min-w-0 scroll-mt-24 flex-col gap-2 lg:sticky lg:top-[var(--room-sticky-top,81px)] lg:order-2 lg:col-start-1">
+        {selecting ? <div className="sticky top-[var(--room-sticky-top,81px)] z-20"><AdminMultiSelectBar
+          roomSlug={slug} seatIds={multiSeatIds}
+          selectedLabels={[...multiSeatIds].flatMap(id => { const seat = seatById.get(id); return seat ? [{ id, label: seatDisplayLabel(tableById.get(seat.tableId) ?? null, seat.code, seat.seatNumber) }] : []; })}
+          onRemove={id => setMultiSeatIds(current => toggleSeatSelection(current, id))}
+          onClear={() => setMultiSeatIds(new Set())} onClose={closeMultiSelect} onPendingChange={setMultiPending}
+          onDone={message => { setAdminMessage(message); closeMultiSelect(); handleChanged(); }}/></div>
+          : <p className="text-center text-xs font-medium text-muted">Tocá un asiento para ver sus opciones y marcar tu lugar.</p>}
         <div className="lg:mx-auto lg:w-fit lg:max-w-full">
           <div
             onPointerDownCapture={preloadSeatDetail}
-            className="relative h-[min(calc(100svh-272px-var(--room-banner-space,0px)),calc((100vw-2rem)*1.4092))] min-h-[180px] w-full overflow-hidden rounded-control border border-app bg-surface lg:mx-auto lg:aspect-[1090/1536] lg:h-[calc(100dvh-140px)] lg:w-auto lg:max-w-full"
+            className={`relative h-[min(calc(100svh-272px-var(--room-banner-space,0px)),calc((100vw-2rem)*1.4092))] min-h-[180px] w-full overflow-hidden rounded-control border border-app bg-surface lg:mx-auto lg:aspect-[1090/1536] ${selecting ? "lg:h-[calc(100dvh-360px)]" : "lg:h-[calc(100dvh-140px)]"} lg:w-auto lg:max-w-full`}
           >
             <div className="absolute right-3 top-3 z-10 hidden lg:block">
               <ShareRoomButton summary={map.summary} name={map.room.name} />
@@ -722,18 +771,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
         />
       ) : null}
       {quietAlert && !toast ? <SeatFreedToast message={quietToastMessage(quietAlert)} onDismiss={dismissQuietAlert} /> : null}
-      {isAdmin && multiSelect ? (
-        <AdminMultiSelectBar
-          roomSlug={slug}
-          seatIds={multiSeatIds}
-          onClear={() => setMultiSeatIds(new Set())}
-          onClose={() => {
-            setMultiSelect(false);
-            setMultiSeatIds(new Set());
-          }}
-          onDone={handleChanged}
-        />
-      ) : null}
+      {adminMessage ? <SeatFreedToast message={adminMessage} onDismiss={() => setAdminMessage(null)}/> : null}
     </main>
   );
 }

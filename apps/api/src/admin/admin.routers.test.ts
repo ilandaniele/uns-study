@@ -60,6 +60,26 @@ describe("admin and qr routers", () => {
     expect(bad.status).toBe(400);
   });
 
+  it("reads the actor's undo state and validates the operation before undoing", async () => {
+    const actionId = "00000000-0000-4000-8000-000000000001";
+    const adminRooms = {
+      markAllUndoState: vi.fn(async () => ({ actionId, count: 3, createdAt: new Date(0).toISOString() })),
+      undoMarkAllOccupied: vi.fn(async () => ({ roomId: "r1", count: 3, changes: [] })),
+    };
+    const realtime = { broadcastSeatChanges: vi.fn(async () => undefined) };
+    const { app } = buildApp("ADMIN", { adminRooms, realtime });
+    const state = await app.request("/admin/rooms/r1/mark-all-occupied/undo");
+    expect(state.status).toBe(200);
+    expect(state.headers.get("cache-control")).toContain("no-store");
+    expect(adminRooms.markAllUndoState).toHaveBeenCalledWith("r1", "u1");
+    const undone = await app.request("/admin/rooms/r1/mark-all-occupied/undo", json({ actionId }));
+    expect(undone.status).toBe(201);
+    expect(adminRooms.undoMarkAllOccupied).toHaveBeenCalledWith("r1", "u1", actionId);
+    expect((await app.request("/admin/rooms/r1/mark-all-occupied/undo", json({ actionId: "invalid" }))).status).toBe(400);
+    expect((await app.request("/admin/rooms/r1/mark-all-occupied/undo", { method: "POST", body: "{" })).status).toBe(400);
+    expect(adminRooms.undoMarkAllOccupied).toHaveBeenCalledOnce();
+  });
+
   it("lets only the superadmin clear the room chat and notifies the chat", async () => {
     const chat = { clearMessages: vi.fn(async () => ({ chatRoomId: "c1", count: 4 })) };
     const realtime = { emitChatCleared: vi.fn() };

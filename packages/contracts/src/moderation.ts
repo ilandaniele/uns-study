@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+/** Only the current administrator's latest total-mark can be undone. */
+export interface AdminMarkAllUndoDto { actionId: string; count: number; createdAt: string }
+export const undoMarkAllOccupiedSchema = z.object({ actionId: z.string().uuid().optional() });
+
 export type ReportReason =
   | "SPAM"
   | "HARASSMENT"

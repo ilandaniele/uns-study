@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { adminMarkSeatsSchema, markAllOccupiedSchema, testGeofenceSchema, updateGeofenceSchema } from "@sala/contracts";
+import { adminMarkSeatsSchema, markAllOccupiedSchema, undoMarkAllOccupiedSchema, testGeofenceSchema, updateGeofenceSchema } from "@sala/contracts";
 import { ApiErrors } from "../common/api-error.js";
 import { currentUser, type AppEnv } from "../http/context.js";
 import { requireAdmin, requireSuperAdmin } from "../http/guards.js";
@@ -46,9 +46,9 @@ adminRoomsRouter.post("/admin/rooms/:idOrSlug/mark-all-occupied", requireAdmin, 
   const { adminRooms, rateLimit, realtime } = c.var.services;
   const limit = await rateLimit.check(`admin:mark-all-occupied:${user.id}`, 10, 60);
   if (!limit.allowed) throw ApiErrors.rateLimited();
-  const { roomId, count, expiresAt, changes } = await adminRooms.markAllOccupied(c.req.param("idOrSlug"), user.id, c.req.valid("json").minutes);
+  const { roomId, count, actionId, expiresAt, changes } = await adminRooms.markAllOccupied(c.req.param("idOrSlug"), user.id, c.req.valid("json").minutes);
   await realtime.broadcastSeatChanges(roomId, changes);
-  return reply(c, { count, expiresAt: expiresAt.toISOString() }, 201);
+  return reply(c, { count, actionId, expiresAt: expiresAt.toISOString() }, 201);
 });
 
 adminRoomsRouter.post("/admin/rooms/:idOrSlug/mark-seats", requireAdmin, zBody(adminMarkSeatsSchema), async (c) => {
@@ -62,12 +62,22 @@ adminRoomsRouter.post("/admin/rooms/:idOrSlug/mark-seats", requireAdmin, zBody(a
   return reply(c, { count, skipped, expiresAt: expiresAt.toISOString() }, 201);
 });
 
+adminRoomsRouter.get("/admin/rooms/:idOrSlug/mark-all-occupied/undo", requireAdmin, async c => {
+  c.header("Cache-Control", "private, no-store");
+  return c.json(await c.var.services.adminRooms.markAllUndoState(c.req.param("idOrSlug"), currentUser(c).id));
+});
+
 adminRoomsRouter.post("/admin/rooms/:idOrSlug/mark-all-occupied/undo", requireAdmin, async (c) => {
   const user = currentUser(c);
   const { adminRooms, rateLimit, realtime } = c.var.services;
   const limit = await rateLimit.check(`admin:mark-all-occupied:${user.id}`, 10, 60);
   if (!limit.allowed) throw ApiErrors.rateLimited();
-  const { roomId, count, changes } = await adminRooms.undoMarkAllOccupied(c.req.param("idOrSlug"), user.id);
+  const raw = await c.req.text();
+  let body: unknown = {};
+  try { if (raw.trim()) body = JSON.parse(raw); } catch { throw ApiErrors.validation("Datos inválidos."); }
+  const input = undoMarkAllOccupiedSchema.safeParse(body);
+  if (!input.success) throw ApiErrors.validation("Identificador de marcado inválido.");
+  const { roomId, count, changes } = await adminRooms.undoMarkAllOccupied(c.req.param("idOrSlug"), user.id, input.data.actionId);
   await realtime.broadcastSeatChanges(roomId, changes);
   return reply(c, { count }, 201);
 });

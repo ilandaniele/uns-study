@@ -58,9 +58,10 @@ export interface SeatProps {
   isFavorite?: boolean;
   /** Drawn over a photo of the room: the real chair is already there, so skip the drawn backrest. */
   photo?: boolean;
+  disabled?: boolean;
 }
 
-export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, isMySeat, isSelected, onSelect, avatar = null, adminBadge = false, dimmed = false, isFavorite = false, photo = false }: SeatProps) {
+export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, isMySeat, isSelected, onSelect, avatar = null, adminBadge = false, dimmed = false, isFavorite = false, photo = false, disabled = false }: SeatProps) {
   const badge = seatAvatarRender(avatar, seat.status === "OCCUPIED" || isMySeat);
   const showPhoto = badge !== null;
   const clipId = `seat-photo-${seat.id}`;
@@ -79,14 +80,16 @@ export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, is
       tabIndex={0}
       aria-label={ariaLabel}
       aria-pressed={isSelected}
+      aria-disabled={disabled || undefined}
+      data-seat-id={seat.id}
       data-status={seat.status}
       className="seat-button cursor-pointer outline-none transition-opacity"
       opacity={dimmed ? 0.18 : 1}
-      onClick={() => onSelect(seat)}
+      onClick={() => { if (!disabled) onSelect(seat); }}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          onSelect(seat);
+          if (!disabled) onSelect(seat);
         }
       }}
       transform={`translate(${seat.x} ${seat.y}) rotate(${seat.rotation})`}

@@ -1,5 +1,5 @@
 import { and, count, desc, eq, getTableColumns, gt, gte, inArray, sql } from "drizzle-orm";
-import { chunk, rowsPerInsert, schema, type Db } from "@sala/database";
+import { chunk, inChunks, rowsPerInsert, schema, type Db, type Tx } from "@sala/database";
 import { type GeofenceTestResultDto, type LocationInput, type RoomDailyStatDto, type RoomGeofenceDto, type RoomStatsDto } from "@sala/contracts";
 import { env } from "../env.js";
 import { RoomsService } from "../rooms/rooms.service.js";
@@ -8,6 +8,8 @@ import { PresenceService } from "../presence/presence.service.js";
 import { RolesService } from "../users/roles.service.js";
 import { RoomCache } from "../common/cache/room-cache.service.js";
 import { ADMIN_MARK_MINUTES, ADMIN_OVERRIDE_WEIGHT } from "../observations/observations.service.js";
+import { ApiErrors } from "../common/api-error.js";
+import type { AdminMarkAllUndoDto } from "@sala/contracts";
 
 const HOURS_24_MS = 24 * 60 * 60 * 1000;
 const DAY_MS = HOURS_24_MS;
@@ -237,7 +239,7 @@ export class AdminRoomsService {
     idOrSlug: string,
     actorId: string,
     minutes: number,
-  ): Promise<{ roomId: string; count: number; expiresAt: Date; changes: SeatStateChange[] }> {
+  ): Promise<{ roomId: string; count: number; actionId: string | null; expiresAt: Date; changes: SeatStateChange[] }> {
     const room = await this.rooms.findRoomRow(idOrSlug);
     const now = new Date();
     const expiresAt = new Date(now.getTime() + minutes * 60_000);
@@ -245,7 +247,7 @@ export class AdminRoomsService {
     // The derived seat states are read first (async); the active check-ins are re-read inside the transaction.
     const live = await this.roomState.getLiveSeatStates(room.id, now);
 
-    const { count: marked, changes } = this.db.transaction((tx) => {
+    const { count: marked, actionId, changes } = this.db.transaction((tx) => {
       const seated = new Set(
         tx
           .select({ seatId: schema.checkIns.seatId })
@@ -255,11 +257,14 @@ export class AdminRoomsService {
           .map((c) => c.seatId),
       );
       const targets = [...live.values()].filter((s) => s.status !== "OCCUPIED" && !seated.has(s.seatId)).map((s) => s.seatId);
+      if (!targets.length) return { count: 0, actionId: null, changes: [] as SeatStateChange[] };
+      const observations = targets.map(seatId => ({ id: crypto.randomUUID(), seatId }));
 
-      for (const part of chunk(targets, rowsPerInsert(OBSERVATION_COLUMN_COUNT))) {
+      for (const part of chunk(observations, rowsPerInsert(OBSERVATION_COLUMN_COUNT))) {
         tx.insert(schema.seatObservations)
           .values(
-            part.map((seatId) => ({
+            part.map(({ id, seatId }) => ({
+              id,
               userId: actorId,
               roomId: room.id,
               seatId,
@@ -274,18 +279,20 @@ export class AdminRoomsService {
           .run();
       }
       const changes = this.roomState.recomputeSeats(targets, { roomId: room.id, now, eventType: "ADMIN_MARK_ALL_OCCUPIED", actingUserId: actorId, tx });
+      const actionId = crypto.randomUUID();
       tx.insert(schema.moderationActions)
         .values({
+          id: actionId,
           actorId,
           targetUserId: null,
           action: "ADMIN_MARK_ALL_OCCUPIED",
-          metadata: { roomId: room.id, count: targets.length, minutes },
+          metadata: { roomId: room.id, count: targets.length, minutes, observationIds: observations.map(observation => observation.id) },
         })
         .run();
-      return { count: targets.length, changes };
+      return { count: targets.length, actionId, changes };
     });
 
-    return { roomId: room.id, count: marked, expiresAt, changes };
+    return { roomId: room.id, count: marked, actionId, expiresAt, changes };
   }
 
   /**
@@ -308,12 +315,12 @@ export class AdminRoomsService {
 
     const result = this.db.transaction((tx) => {
       const roomSeats = new Set(
-        tx
+        inChunks(requested, part => tx
           .select({ id: schema.seats.id })
           .from(schema.seats)
-          .where(and(eq(schema.seats.roomId, room.id), eq(schema.seats.active, true), inArray(schema.seats.id, requested)))
+          .where(and(eq(schema.seats.roomId, room.id), eq(schema.seats.active, true), inArray(schema.seats.id, part)))
           .all()
-          .map((s) => s.id),
+          .map((s) => s.id)),
       );
       const seated = new Set(
         tx
@@ -326,14 +333,14 @@ export class AdminRoomsService {
       const targets = requested.filter((id) => roomSeats.has(id) && !seated.has(id));
       if (targets.length === 0) return { count: 0, changes: [] as SeatStateChange[] };
 
-      tx.update(schema.seatObservations)
+      for (const part of chunk(targets, 90)) tx.update(schema.seatObservations)
         .set({ expiresAt: now, updatedAt: now })
         .where(
           and(
             eq(schema.seatObservations.roomId, room.id),
             eq(schema.seatObservations.adminOverride, true),
             gt(schema.seatObservations.expiresAt, now),
-            inArray(schema.seatObservations.seatId, targets),
+            inArray(schema.seatObservations.seatId, part),
           ),
         )
         .run();
@@ -369,24 +376,52 @@ export class AdminRoomsService {
     return { roomId: room.id, count: result.count, skipped: requested.length - result.count, expiresAt, changes: result.changes };
   }
 
-  /** Expires every live admin bulk-mark in the room and recomputes the affected seats. */
-  async undoMarkAllOccupied(idOrSlug: string, actorId: string): Promise<{ roomId: string; count: number; changes: SeatStateChange[] }> {
+  private latestTotalMark(db: Db | Tx, roomId: string, actorId: string) {
+    const row = db.select().from(schema.moderationActions).where(and(
+      eq(schema.moderationActions.actorId, actorId), eq(schema.moderationActions.action, "ADMIN_MARK_ALL_OCCUPIED"),
+      sql`json_extract(${schema.moderationActions.metadata}, '$.roomId') = ${roomId}`,
+    )).orderBy(desc(schema.moderationActions.createdAt), sql`${schema.moderationActions}.rowid desc`).limit(1).get();
+    const metadata = row?.metadata as { observationIds?: unknown } | null;
+    const ids = Array.isArray(metadata?.observationIds) ? [...new Set(metadata.observationIds.filter((id): id is string => typeof id === "string"))] : [];
+    return row && ids.length ? { ...row, observationIds: ids } : null;
+  }
+
+  async markAllUndoState(idOrSlug: string, actorId: string): Promise<AdminMarkAllUndoDto | null> {
+    const room = await this.rooms.findRoomRow(idOrSlug);
+    const action = this.latestTotalMark(this.db, room.id, actorId);
+    if (!action) return null;
+    const active = inChunks(action.observationIds, part => [this.db.select({ total: count() }).from(schema.seatObservations).where(and(
+      eq(schema.seatObservations.roomId, room.id), eq(schema.seatObservations.userId, actorId),
+      eq(schema.seatObservations.adminOverride, true), inArray(schema.seatObservations.id, part),
+      gt(schema.seatObservations.expiresAt, new Date()),
+    )).get()!.total]).reduce((total, value) => total + value, 0);
+    return active ? { actionId: action.id, count: active, createdAt: action.createdAt.toISOString() } : null;
+  }
+
+  /** Undo exact observations from the latest total-mark, never earlier or later administrative marks. */
+  async undoMarkAllOccupied(idOrSlug: string, actorId: string, expectedActionId?: string): Promise<{ roomId: string; count: number; changes: SeatStateChange[] }> {
     const room = await this.rooms.findRoomRow(idOrSlug);
     const now = new Date();
 
     const result = this.db.transaction((tx) => {
-      const expired = tx
+      const action = this.latestTotalMark(tx, room.id, actorId);
+      if (expectedActionId && action?.id !== expectedActionId) throw ApiErrors.validation("El marcado total cambió. Actualizá la sala antes de deshacer.");
+      if (!action) return { count: 0, changes: [] as SeatStateChange[] };
+      const expired = inChunks(action.observationIds, part => tx
         .update(schema.seatObservations)
         .set({ expiresAt: now, updatedAt: now })
         .where(
           and(
             eq(schema.seatObservations.roomId, room.id),
+            eq(schema.seatObservations.userId, actorId),
+            inArray(schema.seatObservations.id, part),
             eq(schema.seatObservations.adminOverride, true),
             gt(schema.seatObservations.expiresAt, now),
           ),
         )
         .returning({ seatId: schema.seatObservations.seatId })
-        .all();
+        .all());
+      if (!expired.length) return { count: 0, changes: [] as SeatStateChange[] };
       const seatIds = [...new Set(expired.map((r) => r.seatId))];
       const changes = this.roomState.recomputeSeats(seatIds, {
         roomId: room.id,
@@ -400,7 +435,7 @@ export class AdminRoomsService {
           actorId,
           targetUserId: null,
           action: "ADMIN_MARK_ALL_OCCUPIED_UNDO",
-          metadata: { roomId: room.id, count: seatIds.length },
+          metadata: { roomId: room.id, count: seatIds.length, actionId: action.id },
         })
         .run();
       return { count: seatIds.length, changes };

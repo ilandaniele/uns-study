@@ -1,8 +1,9 @@
 "use client";
 
-import type { SeatDto } from "@sala/contracts";
-import { useEffect, useRef, useState } from "react";
+import type { AdminMarkAllUndoDto, SeatDto } from "@sala/contracts";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch, ApiRequestError } from "@/lib/api";
+import { useMe } from "@/lib/me-store";
 import { useExitTransition } from "@/lib/useExitTransition";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import { SeatFreedToast } from "@/features/room/SeatFreedToast";
@@ -24,16 +25,36 @@ export interface MarkAllOccupiedCardProps {
   onDone?: () => void;
   /** Enters map multi-select so the admin can mark chosen seats; omitted hides the button. */
   onStartMultiSelect?: () => void;
+  selecting?: boolean;
+  onNotice?: (message: string) => void;
 }
 
 /** Admin-only bulk action: mark every non-occupied seat as OCCUPIED for a while, or undo it. The API re-checks the role. */
-export function MarkAllOccupiedCard({ roomSlug, seats, onDone, onStartMultiSelect }: MarkAllOccupiedCardProps) {
+export function MarkAllOccupiedCard({ roomSlug, seats, onDone, onStartMultiSelect, selecting = false, onNotice }: MarkAllOccupiedCardProps) {
   const [confirming, setConfirming] = useState(false);
   const { closing, requestClose } = useExitTransition(() => setConfirming(false));
   const [minutes, setMinutes] = useState<number>(MARK_ALL_OCCUPIED_DEFAULT_MINUTES);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const { me } = useMe();
+  const actorId = me?.user?.id;
+  const [undoState, setUndoState] = useState<{ actorId: string; action: AdminMarkAllUndoDto | null } | null>(null);
+  const undo = undoState?.actorId === actorId ? undoState?.action : null;
+  const busy = useRef(false);
+  const refreshUndo = useCallback(async () => {
+    if (!actorId) return;
+    try {
+      const action = await apiFetch<AdminMarkAllUndoDto | null>(`/api/v1/admin/rooms/${roomSlug}/mark-all-occupied/undo`, { cache: "no-store" });
+      setUndoState({ actorId, action });
+    } catch { setUndoState({ actorId, action: null }); }
+  }, [actorId, roomSlug]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial server read; updates only after I/O
+    void refreshUndo();
+    window.addEventListener("focus", refreshUndo);
+    return () => window.removeEventListener("focus", refreshUndo);
+  }, [refreshUndo]);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, { active: confirming, onEscape: pending ? undefined : requestClose });
 
@@ -46,6 +67,8 @@ export function MarkAllOccupiedCard({ roomSlug, seats, onDone, onStartMultiSelec
   const count = countMarkableSeats(seats);
 
   async function run<T>(path: string, body: object | undefined, toMessage: (result: T) => string) {
+    if (busy.current) return;
+    busy.current = true;
     setPending(true);
     setError(null);
     try {
@@ -54,11 +77,14 @@ export function MarkAllOccupiedCard({ roomSlug, seats, onDone, onStartMultiSelec
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
       if (confirming) requestClose();
-      setMessage(toMessage(result));
+      if (onNotice) onNotice(toMessage(result)); else setMessage(toMessage(result));
+      setUndoState(null);
       onDone?.();
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : "No pudimos completar la acción. Probá de nuevo.");
     } finally {
+      void refreshUndo();
+      busy.current = false;
       setPending(false);
     }
   }
@@ -73,30 +99,32 @@ export function MarkAllOccupiedCard({ roomSlug, seats, onDone, onStartMultiSelec
             setError(null);
             setConfirming(true);
           }}
-          disabled={pending || count === 0}
+          disabled={pending || selecting || count === 0}
           className="min-h-10 rounded-control bg-primary px-3 text-sm font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-60"
         >
           Todos los lugares ocupados
         </button>
         <button
           type="button"
-          onClick={() => void run<{ count: number }>("mark-all-occupied/undo", undefined, (r) => `Deshicimos la marca en ${r.count} lugares`)}
-          disabled={pending}
+          onClick={() => { if (undo) void run<{ count: number }>("mark-all-occupied/undo", { actionId: undo.actionId }, r => r.count ? `Deshicimos el marcado total en ${r.count} lugares. Conservamos las marcas anteriores.` : "Ese marcado ya no tiene cambios para deshacer."); }}
+          disabled={pending || selecting || !undo}
           className="min-h-10 rounded-control border border-app px-3 text-sm font-medium text-main hover:bg-[var(--surface-2)] disabled:opacity-60"
         >
-          Deshacer
+          Deshacer marcado total
         </button>
         {onStartMultiSelect ? (
           <button
             type="button"
+            data-admin-multi-start=""
             onClick={onStartMultiSelect}
-            disabled={pending}
+            disabled={pending || selecting}
             className="min-h-10 rounded-control border border-app px-3 text-sm font-medium text-main hover:bg-[var(--surface-2)] disabled:opacity-60"
           >
             Elegir varios lugares
           </button>
         ) : null}
       </div>
+      {undo ? <p className="text-xs leading-relaxed text-muted">Deshacer revierte sólo tu último marcado total; conserva las marcas previas y los cambios posteriores.</p> : null}
       {error && !confirming ? (
         <p role="alert" className="text-xs text-red-700">
           {error}

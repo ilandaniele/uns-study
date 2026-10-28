@@ -256,7 +256,7 @@ describe("AdminRoomsService — mark all occupied", () => {
   });
 
   it("converts FREE-observed seats and skips seats that are already OCCUPIED", async () => {
-    const now = new Date();
+    const now = new Date(Date.now() - 1000);
     await db.insert(schema.seatObservations).values([
       { userId: "u1", roomId, seatId: seatIds[1]!, observedStatus: "FREE", confidenceWeight: 1, observedAt: now, expiresAt: new Date(now.getTime() + 600_000) },
       { userId: "u2", roomId, seatId: seatIds[2]!, observedStatus: "OCCUPIED", confidenceWeight: 1, observedAt: now, expiresAt: new Date(now.getTime() + 600_000) },
@@ -287,6 +287,46 @@ describe("AdminRoomsService — mark all occupied", () => {
     expect(again.count).toBe(0);
   });
 
+  it("undo of all-occupied preserves earlier admin, saved and member reports and later changes", async () => {
+    await svc.markSeats(roomId, "admin1", [seatIds[0]!], "OCCUPIED");
+    const now = new Date(Date.now() - 1000);
+    await db.insert(schema.seatObservations).values([
+      { userId: "u1", roomId, seatId: seatIds[1]!, observedStatus: "SAVED", confidenceWeight: 1, observedAt: now, expiresAt: new Date(now.getTime() + 600_000) },
+      { userId: "u2", roomId, seatId: seatIds[2]!, observedStatus: "OCCUPIED", confidenceWeight: 1, observedAt: now, expiresAt: new Date(now.getTime() + 600_000) },
+    ]);
+    const marked = await svc.markAllOccupied(roomId, "admin1", 60);
+    await svc.markSeats(roomId, "u2", [seatIds[3]!], "FREE");
+    await svc.undoMarkAllOccupied(roomId, "admin1", marked.actionId!);
+    const live = await roomState.getLiveSeatStates(roomId);
+    expect(live.get(seatIds[0]!)?.status).toBe("OCCUPIED");
+    expect(live.get(seatIds[1]!)?.status).toBe("SAVED");
+    expect(live.get(seatIds[2]!)?.status).toBe("OCCUPIED");
+    expect(live.get(seatIds[3]!)?.status).toBe("FREE");
+    expect(live.get(seatIds[4]!)?.status).toBe("UNKNOWN");
+  });
+
+  it("undo is scoped to the actor and latest total-mark operation, including same-millisecond batches", async () => {
+    const first = await svc.markAllOccupied(roomId, "admin1", 60);
+    expect((await svc.undoMarkAllOccupied(roomId, "u2")).count).toBe(0);
+    await svc.markSeats(roomId, "admin1", [seatIds[0]!], "FREE");
+    await db.update(schema.seatObservations).set({ observedAt: new Date(Date.now() - 1000) }).where(eq(schema.seatObservations.observedStatus, "FREE"));
+    const second = await svc.markAllOccupied(roomId, "admin1", 60);
+    await db.update(schema.moderationActions).set({ createdAt: new Date(0) }).where(eq(schema.moderationActions.action, "ADMIN_MARK_ALL_OCCUPIED"));
+    await expect(svc.undoMarkAllOccupied(roomId, "admin1", first.actionId!)).rejects.toThrow();
+    expect((await svc.undoMarkAllOccupied(roomId, "admin1", second.actionId!)).count).toBe(1);
+    expect((await roomState.getLiveSeatStates(roomId)).get(seatIds[0]!)?.status).toBe("FREE");
+    expect((await roomState.getLiveSeatStates(roomId)).get(seatIds[1]!)?.status).toBe("OCCUPIED");
+    expect((await svc.undoMarkAllOccupied(roomId, "admin1")).count).toBe(0);
+    expect(await svc.markAllUndoState(roomId, "admin1")).toBeNull();
+  });
+
+  it("never clears unrelated marks when an old batch has no exact observation ids", async () => {
+    await svc.markSeats(roomId, "admin1", [seatIds[0]!], "OCCUPIED");
+    await db.insert(schema.moderationActions).values({ actorId: "admin1", action: "ADMIN_MARK_ALL_OCCUPIED", metadata: { roomId, count: 108 } });
+    expect((await svc.undoMarkAllOccupied(roomId, "admin1")).count).toBe(0);
+    expect((await roomState.getLiveSeatStates(roomId)).get(seatIds[0]!)?.status).toBe("OCCUPIED");
+  });
+
   it("marks only the chosen seats occupied, skipping checked-in and unknown seats", async () => {
     await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location: await loc(), showIdentity: false });
 
@@ -304,8 +344,17 @@ describe("AdminRoomsService — mark all occupied", () => {
     expect(row?.metadata).toMatchObject({ status: "OCCUPIED", count: 2 });
   });
 
+  it("supports selecting the whole room while leaving active check-ins untouched", async () => {
+    await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location: await loc(), showIdentity: false });
+    expect((await svc.markSeats(roomId, "admin1", seatIds, "OCCUPIED")).count).toBe(107);
+    expect((await svc.markSeats(roomId, "admin1", seatIds, "FREE")).count).toBe(107);
+    const live = await roomState.getLiveSeatStates(roomId);
+    expect(live.get(seatIds[0]!)?.status).toBe("OCCUPIED");
+    expect([...live.values()].filter(seat => seat.status === "FREE")).toHaveLength(107);
+  });
+
   it("marks chosen seats free over member reports and replaces an earlier admin mark", async () => {
-    const now = new Date();
+    const now = new Date(Date.now() - 1000);
     await db.insert(schema.seatObservations).values([
       { userId: "u1", roomId, seatId: seatIds[1]!, observedStatus: "OCCUPIED", confidenceWeight: 1, observedAt: now, expiresAt: new Date(now.getTime() + 600_000) },
       { userId: "u2", roomId, seatId: seatIds[1]!, observedStatus: "OCCUPIED", confidenceWeight: 1, observedAt: now, expiresAt: new Date(now.getTime() + 600_000) },
@@ -320,10 +369,10 @@ describe("AdminRoomsService — mark all occupied", () => {
     expect(live.get(seatIds[2]!)?.status).toBe("FREE");
 
     const undone = await svc.undoMarkAllOccupied(roomId, "admin1");
-    expect(undone.count).toBe(2);
+    expect(undone.count).toBe(0);
     const after = await roomState.getLiveSeatStates(roomId);
-    expect(after.get(seatIds[1]!)?.status).toBe("OCCUPIED");
-    expect(after.get(seatIds[2]!)?.status).toBe("UNKNOWN");
+    expect(after.get(seatIds[1]!)?.status).toBe("FREE");
+    expect(after.get(seatIds[2]!)?.status).toBe("FREE");
   });
 
   it("shows 'Administración' as the marker without exposing the admin", async () => {
