@@ -45,3 +45,12 @@ export const gardenPayments = sqliteTable(
   },
   (t) => [index("idx_garden_payments_order").on(t.orderId)],
 );
+
+/** Durable idempotency receipt: it outlives audit-log retention and follows account deletion. */
+export const gardenSeedGrants = sqliteTable("garden_seed_grants", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  actorId: text("actor_id").references(() => user.id, { onDelete: "set null" }),
+  seeds: integer("seeds").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+});

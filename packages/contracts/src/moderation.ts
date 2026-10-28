@@ -33,7 +33,7 @@ export const REPORT_EVIDENCE_MIME = ["image/jpeg", "image/png", "image/webp", "i
 
 export interface AdminReportDto {
   id: string;
-  /** `email` is null unless the caller is an ADMIN. */
+  /** Only SUPERADMIN sees account names/emails; staff sees public display names. */
   reporter: { userId: string; name: string; email: string | null } | null;
   reported: { userId: string; name: string; email: string | null } | null;
   reason: ReportReason;

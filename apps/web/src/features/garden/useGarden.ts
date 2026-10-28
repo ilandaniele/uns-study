@@ -8,6 +8,7 @@ import type {
   GardenRedeemRequest,
 } from "@sala/contracts";
 import { apiFetch } from "@/lib/api";
+import { getSocket } from "@/lib/socket";
 
 export function useGarden() {
   const [garden, setGarden] = useState<GardenDto | null>(null);
@@ -56,11 +57,16 @@ export function useGarden() {
       if (document.visibilityState === "visible") void refresh();
     };
     const interval = window.setInterval(visible, 60_000);
+    const socket=getSocket();
+    socket.on("garden:changed",visible).on("connect",visible);
+    window.addEventListener("focus",visible);
     document.addEventListener("visibilitychange", visible);
     return () => {
       mounted.current = false;
       invalidateRequest();
       window.clearInterval(interval);
+      socket.off("garden:changed",visible).off("connect",visible);
+      window.removeEventListener("focus",visible);
       document.removeEventListener("visibilitychange", visible);
     };
   }, [refresh, invalidateRequest]);

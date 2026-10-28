@@ -15,6 +15,14 @@ export function gardenExpansion(plotCount: number) {
 }
 export const gardenExpandSchema = z.object({ plotCount: z.number().int().min(GARDEN_SIZE).max(GARDEN_MAX_SIZE - GARDEN_EXPANSION_SIZE).refine(n => n % 5 === 0) }).strict();
 export type GardenExpandRequest = z.infer<typeof gardenExpandSchema>;
+export const GARDEN_MAX_GIFT_SEEDS = 10000;
+export const gardenSeedGiftSchema = z.object({
+  grantId: z.uuid(),
+  seeds: z.number().int().min(1).max(GARDEN_MAX_GIFT_SEEDS),
+  reason: z.string().trim().min(3).max(200),
+}).strict();
+export type GardenSeedGiftRequest = z.infer<typeof gardenSeedGiftSchema>;
+export interface GardenSeedGiftDto { grantId: string; seeds: number; duplicate: boolean }
 export const GARDEN_STARTER_SEEDS = 30;
 export const GARDEN_MINUTES_PER_SEED = 6;
 export const GARDEN_SEED_PACK = { seeds: 100, priceArs: 5000 } as const;

@@ -14,6 +14,7 @@
 import type { Db } from "@sala/database";
 import { ReactionsService } from "./chat/reactions.service.js";
 import { FocusService } from "./focus/focus.service.js";
+import { GardenGiftsService } from "./garden/garden-gifts.service.js";
 import { GardenService } from "./garden/garden.service.js";
 import { GardenPurchasesService } from "./garden/garden-purchases.service.js";
 import { env as defaultEnv, type Env } from "./env.js";
@@ -226,6 +227,7 @@ export function buildServices(deps: ContainerDeps): Services {
     storage, seatPhotoVerifier,
     pro, seatWatch, studyHistory, forecast, favoriteSeats, groupStudy, weeklyGoal, streakBadges, exams,
     cosmetics, quietRoom, groupRanking, garden, gardenPurchases,
+    gardenGifts: new GardenGiftsService(db,garden,roles,restriction,clock,hub),
     sectionUsage: new SectionUsageService(db, clock),
     realtime, scheduler, clock,
     jobs,

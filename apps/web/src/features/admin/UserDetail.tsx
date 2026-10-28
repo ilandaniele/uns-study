@@ -7,6 +7,7 @@ import { buenosAiresLocalToIso } from "./manual-study-session";
 import { useMe } from "@/lib/me-store";
 import { AuditLog } from "./AuditLog";
 import { OwnerDeleteAccount } from "./OwnerDeleteAccount";
+import { OwnerSeedGift } from "./OwnerSeedGift";
 
 const ACTIONS: { type: ModerationActionType; label: string }[] = [
   { type: "WARN", label: "Advertir" },
@@ -188,6 +189,7 @@ export function UserDetail({ userId }: { userId: string }) {
           </button>
         ) : null}
 
+        <div className="mt-4"><OwnerSeedGift userId={user.userId} displayName={user.name}/></div>
         {user.reputation ? (
           <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-app pt-3 text-center sm:grid-cols-4">
             <div>

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { adminDeleteUserSchema, moderationActionSchema } from "@sala/contracts";
+import { adminDeleteUserSchema, moderationActionSchema, gardenSeedGiftSchema } from "@sala/contracts";
 import { ApiErrors } from "../common/api-error.js";
 import { currentUser, type AppEnv } from "../http/context.js";
 import { requireAdmin, requireSuperAdmin } from "../http/guards.js";
@@ -36,6 +36,13 @@ adminUsersRouter.get("/admin/users", requireSuperAdmin, async (c) => {
 
 adminUsersRouter.get("/admin/users/:id", requireSuperAdmin, async (c) => {
   return reply(c, await c.var.services.adminUsers.getById(c.req.param("id"), currentUser(c).id));
+});
+
+adminUsersRouter.post("/admin/users/:id/garden/seeds",requireSuperAdmin,zBody(gardenSeedGiftSchema),async c=>{
+  const actorId=currentUser(c).id;
+  c.header("Cache-Control","private, no-store");
+  await c.var.services.antiAbuse.enforceRateLimit({key:`garden-gifts:${actorId}`,limit:30,windowSeconds:3600});
+  return reply(c,await c.var.services.gardenGifts.grant(actorId,c.req.param("id"),c.req.valid("json")));
 });
 
 adminUsersRouter.post("/admin/users/:id/actions", requireAdmin, zBody(moderationActionSchema), async (c) => {

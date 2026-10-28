@@ -9,7 +9,10 @@ export function ServiceWorkerRegistration() {
     if (!("serviceWorker" in navigator)) return;
     // `updateViaCache: "none"` makes the browser always re-check sw.js itself, so a fixed worker
     // replaces a broken one on the very next visit instead of whenever the HTTP cache expires.
-    void navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).then((registration) => registration.update());
+    // Offline registration can be denied by the browser; the online app must still work.
+    void navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" })
+      .then((registration) => registration?.update())
+      .catch(() => undefined);
   }, []);
 
   return null;

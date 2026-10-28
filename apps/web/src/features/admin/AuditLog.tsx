@@ -14,6 +14,7 @@ const ACTION_LABEL: Record<string, string> = {
   BAN: "Ban",
   LIFT: "Restricción levantada",
   STUDY_TIME_CREDITED: "Horas de estudio ajustadas",
+  GARDEN_SEEDS_GRANTED: "Regalo de semillas",
   REPORT_STATUS_CHANGED: "Reporte actualizado",
   ACCOUNT_DELETED: "Cuenta eliminada",
   SHIELDED: "Blindado",

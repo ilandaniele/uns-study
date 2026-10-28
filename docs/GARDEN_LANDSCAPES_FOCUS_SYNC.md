@@ -46,3 +46,12 @@ Migración aditiva 0012_garden_landscapes_focus: tabla user_focus y dos columnas
 
 ## Verificación
 Pruebas de servicio/HTTP con SQLite cubren capacidad, compra concurrente, saldo, aislamiento entre cuentas, conciliación y permisos. La revisión de navegador usa cuentas sintéticas y una API Hono/SQLite local real; no modifica asientos, cuentas reales ni realiza compras de Mercado Pago.
+
+## Regalos de semillas del súper admin
+En el perfil administrativo y en Administración → Usuarios, el propietario puede abrir “Regalar semillas”, ingresar entre 1 y 10.000, indicar un motivo y confirmar antes de enviar. La ruta POST /admin/users/:id/garden/seeds vuelve a verificar SUPERADMIN, correo verificado y restricciones, aplica 30 envíos por hora y valida los datos en servidor. No cambia horas, crecimiento ni compras de Mercado Pago.
+
+Saldo, comprobante y auditoría se escriben en una transacción. El comprobante de garden_seed_grants sobrevive a la retención del log, por lo que un reintento no duplica el regalo aunque se haya limpiado la auditoría. Se rechaza reutilizar el comprobante para otra cuenta o cantidad. Los comprobantes se borran con la cuenta receptora. La migración aditiva es 0013_owner_seed_gifts.
+
+Ante una respuesta incierta, el formulario conserva el mismo regalo y permite reintentarlo sin cambiar monto/persona. El aviso privado garden:changed invita al destinatario a actualizar su saldo; se reconsulta también al volver a la ventana. Los admins comunes no ven el formulario ni pueden invocar la ruta. La auditoría para staff usa nombres públicos y oculta los metadatos de regalos; el súper admin conserva la información completa.
+
+La moderación se mantiene disponible desde perfiles públicos y reportes sin cargar la vista privada de la cuenta.

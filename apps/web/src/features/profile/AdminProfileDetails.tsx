@@ -8,6 +8,7 @@ import { apiFetch } from "@/lib/api";
 import { useMe } from "@/lib/me-store";
 import { instagramHref } from "./instagram";
 import { ProfileAdminAction } from "./ProfileAdminAction";
+import { OwnerSeedGift } from "@/features/admin/OwnerSeedGift";
 
 const MODES: Record<IdentityMode, string> = { HIDDEN: "Identidad oculta", FULL_NAME: "Nombre y apellido", FIRST_NAME: "Nombre", NICKNAME: "Apodo", NICKNAME_AND_NAME: "Apodo y nombre" };
 const PRIVACY: Record<keyof PrivacySettingsDto, string> = {
@@ -88,6 +89,7 @@ function AdminProfileView({ path, aliasView }: { path: string; aliasView: boolea
         {data.privacy ? <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">{(Object.keys(PRIVACY) as (keyof PrivacySettingsDto)[]).map(key => <Detail key={key} label={PRIVACY[key]}>{data.privacy![key] ? "Sí" : "No"}</Detail>)}</dl> : <p className="mt-3 text-sm text-muted">No guardó preferencias de privacidad.</p>}
       </details>
       {aliasView ? <ProfileAdminAction userId={data.userId} displayName={data.account.name} onGranted={async () => { setAttempt(n => n + 1); }}/> : null}
+      <OwnerSeedGift userId={data.userId} displayName={data.account.name}/>
       <Link href={`/admin/users/${encodeURIComponent(data.userId)}`} className="inline-flex min-h-11 items-center rounded-full border border-app px-4 text-sm font-semibold text-primary">Abrir gestión del usuario</Link>
     </>}
   </section>;

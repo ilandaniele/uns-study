@@ -20,6 +20,7 @@ import { ProfileAdminAction } from "@/features/profile/ProfileAdminAction";
 import { AdminProfileDetails } from "@/features/profile/AdminProfileDetails";
 import { useMe } from "@/lib/me-store";
 import { PublicAchievements } from "@/features/badges/AchievementCollection";
+import { PublicModerationActions } from "@/features/admin/PublicModerationActions";
 
 /** Public profile view: "Enviar mensaje", "Bloquear"/"Desbloquear", "Reportar". */
 export default function PublicProfilePage() {
@@ -177,6 +178,7 @@ export default function PublicProfilePage() {
         <ProfileAdminAction userId={userId} displayName={profile.displayName} onGranted={load} />
       </article>
       <AdminProfileDetails userId={userId} />
+      <PublicModerationActions userId={userId} displayName={profile.displayName}/>
       {!profile.blockedByMe ? <PublicAchievements key={userId} userId={userId}/> : null}
       {!profile.blockedByMe ? <Link href={`/u/${encodeURIComponent(userId)}/jardin`} className="group mt-4 flex min-h-24 items-center gap-4 rounded-3xl border border-app bg-surface px-5 py-5 transition-colors hover:bg-surface-2 sm:px-6">
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-surface-2 text-primary"><PlantIcon aria-hidden="true" size={26} /></span>

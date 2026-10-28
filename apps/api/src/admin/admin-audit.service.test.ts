@@ -13,10 +13,10 @@ describe("AdminAuditService", () => {
     await insertUsers(db, ["admin", "antonella", "other"]);
   });
 
-  it("names the actor and the target of each entry", async () => {
+  it("shows account names only in the superadmin audit view", async () => {
     await db.insert(schema.moderationActions).values({ actorId: "admin", targetUserId: "antonella", action: "BAN", metadata: { reason: "x" } });
 
-    const { items } = await svc.list(undefined);
+    const { items } = await svc.list(undefined,undefined,true);
     expect(items[0]).toMatchObject({ action: "BAN", actorName: "admin", targetName: "antonella" });
   });
 

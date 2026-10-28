@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { REPORT_REASON_LABELS, REPORT_STATUS_LABELS, REPORT_STATUSES } from "./reports-labels";
 import { ReportStatusPill } from "./ReportStatusPill";
+import { PublicModerationActions } from "./PublicModerationActions";
 
 export function ReportDetail({ reportId }: { reportId: string }) {
   const [report, setReport] = useState<AdminReportDto | null>(null);
@@ -63,8 +64,8 @@ export function ReportDetail({ reportId }: { reportId: string }) {
           <div>
             <h2 className="font-display text-lg font-semibold text-main">{REPORT_REASON_LABELS[report.reason]}</h2>
             <p className="text-sm text-muted">
-              {report.reporter?.name ?? "Cuenta eliminada"} ({report.reporter?.email ?? "sin email"}) reportó a{" "}
-              {report.reported?.name ?? "Cuenta eliminada"} ({report.reported?.email ?? "sin email"})
+              {report.reporter?.name ?? "Cuenta eliminada"}{report.reporter?.email ? ` (${report.reporter.email})` : ""} reportó a{" "}
+              {report.reported?.name ?? "Cuenta eliminada"}{report.reported?.email ? ` (${report.reported.email})` : ""}
             </p>
             <p className="font-mono text-xs text-muted">
               {report.context} · {new Date(report.createdAt).toLocaleString("es-AR")}
@@ -74,6 +75,7 @@ export function ReportDetail({ reportId }: { reportId: string }) {
         </div>
 
         {report.description ? <p className="whitespace-pre-wrap text-sm text-main">{report.description}</p> : null}
+        {report.reported ? <PublicModerationActions userId={report.reported.userId} displayName={report.reported.name}/> : null}
       </div>
 
       <div className="flex flex-col gap-4">

@@ -47,7 +47,7 @@ export class GardenService {
     private readonly collaboration = new CollaborationService(db, clock),
   ) {}
 
-  /** Called inside the payment transaction: balance and provider receipt must commit together. */
+  /** Called inside payment/gift transactions: balance, receipt and audit must commit together. */
   adjustPurchaseCredit(tx: Tx, userId: string, delta: number): void {
     const state = this.read(userId);
     const bonusSeeds = state.bonusSeeds + delta;

@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, lt } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { Page } from "@sala/contracts";
+import { displayName } from "../users/display-name.js";
 
 const PAGE_SIZE = 50;
 
@@ -47,6 +48,12 @@ export class AdminAuditService {
               .where(inArray(schema.user.id, userIds))
           ).map((u) => [u.id, u.name] as const),
     );
+    if(!ownerMetadata && userIds.length){
+      const profiles=await this.db.select().from(schema.userProfiles).where(inArray(schema.userProfiles.userId,userIds));
+      names.clear();
+      for(const profile of profiles)names.set(profile.userId,displayName(profile,null,""));
+      for(const userId of userIds)if(!names.has(userId))names.set(userId,"Usuario anónimo");
+    }
 
     const items = page.map((r) => ({
       id: r.id,
@@ -56,7 +63,7 @@ export class AdminAuditService {
       targetName: r.targetUserId ? (names.get(r.targetUserId) ?? null) : null,
       reportId: r.reportId,
       action: r.action,
-      metadata: !ownerMetadata && (r.action === "ROOM_GEOFENCE_UPDATED" || r.action.startsWith("EMAIL_")) ? null : r.metadata,
+      metadata: !ownerMetadata && (r.action === "GARDEN_SEEDS_GRANTED" || r.action === "ROOM_GEOFENCE_UPDATED" || r.action.startsWith("EMAIL_")) ? null : r.metadata,
       createdAt: r.createdAt.toISOString(),
     }));
     const nextCursor = rows.length > PAGE_SIZE ? page[page.length - 1]!.createdAt.toISOString() : null;
