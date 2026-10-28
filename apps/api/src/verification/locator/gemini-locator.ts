@@ -35,7 +35,8 @@ export class GeminiSeatLocator implements SeatLocator {
     private readonly apiKey: string,
     private readonly model: string,
     private readonly plan: () => string = loadPlan,
-    private readonly fetchImpl: FetchLike = fetch,
+    // Workers' native fetch requires the global receiver; storing it directly as a method fails.
+    private readonly fetchImpl: FetchLike = (url, init) => globalThis.fetch(url, init),
   ) {}
 
   async locate(req: VerifyRequest, signal: AbortSignal): Promise<LocateResult> {

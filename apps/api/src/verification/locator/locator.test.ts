@@ -76,6 +76,20 @@ describe("GeminiSeatLocator", () => {
     return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] }), { status: 200 });
   }
 
+  it("calls the default fetch with its global receiver, as required by Workers", async () => {
+    const runtimeFetch = vi.spyOn(globalThis, "fetch").mockImplementation(function (this: unknown) {
+      if (this !== globalThis) throw new TypeError("Illegal invocation: incorrect fetch receiver");
+      return Promise.resolve(okResponse('{"seatCode":null,"confidence":0}'));
+    });
+    try {
+      const locator = new GeminiSeatLocator("SYNTHETIC_KEY", "gemini-2.5-flash", () => "PLAN");
+      await expect(locator.locate(BODY as never, new AbortController().signal)).resolves.toEqual({ seatCode: null, confidence: 0 });
+      expect(runtimeFetch).toHaveBeenCalledOnce();
+    } finally {
+      runtimeFetch.mockRestore();
+    }
+  });
+
   it("sends the key in a header, asks for JSON, and parses the answer", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(okResponse('{"seatCode":"M04-S03","confidence":0.8}'));
     const locator = new GeminiSeatLocator("KEY", "gemini-2.5-flash", () => "PLAN", fetchImpl);

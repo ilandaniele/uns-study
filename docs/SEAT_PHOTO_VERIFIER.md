@@ -136,6 +136,10 @@ without user/seat identifiers or provider payloads.
   for this short structured classification. Other model families keep their own defaults.
   Model availability must be checked against the provider's current
   [catalog/deprecations](https://ai.google.dev/gemini-api/docs/deprecations).
+- The default Gemini transport calls `globalThis.fetch` through a wrapper. Assigning
+  native `fetch` directly to an instance field changes its receiver and raises
+  `Illegal invocation` in Workers before any outbound request. The regression was
+  reproduced in local workerd with a synthetic provider and no credentials.
 - Camera/gallery selection compresses and strips metadata locally, then shows a
   preview. Only the explicit verification button sends it. Failed/cancelled attempts
   restore controls, including selecting the same file again.
