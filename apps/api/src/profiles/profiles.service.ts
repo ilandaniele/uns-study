@@ -87,7 +87,7 @@ export class ProfilesService {
   /** Canonical permission check and PII-free access audit, shared by JSON and private photo reads. */
   private async adminProfileTarget(actorId: string, targetUserId: string, action: string) {
     const [actor] = await this.db.select({ verified: schema.user.emailVerified }).from(schema.user).where(eq(schema.user.id, actorId)).limit(1);
-    if (!actor?.verified || !(await this.roles.hasRole(actorId, ["ADMIN"]))) throw ApiErrors.forbidden("Solo administradores con correo verificado pueden consultar el perfil completo.");
+    if (!actor?.verified || !(await this.roles.isSuperAdmin(actorId))) throw ApiErrors.forbidden("Sólo el súper admin puede consultar el perfil completo.");
     await this.restrictions.assertNot(actorId, ["SUSPENDED", "BANNED"]);
     const [target] = await this.db.select().from(schema.user).where(eq(schema.user.id, targetUserId)).limit(1);
     if (!target) throw ApiErrors.notFound("Usuario no encontrado.");

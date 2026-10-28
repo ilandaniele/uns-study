@@ -143,7 +143,7 @@ describe("community achievements, rewards and approved staff applications", () =
     expect(profile.alias).toBe("Coipo Ingenioso");
     expect(profile.stats?.places).toBe(100);
     expect(profile.badges).toHaveLength(3);
-    expect(profile.garden).toEqual({ plants: [], collection: {} });
+    expect(profile.garden).toMatchObject({ plants: [], collection: {}, plotCount:25 });
     const json = JSON.stringify(profile);
     for (const forbidden of ["member", "example.test", "Nombre privado", "Apodo privado", "instagram", "studentNumber", "SUPERADMIN", "userId"]) expect(json).not.toContain(forbidden);
     fixture.db.update(schema.userProfiles).set({ identityMode: "NICKNAME" }).where(eq(schema.userProfiles.userId, "member")).run();
@@ -151,10 +151,12 @@ describe("community achievements, rewards and approved staff applications", () =
     actor = null; expect((await call("/aliases/Coipo%20Ingenioso/profile")).status).toBe(401);
   });
 
-  it("keeps full alias-account lookup in a separate, audited ADMIN-only endpoint", async () => {
+  it("keeps full alias-account lookup in a separate, audited SUPERADMIN-only endpoint", async () => {
     actor = "viewer";
     expect((await call("/admin/aliases/Coipo%20Ingenioso/profile")).status).toBe(403);
     actor = "admin";
+    expect((await call("/admin/aliases/Coipo%20Ingenioso/profile")).status).toBe(403);
+    actor = "owner";
     const response = await call("/admin/aliases/Coipo%20Ingenioso/profile");
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("private, no-store");

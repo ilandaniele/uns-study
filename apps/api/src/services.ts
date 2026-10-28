@@ -3,6 +3,7 @@
 // a class updates the matching `import type` line here.
 import type { Db } from "@sala/database";
 import type { ReactionsService } from "./chat/reactions.service.js";
+import type { FocusService } from "./focus/focus.service.js";
 import type { GardenService } from "./garden/garden.service.js";
 import type { AchievementsService } from "./badges/achievements.service.js";
 import type { CollaborationService } from "./badges/collaboration.service.js";
@@ -84,6 +85,7 @@ export interface Services {
   collaboration: CollaborationService;
   sectionUsage: SectionUsageService;
   reactions: ReactionsService;
+  focus: FocusService;
   garden: GardenService;
   gardenPurchases: GardenPurchasesService;
   /** The shared sync SQLite handle, for the few routers that touch it directly (health, e2e hooks). */

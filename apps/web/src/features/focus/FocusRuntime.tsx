@@ -6,6 +6,8 @@ import { playChime, playableLayers, setLayers, stopAmbient } from "./focus-audio
 import { showFocusNotification } from "./focus-notify";
 import { focusActions, getFocus, useFocus } from "./focus-store";
 import { PHASE_LABEL, formatClock, remainingMs, type Completion, type FocusSettings } from "./pomodoro";
+import { useMe } from "@/lib/me-store";
+import { startFocusSync } from "./focus-sync";
 
 const TICK_MS = 500;
 
@@ -38,6 +40,12 @@ export function FocusRuntime() {
 }
 
 function FocusEngine() {
+  const { me, loading } = useMe();
+  const userId=me?.user?.id??null;
+  useEffect(()=>{
+    if(loading)return;
+    return startFocusSync(userId,(phase)=>announce({phase,at:Date.now(),focusMin:0},getFocus().settings));
+  },[userId,loading]);
   const { lock } = usePro();
   const focus = useFocus();
   const { timer, layers, volume } = focus;

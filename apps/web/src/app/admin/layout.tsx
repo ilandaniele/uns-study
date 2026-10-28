@@ -8,7 +8,7 @@ import { useAdminAccess } from "@/features/admin/useAdminAccess";
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const { loading, isAdmin, me } = useAdminAccess();
   const pathname = usePathname();
-  const ownerSection = ["/admin/announcements", "/admin/geofence", "/admin/mails", "/admin/colaboradores"].some(path => pathname === path || pathname?.startsWith(`${path}/`));
+  const ownerSection = ["/admin/users", "/admin/announcements", "/admin/geofence", "/admin/mails", "/admin/colaboradores"].some(path => pathname === path || pathname?.startsWith(`${path}/`));
 
   if (loading) {
     return <main className="p-6 text-center text-muted">Verificando acceso…</main>;

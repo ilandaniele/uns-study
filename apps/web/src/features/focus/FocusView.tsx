@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createPortal } from "react-dom";
 import { NotifyCard, PresetChips, SoundCard, StatsCard, TasksCard, TimesCard } from "./cards";
 import { FocusTimer, MiniTimer } from "./FocusTimer";
+import { FocusSyncStatus } from "./FocusSyncStatus";
 import { useFullscreen, usePipWindow, useShortcuts } from "./hooks";
 import { BackButton } from "@/components/BackButton";
 import { openProUpsell } from "@/features/subscriptions/pro-upsell-store";
@@ -36,6 +37,7 @@ export function FocusView() {
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 pb-24 pt-6 md:pb-10">
+      <FocusSyncStatus />
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-start gap-1">
           <BackButton fallbackHref="/" />

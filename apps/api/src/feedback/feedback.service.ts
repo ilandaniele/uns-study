@@ -3,6 +3,7 @@ import { schema, type Db } from "@sala/database";
 import type { AdminFeedbackDto, FeedbackCategory, FeedbackCreatedDto, FeedbackStatus } from "@sala/contracts";
 import { ApiErrors } from "../common/api-error.js";
 import { escapeHtml } from "../email/email-render.js";
+import { displayName } from "../users/display-name.js";
 import type { ResendClient, ResendMessage } from "../email/resend.client.js";
 import type { Clock } from "../platform/clock.js";
 
@@ -59,21 +60,22 @@ export class FeedbackService {
     return { id: row!.id };
   }
 
-  async list(filter: { status?: FeedbackStatus } = {}): Promise<AdminFeedbackDto[]> {
+  async list(filter: { status?: FeedbackStatus } = {}, canSeePrivate = false): Promise<AdminFeedbackDto[]> {
     const rows = await this.db
-      .select({ f: schema.feedback, senderName: schema.user.name })
+      .select({ f: schema.feedback, senderName: schema.user.name, profile:schema.userProfiles })
       .from(schema.feedback)
       .leftJoin(schema.user, eq(schema.feedback.userId, schema.user.id))
+      .leftJoin(schema.userProfiles, eq(schema.feedback.userId,schema.userProfiles.userId))
       .where(filter.status ? and(eq(schema.feedback.status, filter.status)) : undefined)
       .orderBy(desc(schema.feedback.createdAt))
       .limit(LIST_LIMIT);
 
-    return rows.map(({ f, senderName }) => ({
+    return rows.map(({ f, senderName, profile }) => ({
       id: f.id,
       category: f.category,
       message: f.message,
-      contactEmail: f.contactEmail,
-      sender: f.userId ? { userId: f.userId, name: senderName ?? "" } : null,
+      contactEmail: canSeePrivate ? f.contactEmail : null,
+      sender: f.userId ? { userId: f.userId, name: canSeePrivate ? senderName ?? "" : displayName(profile,null,"") } : null,
       status: f.status,
       createdAt: f.createdAt.toISOString(),
     }));
@@ -95,7 +97,8 @@ export class FeedbackService {
 
   /** Fire-and-forget: errors are logged, never thrown, so a mail outage cannot fail the request. */
   private notifyAdmins(input: CreateFeedbackInput, contactEmail: string | null): void {
-    const recipients = this.mail.adminEmails.length ? this.mail.adminEmails : this.mail.ownerEmail ? [this.mail.ownerEmail] : [];
+    // Contact addresses and account names belong only in the owner's private inbox.
+    const recipients = this.mail.ownerEmail ? [this.mail.ownerEmail] : [];
     if (!this.resend || !this.mail.emailFrom || recipients.length === 0) return;
 
     const msg = composeFeedbackEmail({

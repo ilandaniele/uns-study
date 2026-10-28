@@ -1,3 +1,4 @@
+import { env } from "../env.js";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@sala/database";
@@ -123,65 +124,12 @@ describe("AdminUsersService.applyAction", () => {
   });
 });
 
-describe("AdminUsersService.search", () => {
-  let db: Db;
-  let svc: AdminUsersService;
-
-  beforeEach(async () => {
-    db = freshDb();
-    svc = new AdminUsersService(db, fakeModeration(), new RolesService(db));
-    await insertUsers(db, ["plain"]);
-  });
-
-  it("treats `%` and `_` in the query as literal characters, not wildcards", async () => {
-    const results = await svc.search("%", "plain");
-    expect(results).toEqual([]);
-  });
-
-  it("lists all users when the query is empty or whitespace-only", async () => {
-    expect(await svc.search(undefined, "plain")).toHaveLength(1);
-    expect(await svc.search("   ", "plain")).toHaveLength(1);
-  });
-
-  it("caps the query length at 100 characters", async () => {
-    const results = await svc.search("a".repeat(500), "plain");
-    expect(results).toEqual([]);
-  });
-});
-
-describe("AdminUsersService email visibility", () => {
-  let db: Db;
-  let svc: AdminUsersService;
-
-  beforeEach(async () => {
-    db = freshDb();
-    svc = new AdminUsersService(db, fakeModeration(), new RolesService(db));
-    await insertUsers(db, ["admin", "moderator", "plain"]);
-    await db.insert(schema.userRoles).values([
-      { userId: "admin", role: "ADMIN" },
-      { userId: "moderator", role: "MODERATOR" },
-    ]);
-  });
-
-  it("returns emails to an ADMIN in search and getById", async () => {
-    const results = await svc.search("plain", "admin");
-    expect(results).toHaveLength(1);
-    expect(results[0]!.email).toEqual(expect.any(String));
-    expect((await svc.getById("plain", "admin")).email).toEqual(expect.any(String));
-  });
-
-  it("hides emails from a MODERATOR in search and getById", async () => {
-    const results = await svc.search("plain", "moderator");
-    expect(results).toHaveLength(1);
-    expect(results[0]!.email).toBeNull();
-    expect((await svc.getById("plain", "moderator")).email).toBeNull();
-  });
-
-  it("flags admins in the list", async () => {
-    const results = await svc.search(undefined, "admin");
-    const byId = Object.fromEntries(results.map((r) => [r.userId, r.isAdmin]));
-    expect(byId).toEqual({ admin: true, moderator: false, plain: false });
-  });
+describe("AdminUsersService private directory",()=>{
+ let db:Db;let svc:AdminUsersService;
+ beforeEach(async()=>{db=freshDb();svc=new AdminUsersService(db,fakeModeration(),new RolesService(db));await insertUsers(db,["owner","admin","moderator","plain"]);await db.update(schema.user).set({email:env.ownerEmail,emailVerified:true}).where(eq(schema.user.id,"owner"));await db.insert(schema.userRoles).values([{userId:"owner",role:"ADMIN"},{userId:"admin",role:"ADMIN"},{userId:"moderator",role:"MODERATOR"}]);});
+ it("lets only the verified owner read account data and search email",async()=>{const results=await svc.search("plain","owner");expect(results).toHaveLength(1);expect(results[0]!.email).toBe("plain@example.test");expect((await svc.getById("plain","owner")).email).toBe("plain@example.test");});
+ it("does not leak email, account name or email search matches to room staff",async()=>{for(const actor of ["admin","moderator","plain"]){await expect(svc.search("plain@example.test",actor)).rejects.toThrow();await expect(svc.getById("plain",actor)).rejects.toThrow();}});
+ it("keeps literal matching, query bounds and admin badges for owner search",async()=>{expect(await svc.search("%","owner")).toEqual([]);expect(await svc.search("a".repeat(500),"owner")).toEqual([]);const results=await svc.search("   ","owner");expect(results).toHaveLength(4);expect(results.find(u=>u.userId==="owner")).toMatchObject({isAdmin:true,isSuperAdmin:true});expect(results.find(u=>u.userId==="admin")).toMatchObject({isAdmin:true,isSuperAdmin:false});});
 });
 
 describe("AdminUsersService.setAdmin", () => {

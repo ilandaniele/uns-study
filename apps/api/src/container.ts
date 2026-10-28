@@ -13,6 +13,7 @@
 // The caller then does `createApp({ services, auth: buildAuth(db) })`.
 import type { Db } from "@sala/database";
 import { ReactionsService } from "./chat/reactions.service.js";
+import { FocusService } from "./focus/focus.service.js";
 import { GardenService } from "./garden/garden.service.js";
 import { GardenPurchasesService } from "./garden/garden-purchases.service.js";
 import { env as defaultEnv, type Env } from "./env.js";
@@ -212,6 +213,7 @@ export function buildServices(deps: ContainerDeps): Services {
   };
 
   return {
+    focus: new FocusService(db, clock, hub),
     achievements, collaboration,
     db,
     rooms, roomState, roomStats, roomCache, presence, checkIns, photoVerification, observations,

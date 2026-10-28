@@ -1,13 +1,15 @@
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { user } from "./auth.js";
 
-/** A bounded, private 25-plot garden. One atomic row update per purchase/redemption. */
+/** A bounded garden. Purchases, planting and expansion share one atomic balance. */
 export const userGardens = sqliteTable("user_gardens", {
   userId: text("user_id")
     .primaryKey()
     .references(() => user.id, { onDelete: "cascade" }),
   spentSeeds: integer("spent_seeds").notNull().default(0),
   bonusSeeds: integer("bonus_seeds").notNull().default(0),
+  plotCount: integer("plot_count").notNull().default(25),
+  landscapeSeed: integer("landscape_seed").notNull().default(0),
   shared: integer("shared", { mode: "boolean" }).notNull().default(false),
   plants: text("plants").notNull().default("[]"),
   collection: text("collection").notNull().default("{}"),

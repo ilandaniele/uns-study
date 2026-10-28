@@ -2,6 +2,7 @@ import type { GardenPlant, GardenSpecies } from "@sala/contracts";
 
 // Exact row-major order of the GPT atlases; prompts and provenance: docs/garden-tree-art.md.
 const GROUPS = {
+  "ribera-nativa": ["coronillo", "anacahuita", "caraguata", "flechilla", "pasto-plateado", "chilca", "plumerillo-rosado", "santa-lucia", "petunia-blanca", "saeta", "duraznillo-de-agua", "helechito-de-agua"],
   arboles: ["espinillo", "tala", "ceibo", "chanar", "algarrobo", "jacaranda", "aguaribay", "palo-borracho", "calden", "lapacho", "arrayan", "pehuen"],
   "arboles-extra": ["ombu", "sauce-criollo", "timbo", "tipa", "ibirapita", "peteribi", "guayacan", "quebracho-colorado", "quebracho-blanco", "yerba-mate", "lenga", "notro"],
   "plantas-nativas": ["yatay", "pindo", "caranday", "guaran", "sen-del-campo", "plumerillo-rojo", "margarita-punzo", "salvia-azul", "cortadera", "cardon", "quimil", "cactus-bola"],

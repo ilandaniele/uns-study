@@ -81,7 +81,7 @@ export class AchievementsService {
     if (alias.length > 80) throw ApiErrors.notFound();
     const profile = this.db.select().from(schema.userProfiles).where(eq(schema.userProfiles.aliasLower, alias.trim().toLowerCase())).get();
     if (!profile?.alias || !needsAlias(profile)) throw ApiErrors.notFound();
-    // The dedicated profile service rechecks ADMIN, verification and restrictions, and audits the read.
+    // The dedicated profile service rechecks SUPERADMIN, verification and restrictions, and audits the read.
     return profiles.getAdminProfile(viewerId, profile.userId);
   }
 }

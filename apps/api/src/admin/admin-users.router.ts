@@ -2,24 +2,24 @@ import { Hono } from "hono";
 import { adminDeleteUserSchema, moderationActionSchema } from "@sala/contracts";
 import { ApiErrors } from "../common/api-error.js";
 import { currentUser, type AppEnv } from "../http/context.js";
-import { requireAdmin, requireAdminOnly, requireSuperAdmin } from "../http/guards.js";
+import { requireAdmin, requireSuperAdmin } from "../http/guards.js";
 import { reply } from "../http/reply.js";
 import { zBody } from "../http/validate.js";
 
 export const adminUsersRouter = new Hono<AppEnv>();
 
-adminUsersRouter.get("/admin/aliases/:alias/profile", requireAdminOnly, async c => {
+adminUsersRouter.get("/admin/aliases/:alias/profile", requireSuperAdmin, async c => {
   c.header("Cache-Control", "private, no-store"); c.header("Vary", "Cookie");
   return reply(c, await c.var.services.achievements.adminAliasProfile(currentUser(c).id, c.req.param("alias"), c.var.services.profiles));
 });
 
-adminUsersRouter.get("/admin/users/:id/profile", requireAdminOnly, async (c) => {
+adminUsersRouter.get("/admin/users/:id/profile", requireSuperAdmin, async (c) => {
   c.header("Cache-Control", "private, no-store");
   c.header("Vary", "Cookie");
   return reply(c, await c.var.services.profiles.getAdminProfile(currentUser(c).id, c.req.param("id")));
 });
 
-adminUsersRouter.get("/admin/users/:id/profile/avatar", requireAdminOnly, async (c) => {
+adminUsersRouter.get("/admin/users/:id/profile/avatar", requireSuperAdmin, async (c) => {
   c.header("Cache-Control", "private, no-store");
   c.header("Vary", "Cookie");
   const targetId = c.req.param("id");
@@ -30,11 +30,11 @@ adminUsersRouter.get("/admin/users/:id/profile/avatar", requireAdminOnly, async 
   return c.body(new Uint8Array(avatar.bytes));
 });
 
-adminUsersRouter.get("/admin/users", requireAdmin, async (c) => {
+adminUsersRouter.get("/admin/users", requireSuperAdmin, async (c) => {
   return reply(c, await c.var.services.adminUsers.search(c.req.query("q"), currentUser(c).id));
 });
 
-adminUsersRouter.get("/admin/users/:id", requireAdmin, async (c) => {
+adminUsersRouter.get("/admin/users/:id", requireSuperAdmin, async (c) => {
   return reply(c, await c.var.services.adminUsers.getById(c.req.param("id"), currentUser(c).id));
 });
 

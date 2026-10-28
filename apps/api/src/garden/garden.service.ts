@@ -4,6 +4,10 @@ import {
   GARDEN_MINUTES_PER_SEED,
   GARDEN_SPECIES,
   GARDEN_STARTER_SEEDS,
+  GARDEN_MAX_SIZE,
+  GARDEN_SIZE,
+  gardenExpansion,
+  type GardenExpandRequest,
   type GardenDto,
   type GardenPlant,
   type GardenPlantRequest,
@@ -25,6 +29,8 @@ interface StoredPlant {
   baselineMinutes: number;
 }
 interface GardenState {
+  plotCount: number;
+  landscapeSeed: number;
   collaboration: CollaborationProgressDto;
   shared: boolean;
   spentSeeds: number;
@@ -69,6 +75,8 @@ export class GardenService {
     // Gardens are always visitable by signed-in users. Recheck blocks after the awaited ledger.
     if (!exists || block) throw ApiErrors.notFound();
     return {
+      plotCount: dto.plotCount,
+      landscapeSeed: dto.landscapeSeed,
       plants: dto.plants.map(({ plot, speciesId, stage, progress }) => ({ plot, speciesId, stage, progress })),
       collection: dto.collection,
     };
@@ -80,11 +88,12 @@ export class GardenService {
       !species ||
       !Number.isInteger(input.plot) ||
       input.plot < 0 ||
-      input.plot >= 25
+      input.plot >= GARDEN_MAX_SIZE
     )
       throw ApiErrors.validation();
     const minutes = await this.studyMinutes(userId);
     return this.mutate(userId, minutes, (state) => {
+      if (input.plot >= state.plotCount) throw ApiErrors.validation("Primero ampliá tu jardín para usar esta parcela.");
       if (state.plants.some((p) => p.plot === input.plot))
         throw ApiErrors.validation("Esta parcela ya tiene un árbol.");
       if (this.balance(state, minutes) < species.cost)
@@ -119,6 +128,19 @@ export class GardenService {
     });
   }
 
+  async expand(userId: string, input: GardenExpandRequest): Promise<GardenDto> {
+    const minutes = await this.studyMinutes(userId);
+    return this.mutate(userId, minutes, state => {
+      if (state.plotCount !== input.plotCount) throw ApiErrors.validation("El jardín ya cambió. Actualizalo antes de volver a ampliar.");
+      const next = gardenExpansion(state.plotCount);
+      if (!next) throw ApiErrors.validation("Tu jardín ya tiene todas las parcelas.");
+      if (state.plants.length < next.requiredPlants) throw ApiErrors.validation(`Plantá al menos ${next.requiredPlants} parcelas para ampliar.`);
+      if (this.balance(state, minutes) < next.cost) throw ApiErrors.validation("Todavía no tenés suficientes semillas para ampliar.");
+      state.spentSeeds += next.cost;
+      state.plotCount += next.plots;
+    });
+  }
+
   private async studyMinutes(userId: string): Promise<number> {
     const intervals = await loadStudyIntervals(
       this.db,
@@ -138,6 +160,10 @@ export class GardenService {
   }
 
   private read(userId: string): GardenState {
+    // Coarse, non-identifying visual variation, stable before the first garden write too.
+    let hash = 2166136261;
+    for (const character of userId) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
+    const landscapeSeed = (hash >>> 0) % 32 + 1;
     try {
       const row = this.db
         .select()
@@ -146,6 +172,8 @@ export class GardenService {
         .get();
       return row
         ? {
+            plotCount: row.plotCount,
+            landscapeSeed: row.landscapeSeed || landscapeSeed,
             collaboration: this.collaboration.progress(userId),
             shared: row.shared,
             spentSeeds: row.spentSeeds,
@@ -153,7 +181,7 @@ export class GardenService {
             plants: JSON.parse(row.plants) as StoredPlant[],
             collection: JSON.parse(row.collection) as Record<string, number>,
           }
-        : { shared: false, spentSeeds: 0, bonusSeeds: 0, plants: [], collection: {}, collaboration: this.collaboration.progress(userId) };
+        : { plotCount: GARDEN_SIZE, landscapeSeed, shared: false, spentSeeds: 0, bonusSeeds: 0, plants: [], collection: {}, collaboration: this.collaboration.progress(userId) };
     } catch (error) {
       if (isMissingSchemaError(error))
         throw ApiErrors.featureDisabled(
@@ -174,6 +202,8 @@ export class GardenService {
 
   private dto(state: GardenState, minutes: number): GardenDto {
     return {
+      plotCount: state.plotCount,
+      landscapeSeed: state.landscapeSeed,
       collaboration: state.collaboration,
       shared: true,
       seeds: this.balance(state, minutes),
@@ -215,6 +245,8 @@ export class GardenService {
       const state = this.read(userId);
       change(state);
       const values = {
+        plotCount: state.plotCount,
+        landscapeSeed: state.landscapeSeed,
         shared: state.shared,
         spentSeeds: state.spentSeeds,
         bonusSeeds: state.bonusSeeds,

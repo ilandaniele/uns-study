@@ -1,3 +1,5 @@
+import { eq } from "drizzle-orm";
+import { env } from "../env.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { schema, type Db } from "@sala/database";
 import { freshDb, insertUsers } from "../test-utils.js";
@@ -13,11 +15,14 @@ describe("AdminReportsService.getAttachmentUrl", () => {
 
   beforeEach(async () => {
     db = freshDb();
-    await insertUsers(db, ["reporter", "reported", "admin", "mod"]);
+    await insertUsers(db, ["reporter", "reported", "admin", "mod", "owner"]);
     await db.insert(schema.userRoles).values([
       { userId: "admin", role: "ADMIN" },
       { userId: "mod", role: "MODERATOR" },
     ]);
+    await db.update(schema.user).set({email:env.ownerEmail,emailVerified:true}).where(eq(schema.user.id,"owner"));
+    await db.insert(schema.userRoles).values({userId:"owner",role:"ADMIN"});
+    await db.insert(schema.userProfiles).values({userId:"reporter",firstName:"Private given name",identityMode:"HIDDEN",alias:"Alias público"});
     presignGet = vi.fn(async (key: string) => `https://r2.example/${key}`);
     svc = new AdminReportsService(db, { presignGet } as unknown as StorageService, new RolesService(db));
     const [report] = await db
@@ -48,11 +53,13 @@ describe("AdminReportsService.getAttachmentUrl", () => {
     expect(presignGet).not.toHaveBeenCalled();
   });
 
-  it("returns party emails to an admin but null to a moderator", async () => {
-    const asAdmin = await svc.getById(reportId, "admin");
+  it("returns private party data only to the superadmin; staff sees the public alias", async () => {
+    const asAdmin = await svc.getById(reportId, "owner");
     expect(asAdmin.reporter?.email).toBeTruthy();
     expect(asAdmin.reported?.email).toBeTruthy();
 
+    const ordinaryAdmin=await svc.getById(reportId,"admin");
+    expect(ordinaryAdmin.reporter).toMatchObject({name:"Alias público",email:null});
     const asMod = await svc.getById(reportId, "mod");
     expect(asMod.reporter).toMatchObject({ userId: "reporter", email: null });
     expect(asMod.reported).toMatchObject({ userId: "reported", email: null });

@@ -11,6 +11,7 @@ import m0008 from './0008_message_reactions.sql';
 import m0009 from './0009_shared_gardens.sql';
 import m0010 from './0010_section_usage.sql';
 import m0011 from './0011_community_achievements.sql';
+import m0012 from './0012_garden_landscapes_focus.sql';
 
   export default {
     journal,
@@ -26,7 +27,7 @@ m0007,
 m0008,
 m0009,
 m0010,
-m0011
+m0011,
+m0012
     }
   }
-  

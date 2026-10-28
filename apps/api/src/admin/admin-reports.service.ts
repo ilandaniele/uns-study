@@ -5,6 +5,7 @@ import { ApiErrors } from "../common/api-error.js";
 import { StorageService } from "../storage/storage.service.js";
 import { RolesService } from "../users/roles.service.js";
 import { parseCursor } from "./admin-audit.service.js";
+import { displayName } from "../users/display-name.js";
 
 const PAGE_SIZE = 20;
 
@@ -31,7 +32,7 @@ export class AdminReportsService {
       .limit(PAGE_SIZE + 1);
 
     const page = rows.slice(0, PAGE_SIZE);
-    const canSeeEmail = await this.roles.hasRole(actorId, ["ADMIN"]);
+    const canSeeEmail = await this.roles.isSuperAdmin(actorId);
     const items = await this.toDtos(page, canSeeEmail);
     const nextCursor = rows.length > PAGE_SIZE ? page[page.length - 1]!.createdAt.toISOString() : null;
     return { items, nextCursor };
@@ -40,7 +41,7 @@ export class AdminReportsService {
   async getById(id: string, actorId: string): Promise<AdminReportDto> {
     const [row] = await this.db.select().from(schema.userReports).where(eq(schema.userReports.id, id)).limit(1);
     if (!row) throw ApiErrors.notFound("Reporte no encontrado.");
-    return this.toDto(row, await this.roles.hasRole(actorId, ["ADMIN"]));
+    return this.toDto(row, await this.roles.isSuperAdmin(actorId));
   }
 
   async setStatus(id: string, status: string, actorId: string): Promise<AdminReportDto> {
@@ -74,7 +75,7 @@ export class AdminReportsService {
       return updated;
     });
 
-    return this.toDto(row, await this.roles.hasRole(actorId, ["ADMIN"]));
+    return this.toDto(row, await this.roles.isSuperAdmin(actorId));
   }
 
   /** Every access is audited (moderation reviewing evidence is itself a sensitive action). */
@@ -106,12 +107,14 @@ export class AdminReportsService {
   }
 
   /** `reporterId`/`reportedUserId` are null once the account has been deleted; the DTO surfaces `null` so the UI can show "Cuenta eliminada". */
-  /** `canSeeEmail` is true only for ADMIN callers; moderators get `email: null`. */
+  /** Only SUPERADMIN sees account names/emails; staff sees the public display name. */
   private async toDtos(rows: (typeof schema.userReports.$inferSelect)[], canSeeEmail: boolean): Promise<AdminReportDto[]> {
     if (rows.length === 0) return [];
 
     const userIds = [...new Set(rows.flatMap((r) => [r.reporterId, r.reportedUserId]).filter((id): id is string => Boolean(id)))];
     const users = userIds.length ? await this.db.select().from(schema.user).where(inArray(schema.user.id, userIds)) : [];
+    const profiles = !canSeeEmail && userIds.length ? await this.db.select().from(schema.userProfiles).where(inArray(schema.userProfiles.userId,userIds)) : [];
+    const publicNames = new Map(profiles.map(profile=>[profile.userId,displayName(profile,null,"")]));
     const attachmentRows = await this.db
       .select()
       .from(schema.userReportAttachments)
@@ -125,8 +128,8 @@ export class AdminReportsService {
       const attachments = attachmentRows.filter((a) => a.reportId === row.id);
       return {
         id: row.id,
-        reporter: row.reporterId ? { userId: row.reporterId, name: reporter?.name ?? "", email: canSeeEmail ? (reporter?.email ?? "") : null } : null,
-        reported: row.reportedUserId ? { userId: row.reportedUserId, name: reported?.name ?? "", email: canSeeEmail ? (reported?.email ?? "") : null } : null,
+        reporter: row.reporterId ? { userId: row.reporterId, name: canSeeEmail ? reporter?.name ?? "" : publicNames.get(row.reporterId)??"Usuario anónimo", email: canSeeEmail ? (reporter?.email ?? "") : null } : null,
+        reported: row.reportedUserId ? { userId: row.reportedUserId, name: canSeeEmail ? reported?.name ?? "" : publicNames.get(row.reportedUserId)??"Usuario anónimo", email: canSeeEmail ? (reported?.email ?? "") : null } : null,
         reason: row.reason,
         description: row.description,
         context: row.context,

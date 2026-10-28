@@ -11,7 +11,7 @@ puedan conceder. Las insignias de juego no otorgan permisos.
 | Marcar todos ocupados, elegir lugares y deshacer | Sí | Sí |
 | Revisar, abrir, resolver o descartar reportes | Sí | Sí |
 | Revisar sugerencias y moderar usuarios | Sí | Sí |
-| Consultar perfiles administrativos, con auditoría | Sí | Sí |
+| Consultar perfiles administrativos, con auditoría | No | Sí |
 | Vaciar el chat de la sala | No | Sí |
 | Gestionar anuncios | No | Sí |
 | Ver/cambiar/probar ubicación del geocerco | No | Sí |

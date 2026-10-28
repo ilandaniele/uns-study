@@ -27,6 +27,6 @@ export function AliasProfileView({ alias }: { alias: string }) {
       <section aria-label="Insignias y actividad" className="mt-4 rounded-3xl border border-app bg-surface p-5 sm:p-6"><h2 className="mb-5 text-lg font-bold">Insignias y actividad</h2><AchievementSummary data={data}/></section>
     </> : <p role="status" className="mt-6 text-sm text-muted">Cargando perfil…</p>}
     <AdminProfileDetails alias={alias}/>
-    {data && !error ? <section className="mt-4 rounded-3xl border border-app bg-surface p-5 sm:p-6"><h2 className="mb-4 text-lg font-bold">Su jardín nativo</h2><GardenScene plants={data.garden.plants}/></section> : null}
+    {data && !error ? <section className="mt-4 rounded-3xl border border-app bg-surface p-5 sm:p-6"><h2 className="mb-4 text-lg font-bold">Su jardín nativo</h2><GardenScene plotCount={data.garden.plotCount} landscapeSeed={data.garden.landscapeSeed} plants={data.garden.plants}/></section> : null}
   </main>;
 }

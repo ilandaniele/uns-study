@@ -3,6 +3,7 @@
 import { Hono } from "hono";
 import { sectionUsageRouter } from "../usage/section-usage.router.js";
 import { reactionsRouter } from "../chat/reactions.router.js";
+import { focusRouter } from "../focus/focus.router.js";
 import { gardenRouter } from "../garden/garden.router.js";
 import { cors } from "hono/cors";
 import type { Auth } from "../auth/auth.instance.js";
@@ -167,6 +168,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
     quietRoomRouter,
     groupRankingRouter,
     gardenRouter,
+    focusRouter,
     e2eTestHooksRouter,
   ]) {
     api.route("/", router);

@@ -87,7 +87,7 @@ describe("garden HTTP", () => {
     const shared = await call("GET", path, otherCookie);
     expect(shared.status).toBe(200);
     expect(shared.headers.get("cache-control")).toBe("private, no-store");
-    expect(Object.keys(await shared.json()).sort()).toEqual(["collection", "plants"]);
+    expect(Object.keys(await shared.json()).sort()).toEqual(["collection", "landscapeSeed", "plants", "plotCount"]);
     await call("POST", "/me/garden/visibility", cookie, { shared: false });
     expect((await call("GET", path, otherCookie)).status).toBe(200);
     const ownGarden = await call("GET", "/me/garden", cookie);

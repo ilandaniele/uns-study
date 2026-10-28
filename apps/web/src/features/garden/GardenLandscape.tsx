@@ -1,26 +1,35 @@
-const STREAM = "M410 112C405 125 394 132 374 142S338 162 314 173 279 192 254 204 219 225 197 234 162 253 145 279";
-
-/** Decorative water and banks never intercept taps or change plot identities. */
-export function GardenLandscape() {
+import { useId } from "react";
+import { polygonPoints, type GardenLayout } from "./garden-layout";
+/** Original layered island drawing. Decorations never intercept planting or keyboard input. */
+export function GardenLandscape({layout}: {layout: GardenLayout}) {
+  const id=useId().replace(/[^a-zA-Z0-9_-]/g,"");
+  const bottom=Math.max(...layout.plots.map(p=>p.y+p.halfHeight));
   return <g aria-hidden="true" pointerEvents="none">
-    <ellipse cx="300" cy="371" rx="228" ry="21" fill="var(--garden-empty)" opacity=".12" />
-    <path d={STREAM} fill="none" stroke="var(--garden-water-deep)" strokeWidth="32" strokeLinecap="round" />
-    <path d={STREAM} fill="none" stroke="var(--garden-water)" strokeWidth="23" strokeLinecap="round" />
-    <path className="garden-stream-current" d={STREAM} fill="none" stroke="var(--garden-water-light)" strokeWidth="1.6" strokeDasharray="10 14" opacity=".65" />
-    <path d="M48 199 144 249v20L48 219Z" fill="#a58c61" />
-    <path d="M384 124 144 249v7L384 131Z" fill="#84724e" />
-    <path d="M288 74 384 124 144 249 48 199Z" fill="var(--garden-soil)" stroke="var(--garden-tile-border)" />
-    <path d="M168 261 312 336v20L168 281Z" fill="#a58c61" />
-    <path d="M552 211 312 336v20L552 231Z" fill="#826945" />
-    <path d="M408 136 552 211 312 336 168 261Z" fill="var(--garden-soil)" stroke="var(--garden-tile-border)" />
-    <g fill="var(--garden-empty)" opacity=".45"><path d="m81 276 4-8 3 9 5-5-2 10M505 139l3-9 4 10 5-4-3 11" /></g>
+    <defs>
+      <linearGradient id={`grass-${id}`} x1="0" y1="0" x2=".7" y2="1"><stop stopColor="var(--garden-tile)"/><stop offset="1" stopColor="var(--garden-soil)"/></linearGradient>
+      <linearGradient id={`water-${id}`} x1="0" x2="1"><stop stopColor="var(--garden-water-deep)"/><stop offset=".45" stopColor="var(--garden-water)"/><stop offset="1" stopColor="var(--garden-water-deep)"/></linearGradient>
+      <pattern id={`grass-grain-${id}`} width="19" height="15" patternUnits="userSpaceOnUse"><path d="m3 8 1-3 2 4m8-2 2-2m-7 8 2-2" stroke="var(--garden-empty)" strokeWidth=".7" opacity=".14" fill="none"/></pattern>
+    </defs>
+    <ellipse cx="300" cy={bottom+32} rx="222" ry="16" fill="#09170d" opacity=".12"/>
+    {layout.banks.map((bank,i)=><g key={i}>
+      <polygon points={polygonPoints(bank.map(p=>({...p,y:p.y+16})))} fill={i ? "#94754f" : "#ae9061"}/>
+      <polygon points={polygonPoints(bank)} fill={`url(#grass-${id})`} stroke="var(--garden-tile-border)" strokeWidth="1.3" strokeLinejoin="round"/>
+      <polygon points={polygonPoints(bank)} fill={`url(#grass-grain-${id})`}/>
+      <polyline points={polygonPoints(bank.slice(0,3))} fill="none" stroke="var(--garden-accent)" strokeOpacity=".23" strokeWidth="2"/>
+    </g>)}
+    <path d={layout.riverPath} fill="none" stroke="var(--garden-water-deep)" strokeWidth="22" strokeLinecap="round"/>
+    <path d={layout.riverPath} fill="none" stroke={`url(#water-${id})`} strokeWidth="16" strokeLinecap="round"/>
+    <path className="garden-stream-current" d={layout.riverPath} fill="none" stroke="var(--garden-water-light)" strokeWidth="1.4" strokeDasharray="8 20" opacity=".65"/>
+    <g fill="var(--garden-empty)" opacity=".4"><path d={`M82 ${bottom-24}l3-7 3 8 4-5-1 9m410-170 2-8 4 8 4-3-2 8`}/></g>
+    <g fill="#8d9981" opacity=".55"><ellipse cx="91" cy={bottom+4} rx="5" ry="2.5"/><ellipse cx="102" cy={bottom+5} rx="3" ry="1.7"/></g>
   </g>;
 }
-
-export function GardenBridge() {
-  return <g aria-hidden="true" pointerEvents="none" strokeLinecap="round">
-    <path d="m257 176 36 18-12 8-36-18Z" fill="#6c5038" />
-    <path d="m257 172 36 18-12 8-36-18Z" fill="#c09b65" stroke="#785d3d" />
-    <path d="m255 177 32 16m-26-20-12 8m19-4-12 8m19-4-12 8m19-4-12 8" stroke="#8f6c46" strokeWidth="1.2" />
+export function GardenBridge({layout}: {layout: GardenLayout}) {
+  const {x,y,angle}=layout.bridge;
+  return <g aria-hidden="true" pointerEvents="none" transform={`translate(${x} ${y}) rotate(${angle})`}>
+    <rect x="-20" y="-6" width="40" height="15" rx="2" fill="#694d35"/>
+    <rect x="-20" y="-8" width="40" height="13" rx="2" fill="#c4a572" stroke="#856343"/>
+    {[-14,-7,0,7,14].map(p=><path key={p} d={`M${p} -7v11`} stroke="#8e6e47" strokeWidth=".9"/>)}
+    <path d="M-20-8H20M-20 5H20" stroke="#e0c491" strokeWidth="1.4"/>
   </g>;
 }

@@ -27,7 +27,8 @@ export class AdminUsersService {
   ) {}
 
   async search(q: string | undefined, actorId: string) {
-    const canSeeEmail = await this.roles.hasRole(actorId, ["ADMIN"]);
+    if (!(await this.roles.isSuperAdmin(actorId))) throw ApiErrors.forbidden("Sólo el súper admin puede consultar los datos de usuarios.");
+    const canSeeEmail = true;
     const query = q?.trim().slice(0, SEARCH_QUERY_MAX_LENGTH);
     const columns = { id: schema.user.id, name: schema.user.name, email: schema.user.email, createdAt: schema.user.createdAt };
     let rows;
@@ -50,7 +51,8 @@ export class AdminUsersService {
   }
 
   async getById(userId: string, actorId: string): Promise<AdminUserDto> {
-    const canSeeEmail = await this.roles.hasRole(actorId, ["ADMIN"]);
+    if (!(await this.roles.isSuperAdmin(actorId))) throw ApiErrors.forbidden("Sólo el súper admin puede consultar los datos de usuarios.");
+    const canSeeEmail = true;
     const [u] = await this.db.select().from(schema.user).where(eq(schema.user.id, userId)).limit(1);
     if (!u) throw ApiErrors.notFound("Usuario no encontrado.");
 

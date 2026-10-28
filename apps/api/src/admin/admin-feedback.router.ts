@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { FEEDBACK_STATUSES, feedbackStatusSchema, type AdminFeedbackListDto, type FeedbackStatus } from "@sala/contracts";
 import { ApiErrors } from "../common/api-error.js";
-import type { AppEnv } from "../http/context.js";
+import { currentUser, type AppEnv } from "../http/context.js";
 import { requireAdmin } from "../http/guards.js";
 import { reply } from "../http/reply.js";
 import { uuidParam, zBody } from "../http/validate.js";
@@ -11,7 +11,7 @@ export const adminFeedbackRouter = new Hono<AppEnv>();
 adminFeedbackRouter.get("/admin/feedback", requireAdmin, async (c) => {
   const status = c.req.query("status");
   if (status && !(FEEDBACK_STATUSES as readonly string[]).includes(status)) throw ApiErrors.validation("Estado inválido.");
-  const items = await c.var.services.feedback.list({ status: status as FeedbackStatus | undefined });
+  const items = await c.var.services.feedback.list({ status: status as FeedbackStatus | undefined },await c.var.services.roles.isSuperAdmin(currentUser(c).id));
   return reply(c, { items } satisfies AdminFeedbackListDto);
 });
 

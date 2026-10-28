@@ -8,7 +8,7 @@ const ITEMS = [
   { href: "/admin", label: "Sala en vivo" },
   { href: "/admin/reports", label: "Reportes" },
   { href: "/admin/sugerencias", label: "Sugerencias" },
-  { href: "/admin/users", label: "Usuarios" },
+  { href: "/admin/users", label: "Usuarios", ownerOnly: true },
   { href: "/admin/colaboradores", label: "Colaboradores", ownerOnly: true },
   { href: "/admin/announcements", label: "Anuncios", ownerOnly: true },
   { href: "/admin/qr", label: "Códigos QR" },

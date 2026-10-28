@@ -19,7 +19,7 @@ describe("native garden catalog and requests", () => {
     }
   });
   it("includes trees, palms, shrubs, flowers, grasses and cacti without duplicate species", () => {
-    expect(GARDEN_SPECIES.length).toBeGreaterThanOrEqual(48);
+    expect(GARDEN_SPECIES.length).toBeGreaterThanOrEqual(60);
     expect(new Set(GARDEN_SPECIES.map(s => s.scientificName)).size).toBe(GARDEN_SPECIES.length);
     expect(new Set(GARDEN_SPECIES.map(s => s.kind ?? "tree"))).toEqual(new Set(["tree", "palm", "shrub", "flower", "grass", "cactus", "aquatic"]));
   });
@@ -28,7 +28,7 @@ describe("native garden catalog and requests", () => {
       gardenPlantSchema.safeParse({ plot: 24, speciesId: "pehuen" }).success,
     ).toBe(true);
     expect(
-      gardenPlantSchema.safeParse({ plot: 25, speciesId: "pehuen" }).success,
+      gardenPlantSchema.safeParse({ plot: 50, speciesId: "pehuen" }).success,
     ).toBe(false);
     expect(
       gardenPlantSchema.safeParse({ plot: 0, speciesId: "exotic" }).success,

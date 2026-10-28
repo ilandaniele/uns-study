@@ -5,10 +5,11 @@ import sharp from "sharp";
 // Usage: node scripts/build-native-tree-atlases.mjs adults.png young.png seedlings.png
 // This only crops transparent gutters, resizes and packs GPT-generated cutouts; it never
 // paints foliage, removes backgrounds or changes the generated illustrations.
+const riverside = process.argv[2] === "--ribera";
 const expansion = process.argv[2] === "--expansion";
 const wetland = process.argv[2] === "--wetland";
-const sources = process.argv.slice(expansion || wetland ? 3 : 2);
-if (sources.length !== (expansion ? 5 : 3)) throw new Error(expansion ? "Expected trees adult/young, plants adult/young, seedlings PNG paths." : "Expected adult, young and seedling source PNG paths.");
+const sources = process.argv.slice(expansion || wetland || riverside ? 3 : 2);
+if (sources.length !== (riverside ? 1 : expansion ? 5 : 3)) throw new Error(expansion ? "Expected trees adult/young, plants adult/young, seedlings PNG paths." : "Expected adult, young and seedling source PNG paths.");
 const destination = fileURLToPath(new URL("../public/garden/", import.meta.url));
 const CELL_WIDTH = 256;
 const CELL_HEIGHT = 288;
@@ -87,6 +88,19 @@ async function pack(source, columns, rows, filename, dimensions, quality = 74) {
 }
 
 await mkdir(destination, { recursive: true });
+if (riverside) {
+  const adults = [
+    { width: 160, height: 186 }, { width: 160, height: 186 }, { width: 160, height: 165 }, { width: 150, height: 175 },
+    { width: 150, height: 175 }, { width: 145, height: 160 }, { width: 150, height: 160 }, { width: 145, height: 110 },
+    { width: 150, height: 110 }, { width: 140, height: 175 }, { width: 150, height: 90 }, { width: 145, height: 75 },
+  ];
+  const young = adults.map(d => ({ width: Math.round(d.width * .65), height: Math.round(d.height * .65) }));
+  const bytes = await pack(sources[0], 4, 3, "ribera-nativa-adultos-gpt-v1.webp", adults, 65)
+    + await pack(sources[0], 4, 3, "ribera-nativa-jovenes-gpt-v1.webp", young, 60);
+  console.log(`Riverside: ${bytes} bytes`);
+  if (bytes >= 500_000) throw new Error("Riverside atlas budget exceeded.");
+  process.exit(0);
+}
 if (wetland) {
   const adults = [
     { width: 160, height: 175 }, { width: 160, height: 186 }, { width: 150, height: 95 }, { width: 140, height: 115 },

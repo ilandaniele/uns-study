@@ -36,14 +36,14 @@ describe("GardenService", () => {
       });
   }
   it("always shares plants and collection, including existing unshared gardens, without exposing account data", async () => {
-    expect(await garden.visit("u2", "u1")).toEqual({ plants: [], collection: {} });
+    expect(await garden.visit("u2", "u1")).toMatchObject({ plants: [], collection: {},plotCount:25 });
     await garden.plant("u1", { plot: 0, speciesId: "ceibo" });
     // Existing rows keep their old flag: no migration or balance mutation is needed.
     db.update(schema.userGardens).set({ shared: false }).where(eq(schema.userGardens.userId, "u1")).run();
     const before = await garden.get("u1");
     expect(before.shared).toBe(true);
     const visible = await garden.visit("u2", "u1");
-    expect(Object.keys(visible).sort()).toEqual(["collection", "plants"]);
+    expect(Object.keys(visible).sort()).toEqual(["collection", "landscapeSeed", "plants", "plotCount"]);
     expect(Object.keys(visible.plants[0]!).sort()).toEqual(["plot", "progress", "speciesId", "stage"]);
     for (const [blockerId, blockedId] of [["u1", "u2"], ["u2", "u1"]]) {
       db.insert(schema.userBlocks).values({ blockerId: blockerId!, blockedId: blockedId!, createdAt: NOW }).run();
@@ -186,4 +186,24 @@ describe("GardenService", () => {
     });
     expect(await getRoom(db)).toBeDefined();
   });
+  it("unlocks five extra plots using seeds, preserves plants and charges simultaneous requests only once",async()=>{
+    db.insert(schema.userGardens).values({userId:"u1",bonusSeeds:1000,updatedAt:NOW}).run();
+    const visual=(await garden.get("u1")).landscapeSeed;
+    await expect(garden.plant("u1",{plot:25,speciesId:"espinillo"})).rejects.toThrow();
+    await expect(garden.expand("u1",{plotCount:25})).rejects.toThrow();
+    for(let plot=0;plot<20;plot++)await garden.plant("u1",{plot,speciesId:"espinillo"});
+    const before=await garden.get("u1");
+    const results=await Promise.allSettled([garden.expand("u1",{plotCount:25}),garden.expand("u1",{plotCount:25})]);
+    expect(results.filter(r=>r.status==="fulfilled")).toHaveLength(1);
+    const after=await garden.get("u1");expect(after.plotCount).toBe(30);expect(after.seeds).toBe(before.seeds-75);expect(after.plants).toEqual(before.plants);expect(after.landscapeSeed).toBe(visual);
+    await garden.plant("u1",{plot:25,speciesId:"santa-lucia"});
+    await expect(garden.plant("u1",{plot:30,speciesId:"espinillo"})).rejects.toThrow();
+    await expect(garden.plant("u2",{plot:25,speciesId:"espinillo"})).rejects.toThrow();
+    const shared=await garden.visit("u2","u1");expect(shared.plotCount).toBe(30);expect(shared.landscapeSeed).toBe(visual);
+  });
+  it("rolls back an unaffordable expansion and caps the garden",async()=>{
+    db.insert(schema.userGardens).values({userId:"u1",plotCount:50,updatedAt:NOW}).run();
+    const before=await garden.get("u1");await expect(garden.expand("u1",{plotCount:50})).rejects.toThrow();expect(await garden.get("u1")).toEqual(before);
+  });
+
 });

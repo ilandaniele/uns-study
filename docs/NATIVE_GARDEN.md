@@ -1,7 +1,7 @@
 # Jardín nativo
 
 El jardín vive en `/jardin`, separado del mapa de ocupación. Cada cuenta tiene
-25 parcelas por cuenta. Sala, Foco, Jardín, Ranking y Más forman la navegación
+25 parcelas iniciales por cuenta, ampliables a 50 con semillas virtuales. Sala, Foco, Jardín, Ranking y Más forman la navegación
 principal; las páginas secundarias conservan sus rutas en Más.
 
 ## Reglas
@@ -28,7 +28,7 @@ principal; las páginas secundarias conservan sus rutas en Más.
 - No hay transferencias de semillas, retiro de dinero ni plantaciones reales.
 
 El catálogo compartido está en `packages/contracts/src/garden.ts` y
-`garden-native-species.ts`: 48 especies nativas con nombre científico, región y
+`garden-native-species.ts`: 60 especies nativas con nombre científico, región y
 enlace botánico oficial. Incluye árboles, palmeras, arbustos, flores, pastos, cactus y acuáticas.
 Las ilustraciones GPT se empaquetan en atlas WebP transparentes y se muestran
 con dimensiones fijas y movimiento suave desde su punto de apoyo. Se pausan fuera
@@ -81,7 +81,7 @@ estadísticas y herramientas de ventana conservan sus gates Pro.
 ## Bosque en perspectiva y visitas
 
 El jardin usa una isla isometrica con ilustraciones originales de las mismas
-48 especies nativas. Un arroyo separa las dos orillas del jardin y las acuaticas
+60 especies nativas. Un arroyo separa las dos orillas del jardin y las acuaticas
 tienen una superficie de agua. Las 25 parcelas mantienen su numero, saldo, crecimiento y
 canjes. Bosque, Vivero y Coleccion son accesos a las secciones de la pagina.
 La seleccion tambien funciona por teclado y con un selector tactil de 44 px.
@@ -126,3 +126,6 @@ muestran numero, planta y seleccion, con botones tactiles y nombres accesibles.
 Se cierra al elegir; admite flechas, Inicio/Fin y Escape, y devuelve el foco
 al control. El panel permite cambiar de especie desde las tarjetas existentes
 del vivero, conservando la parcela libre elegida. No cambia las reglas de juego.
+
+Las ampliaciones, los paisajes personales, el vivero compacto y el reloj de foco por cuenta
+se describen en [GARDEN_LANDSCAPES_FOCUS_SYNC.md](GARDEN_LANDSCAPES_FOCUS_SYNC.md).

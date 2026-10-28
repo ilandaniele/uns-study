@@ -10,6 +10,19 @@ function native(species: Omit<GardenSpecies, "source" | "crown" | "foliage" | "f
 }
 
 export const EXTRA_NATIVE_SPECIES: readonly GardenSpecies[] = [
+  // Additional native species verified against SIB/APN on 2026-10-28.
+  native({ id: "coronillo", name: "Coronillo", scientificName: "Scutia buxifolia", region: "Talares y bosques del este argentino", description: "Pequeñas hojas persistentes en una copa compacta que da refugio a la fauna.", cost: 30, growthMinutes: 300, reward: 45 }),
+  native({ id: "anacahuita", name: "Anacahuita", scientificName: "Blepharocalyx salicifolius", region: "Bosques y selvas en galería", description: "Hojas alargadas, pequeñas flores claras y una copa de verde intenso.", cost: 35, growthMinutes: 360, reward: 53 }),
+  native({ id: "caraguata", name: "Caraguatá", scientificName: "Eryngium pandanifolium", kind: "grass", habitat: "shore", region: "Humedales del litoral y Buenos Aires", description: "Es una hierba de hojas largas y aserradas, con inflorescencias elevadas. Se agrupa con los pastos por su forma.", cost: 14, growthMinutes: 150, reward: 21 }),
+  native({ id: "flechilla", name: "Flechilla", scientificName: "Nassella neesiana", kind: "grass", region: "Pastizales del centro y este argentino", description: "Una gramínea de hojas finas con espiguillas provistas de largas aristas.", cost: 12, growthMinutes: 120, reward: 18 }),
+  native({ id: "pasto-plateado", name: "Pasto plateado", scientificName: "Bothriochloa laguroides", kind: "grass", region: "Pastizales de Argentina", description: "Sus inflorescencias claras forman penachos livianos sobre matas verdes.", cost: 14, growthMinutes: 150, reward: 21 }),
+  native({ id: "chilca", name: "Chilca", scientificName: "Baccharis salicifolia", kind: "shrub", region: "Riberas y ambientes abiertos", description: "Arbusto de hojas estrechas y pequeñas cabezuelas florales claras.", cost: 16, growthMinutes: 180, reward: 24 }),
+  native({ id: "plumerillo-rosado", name: "Plumerillo rosado", scientificName: "Calliandra parvifolia", kind: "shrub", region: "Litoral argentino", description: "Hojas divididas y delicados estambres rosados que parecen pequeños pinceles.", cost: 22, growthMinutes: 240, reward: 33 }),
+  native({ id: "santa-lucia", name: "Santa Lucía", scientificName: "Commelina erecta", kind: "flower", region: "Ambientes abiertos de Argentina", description: "Una hierba de flores azules vistosas entre hojas verdes y alargadas.", cost: 12, growthMinutes: 120, reward: 18 }),
+  native({ id: "petunia-blanca", name: "Petunia blanca", scientificName: "Petunia axillaris", kind: "flower", region: "Centro de Argentina y región rioplatense", description: "Sus flores blancas en forma de trompeta se destacan sobre una mata verde.", cost: 14, growthMinutes: 150, reward: 21 }),
+  native({ id: "saeta", name: "Saeta", scientificName: "Sagittaria montevidensis", kind: "aquatic", habitat: "shore", region: "Orillas y humedales argentinos", description: "Hojas con forma de flecha y flores blancas con manchas oscuras en la base.", cost: 18, growthMinutes: 180, reward: 27 }),
+  native({ id: "duraznillo-de-agua", name: "Duraznillo de agua", scientificName: "Ludwigia peploides", kind: "aquatic", habitat: "water", region: "Lagunas y humedales del litoral", description: "Se extiende sobre el agua con hojas redondeadas y flores amarillas.", cost: 16, growthMinutes: 180, reward: 24 }),
+  native({ id: "helechito-de-agua", name: "Helechito de agua", scientificName: "Salvinia biloba", kind: "aquatic", habitat: "water", region: "Humedales del nordeste argentino", description: "Un helecho flotante de pequeñas hojas con una superficie aterciopelada.", cost: 14, growthMinutes: 150, reward: 21 }),
   native({
     id: "paja-vizcachera", name: "Paja vizcachera", scientificName: "Nassella tenuissima",
     region: "Pastizales y ambientes abiertos de Argentina", kind: "grass",

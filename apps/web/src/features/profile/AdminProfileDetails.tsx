@@ -22,7 +22,7 @@ const date = (value: string) => new Date(value).toLocaleString("es-AR", { timeZo
 /** Private data lives only in this role-gated subtree, separate from public profile responses. */
 export function AdminProfileDetails({ userId, alias }: { userId?: string; alias?: string }) {
   const { me } = useMe();
-  if (!me?.user || !me.roles.includes("ADMIN")) return null;
+  if (!me?.user || !me.isSuperAdmin) return null;
   const path = alias ? `/api/v1/admin/aliases/${encodeURIComponent(alias)}/profile` : userId ? `/api/v1/admin/users/${encodeURIComponent(userId)}/profile` : null;
   return path ? <AdminProfileView key={`${me.user.id}:${path}`} path={path} aliasView={Boolean(alias)} /> : null;
 }
@@ -44,7 +44,7 @@ function AdminProfileView({ path, aliasView }: { path: string; aliasView: boolea
   return <section aria-label="Vista administrativa del perfil" className="mt-5 space-y-5 rounded-3xl border border-app bg-surface p-5 sm:p-8">
     <div className="space-y-2">
       <h2 className="flex items-center gap-2 text-lg font-bold"><ShieldCheckIcon size={22} aria-hidden="true" className="shrink-0 text-primary" />Vista de administración</h2>
-      <p className="text-sm leading-relaxed text-muted">Datos guardados de la cuenta y el perfil, incluidos los ocultos al resto de las personas. Sólo los administradores pueden consultar esta vista. La consulta queda registrada.</p>
+      <p className="text-sm leading-relaxed text-muted">Datos guardados de la cuenta y el perfil, incluidos los ocultos al resto de las personas. Sólo el súper admin puede consultar esta vista. La consulta queda registrada.</p>
     </div>
     {error ? <div><p role="alert" className="text-sm text-[var(--seat-occupied)]">{error}</p><button type="button" onClick={() => { setError(null); setAttempt(n => n + 1); }} className="mt-2 min-h-11 rounded-full border border-app px-4 text-sm font-semibold">Reintentar</button></div>
       : !data ? <p role="status" className="text-sm text-muted">Cargando datos del perfil…</p> : <>

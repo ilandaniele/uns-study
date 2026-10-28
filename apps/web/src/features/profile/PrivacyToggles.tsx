@@ -16,7 +16,7 @@ export interface PrivacyTogglesProps {
 export function PrivacyToggles({ privacy, saving, isAdmin = false, onChange }: PrivacyTogglesProps) {
   return (
     <div className="flex flex-col divide-y divide-[var(--border)]">
-      <p className="pb-3 text-xs leading-relaxed text-muted">Estas opciones controlan lo que ven las demás personas. Los administradores autorizados pueden consultar los datos guardados, incluidos los ocultos, para administrar y moderar la app. Sus consultas quedan registradas.</p>
+      <p className="pb-3 text-xs leading-relaxed text-muted">Estas opciones controlan lo que ven las demás personas. Sólo el súper admin (titular y desarrollador de la app) puede consultar los datos guardados, incluidos los ocultos, para administrar y moderar la app. Sus consultas quedan registradas.</p>
       {PRIVACY_FIELDS.filter((field) => isAdmin || !field.adminOnly).map((field) => {
         const checked = privacy[field.key];
         const disabled = saving;

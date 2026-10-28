@@ -18,6 +18,8 @@ import { TreeArt } from "./TreeArt";
 import { useGarden } from "./useGarden";
 import { SeedShop } from "./SeedShop";
 import { GardenScene } from "./GardenScene";
+import { GardenNursery } from "./GardenNursery";
+import { GardenExpansion } from "./GardenExpansion";
 
 const STAGES = {
   seed: "Recién plantado",
@@ -29,16 +31,6 @@ const hours = (minutes: number) =>
   `${Number((minutes / 60).toFixed(1)).toLocaleString("es-AR")} h`;
 const primary =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-45";
-const FILTERS = [
-  { id: "all", label: "Todas" }, { id: "tree", label: "Árboles" },
-  { id: "palm", label: "Palmeras" }, { id: "flowers", label: "Flores y yuyos" },
-  { id: "grass", label: "Pastos" }, { id: "cactus", label: "Cactus" },
-  { id: "aquatic", label: "Acuáticas" },
-] as const;
-type NurseryFilter = (typeof FILTERS)[number]["id"];
-const FEATURED_IDS = ["camalote", "paja-vizcachera", "vinagrillo", "repollito-de-agua", "paja-colorada", "estrella-de-agua"];
-const NURSERY_SPECIES = [...FEATURED_IDS.map(id => GARDEN_SPECIES.find(s => s.id === id)!), ...GARDEN_SPECIES.filter(s => !FEATURED_IDS.includes(s.id))];
-
 export function GardenView() {
   const { me, loading } = useMe();
   return (
@@ -125,7 +117,6 @@ function GardenAccount() {
   const { garden, error, pending, refresh, act } = useGarden();
   const [selected, setSelected] = useState<number | null>(null);
   const [speciesId, setSpeciesId] = useState("paja-vizcachera");
-  const [filter, setFilter] = useState<NurseryFilter>("all");
   const [notice, setNotice] = useState("");
   const panel = useRef<HTMLElement>(null);
   const species = GARDEN_SPECIES.find((s) => s.id === speciesId)!;
@@ -191,7 +182,7 @@ function GardenAccount() {
         </span>
         <span className="inline-flex items-center gap-2 text-sm text-muted">
           <TreeIcon size={19} aria-hidden="true" />
-          {garden.plants.length}/{GARDEN_SIZE} parcelas
+          {garden.plants.length}/{garden.plotCount ?? GARDEN_SIZE} parcelas
         </span>
         <span className="inline-flex items-center text-sm text-muted">
           {hours(garden.studyMinutes)} en la sala
@@ -199,7 +190,7 @@ function GardenAccount() {
       </div>
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section
-          aria-label="Mi jardín: 25 parcelas"
+          aria-label={`Mi jardín: ${garden.plotCount ?? GARDEN_SIZE} parcelas`}
           className="garden-landscape overflow-hidden rounded-[24px] border border-app p-3 sm:p-5"
         >
           <div className="mb-5 flex items-center justify-between gap-3 px-1">
@@ -215,7 +206,8 @@ function GardenAccount() {
               aria-hidden="true"
             />
           </div>
-          <GardenScene plants={garden.plants} selected={selected} onSelect={choose} />
+          <GardenScene plotCount={garden.plotCount} landscapeSeed={garden.landscapeSeed} plants={garden.plants} selected={selected} onSelect={choose} />
+          <GardenExpansion key={garden.plotCount} garden={garden} pending={pending} onExpand={async()=>{const ok=await act("expand",{plotCount:garden.plotCount??GARDEN_SIZE});if(ok)setNotice("Tu jardín creció: tenés cinco parcelas nuevas.");return ok;}}/>
           <div className="mt-5 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted">
             <span>
               {mature
@@ -239,10 +231,10 @@ function GardenAccount() {
                 <PlantIcon size={27} aria-hidden="true" />
               </span>
               <h2 className="mt-4 text-lg font-bold">
-                {garden.plants.length === GARDEN_SIZE ? "Tu rincón está lleno de vida" : "Todo empieza con una semilla"}
+                {garden.plants.length === (garden.plotCount ?? GARDEN_SIZE) ? "Tu rincón está lleno de vida" : "Todo empieza con una semilla"}
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-muted">
-                {garden.plants.length === GARDEN_SIZE ? "Podés conservar tus árboles o elegir uno adulto para canjearlo y liberar una parcela." : "Elegí una de tus parcelas. Después buscá tu primer árbol en el vivero."}
+                {garden.plants.length === (garden.plotCount ?? GARDEN_SIZE) ? "Podés conservar tus árboles o elegir uno adulto para canjearlo y liberar una parcela." : "Elegí una de tus parcelas. Después buscá tu primer árbol en el vivero."}
               </p>
             </div>
           ) : (
@@ -355,46 +347,11 @@ function GardenAccount() {
         </section>
       </div>
       <SeedShop onCredit={refresh} />
-      <section aria-labelledby="nursery-title" className="mt-9">
-        <div className="mb-5 flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <p className="t-label text-primary">De acá, de Argentina</p>
-            <h2
-              id="nursery-title"
-              className="mt-2 scroll-mt-28 text-2xl font-bold tracking-tight"
-            >
-              El vivero nativo
-            </h2>
-          </div>
-          <span className="text-sm text-muted">{GARDEN_SPECIES.length} especies para descubrir</span>
-        </div>
-        <div role="group" aria-label="Tipos de plantas" className="mb-5 flex flex-wrap gap-2">
-          {FILTERS.map(item => <button key={item.id} type="button" aria-pressed={filter === item.id} onClick={() => setFilter(item.id)} className={`min-h-11 rounded-full border px-4 text-sm font-semibold ${filter === item.id ? "border-primary bg-primary text-white" : "border-app bg-surface text-muted hover:border-primary"}`}>{item.label}</button>)}
-        </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-          {NURSERY_SPECIES.filter(s => filter === "all" || (filter === "flowers" ? s.kind === "flower" || s.kind === "shrub" : (s.kind ?? "tree") === filter)).map((s) => (
-            <SpeciesCard
-              key={s.id}
-              species={s}
-              count={garden.collection[s.id] ?? 0}
-              selected={s.id === speciesId}
-              onChoose={() => {
-                setSpeciesId(s.id);
-                if (selected === null || selectedPlant)
-                  setSelected(
-                    Array.from({ length: GARDEN_SIZE }, (_, i) => i).find(
-                      (i) => !garden.plants.some((p) => p.plot === i),
-                    ) ?? null,
-                  );
-                panel.current?.scrollIntoView({
-                  behavior: "instant",
-                  block: "start",
-                });
-              }}
-            />
-          ))}
-        </div>
-      </section>
+      <GardenNursery collection={garden.collection} selected={speciesId} onChoose={(s: GardenSpecies)=>{
+        setSpeciesId(s.id);
+        if(selected===null || selectedPlant) setSelected(Array.from({length:garden.plotCount??GARDEN_SIZE},(_,i)=>i).find(i=>!garden.plants.some(p=>p.plot===i))??null);
+        panel.current?.scrollIntoView({behavior:"instant",block:"start"});
+      }}/>
       <details id="garden-collection" className="mt-6 scroll-mt-24 rounded-2xl border border-app bg-surface p-5">
         <summary className="cursor-pointer py-1 font-semibold">
           Mi colección · {collected}{" "}
@@ -421,47 +378,5 @@ function GardenAccount() {
         ) : null}
       </details>
     </>
-  );
-}
-
-function SpeciesCard({
-  species,
-  count,
-  selected,
-  onChoose,
-}: {
-  species: GardenSpecies;
-  count: number;
-  selected: boolean;
-  onChoose: () => void;
-}) {
-  return (
-    <article
-      className={`flex min-w-0 flex-col rounded-2xl border bg-surface p-3 sm:p-4 ${selected ? "border-[var(--primary)]" : "border-app"}`}
-    >
-      <div className="garden-specimen relative mb-3 flex aspect-[4/3] items-center justify-center rounded-xl">
-        <div className="h-full w-36 max-w-[85%] sm:w-40">
-          <TreeArt species={species} />
-        </div>
-        {count ? (
-          <span className="absolute right-2 top-2 rounded-full bg-surface px-2 py-1 text-[10px] font-semibold">
-            ×{count}
-          </span>
-        ) : null}
-      </div>
-      <h3 className="text-sm font-bold">{species.name}</h3>
-      <p className="mt-1 text-xs text-muted">{species.region}</p>
-      <p className="mb-4 mt-2 text-xs text-muted">
-        {hours(species.growthMinutes)} de crecimiento
-      </p>
-      <button
-        type="button"
-        onClick={onChoose}
-        className="mt-auto inline-flex min-h-11 items-center justify-center gap-1 rounded-full border border-app px-2 text-xs font-semibold text-primary hover:bg-surface-2"
-      >
-        <LeafIcon size={14} aria-hidden="true" />
-        {species.cost} semillas
-      </button>
-    </article>
   );
 }

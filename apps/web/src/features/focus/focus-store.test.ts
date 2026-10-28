@@ -14,6 +14,13 @@ const OLD_V1 = JSON.stringify({
 });
 
 describe("parseFocusData", () => {
+  it("keeps old history imports bounded and ignores malformed day values",()=>{
+    const days:Record<string,unknown>={bad:{sessions:9,minutes:9},"2026-10-28":{sessions:"invalid",minutes:25}};
+    for(let i=0;i<121;i++)days[new Date(Date.UTC(2025,0,1+i)).toISOString().slice(0,10)]={sessions:1,minutes:25};
+    const parsed=parseFocusData(JSON.stringify({stats:{days}}));
+    expect(Object.keys(parsed.stats.days).length).toBeLessThanOrEqual(120);
+    expect(parsed.stats.days.bad).toBeUndefined();expect(parsed.stats.days["2026-10-28"]).toBeUndefined();
+  });
   it("migrates an old v1 save without losing anything", () => {
     const d = parseFocusData(OLD_V1);
     expect(d.layers).toEqual([{ kind: "ocean", volume: 1 }]);

@@ -27,8 +27,11 @@ export default function PrivacyPage() {
       </ul>
 
       <h2 className="pt-2 text-lg font-semibold text-main">Jardín virtual y compras</h2>
+      <p>La capacidad de parcelas y el paisaje de tu jardín también se muestran a sus visitantes. Las ampliaciones se compran con semillas virtuales.</p>
       <p>Tu jardín se puede visitar desde tu perfil por otras personas registradas en la app. Sólo se muestran las plantas y la colección: tu saldo, tus compras y tu tiempo de estudio no forman parte de esa visita. Los bloqueos entre usuarios también impiden visitar sus jardines. Guardamos tus parcelas, plantas, colección y saldo de semillas en tu cuenta. Para calcular el crecimiento usamos el tiempo de presencia ya registrado en la sala.</p>
       <p>Si comprás semillas, Mercado Pago procesa el pago. Guardamos la referencia de compra, el importe, el identificador y estado del pago y las semillas acreditadas; no recibimos ni guardamos los datos de tu tarjeta. El jardín y sus registros de compra en la app se eliminan al borrar tu cuenta.</p>
+      <h2 className="pt-2 text-lg font-semibold text-main">Reloj de foco</h2>
+      <p>Si iniciás sesión, guardamos el estado del reloj, sus ajustes y hasta 120 días de estadísticas personales del Pomodoro para mantenerlos sincronizados entre tus dispositivos. Son datos privados de tu cuenta y se eliminan al borrarla. Las tareas, los sonidos y las combinaciones personalizadas se guardan en cada dispositivo. El tiempo del Pomodoro no acredita presencia ni horas verificadas en la sala.</p>
 
       <h2 className="pt-2 text-lg font-semibold text-main">Ubicación</h2>
       <p>
@@ -43,7 +46,7 @@ export default function PrivacyPage() {
         y sólo la ve el equipo de moderación. No vendemos tus datos. Para prestar el servicio usamos los proveedores que se indican a continuación, además de las herramientas de publicidad y estadísticas descritas en esta política.
       </p>
 
-      <p>Los administradores autorizados pueden consultar los datos guardados de cuenta, perfil, preferencias y presencia actual, incluidos los ocultos en el perfil público, para administrar y moderar la app. Estas consultas quedan registradas en auditoría. Este acceso administrativo no hace públicos esos datos ni habilita esta vista a moderadores sin el rol de administrador.</p>
+      <p>Sólo el súper admin (titular y desarrollador de la app) puede consultar los datos guardados de cuenta, perfil, preferencias y presencia actual, incluidos los ocultos en el perfil público, para administrar y moderar la app. Estas consultas quedan registradas en auditoría. Este acceso no hace públicos esos datos. Los administradores de la sala y moderadores no pueden consultar esta vista.</p>
       <p>Si activás la visibilidad del ranking, otras personas registradas pueden ver tu actividad e insignias en el perfil. Cuando usás un alias, el enlace abre un perfil con ese alias, sin publicar el identificador de tu cuenta, nombre, correo o rol. Podés ocultar esta actividad desde la opción &quot;Mostrar ranking, actividad e insignias&quot; de tu perfil. Los bloqueos también se respetan en estas visitas.</p>
 
       <h2 id="verificacion-foto" className="pt-2 text-lg font-semibold text-main">Verificación opcional por foto</h2>

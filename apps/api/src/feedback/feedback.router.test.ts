@@ -21,14 +21,14 @@ describe("feedback routers", () => {
   let sendBatch: Mock<(msgs: ResendMessage[]) => Promise<string[]>>;
 
   /** Real feedback service and limiter over a fresh DB; the session and role lookup are stubbed. */
-  function mount(opts: { session?: typeof USER | null; admin?: boolean } = {}) {
+  function mount(opts: { session?: typeof USER | null; admin?: boolean; owner?:boolean } = {}) {
     const rateLimit = new RateLimitService();
     const services = {
       feedback: new FeedbackService(db, new FixedClock(new Date()), { sendBatch }, { adminEmails: ["a@example.test"], ownerEmail: "", emailFrom: "x@example.test" }),
       antiAbuse: new AntiAbuseService(rateLimit, null as never, null as never, turnstile as never),
       turnstile,
       rateLimit,
-      roles: { hasRole: async () => opts.admin === true },
+      roles: { hasRole: async () => opts.admin === true, isSuperAdmin:async()=>opts.owner===true },
       restriction: { assertNot: async () => undefined, activeRestrictions: async () => [] },
     } as unknown as Services;
     const app = new Hono<AppEnv>();

@@ -3,6 +3,18 @@ import type { CollaborationProgressDto } from "./achievements";
 import { EXTRA_NATIVE_SPECIES } from "./garden-native-species";
 
 export const GARDEN_SIZE = 25;
+export const GARDEN_MAX_SIZE = 50;
+export const GARDEN_EXPANSION_SIZE = 5;
+/** Progressive virtual-seed prices. Expanding never increases study-time credit. */
+export function gardenExpansion(plotCount: number) {
+  return plotCount >= GARDEN_MAX_SIZE ? null : {
+    plots: GARDEN_EXPANSION_SIZE,
+    cost: 75 + ((plotCount - GARDEN_SIZE) / GARDEN_EXPANSION_SIZE) * 25,
+    requiredPlants: plotCount - GARDEN_EXPANSION_SIZE,
+  };
+}
+export const gardenExpandSchema = z.object({ plotCount: z.number().int().min(GARDEN_SIZE).max(GARDEN_MAX_SIZE - GARDEN_EXPANSION_SIZE).refine(n => n % 5 === 0) }).strict();
+export type GardenExpandRequest = z.infer<typeof gardenExpandSchema>;
 export const GARDEN_STARTER_SEEDS = 30;
 export const GARDEN_MINUTES_PER_SEED = 6;
 export const GARDEN_SEED_PACK = { seeds: 100, priceArs: 5000 } as const;
@@ -252,6 +264,8 @@ export interface GardenPlant {
 }
 
 export interface GardenDto {
+  plotCount: number;
+  landscapeSeed: number;
   collaboration?: CollaborationProgressDto;
   /** Legacy field: gardens are always visitable by authenticated, unblocked users. */
   shared: boolean;
@@ -263,6 +277,8 @@ export interface GardenDto {
 }
 
 export interface SharedGardenDto {
+  plotCount: number;
+  landscapeSeed: number;
   plants: Pick<GardenPlant, "plot" | "speciesId" | "stage" | "progress">[];
   collection: Record<string, number>;
 }
@@ -272,7 +288,7 @@ const plotSchema = z
   .number()
   .int()
   .min(0)
-  .max(GARDEN_SIZE - 1);
+  .max(GARDEN_MAX_SIZE - 1);
 export const gardenPlantSchema = z
   .object({
     plot: plotSchema,

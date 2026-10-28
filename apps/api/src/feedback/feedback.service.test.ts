@@ -52,13 +52,13 @@ describe("FeedbackService", () => {
   });
 
   describe("admin email", () => {
-    it("sends one message to the admins with escaped content", async () => {
+    it("sends private contact details only to the owner with escaped content", async () => {
       await build().create({ ...base, message: "<script>alert(1)</script>\nlinea 2", email: "typed@example.test", accountName: "Ana <b>" });
       expect(sendBatch).toHaveBeenCalledTimes(1);
       const msg = sendBatch.mock.calls[0]![0][0]!;
       expect(msg).toMatchObject({
         from: MAIL.emailFrom,
-        to: ["admin@example.test"],
+        to: ["owner@example.test"],
         subject: "Nueva sugerencia: Sugerencia",
         headers: { "Reply-To": "typed@example.test" },
       });

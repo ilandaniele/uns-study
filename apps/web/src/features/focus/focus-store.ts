@@ -1,5 +1,6 @@
 "use client";
 
+import type { FocusCommand, FocusSnapshot } from "@sala/contracts";
 import { useSyncExternalStore } from "react";
 import { MAX_LAYERS, normalizeLayers, type AmbientKind, type AmbientLayer } from "./focus-audio";
 import {
@@ -11,6 +12,7 @@ import {
   resetPhase,
   sanitizeCustomPresets,
   sanitizeSettings,
+  sanitizeFocusStats,
   selectPhase,
   skip,
   tick,
@@ -48,6 +50,9 @@ export interface FocusData {
 
 const KEY = "sala.focus.v1";
 const MAX_TASKS = 50;
+let storageKey = KEY;
+let account: string | null | undefined;
+let commandSink: ((command: FocusCommand) => void) | null = null;
 
 function defaults(): FocusData {
   return {
@@ -102,7 +107,7 @@ export function parseFocusData(raw: string | null): FocusData {
     return {
       settings,
       timer,
-      stats: j.stats && typeof j.stats.days === "object" && j.stats.days ? { days: j.stats.days } : d.stats,
+      stats: sanitizeFocusStats(j.stats),
       tasks,
       activeTaskId: tasks.some((x) => x.id === j.activeTaskId) ? (j.activeTaskId as string) : null,
       // Sound never auto-resumes after a reload: browsers block audio without a tap anyway.
@@ -118,7 +123,7 @@ export function parseFocusData(raw: string | null): FocusData {
 
 function readStorage(): FocusData {
   try {
-    return parseFocusData(window.localStorage.getItem(KEY));
+    return parseFocusData(window.localStorage.getItem(storageKey));
   } catch {
     return defaults();
   }
@@ -136,30 +141,43 @@ function emit() {
 function commit(next: FocusData) {
   data = next;
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(next));
+    window.localStorage.setItem(storageKey, JSON.stringify(next));
   } catch {
     // Private mode / quota: the timer still works for this tab.
   }
   emit();
 }
 
-function update(fn: (d: FocusData) => FocusData) {
+function update(fn: (d: FocusData) => FocusData, command?: FocusCommand) {
   commit(fn(load()));
+  if(command)commandSink?.(command);
 }
 
+function onStorage(e: StorageEvent) {
+  if(e.key !== storageKey)return;
+  data=parseFocusData(e.newValue);emit();
+}
 function subscribe(listener: () => void) {
   listeners.add(listener);
-  // Another tab changed the timer: pick it up so every tab shows the same countdown.
-  const onStorage = (e: StorageEvent) => {
-    if (e.key !== KEY) return;
-    data = parseFocusData(e.newValue);
-    emit();
-  };
-  if (listeners.size === 1) window.addEventListener("storage", onStorage);
-  return () => {
-    listeners.delete(listener);
-    if (listeners.size === 0) window.removeEventListener("storage", onStorage);
-  };
+  if(listeners.size===1)window.addEventListener("storage",onStorage);
+  return()=>{listeners.delete(listener);if(listeners.size===0)window.removeEventListener("storage",onStorage);};
+}
+/** Account-scoped caches prevent one signed-in person's timer from leaking to another. */
+export function bindFocusAccount(userId:string|null,sink:((command:FocusCommand)=>void)|null) {
+  if(account!==userId){account=userId;storageKey=userId ? `${KEY}.account.${userId}` : KEY;data=readStorage();emit();}
+  commandSink=sink;
+}
+export function unbindFocusCommands(){commandSink=null;}
+export function hasScopedFocus(){try{return !!window.localStorage.getItem(storageKey);}catch{return false;}}
+export function getFocusSnapshot():FocusSnapshot {const {settings,timer,stats}=load();return {settings,timer,stats};}
+export function legacyFocusSnapshot():FocusSnapshot|null {
+  try{const raw=window.localStorage.getItem(KEY);if(!raw)return null;const {settings,timer,stats}=parseFocusData(raw);
+    return timer.status!=="idle" || Object.keys(stats.days).length ? {settings,timer,stats} : null;
+  }catch{return null;}
+}
+export function applySyncedFocus(snapshot:FocusSnapshot,clockOffset:number){
+  const timer={...snapshot.timer,endsAt:snapshot.timer.endsAt===null ? null : snapshot.timer.endsAt-clockOffset};
+  commit({...load(),settings:snapshot.settings,timer,stats:snapshot.stats});
 }
 
 export function useFocus(): FocusData {
@@ -174,25 +192,27 @@ export function getFocus(): FocusData {
 
 export const focusActions = {
   toggle() {
-    update((d) => ({ ...d, timer: toggle(d.timer, Date.now()) }));
+    const action=load().timer.status==="running" ? "pause" : "start";
+    update((d) => ({ ...d, timer: toggle(d.timer, Date.now()) }),{action});
   },
   resetPhase() {
-    update((d) => ({ ...d, timer: resetPhase(d.timer, d.settings) }));
+    update((d) => ({ ...d, timer: resetPhase(d.timer, d.settings) }), {action:"resetPhase"});
   },
   resetAll() {
-    update((d) => ({ ...d, timer: resetAll(d.settings) }));
+    update((d) => ({ ...d, timer: resetAll(d.settings) }), {action:"resetAll"});
   },
   skip() {
-    update((d) => ({ ...d, timer: skip(d.timer, d.settings, Date.now()) }));
+    update((d) => ({ ...d, timer: skip(d.timer, d.settings, Date.now()) }), {action:"skip"});
   },
   selectPhase(phase: Phase) {
-    update((d) => (d.timer.phase === phase && d.timer.status !== "running" ? d : { ...d, timer: selectPhase(d.timer, phase, d.settings) }));
+    update((d) => (d.timer.phase === phase && d.timer.status !== "running" ? d : { ...d, timer: selectPhase(d.timer, phase, d.settings) }), {action:"selectPhase",phase});
   },
   setSettings(patch: Partial<FocusSettings>) {
     update((d) => {
       const settings = sanitizeSettings({ ...d.settings, ...patch });
       return { ...d, settings, timer: applySettings(d.timer, settings) };
     });
+    commandSink?.({action:"setSettings",settings:load().settings});
   },
   /** Adds or retunes one ambient layer; `null` removes it. A fifth distinct kind is ignored. */
   setLayer(kind: AmbientKind, volume: number | null) {
@@ -266,6 +286,7 @@ export const focusActions = {
         ? fresh.tasks.map((t) => (t.id === fresh.activeTaskId ? { ...t, pomodoros: t.pomodoros + focusDone } : t))
         : fresh.tasks;
     commit({ ...fresh, timer: r.state, stats: recordCompletions(fresh.stats, r.completed), tasks });
+    commandSink?.({action:"settle"});
     return r.completed;
   },
 };
