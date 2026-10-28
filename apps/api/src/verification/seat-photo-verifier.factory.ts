@@ -9,7 +9,7 @@ import type { SeatPhotoVerifier } from "./seat-photo-verifier.js";
 
 const logger = new Logger("verification");
 
-const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
+const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite";
 const DEFAULT_CLAUDE_MODEL = "claude-sonnet-5-5";
 
 /**

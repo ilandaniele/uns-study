@@ -31,13 +31,13 @@ The contract below is the shape of its input and output.
 | Variable | Meaning |
 |---|---|
 | `GEMINI_API_KEY` / `ANTHROPIC_API_KEY` | Worker secrets. When either is set, the verifier runs in-process in the API Worker (Gemini wins when both are set). With neither, the feature is off and the web explains its unavailability without offering an upload. |
-| `VERIFIER_MODEL` | Optional, default `gemini-3.8-flash` (`claude-sonnet-5-5` with the Anthropic key). Explicit model overrides remain unchanged. Reported as `modelVersion: "sala-seat-v1:<model>"`. |
+| `VERIFIER_MODEL` | Optional, default `gemini-3.5-flash-lite` (`claude-sonnet-5-5` with the Anthropic key). Explicit model overrides remain unchanged. Reported as `modelVersion: "sala-seat-v1:<model>"`. |
 | `SEAT_VERIFIER_MIN_CONFIDENCE` | Optional, default `0.8`. |
 | `SEAT_VERIFIER_MODE=mock` | Dev/test only (ignored when `NODE_ENV=production`). Accepts every photo as the claimed seat with confidence 0.9. |
 
 ## Request (API to model)
 
-JSON, timeout 10 s.
+JSON, model timeout 17 s (under the web's 20 s POST deadline).
 
 ```json
 {
@@ -107,7 +107,7 @@ on Claude) so the answer is strict JSON. A seat code that is not in the request'
 sanitized failure category; they are never reported as an ambiguous photo. The static system prompt and the
 floor plan are prompt-cached.
 
-The model call has a 9 s timeout, under the web client's 20 s POST timeout. The
+The model call has a 17 s timeout, under the web client's 20 s POST timeout. The
 web distinguishes timeout, provider error, ambiguous photo, low confidence and
 seat mismatch. Failed attempts never verify the check-in or reserve the photo hash;
 the same photo can be retried. Existing rate limits still apply.
@@ -132,13 +132,15 @@ without user/seat identifiers or provider payloads.
   and structured responses. It consumes one model request, never a personal photo,
   and never creates/verifies a check-in or changes study time. A mock is reported as
   simulated, not as a working real provider.
-- The default is stable Gemini 3.8 Flash with supported LOW thinking and a 4096-token
-  output ceiling, including thinking, to avoid truncating the structured JSON. The
+- The default is stable Gemini 3.5 Flash-Lite with supported MINIMAL thinking and a
+  1024-token output ceiling for this short classification. Flash 3.8 was reachable
+  in production but exceeded the former 9 s deadline in the plan-only probe. Explicit
+  Flash 3.8 overrides retain LOW thinking and a 4096-token ceiling. The
   former 2.5 default returned MODEL/404 for this production project after the transport
   fix. Google restricts 2.5 to projects with prior active usage; it has not announced
   a universal shutdown. Explicit 2.5 Flash overrides retain a 1024-token ceiling and
   disabled optional thinking; other overrides retain their own defaults.
-  See the [3.8 model card](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash).
+  See the [Flash-Lite model card](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite).
   Model availability must be checked against the provider's current
   [catalog/deprecations](https://ai.google.dev/gemini-api/docs/deprecations).
 - The default Gemini transport calls `globalThis.fetch` through a wrapper. Assigning

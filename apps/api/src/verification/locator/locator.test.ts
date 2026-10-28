@@ -131,6 +131,15 @@ describe("GeminiSeatLocator", () => {
     expect(config.maxOutputTokens).toBe(4096);
   });
 
+  it("uses minimal thinking for the low-latency Flash-Lite classifier", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(okResponse('{"seatCode":null,"confidence":0}'));
+    const locator = new GeminiSeatLocator("SYNTHETIC_KEY", "gemini-3.5-flash-lite", () => "PLAN", fetchImpl);
+    await locator.locate(BODY as never, new AbortController().signal);
+    const config = JSON.parse(fetchImpl.mock.calls[0]![1].body).generationConfig;
+    expect(config.thinkingConfig).toEqual({ thinkingLevel: "MINIMAL" });
+    expect(config.maxOutputTokens).toBe(1024);
+  });
+
   it("rejects HTTP errors and malformed answers", async () => {
     const failing = new GeminiSeatLocator("K", "m", () => "PLAN", vi.fn().mockResolvedValue(new Response("", { status: 429 })));
     await expect(failing.locate(BODY as never, new AbortController().signal)).rejects.toThrow("gemini http 429");

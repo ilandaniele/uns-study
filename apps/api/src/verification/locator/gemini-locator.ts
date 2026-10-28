@@ -41,6 +41,7 @@ export class GeminiSeatLocator implements SeatLocator {
 
   async locate(req: VerifyRequest, signal: AbortSignal): Promise<LocateResult> {
     const flash38 = /^gemini-3\.8-flash(?:-|$)/.test(this.model);
+    const flash35Lite = /^gemini-3\.5-flash-lite(?:-|$)/.test(this.model);
     const body = {
       systemInstruction: { parts: [{ text: SYSTEM_PROMPT.replace("calling the report_seat tool", "returning JSON") }] },
       contents: [
@@ -60,6 +61,7 @@ export class GeminiSeatLocator implements SeatLocator {
         maxOutputTokens: flash38 ? 4096 : 1024,
         // Flash 3.8 supports LOW, not MINIMAL or a disabled thinking budget.
         ...(flash38 ? { thinkingConfig: { thinkingLevel: "LOW" } } : {}),
+        ...(flash35Lite ? { thinkingConfig: { thinkingLevel: "MINIMAL" } } : {}),
         // Flash 2.5 otherwise spends its tiny JSON budget thinking and may return no answer.
         ...(/^gemini-2\.5-flash(?:-|$)/.test(this.model) ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
         responseMimeType: "application/json",

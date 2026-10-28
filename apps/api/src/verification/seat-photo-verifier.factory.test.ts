@@ -51,7 +51,7 @@ describe("createSeatPhotoVerifier", () => {
     env.seatVerifierMode = "";
 
     expect(createSeatPhotoVerifier()).toBeInstanceOf(InProcessSeatPhotoVerifier);
-    expect(createSeatPhotoVerifier()?.diagnostics?.().model).toBe("sala-seat-v1:gemini-3.8-flash");
+    expect(createSeatPhotoVerifier()?.diagnostics?.().model).toBe("sala-seat-v1:gemini-3.5-flash-lite");
   });
 
   it("preserves an explicitly configured model", () => {

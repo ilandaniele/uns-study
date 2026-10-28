@@ -6,8 +6,8 @@ import { providerFailure, type VerifierFailure } from "./verifier-error.js";
 
 /** Input cap kept from the standalone verifier's body limit. */
 const MAX_INPUT_BYTES = 8 * 1024 * 1024;
-// Under the API's 10 s client timeout so we can still answer "null" instead of being cut off.
-const LOCATE_TIMEOUT_MS = 9000;
+// Leave 3 s of headroom under the web's 20 s POST timeout to return an actionable error.
+const LOCATE_TIMEOUT_MS = 17_000;
 
 export interface InProcessVerifierOptions {
   timeoutMs?: number;
