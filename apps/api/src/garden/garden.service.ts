@@ -14,6 +14,8 @@ import { ApiErrors } from "../common/api-error.js";
 import { isMissingSchemaError } from "../common/sqlite-errors.js";
 import type { Clock } from "../platform/clock.js";
 import { loadStudyIntervals } from "../study-history/study-intervals.js";
+import { CollaborationService } from "../badges/collaboration.service.js";
+import type { CollaborationProgressDto } from "@sala/contracts";
 
 interface StoredPlant {
   id: string;
@@ -23,6 +25,7 @@ interface StoredPlant {
   baselineMinutes: number;
 }
 interface GardenState {
+  collaboration: CollaborationProgressDto;
   shared: boolean;
   spentSeeds: number;
   bonusSeeds: number;
@@ -35,6 +38,7 @@ export class GardenService {
   constructor(
     private readonly db: Db,
     private readonly clock: Clock,
+    private readonly collaboration = new CollaborationService(db, clock),
   ) {}
 
   /** Called inside the payment transaction: balance and provider receipt must commit together. */
@@ -142,13 +146,14 @@ export class GardenService {
         .get();
       return row
         ? {
+            collaboration: this.collaboration.progress(userId),
             shared: row.shared,
             spentSeeds: row.spentSeeds,
             bonusSeeds: row.bonusSeeds,
             plants: JSON.parse(row.plants) as StoredPlant[],
             collection: JSON.parse(row.collection) as Record<string, number>,
           }
-        : { shared: false, spentSeeds: 0, bonusSeeds: 0, plants: [], collection: {} };
+        : { shared: false, spentSeeds: 0, bonusSeeds: 0, plants: [], collection: {}, collaboration: this.collaboration.progress(userId) };
     } catch (error) {
       if (isMissingSchemaError(error))
         throw ApiErrors.featureDisabled(
@@ -163,12 +168,13 @@ export class GardenService {
       GARDEN_STARTER_SEEDS +
       Math.floor(minutes / GARDEN_MINUTES_PER_SEED) +
       state.bonusSeeds -
-      state.spentSeeds
+      state.spentSeeds + state.collaboration.seeds
     );
   }
 
   private dto(state: GardenState, minutes: number): GardenDto {
     return {
+      collaboration: state.collaboration,
       shared: true,
       seeds: this.balance(state, minutes),
       studyMinutes: minutes,

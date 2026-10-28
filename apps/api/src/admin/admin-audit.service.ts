@@ -21,7 +21,7 @@ export class AdminAuditService {
   constructor(private readonly db: Db) {}
 
   /** Newest first. `targetUserId` narrows the log to the actions taken on one user. */
-  async list(cursor: string | undefined, targetUserId?: string): Promise<Page<AuditEntryDto>> {
+  async list(cursor: string | undefined, targetUserId?: string, ownerMetadata = false): Promise<Page<AuditEntryDto>> {
     const before = parseCursor(cursor);
     const rows = await this.db
       .select()
@@ -56,7 +56,7 @@ export class AdminAuditService {
       targetName: r.targetUserId ? (names.get(r.targetUserId) ?? null) : null,
       reportId: r.reportId,
       action: r.action,
-      metadata: r.metadata,
+      metadata: !ownerMetadata && (r.action === "ROOM_GEOFENCE_UPDATED" || r.action.startsWith("EMAIL_")) ? null : r.metadata,
       createdAt: r.createdAt.toISOString(),
     }));
     const nextCursor = rows.length > PAGE_SIZE ? page[page.length - 1]!.createdAt.toISOString() : null;

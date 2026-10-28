@@ -30,7 +30,7 @@ The contract below is the shape of its input and output.
 
 | Variable | Meaning |
 |---|---|
-| `GEMINI_API_KEY` / `ANTHROPIC_API_KEY` | Worker secrets. When either is set, the verifier runs in-process in the API Worker (Gemini wins when both are set). With neither, the feature is off and the web hides the button. |
+| `GEMINI_API_KEY` / `ANTHROPIC_API_KEY` | Worker secrets. When either is set, the verifier runs in-process in the API Worker (Gemini wins when both are set). With neither, the feature is off and the web explains its unavailability without offering an upload. |
 | `VERIFIER_MODEL` | Optional, default `gemini-2.5-flash` (`claude-sonnet-5-5` with the Anthropic key). Reported as `modelVersion: "sala-seat-v1:<model>"`. |
 | `SEAT_VERIFIER_MIN_CONFIDENCE` | Optional, default `0.8`. |
 | `SEAT_VERIFIER_MODE=mock` | Dev/test only (ignored when `NODE_ENV=production`). Accepts every photo as the claimed seat with confidence 0.9. |
@@ -80,8 +80,11 @@ malformed body counts as "could not verify". The user is not penalised for it.
   check-in — not a different user's, and not even a later check-in by the
   same user. This is enforced by a database-level unique constraint, not just
   an application check, so it holds under concurrent requests too.
-- The model must not store the photo either, unless the user has
-  opted in to training data (not implemented yet).
+- Provider retention and data use are governed by the provider's terms, not by the
+  app's no-photo-storage implementation. The UI names the configured provider before
+  confirmation and links to the photo privacy notice. The unpaid Gemini API may use
+  content to improve products. A paid project's different data-use terms do not
+  imply zero retention. Review the [Gemini API terms](https://ai.google.dev/gemini-api/terms).
 
 ## Suggested approach for the model
 
@@ -100,20 +103,44 @@ removed. It follows this contract using Gemini vision (or Claude vision). It
 sends the model a labelled floor plan, the user's photo and a text description
 of the seat layout, and forces structured JSON output (a `report_seat` tool call
 on Claude) so the answer is strict JSON. A seat code that is not in the request's
-`seats` is turned into `null` with confidence 0, and any model error or timeout
-answers `{ "seatCode": null, "confidence": 0 }`. The static system prompt and the
+`seats` is turned into `null` with confidence 0. Model errors and timeouts carry a
+sanitized failure category; they are never reported as an ambiguous photo. The static system prompt and the
 floor plan are prompt-cached.
 
-The model call has a 9 s timeout, under the API's 10 s client timeout, so a slow
-model degrades to "could not verify" and the user can simply try again.
+The model call has a 9 s timeout, under the web client's 20 s POST timeout. The
+web distinguishes timeout, provider error, ambiguous photo, low confidence and
+seat mismatch. Failed attempts never verify the check-in or reserve the photo hash;
+the same photo can be retried. Existing rate limits still apply.
 
-Configure it with Worker secrets from `apps/api`:
+Configure the provider through the deployment's managed Worker secrets. Never
+place credentials in the public repository, diagnostics or client bundle.
 
-```
-pnpm exec wrangler secret put GEMINI_API_KEY
-# or ANTHROPIC_API_KEY when no Gemini key is set
-```
+App-side storage guarantee: the verifier never writes the photo to a database or
+disk and never logs it. Its operational log contains only `{evt, outcome, failure, ms}`,
+without user/seat identifiers or provider payloads.
 
-No-storage guarantee: the verifier keeps no database or disk state, never writes
-the photo anywhere and never logs it. It logs only `{evt, claimed, predicted,
-confidence, ms}`. The photo is sent to the Gemini API (or the Anthropic API). On the Gemini free tier Google may use prompts and images to improve its products; use a paid Gemini key if that is not acceptable.
+## Diagnostics and mobile capture
+
+- Public `GET /verification/status` returns availability and provider name for informed
+  confirmation. It exposes no keys, model configuration or attempt history.
+- `GET /admin/verification/status` requires the canonical, unrestricted SUPERADMIN.
+  It reports provider/model and the last attempt/failure in this process: TIMEOUT,
+  CREDENTIALS, QUOTA, MODEL, PROVIDER or RESPONSE. Restarting the Worker clears that
+  in-memory diagnostic; configured availability does not prove live quota or photo accuracy.
+- `POST /admin/verification/test` is also SUPERADMIN-only. It sends the app's own floor
+  plan through the configured verifier to test credentials, model availability, quota
+  and structured responses. It consumes one model request, never a personal photo,
+  and never creates/verifies a check-in or changes study time. A mock is reported as
+  simulated, not as a working real provider.
+- Gemini Flash 2.5 requests reserve 1024 output tokens and disable optional thinking
+  for this short structured classification. Other model families keep their own defaults.
+  Model availability must be checked against the provider's current
+  [catalog/deprecations](https://ai.google.dev/gemini-api/docs/deprecations).
+- Camera/gallery selection compresses and strips metadata locally, then shows a
+  preview. Only the explicit verification button sends it. Failed/cancelled attempts
+  restore controls, including selecting the same file again.
+- The native image decoder is used when `createImageBitmap` cannot decode an iPhone
+  camera image. Presence reuses the same live server-validated grant as other seat actions;
+  an expired grant still requires a fresh GPS validation.
+- Accurate seat prediction still needs a real photo with landmarks. Symmetric tables
+  may remain ambiguous; do not lower confidence or auto-accept to hide this limitation.

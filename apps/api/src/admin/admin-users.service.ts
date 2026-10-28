@@ -106,7 +106,7 @@ export class AdminUsersService {
 
   /** Deliberate, owner-only cleanup. Guards and deletion share one synchronous SQLite transaction. */
   async deleteUser(actorId: string, targetUserId: string, confirmationEmail: string): Promise<void> {
-    if (!(await this.roles.isOwner(actorId))) throw ApiErrors.forbidden("Solo el dueño de la app puede eliminar cuentas.");
+    if (!(await this.roles.isSuperAdmin(actorId))) throw ApiErrors.forbidden("Solo el dueño de la app puede eliminar cuentas.");
     if (actorId === targetUserId) throw ApiErrors.forbidden("No podés eliminar tu propia cuenta desde administración.");
 
     this.db.transaction((tx) => {
@@ -141,27 +141,26 @@ export class AdminUsersService {
 
   /** Owner-only: grants or revokes ADMIN. Audited in `moderation_actions` (free-text `action`). */
   async setAdmin(actorId: string, targetUserId: string, grant: boolean): Promise<void> {
-    if (!(await this.roles.isOwner(actorId))) throw ApiErrors.forbidden("Solo el dueño de la app puede cambiar el rol de administrador.");
+    if (!(await this.roles.isSuperAdmin(actorId))) throw ApiErrors.forbidden("Solo el dueño de la app puede cambiar el rol de administrador.");
 
     const [target] = await this.db.select().from(schema.user).where(eq(schema.user.id, targetUserId)).limit(1);
     if (!target) throw ApiErrors.notFound("Usuario no encontrado.");
     if (targetUserId === actorId) throw ApiErrors.forbidden("No podés cambiar tu propio rol.");
     if (!grant && (await this.roles.isOwner(targetUserId))) throw ApiErrors.forbidden("No se puede quitar el rol de administrador al dueño.");
 
-    if (grant) await this.roles.grantRole(targetUserId, "ADMIN");
-    else await this.roles.revokeRole(targetUserId, "ADMIN");
-
-    await this.db.insert(schema.moderationActions).values({
-      actorId,
-      targetUserId,
-      action: grant ? "ADMIN_GRANTED" : "ADMIN_REVOKED",
-      metadata: { role: "ADMIN" },
+    this.db.transaction(tx => {
+      if (grant) {
+        tx.insert(schema.userRoles).values({ userId: targetUserId, role: "ADMIN" }).onConflictDoNothing().run();
+        tx.update(schema.adminApplications).set({ status: "APPROVED", reviewedAt: new Date(), reviewedBy: actorId })
+          .where(and(eq(schema.adminApplications.userId, targetUserId), eq(schema.adminApplications.status, "PENDING"))).run();
+      } else tx.delete(schema.userRoles).where(and(eq(schema.userRoles.userId, targetUserId), eq(schema.userRoles.role, "ADMIN"))).run();
+      tx.insert(schema.moderationActions).values({ actorId, targetUserId, action: grant ? "ADMIN_GRANTED" : "ADMIN_REVOKED", metadata: { role: "ADMIN" } }).run();
     });
   }
 
   /** Owner-only: shields a user so no admin or moderator can restrict them, or removes the shield. Audited. */
   async setShield(actorId: string, targetUserId: string, shield: boolean): Promise<void> {
-    if (!(await this.roles.isOwner(actorId))) throw ApiErrors.forbidden("Solo el dueño de la app puede blindar usuarios.");
+    if (!(await this.roles.isSuperAdmin(actorId))) throw ApiErrors.forbidden("Solo el dueño de la app puede blindar usuarios.");
 
     const [target] = await this.db.select().from(schema.user).where(eq(schema.user.id, targetUserId)).limit(1);
     if (!target) throw ApiErrors.notFound("Usuario no encontrado.");
@@ -200,7 +199,7 @@ export class AdminUsersService {
 
     if (RESTRICTING_ACTIONS.includes(input.type)) {
       const [shield] = await this.db.select({ userId: schema.userShields.userId }).from(schema.userShields).where(eq(schema.userShields.userId, targetUserId)).limit(1);
-      if (shield && !(await this.roles.isOwner(actorId))) throw ApiErrors.forbidden("Este usuario está blindado por el dueño de la app.");
+      if (shield && !(await this.roles.isSuperAdmin(actorId))) throw ApiErrors.forbidden("Este usuario está blindado por el dueño de la app.");
     }
 
     await this.moderation.apply({ actorId, targetUserId, ...input });

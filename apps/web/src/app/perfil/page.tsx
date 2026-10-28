@@ -18,6 +18,7 @@ import { StudyModeControl } from "@/features/profile/StudyModeControl";
 import { useMyProfile } from "@/features/profile/useMyProfile";
 import { AutoExtendSetting } from "@/features/auto-extend/AutoExtendSetting";
 import { BadgesSection } from "@/features/badges/BadgesSection";
+import { MyAchievements } from "@/features/badges/MyAchievements";
 import { ExamsSection } from "@/features/exams/ExamsSection";
 import { ProBadge } from "@/features/subscriptions/ProBadge";
 import { usePro } from "@/features/subscriptions/usePro";
@@ -154,6 +155,7 @@ export default function PerfilPage() {
         <NotificationSettings />
       </CollapsibleSection>
 
+      <div className="rounded-3xl border border-app bg-surface p-5 sm:p-6"><MyAchievements userId={session.user.id}/></div>
       <CollapsibleSection id="tu-estudio" title="Tu estudio">
         <WeeklyGoalCard />
         <BadgesSection userId={session.user.id} />

@@ -2,6 +2,7 @@ import { Logger } from "../platform/logger.js";
 import { verifyRequestSchema } from "./locator/schema.js";
 import type { SeatLocator } from "./locator/seat-locator.js";
 import type { SeatPhotoVerifier, SeatPhotoVerifierRequest, SeatPhotoVerifierResult } from "./seat-photo-verifier.js";
+import { providerFailure, type VerifierFailure } from "./verifier-error.js";
 
 /** Input cap kept from the standalone verifier's body limit. */
 const MAX_INPUT_BYTES = 8 * 1024 * 1024;
@@ -10,6 +11,7 @@ const LOCATE_TIMEOUT_MS = 9000;
 
 export interface InProcessVerifierOptions {
   timeoutMs?: number;
+  provider?: "gemini" | "anthropic";
 }
 
 /**
@@ -20,6 +22,9 @@ export class InProcessSeatPhotoVerifier implements SeatPhotoVerifier {
   private readonly logger = new Logger(InProcessSeatPhotoVerifier.name);
   private readonly modelVersion: string;
   private readonly timeoutMs: number;
+  private lastAttemptAt: string | null = null;
+  private lastFailure: VerifierFailure | null = null;
+  private readonly provider: "gemini" | "anthropic";
 
   constructor(
     private readonly locator: SeatLocator,
@@ -28,7 +33,10 @@ export class InProcessSeatPhotoVerifier implements SeatPhotoVerifier {
   ) {
     this.modelVersion = `sala-seat-v1:${model}`;
     this.timeoutMs = options.timeoutMs ?? LOCATE_TIMEOUT_MS;
+    this.provider = options.provider ?? (model.startsWith("gemini") ? "gemini" : "anthropic");
   }
+
+  diagnostics() { return { provider: this.provider, model: this.modelVersion, lastAttemptAt: this.lastAttemptAt, lastFailure: this.lastFailure }; }
 
   async verify(request: SeatPhotoVerifierRequest): Promise<SeatPhotoVerifierResult> {
     if (request.image.base64.length > MAX_INPUT_BYTES) throw new Error("Seat photo too large");
@@ -39,23 +47,26 @@ export class InProcessSeatPhotoVerifier implements SeatPhotoVerifier {
     const started = Date.now();
     let seatCode: string | null = null;
     let confidence = 0;
+    let failure: VerifierFailure | undefined;
+    const signal = AbortSignal.timeout(this.timeoutMs);
     try {
-      const result = await this.locator.locate(body, AbortSignal.timeout(this.timeoutMs));
+      const result = await this.locator.locate(body, signal);
       if (result.seatCode !== null && body.seats.some((s) => s.code === result.seatCode)) {
         seatCode = result.seatCode;
         confidence = Number.isFinite(result.confidence) ? Math.min(1, Math.max(0, result.confidence)) : 0;
       }
-    } catch {
-      // Timeout or model error: degrade to "could not tell".
+    } catch (error) {
+      failure = providerFailure(error, signal.aborted);
     }
+    this.lastAttemptAt = new Date().toISOString();
+    this.lastFailure = failure ?? null;
     // Never log the image: only these fields.
     this.logger.log({
       evt: "verify",
-      claimed: body.claimedSeatCode,
-      predicted: seatCode,
-      confidence,
+      outcome: failure ? "error" : seatCode ? "prediction" : "ambiguous",
+      failure: failure ?? null,
       ms: Date.now() - started,
     });
-    return { seatCode, confidence, modelVersion: this.modelVersion };
+    return { seatCode, confidence, modelVersion: this.modelVersion, ...(failure ? { failure } : {}) };
   }
 }

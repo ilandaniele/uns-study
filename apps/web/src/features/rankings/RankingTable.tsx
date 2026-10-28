@@ -4,9 +4,18 @@ import type { ReactNode } from "react";
 import { AdminBadge } from "@/components/AdminBadge";
 import { Avatar } from "@/components/Avatar";
 import { frameOf, nameColorStyle } from "@/components/flair";
+import { BadgeMedal } from "@/features/badges/BadgeMedal";
 import { emptyRankingMessage, formatRankingValue } from "./labels";
 
 const MEDAL: Record<number, string> = { 1: "#E0A526", 2: "#9AA6B6", 3: "#C07A45" };
+
+export function rankingProfileHref(entry: RankingEntryDto): string | null {
+  return entry.userId ? `/u/${encodeURIComponent(entry.userId)}` : entry.aliasAnimal ? `/alias/${encodeURIComponent(entry.displayName)}` : null;
+}
+
+function FeaturedBadge({ entry }: { entry: RankingEntryDto }) {
+  return entry.achievement ? <span title={entry.achievement.title} className="inline-flex shrink-0 align-middle"><BadgeMedal tier={entry.achievement.tier} size={24} label={`Insignia: ${entry.achievement.title}`}/></span> : null;
+}
 
 export function RankingTable({ ranking }: { ranking: RankingDto }) {
   if (ranking.entries.length === 0) return <EmptyRanking period={ranking.period} />;
@@ -50,7 +59,7 @@ function Podium({ entries, format }: { entries: RankingEntryDto[]; format: (valu
               entry.rank === 1 ? "pt-7" : "pt-3"
             } ${entry.isMe ? "bg-primary/10" : ""}`}
           >
-            <PodiumAvatarLink userId={entry.userId}>
+            <PodiumAvatarLink entry={entry}>
               <Avatar
                 userId={entry.userId ?? entry.displayName}
                 name={entry.displayName}
@@ -69,9 +78,9 @@ function Podium({ entries, format }: { entries: RankingEntryDto[]; format: (valu
                 {entry.rank}
               </span>
             </PodiumAvatarLink>
-            {entry.userId ? (
+            {rankingProfileHref(entry) ? (
               <Link
-                href={`/u/${entry.userId}`}
+                href={rankingProfileHref(entry)!}
                 className={`mt-1 w-full truncate text-main hover:underline ${entry.rank === 1 ? "text-sm font-bold" : "text-sm font-semibold"}`}
                 style={nameColorStyle(entry.flair)}
               >
@@ -82,6 +91,7 @@ function Podium({ entries, format }: { entries: RankingEntryDto[]; format: (valu
                 {entry.displayName}
               </span>
             )}
+            <FeaturedBadge entry={entry}/>
             <span className={`tabular-nums text-main ${entry.rank === 1 ? "text-base font-bold" : "text-sm font-semibold"}`}>
               {format(entry.value)}
             </span>
@@ -95,16 +105,18 @@ function Podium({ entries, format }: { entries: RankingEntryDto[]; format: (valu
 }
 
 /** Podium avatar plus its badges; links to the profile when the entry is a real user. */
-function PodiumAvatarLink({ userId, children }: { userId: string | null; children: ReactNode }) {
-  if (!userId) return <div className="relative">{children}</div>;
+function PodiumAvatarLink({ entry, children }: { entry: RankingEntryDto; children: ReactNode }) {
+  const href = rankingProfileHref(entry);
+  if (!href) return <div className="relative">{children}</div>;
   return (
-    <Link href={`/u/${userId}`} aria-hidden="true" tabIndex={-1} className="relative block rounded-full">
+    <Link href={href} aria-hidden="true" tabIndex={-1} className="relative block rounded-full">
       {children}
     </Link>
   );
 }
 
 function RankingRow({ entry, value, highlighted }: { entry: RankingEntryDto; value: string; highlighted?: boolean }) {
+  const href = rankingProfileHref(entry);
   const rowAvatar = (
     <Avatar userId={entry.userId ?? entry.displayName} name={entry.displayName} url={entry.avatarUrl} aliasAnimal={entry.aliasAnimal} size={40} adminBadge={entry.adminBadge} proBadge={entry.proBadge} frame={frameOf(entry.flair)} />
   );
@@ -115,16 +127,16 @@ function RankingRow({ entry, value, highlighted }: { entry: RankingEntryDto; val
       >
         {entry.rank > 0 ? entry.rank : <span aria-label="Sin puesto">—</span>}
       </span>
-      {entry.userId ? (
-        <Link href={`/u/${entry.userId}`} aria-hidden="true" tabIndex={-1} className="shrink-0 rounded-full">
+      {href ? (
+        <Link href={href} aria-hidden="true" tabIndex={-1} className="shrink-0 rounded-full">
           {rowAvatar}
         </Link>
       ) : (
         rowAvatar
       )}
-      {entry.userId ? (
-        <Link href={`/u/${entry.userId}`} className="min-w-0 flex-1 truncate text-sm font-medium text-main hover:underline" style={nameColorStyle(entry.flair)}>
-          {entry.displayName}
+      {href ? (
+        <Link href={href} className="flex min-w-0 flex-1 items-center gap-1.5 text-sm font-medium text-main hover:underline" style={nameColorStyle(entry.flair)}>
+          <span className="truncate">{entry.displayName}</span><FeaturedBadge entry={entry}/>
           {highlighted ? <span className="ml-1.5 text-xs font-medium text-primary"> vos</span> : null}
         </Link>
       ) : (

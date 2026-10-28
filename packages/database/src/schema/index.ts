@@ -22,3 +22,4 @@ export * from "./pro.js";
 export * from "./garden.js";
 export * from "./reactions.js";
 export * from "./usage.js";
+export * from "./achievements.js";

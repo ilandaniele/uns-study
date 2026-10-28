@@ -78,6 +78,13 @@
       "when": 1793074495147,
       "tag": "0010_section_usage",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1793149904794,
+      "tag": "0011_community_achievements",
+      "breakpoints": true
     }
   ]
 }

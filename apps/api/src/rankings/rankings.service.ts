@@ -9,6 +9,7 @@ import { STREAK_LOOKBACK_DAYS, STREAK_MIN_MINUTES } from "../study-history/strea
 import { loadFrozenDates } from "../study-history/frozen-dates.js";
 import type { RoomsService } from "../rooms/rooms.service.js";
 import { displayName, needsAlias, showsAdminBadge, shownAliasAnimal, visibleAvatarUrl } from "../users/display-name.js";
+import { achievementPresentation, ACHIEVEMENT_TIER_RANK, type FeaturedAchievement } from "../badges/achievement-catalog.js";
 import type { RolesService } from "../users/roles.service.js";
 import type { AliasService } from "../users/alias.service.js";
 import type { ProService } from "../subscriptions/pro.js";
@@ -67,6 +68,7 @@ function currentStreak(qualifyingDatesAsc: string[], todayLocal: string): number
 }
 
 export interface RankingIdentity {
+  achievement?: FeaturedAchievement;
   /** Appears in the ranking list at all. */
   visible: boolean;
   /** Opted out of rankings entirely (`showInRanking: false`) — excluded even from their own `me` row. */
@@ -93,6 +95,7 @@ export function toRankingEntry(userId: string, info: RankingIdentity, rank: numb
     avatarUrl: info.avatarUrl,
     aliasAnimal: info.aliasAnimal,
     adminBadge: info.adminBadge,
+    ...(info.achievement ? { achievement: info.achievement } : {}),
     proBadge: info.proBadge,
     ...(info.flair ? { flair: info.flair } : {}),
     isMe: userId === viewerUserId,
@@ -168,7 +171,9 @@ export class RankingsService {
         if (entries.length >= RANKING_PUBLIC_LIMIT) break;
         const info = visibility.get(userId);
         if (!info?.visible || info.hiddenFromRanking) continue;
-        entries.push({ ...toRankingEntry(userId, info, entries.length + 1, value, viewerUserId), realUserId: userId });
+        const entry = toRankingEntry(userId, info, entries.length + 1, value, viewerUserId);
+        if (!entry.achievement && category === "study_time" && value > 0) entry.achievement = achievementPresentation("first_session")!;
+        entries.push({ ...entry, realUserId: userId });
       }
     }
     const publicEntries: RankingEntryDto[] = entries.map(({ realUserId: _realUserId, ...entry }) => entry);
@@ -203,6 +208,13 @@ export class RankingsService {
     );
     const aliasByUser = await this.aliases.ensureAliasesForProfiles(profiles);
     const admins = await this.roles.adminBadges(userIds);
+    const awards = inChunks(userIds, part => this.db.select({ userId: schema.userAchievements.userId, badgeId: schema.userAchievements.badgeId }).from(schema.userAchievements).where(inArray(schema.userAchievements.userId, part)).all());
+    const featured = new Map<string, FeaturedAchievement>();
+    for (const award of awards) {
+      const presentation = achievementPresentation(award.badgeId);
+      const previous = featured.get(award.userId);
+      if (presentation && (!previous || ACHIEVEMENT_TIER_RANK[presentation.tier] > ACHIEVEMENT_TIER_RANK[previous.tier])) featured.set(award.userId, presentation);
+    }
     const proIds = this.pro ? await this.pro.badgeIds(userIds) : new Set<string>();
     // Flair only for paid users shown under a visible identity, never an alias.
     const flairEligible = new Set(profiles.filter((p) => proIds.has(p.userId) && !needsAlias(p)).map((p) => p.userId));
@@ -221,6 +233,7 @@ export class RankingsService {
       const linkable = !shownAsAlias;
       const flair = !shownAsAlias ? flairByUser.get(userId) : undefined;
       result.set(userId, {
+        ...(featured.has(userId) ? { achievement: featured.get(userId)! } : {}),
         ...(flair ? { flair } : {}),
         visible,
         hiddenFromRanking: privacy?.showInRanking === false,

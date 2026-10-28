@@ -68,6 +68,7 @@ import { favoritesRouter } from "../favorites/favorites.router.js";
 import { groupStudyRouter } from "../group-study/group-study.router.js";
 import { weeklyGoalRouter } from "../weekly-goal/weekly-goal.router.js";
 import { streakBadgesRouter } from "../badges/streak-badges.router.js";
+import { achievementsRouter } from "../badges/achievements.router.js";
 import { examsRouter } from "../exams/exams.router.js";
 import { cosmeticsRouter } from "../cosmetics/cosmetics.router.js";
 import { quietRoomRouter } from "../quiet-room/quiet-room.router.js";
@@ -160,6 +161,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
     groupStudyRouter,
     weeklyGoalRouter,
     streakBadgesRouter,
+    achievementsRouter,
     examsRouter,
     cosmeticsRouter,
     quietRoomRouter,

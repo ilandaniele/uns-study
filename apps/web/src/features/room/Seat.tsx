@@ -165,8 +165,7 @@ export const Seat = memo(function Seat({ seat, tableLabel, tableType, facing, is
               <circle r={PHOTO_R + 3} fill="none" stroke={staffColor} strokeWidth={5} />
               <g transform={`translate(18 ${-PHOTO_R + 3})`}>
                 <circle r={12} fill={superAdmin ? "#6d28d9" : staffColor} stroke={staffInk} strokeWidth={2.5} />
-                <path d="M-7-4-4 0 0-6 4 0 7-4 5 5H-5Z" fill={superAdmin ? "white" : staffInk} stroke={superAdmin ? "white" : staffInk} strokeLinejoin="round" />
-                <path d="M-4 8H4" stroke={superAdmin ? "white" : staffInk} strokeWidth={2} strokeLinecap="round" />
+                {superAdmin ? <path d="M-4-4-8 0-4 4M4-4 8 0 4 4M1-5-1 5" fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/> : <><path d="M-7-4-4 0 0-6 4 0 7-4 5 5H-5Z" fill={staffInk} stroke={staffInk} strokeLinejoin="round"/><path d="M-4 8H4" stroke={staffInk} strokeWidth={2} strokeLinecap="round"/></>}
               </g>
             </g>
           ) : null}

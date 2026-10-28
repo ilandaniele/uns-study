@@ -12,11 +12,11 @@ export function AdminBadge({ size = 40, edge = "bottom", kind = true }: { size?:
     <span
       role="img"
       aria-label={superAdmin ? "Superadministrador" : "Administrador"}
-      title={superAdmin ? "Superadmin · propietario de la app" : "Administrador"}
+      title={superAdmin ? "Superadmin · creador y desarrollador" : "Administrador de la sala · colaboración y moderación"}
       className={`pointer-events-none absolute left-1/2 -translate-x-1/2 ${edge === "top" ? "top-0 -translate-y-1/3" : "bottom-0 translate-y-1/3"} whitespace-nowrap border font-extrabold uppercase leading-none tracking-wide ${superAdmin ? superColors : adminColors}`}
       style={{ fontSize, padding: `${Math.max(1, Math.round(fontSize * 0.2))}px ${Math.max(3, Math.round(fontSize * 0.45))}px` }}
     >
-      {superAdmin ? "Super" : "Admin"}
+      {superAdmin ? "Dev" : "Admin"}
     </span>
   );
 }
@@ -26,7 +26,7 @@ export function AdminTag({ kind = true }: { kind?: AdminBadgeLevel }) {
   const superAdmin = kind === "SUPERADMIN";
   return (
     <span className={`inline-block shrink-0 whitespace-nowrap border px-2 py-0.5 text-[11px] font-extrabold uppercase leading-none tracking-wide ${superAdmin ? superColors : adminColors}`}>
-      {superAdmin ? "Superadmin" : "Admin"}
+      {superAdmin ? "Creador · Superadmin" : "Admin de la sala"}
     </span>
   );
 }

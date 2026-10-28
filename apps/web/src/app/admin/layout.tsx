@@ -1,20 +1,23 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { AdminNav } from "@/features/admin/AdminNav";
 import { useAdminAccess } from "@/features/admin/useAdminAccess";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  const { loading, isAdmin } = useAdminAccess();
+  const { loading, isAdmin, me } = useAdminAccess();
+  const pathname = usePathname();
+  const ownerSection = ["/admin/announcements", "/admin/geofence", "/admin/mails", "/admin/colaboradores"].some(path => pathname === path || pathname?.startsWith(`${path}/`));
 
   if (loading) {
     return <main className="p-6 text-center text-muted">Verificando acceso…</main>;
   }
 
-  if (!isAdmin) {
+  if (!isAdmin || (ownerSection && !me?.isSuperAdmin)) {
     return (
       <main className="p-6 text-center text-[var(--seat-occupied)]">
-        No tenés permisos para ver esta sección. El servidor rechazará cualquier acción igual.
+        No tenés permisos para ver esta sección.
       </main>
     );
   }

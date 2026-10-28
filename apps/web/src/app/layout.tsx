@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import type { ReactNode } from "react";
+import { AchievementRuntime } from "@/features/badges/AchievementRuntime";
 import { AdsRoot } from "@/features/ads/AdsRoot";
 import { AnalyticsLoader } from "@/components/AnalyticsLoader";
 import { BottomNav } from "@/components/BottomNav";
@@ -82,6 +83,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <FocusRuntime />
         <AutoExtendRuntime />
         <VoteNotification />
+        <AchievementRuntime />
         <ProUpsellDialog />
         <PushPermissionPrompt />
         <AdsRoot />

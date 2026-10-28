@@ -8,6 +8,10 @@ principal; las páginas secundarias conservan sus rutas en Más.
 
 - 30 semillas iniciales, sin escribir una fila hasta la primera acción.
 - Una semilla por cada 6 minutos de estudio registrado (10 por hora).
+- También se gana 1 semilla cada 10 lugares distintos actualizados en el día, con
+  un máximo de 10 semillas diarias. Sólo cuentan reportes individuales aceptados
+  con presencia validada; no repeticiones ni marcado masivo. El crecimiento de las
+  plantas sigue requiriendo estudio. Ver `COMMUNITY_ACHIEVEMENTS.md`.
 - Las sesiones históricas cuentan para ganar semillas. Los créditos administrativos
   `MANUAL` y el tiempo del Pomodoro local no cuentan.
 - El crecimiento usa el incremento de minutos registrados después de plantar.

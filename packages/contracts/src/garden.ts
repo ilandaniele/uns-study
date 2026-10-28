@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { CollaborationProgressDto } from "./achievements";
 import { EXTRA_NATIVE_SPECIES } from "./garden-native-species";
 
 export const GARDEN_SIZE = 25;
@@ -251,6 +252,7 @@ export interface GardenPlant {
 }
 
 export interface GardenDto {
+  collaboration?: CollaborationProgressDto;
   /** Legacy field: gardens are always visitable by authenticated, unblocked users. */
   shared: boolean;
   seeds: number;

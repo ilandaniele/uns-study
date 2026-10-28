@@ -115,7 +115,7 @@ export interface StreakDto {
   freezeAvailableThisMonth: boolean;
   freezableDates: string[];
 }
-export type BadgeId = "first_session" | "hours_10" | "hours_50" | "hours_100" | "streak_7" | "streak_30" | "early_bird" | "night_owl";
+export type BadgeId = "first_session" | "hours_10" | "hours_50" | "hours_100" | "streak_7" | "streak_30" | "early_bird" | "night_owl" | "collaboration_10" | "collaboration_50" | "collaboration_100" | "collaboration_500";
 export interface BadgeDto {
   id: BadgeId;
   title: string;

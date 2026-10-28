@@ -3,6 +3,7 @@ import { describeLayout } from "./layout-description.js";
 import type { VerifyRequest } from "./schema.js";
 import { PLAN_MIME } from "./plan-image.js";
 import { SYSTEM_PROMPT, loadPlan, type LocateResult, type SeatLocator } from "./seat-locator.js";
+import { VerifierProviderError } from "../verifier-error.js";
 
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
@@ -22,7 +23,7 @@ const answerSchema = z.object({
 
 const responseSchema = z.object({
   candidates: z
-    .array(z.object({ content: z.object({ parts: z.array(z.object({ text: z.string().optional() })) }) }))
+    .array(z.object({ content: z.object({ parts: z.array(z.object({ text: z.string().optional(), thought: z.boolean().optional() })) }) }))
     .min(1),
 });
 
@@ -54,7 +55,9 @@ export class GeminiSeatLocator implements SeatLocator {
       ],
       generationConfig: {
         temperature: 0,
-        maxOutputTokens: 300,
+        maxOutputTokens: 1024,
+        // Flash 2.5 otherwise spends its tiny JSON budget thinking and may return no answer.
+        ...(/^gemini-2\.5-flash(?:-|$)/.test(this.model) ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
         responseMimeType: "application/json",
         responseSchema: RESPONSE_SCHEMA,
       },
@@ -66,9 +69,9 @@ export class GeminiSeatLocator implements SeatLocator {
       body: JSON.stringify(body),
       signal,
     });
-    if (!res.ok) throw new Error(`gemini http ${res.status}`);
+    if (!res.ok) throw new VerifierProviderError(res.status === 401 || res.status === 403 ? "CREDENTIALS" : res.status === 429 ? "QUOTA" : res.status === 404 ? "MODEL" : "PROVIDER", `gemini http ${res.status}`);
     const parsed = responseSchema.parse(await res.json());
-    const text = parsed.candidates[0].content.parts.map((p) => p.text ?? "").join("");
+    const text = parsed.candidates[0].content.parts.filter(part => !part.thought).map((p) => p.text ?? "").join("");
     return answerSchema.parse(JSON.parse(text));
   }
 }

@@ -7,6 +7,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { apiFetch } from "@/lib/api";
 import { useMe } from "@/lib/me-store";
 import { instagramHref } from "./instagram";
+import { ProfileAdminAction } from "./ProfileAdminAction";
 
 const MODES: Record<IdentityMode, string> = { HIDDEN: "Identidad oculta", FULL_NAME: "Nombre y apellido", FIRST_NAME: "Nombre", NICKNAME: "Apodo", NICKNAME_AND_NAME: "Apodo y nombre" };
 const PRIVACY: Record<keyof PrivacySettingsDto, string> = {
@@ -19,23 +20,24 @@ const PRIVACY: Record<keyof PrivacySettingsDto, string> = {
 const date = (value: string) => new Date(value).toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" });
 
 /** Private data lives only in this role-gated subtree, separate from public profile responses. */
-export function AdminProfileDetails({ userId }: { userId: string }) {
+export function AdminProfileDetails({ userId, alias }: { userId?: string; alias?: string }) {
   const { me } = useMe();
   if (!me?.user || !me.roles.includes("ADMIN")) return null;
-  return <AdminProfileView key={`${me.user.id}:${userId}`} userId={userId} />;
+  const path = alias ? `/api/v1/admin/aliases/${encodeURIComponent(alias)}/profile` : userId ? `/api/v1/admin/users/${encodeURIComponent(userId)}/profile` : null;
+  return path ? <AdminProfileView key={`${me.user.id}:${path}`} path={path} aliasView={Boolean(alias)} /> : null;
 }
 
-function AdminProfileView({ userId }: { userId: string }) {
+function AdminProfileView({ path, aliasView }: { path: string; aliasView: boolean }) {
   const [data, setData] = useState<AdminProfileDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
-    void apiFetch<AdminProfileDto>(`/api/v1/admin/users/${encodeURIComponent(userId)}/profile`, { signal: controller.signal, cache: "no-store" })
+    void apiFetch<AdminProfileDto>(path, { signal: controller.signal, cache: "no-store" })
       .then(value => { if (!controller.signal.aborted) setData(value); })
       .catch(() => { if (!controller.signal.aborted) setError("No pudimos cargar los datos administrativos del perfil."); });
     return () => controller.abort();
-  }, [userId, attempt]);
+  }, [path, attempt]);
 
   const profile = data?.profile;
   const instagram = profile?.instagram ? instagramHref(profile.instagram) : null;
@@ -85,7 +87,8 @@ function AdminProfileView({ userId }: { userId: string }) {
         <summary className="min-h-6 cursor-pointer text-sm font-semibold">Preferencias de privacidad</summary>
         {data.privacy ? <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">{(Object.keys(PRIVACY) as (keyof PrivacySettingsDto)[]).map(key => <Detail key={key} label={PRIVACY[key]}>{data.privacy![key] ? "Sí" : "No"}</Detail>)}</dl> : <p className="mt-3 text-sm text-muted">No guardó preferencias de privacidad.</p>}
       </details>
-      <Link href={`/admin/users/${encodeURIComponent(userId)}`} className="inline-flex min-h-11 items-center rounded-full border border-app px-4 text-sm font-semibold text-primary">Abrir gestión del usuario</Link>
+      {aliasView ? <ProfileAdminAction userId={data.userId} displayName={data.account.name} onGranted={async () => { setAttempt(n => n + 1); }}/> : null}
+      <Link href={`/admin/users/${encodeURIComponent(data.userId)}`} className="inline-flex min-h-11 items-center rounded-full border border-app px-4 text-sm font-semibold text-primary">Abrir gestión del usuario</Link>
     </>}
   </section>;
 }

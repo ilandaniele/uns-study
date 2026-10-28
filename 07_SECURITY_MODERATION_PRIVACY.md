@@ -153,6 +153,10 @@ All moderation actions should be audited.
 
 SUPERADMIN is the verified `OWNER_EMAIL` account with the ADMIN role, derived on the server rather than stored as a grantable role. Only this unrestricted account may add or subtract study time. Other ADMIN and MODERATOR accounts must receive 403 even if they forge capability flags. `/me` exposes `isSuperAdmin` and `canManageStudyTime` for presentation; neither flag is an authorization input. Public badges distinguish the superadmin while retaining the existing identity and badge-visibility rules. A badge never grants permissions.
 
+Only SUPERADMIN may clear the room chat, manage announcements, read/test/update the room geofence, access email campaigns/recipient counts, grant/revoke ADMIN, shield/delete accounts, or review collaboration-based staff applications. ADMIN keeps reports, feedback, moderation, bulk seat marking and undo. Published announcements remain public. The owner is presented as creator/developer; room admins are identified as collaborators/moderators of the room. See `docs/COMMUNITY_ACHIEVEMENTS.md` for the permission matrix and reward invariants.
+
+Hidden ranking aliases may open a pseudonymous activity/garden profile without revealing the account id or real identity. Ranking visibility also controls public activity/earned badges. Respect both block directions, recheck privacy after awaited reads, and never redirect a formerly hidden alias to a named account. Full ADMIN access uses a dedicated audited endpoint, never a personalized field inside the public alias DTO.
+
 Verified, unrestricted ADMIN accounts may inspect stored account/profile fields, privacy preferences and current presence through the dedicated `/admin/users/:id/profile` endpoints. MODERATOR alone is insufficient. Public profiles, room lists, map identity and block behavior keep their existing privacy rules. Private profile/photo reads are audited without copying field values into metadata, use private/no-store responses and never return credentials, session tokens or coordinates. Privacy notices and profile settings disclose this administrative access.
 
 ## 14. Data deletion / retention

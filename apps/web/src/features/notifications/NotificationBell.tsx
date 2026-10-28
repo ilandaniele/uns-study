@@ -4,6 +4,8 @@ import type { AnnouncementDto } from "@sala/contracts";
 import { BellIcon } from "@phosphor-icons/react/dist/ssr";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import Link from "next/link";
+import { useMe } from "@/lib/me-store";
 import { hasUnseen, isCacheFresh, markSeen, readCache, readSeenIds, writeCache, type AnnouncementsCache } from "./notifications";
 
 const ROOM_SLUG = "principal";
@@ -48,6 +50,20 @@ export function NotificationBell() {
   const [items, setItems] = useState<AnnouncementDto[]>([]);
   const [seen, setSeen] = useState<Set<string>>(() => new Set());
   const rootRef = useRef<HTMLDivElement>(null);
+  const { me } = useMe();
+  const [applicationCount, setApplicationCount] = useState(0);
+  useEffect(() => {
+    if (!me?.isSuperAdmin) return;
+    let cancelled = false;
+    const update = () => {
+      if (document.visibilityState !== "visible") return;
+      void apiFetch<{ count: number }>("/api/v1/admin/admin-applications/count").then(dto => { if (!cancelled) setApplicationCount(dto.count); }).catch(() => undefined);
+    };
+    update();
+    const timer = setInterval(update, 60_000);
+    window.addEventListener("sala:admin-applications-updated", update);
+    return () => { cancelled = true; clearInterval(timer); window.removeEventListener("sala:admin-applications-updated", update); };
+  }, [me?.isSuperAdmin, open]);
 
   const refresh = useCallback(async () => {
     const cache = await loadAnnouncements();
@@ -92,7 +108,7 @@ export function NotificationBell() {
     setSeen(markSeen(getStore("local"), items.map((a) => a.id)));
   }, [open, items]);
 
-  const showDot = !open && hasUnseen(items, seen);
+  const showDot = !open && (hasUnseen(items, seen) || (me?.isSuperAdmin && applicationCount > 0));
 
   return (
     <div ref={rootRef} className="relative shrink-0">
@@ -113,6 +129,7 @@ export function NotificationBell() {
           aria-label="Novedades"
           className="fixed inset-x-3 top-16 z-40 max-h-[70vh] overflow-y-auto rounded-lg border border-app bg-surface p-3 text-sm text-main shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80"
         >
+          {me?.isSuperAdmin && applicationCount > 0 ? <Link href="/admin/colaboradores" onClick={() => setOpen(false)} className="mb-3 block rounded-xl border border-app bg-surface-2 p-3 font-semibold text-primary">{applicationCount} {applicationCount === 1 ? "solicitud de colaboración pendiente" : "solicitudes de colaboración pendientes"}</Link> : null}
           {items.length === 0 ? (
             <p className="text-muted">No hay novedades por ahora.</p>
           ) : (

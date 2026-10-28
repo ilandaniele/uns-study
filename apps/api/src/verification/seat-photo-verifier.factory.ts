@@ -38,7 +38,7 @@ export function createSeatPhotoVerifier(e: Env = env): SeatPhotoVerifier | null 
       model = e.verifierModel || DEFAULT_CLAUDE_MODEL;
       locator = new ClaudeSeatLocator(new Anthropic({ apiKey: e.anthropicApiKey }) as unknown as MessagesClient, model);
     }
-    return new InProcessSeatPhotoVerifier(locator, model);
+    return new InProcessSeatPhotoVerifier(locator, model, { provider: e.geminiApiKey ? "gemini" : "anthropic" });
   }
   return null;
 }

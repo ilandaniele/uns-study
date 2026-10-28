@@ -16,14 +16,22 @@ function appWith(verifier: Services["seatPhotoVerifier"]) {
 }
 
 describe("GET /verification/status", () => {
+  it("names the image recipient without exposing model settings or attempt diagnostics", async () => {
+    const verifier = {
+      verify: async () => ({ seatCode: null, confidence: 0, modelVersion: "test" }),
+      diagnostics: () => ({ provider: "gemini" as const, model: "private-model-config", lastAttemptAt: "2026-10-27T15:00:00Z", lastFailure: "QUOTA" as const }),
+    };
+    const response = await appWith(verifier).request("/api/v1/verification/status");
+    expect(await response.json()).toEqual({ enabled: true, provider: "gemini" });
+  });
   it("reports enabled when a verifier is configured", async () => {
     const res = await appWith(new MockSeatPhotoVerifier()).request("/api/v1/verification/status");
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ enabled: true });
+    expect(await res.json()).toEqual({ enabled: true, provider: null });
   });
 
   it("reports disabled when none is", async () => {
     const res = await appWith(null).request("/api/v1/verification/status");
-    expect(await res.json()).toEqual({ enabled: false });
+    expect(await res.json()).toEqual({ enabled: false, provider: null });
   });
 });

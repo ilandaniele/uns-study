@@ -2,11 +2,16 @@ import { Hono } from "hono";
 import { adminDeleteUserSchema, moderationActionSchema } from "@sala/contracts";
 import { ApiErrors } from "../common/api-error.js";
 import { currentUser, type AppEnv } from "../http/context.js";
-import { requireAdmin, requireAdminOnly } from "../http/guards.js";
+import { requireAdmin, requireAdminOnly, requireSuperAdmin } from "../http/guards.js";
 import { reply } from "../http/reply.js";
 import { zBody } from "../http/validate.js";
 
 export const adminUsersRouter = new Hono<AppEnv>();
+
+adminUsersRouter.get("/admin/aliases/:alias/profile", requireAdminOnly, async c => {
+  c.header("Cache-Control", "private, no-store"); c.header("Vary", "Cookie");
+  return reply(c, await c.var.services.achievements.adminAliasProfile(currentUser(c).id, c.req.param("alias"), c.var.services.profiles));
+});
 
 adminUsersRouter.get("/admin/users/:id/profile", requireAdminOnly, async (c) => {
   c.header("Cache-Control", "private, no-store");
@@ -38,7 +43,7 @@ adminUsersRouter.post("/admin/users/:id/actions", requireAdmin, zBody(moderation
   return reply(c, { ok: true }, 201);
 });
 
-adminUsersRouter.post("/admin/users/:id/delete", requireAdminOnly, zBody(adminDeleteUserSchema), async (c) => {
+adminUsersRouter.post("/admin/users/:id/delete", requireSuperAdmin, zBody(adminDeleteUserSchema), async (c) => {
   const actorId = currentUser(c).id;
   if (!(await c.var.services.roles.isOwner(actorId))) throw ApiErrors.forbidden("Solo el dueño de la app puede eliminar cuentas.");
   const limit = await c.var.services.rateLimit.check(`admin-delete:${actorId}`, 20, 86400);
@@ -47,22 +52,22 @@ adminUsersRouter.post("/admin/users/:id/delete", requireAdminOnly, zBody(adminDe
   return reply(c, { ok: true });
 });
 
-adminUsersRouter.put("/admin/users/:id/admin", requireAdmin, requireAdminOnly, async (c) => {
+adminUsersRouter.put("/admin/users/:id/admin", requireSuperAdmin, async (c) => {
   await c.var.services.adminUsers.setAdmin(currentUser(c).id, c.req.param("id"), true);
   return reply(c, { ok: true });
 });
 
-adminUsersRouter.delete("/admin/users/:id/admin", requireAdmin, requireAdminOnly, async (c) => {
+adminUsersRouter.delete("/admin/users/:id/admin", requireSuperAdmin, async (c) => {
   await c.var.services.adminUsers.setAdmin(currentUser(c).id, c.req.param("id"), false);
   return reply(c, { ok: true });
 });
 
-adminUsersRouter.put("/admin/users/:id/shield", requireAdmin, requireAdminOnly, async (c) => {
+adminUsersRouter.put("/admin/users/:id/shield", requireSuperAdmin, async (c) => {
   await c.var.services.adminUsers.setShield(currentUser(c).id, c.req.param("id"), true);
   return reply(c, { ok: true });
 });
 
-adminUsersRouter.delete("/admin/users/:id/shield", requireAdmin, requireAdminOnly, async (c) => {
+adminUsersRouter.delete("/admin/users/:id/shield", requireSuperAdmin, async (c) => {
   await c.var.services.adminUsers.setShield(currentUser(c).id, c.req.param("id"), false);
   return reply(c, { ok: true });
 });

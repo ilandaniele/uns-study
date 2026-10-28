@@ -20,6 +20,7 @@ export * from "./feedback";
 export * from "./pro";
 export * from "./garden";
 export * from "./reactions";
+export * from "./achievements";
 
 // ---- Domain enums ----
 
@@ -170,7 +171,7 @@ export interface CheckInDto {
 
 export type PhotoMimeType = "image/jpeg" | "image/webp" | "image/png";
 
-export type PhotoVerificationReason = "VERIFIED" | "SEAT_MISMATCH" | "LOW_CONFIDENCE" | "NO_PREDICTION" | "VERIFIER_ERROR";
+export type PhotoVerificationReason = "VERIFIED" | "SEAT_MISMATCH" | "LOW_CONFIDENCE" | "NO_PREDICTION" | "VERIFIER_ERROR" | "VERIFIER_TIMEOUT";
 
 export interface PhotoVerificationResultDto {
   verified: boolean;

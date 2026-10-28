@@ -14,6 +14,7 @@ import { runInBackground } from "../common/background.js";
 import { Logger } from "../platform/logger.js";
 import { NotificationService } from "../notifications/notification.service.js";
 import { DisputeService } from "../disputes/disputes.service.js";
+import type { CollaborationService } from "../badges/collaboration.service.js";
 
 const SPREAD_WINDOW_MIN = 10;
 /** A QR-verified observation counts for 1.5x its base (reputation) confidence weight. */
@@ -59,6 +60,7 @@ export class ObservationService {
     private readonly disputes: DisputeService,
     private readonly roomCache: RoomCache = new RoomCache(),
     private readonly hours: RoomHours | null = null,
+    private readonly collaboration: CollaborationService | null = null,
   ) {}
 
   /**
@@ -265,6 +267,7 @@ export class ObservationService {
       }
     }
 
+    if (this.collaboration) this.db.transaction(tx => this.collaboration!.record(tx, input.userId, input.roomId, input.seatId, room.timezone, now));
     return { roomId: input.roomId, changes, dispute };
   }
 

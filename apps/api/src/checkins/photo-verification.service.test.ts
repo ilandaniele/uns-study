@@ -129,6 +129,32 @@ describe("PhotoVerificationService", () => {
     expect(result.reason).toBe("VERIFIER_ERROR");
   });
 
+  it("keeps provider failures distinct from ambiguity and allows retrying the same photo", async () => {
+    const { checkIn } = await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
+    for (const failure of ["QUOTA", "CREDENTIALS", "TIMEOUT"] as const) {
+      const service = svc(new StubVerifier(async () => ({ seatCode: null, confidence: 0, modelVersion: "test-v1", failure })));
+      const { result } = await service.verify({ userId: "u1", checkInId: checkIn.id, image, location });
+      expect(result.verified).toBe(false);
+      expect(result.reason).toBe(failure === "TIMEOUT" ? "VERIFIER_TIMEOUT" : "VERIFIER_ERROR");
+      const row = db.select().from(schema.checkIns).where(eq(schema.checkIns.id, checkIn.id)).get();
+      expect(row?.verifiedAt).toBeNull();
+      expect(row?.verificationPhotoSha256).toBeNull();
+    }
+    const service = svc(new StubVerifier(async req => ({ seatCode: req.claimedSeatCode, confidence: 0.95, modelVersion: "test-v1" })));
+    expect((await service.verify({ userId: "u1", checkInId: checkIn.id, image, location })).result.verified).toBe(true);
+  });
+
+  it("tests provider connectivity using only the app plan, with no check-in or state mutation", async () => {
+    let supplied: SeatPhotoVerifierRequest | null = null;
+    const verifier = { diagnostics: () => ({ provider: "gemini" as const, model: "test", lastAttemptAt: null, lastFailure: null }), verify: async (request: SeatPhotoVerifierRequest) => { supplied = request; return { seatCode: null, confidence: 0, modelVersion: "test" }; } };
+    const result = await svc(verifier).testConnection();
+    expect(result).toMatchObject({ connected: true, simulated: false, failure: null });
+    expect(supplied).toMatchObject({ roomSlug, image: { mimeType: "image/webp" } });
+    expect(db.select().from(schema.checkIns).all()).toEqual([]);
+    expect(db.select().from(schema.studySessions).all()).toEqual([]);
+    expect(await svc(null).testConnection().catch(error => error.code)).toBe("VERIFIER_UNAVAILABLE");
+  });
+
   it("rejects a photo whose bytes were already used to verify another user's check-in", async () => {
     const { checkIn: c1 } = await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
     const { checkIn: c2 } = await checkIns.checkIn({ userId: "u2", roomId, seatId: seatIds[1]!, location, showIdentity: false });

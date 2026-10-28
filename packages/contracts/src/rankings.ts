@@ -1,10 +1,12 @@
 import type { AdminBadgeLevel } from "./profiles";
 import type { ProfileFlairDto } from "./pro";
+import type { AchievementDto } from "./achievements";
 
 export type RankingPeriod = "today" | "week" | "month" | "all";
 export type RankingCategory = "study_time" | "streak" | "contribution";
 
 export interface RankingEntryDto {
+  achievement?: Pick<AchievementDto, "id" | "title" | "tier">;
   rank: number;
   /** `null` when the entry isn't linkable — not opted into room visibility, or shown under an
    *  alias — so the viewer can never resolve who's behind the fun name. */

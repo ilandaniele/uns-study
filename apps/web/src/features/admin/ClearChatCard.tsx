@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import { apiFetch, ApiRequestError } from "@/lib/api";
+import { useMe } from "@/lib/me-store";
 
-/** Admin-only: permanently empties the room chat after an inline confirmation. The API re-checks the role. */
+/** Superadmin-only: permanently empties the room chat after an inline confirmation. */
 export function ClearChatCard({ roomSlug }: { roomSlug: string }) {
   const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const { me } = useMe();
 
   async function clear() {
     setPending(true);
@@ -23,6 +25,8 @@ export function ClearChatCard({ roomSlug }: { roomSlug: string }) {
       setPending(false);
     }
   }
+
+  if (!me?.isSuperAdmin) return null;
 
   return (
     <div className="flex flex-col gap-2 border-t border-app pt-3">

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vite
 import { InProcessSeatPhotoVerifier } from "./in-process-seat-photo-verifier.js";
 import type { SeatLocator } from "./locator/seat-locator.js";
 import type { SeatPhotoVerifierRequest } from "./seat-photo-verifier.js";
+import { VerifierProviderError } from "./verifier-error.js";
 
 const REQUEST: SeatPhotoVerifierRequest = {
   roomSlug: "principal",
@@ -28,6 +29,24 @@ afterEach(() => {
 });
 
 describe("InProcessSeatPhotoVerifier", () => {
+  it("distinguishes provider failures from ambiguous photos without exposing response contents", async () => {
+    locate.mockRejectedValueOnce(new VerifierProviderError("QUOTA", "sensitive provider payload"));
+    expect(await verifier.verify(REQUEST)).toMatchObject({ seatCode: null, confidence: 0, failure: "QUOTA" });
+    expect(verifier.diagnostics()).toMatchObject({ provider: "anthropic", lastFailure: "QUOTA" });
+    expect(JSON.stringify(verifier.diagnostics())).not.toContain("sensitive provider payload");
+    expect(JSON.stringify(verifier.diagnostics())).not.toContain(REQUEST.claimedSeatCode);
+    locate.mockResolvedValueOnce({ seatCode: null, confidence: 0 });
+    expect(await verifier.verify(REQUEST)).not.toHaveProperty("failure");
+    expect(verifier.diagnostics().lastFailure).toBeNull();
+  });
+
+  it("reports a timeout separately and allows the next attempt to succeed", async () => {
+    locate.mockImplementationOnce((_req, signal: AbortSignal) => new Promise((_resolve, reject) => signal.addEventListener("abort", () => reject(new Error("aborted")))));
+    expect(await verifier.verify(REQUEST)).toMatchObject({ failure: "TIMEOUT" });
+    expect(verifier.diagnostics().lastFailure).toBe("TIMEOUT");
+    expect(await verifier.verify(REQUEST)).toMatchObject({ seatCode: "M04-S03" });
+    expect(verifier.diagnostics().lastFailure).toBeNull();
+  });
   it("passes a known seat code through with the model version", async () => {
     await expect(verifier.verify(REQUEST)).resolves.toEqual({
       seatCode: "M04-S03",

@@ -69,14 +69,21 @@ export class StreakBadgesService {
   }
 
   async badges(userId: string): Promise<BadgesDto> {
+    const summary = await this.badgeSummary(userId);
+    return { badges: summary.badges };
+  }
+
+  async badgeSummary(userId: string) {
     const now = this.clock.now();
     const today = localDateOf(now, DEFAULT_TIMEZONE);
     const since = addDays(today, -STREAK_LOOKBACK_DAYS);
     const intervals = await loadStudyIntervals(this.db, userId, ALL_TIME, now);
-    const recent = new Map([...minutesByDay(intervals, DEFAULT_TIMEZONE)].filter(([day]) => day >= since));
+    const allDays = minutesByDay(intervals, DEFAULT_TIMEZONE);
+    const recent = new Map([...allDays].filter(([day]) => day >= since));
     const frozen = (await loadFrozenDates(this.db, [userId], since)).get(userId) ?? new Set<string>();
     const { longest } = computeStreaks(qualifyingDays(recent), frozen, today);
     return {
+      stats: { studyMinutes: Math.max(0, Math.floor(intervals.reduce((sum, interval) => sum + interval.minutes, 0))), studyDays: qualifyingDays(allDays).size, longestStreak: longest },
       badges: evaluateBadges({
         totalMinutes: intervals.reduce((sum, i) => sum + i.minutes, 0),
         sessionCount: intervals.length,

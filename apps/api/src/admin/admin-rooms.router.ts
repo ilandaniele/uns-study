@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { adminMarkSeatsSchema, markAllOccupiedSchema, testGeofenceSchema, updateGeofenceSchema } from "@sala/contracts";
 import { ApiErrors } from "../common/api-error.js";
 import { currentUser, type AppEnv } from "../http/context.js";
-import { requireAdmin, requireAdminOnly } from "../http/guards.js";
+import { requireAdmin, requireSuperAdmin } from "../http/guards.js";
 import { reply } from "../http/reply.js";
 import { zBody } from "../http/validate.js";
 
@@ -16,22 +16,22 @@ adminRoomsRouter.get("/admin/rooms/:idOrSlug/stats", requireAdmin, async (c) => 
   return reply(c, await c.var.services.adminRooms.stats(c.req.param("idOrSlug")));
 });
 
-adminRoomsRouter.get("/admin/rooms/:idOrSlug/geofence", requireAdmin, async (c) => {
+adminRoomsRouter.get("/admin/rooms/:idOrSlug/geofence", requireSuperAdmin, async (c) => {
   return reply(c, await c.var.services.adminRooms.getGeofence(c.req.param("idOrSlug")));
 });
 
-adminRoomsRouter.post("/admin/rooms/:idOrSlug/geofence/test", requireAdmin, zBody(testGeofenceSchema), async (c) => {
+adminRoomsRouter.post("/admin/rooms/:idOrSlug/geofence/test", requireSuperAdmin, zBody(testGeofenceSchema), async (c) => {
   const { adminRooms, rateLimit } = c.var.services;
   const limit = await rateLimit.check(`admin:geofence-test:${currentUser(c).id}`, 20, 60);
   if (!limit.allowed) throw ApiErrors.rateLimited();
   return reply(c, await adminRooms.testGeofence(c.req.param("idOrSlug"), c.req.valid("json").location), 201);
 });
 
-adminRoomsRouter.put("/admin/rooms/:idOrSlug/geofence", requireAdmin, requireAdminOnly, zBody(updateGeofenceSchema), async (c) => {
+adminRoomsRouter.put("/admin/rooms/:idOrSlug/geofence", requireSuperAdmin, zBody(updateGeofenceSchema), async (c) => {
   return reply(c, await c.var.services.adminRooms.updateGeofence(c.req.param("idOrSlug"), currentUser(c).id, c.req.valid("json")));
 });
 
-adminRoomsRouter.post("/admin/rooms/:idOrSlug/chat/clear", requireAdmin, requireAdminOnly, async (c) => {
+adminRoomsRouter.post("/admin/rooms/:idOrSlug/chat/clear", requireSuperAdmin, async (c) => {
   const user = currentUser(c);
   const { chat, rateLimit, realtime } = c.var.services;
   const limit = await rateLimit.check(`admin:chat-clear:${user.id}`, 5, 60);

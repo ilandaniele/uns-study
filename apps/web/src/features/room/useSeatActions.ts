@@ -4,6 +4,7 @@ import { checkInRequestSchema, extendRequestSchema, incumbentRespondSchema, obse
 import type { CheckInDto, DisputeKind, DisputeVote, LocationInput, RoomMapDto, SeatDisputeDto, SeatDto, SeatStateChangedEvent } from "@sala/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiDelete, apiPost, ApiRequestError } from "@/lib/api";
+import { refreshAchievements } from "@/features/badges/achievement-store";
 import { describeActionError } from "@/lib/errors";
 import { getFreshLocation, GeolocationRequestError } from "@/lib/geolocation";
 import { mutateMe, peekMe, refreshMe } from "@/lib/me-store";
@@ -262,6 +263,7 @@ export function useSeatActions(map: RoomMapDto | null, sync: SeatActionsSync): U
           ),
         );
         const confirmed = result?.seats ?? [];
+        refreshAchievements();
         if (confirmed.length > 0) {
           // Server-confirmed state with its real timestamp (replaces the optimistic seat at once).
           updateMap((prev) => confirmed.reduce((acc, event) => applySeatEvent(acc, event), prev));

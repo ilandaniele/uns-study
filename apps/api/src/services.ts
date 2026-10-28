@@ -4,6 +4,8 @@
 import type { Db } from "@sala/database";
 import type { ReactionsService } from "./chat/reactions.service.js";
 import type { GardenService } from "./garden/garden.service.js";
+import type { AchievementsService } from "./badges/achievements.service.js";
+import type { CollaborationService } from "./badges/collaboration.service.js";
 import type { GardenPurchasesService } from "./garden/garden-purchases.service.js";
 import type { RoomsService } from "./rooms/rooms.service.js";
 import type { RoomStateService } from "./rooms/room-state.service.js";
@@ -78,6 +80,8 @@ import type { QuietRoomService } from "./quiet-room/quiet-room.service.js";
 import type { GroupRankingService } from "./group-ranking/group-ranking.service.js";
 
 export interface Services {
+  achievements: AchievementsService;
+  collaboration: CollaborationService;
   sectionUsage: SectionUsageService;
   reactions: ReactionsService;
   garden: GardenService;

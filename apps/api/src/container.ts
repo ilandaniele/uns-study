@@ -85,6 +85,8 @@ import { FavoriteSeatsService } from "./favorites/favorites.service.js";
 import { GroupStudyService } from "./group-study/group-study.service.js";
 import { WeeklyGoalService } from "./weekly-goal/weekly-goal.service.js";
 import { StreakBadgesService } from "./badges/streak-badges.service.js";
+import { AchievementsService } from "./badges/achievements.service.js";
+import { CollaborationService } from "./badges/collaboration.service.js";
 import { ExamsService } from "./exams/exams.service.js";
 import { UserCosmeticsService } from "./cosmetics/cosmetics.service.js";
 import { QuietRoomService } from "./quiet-room/quiet-room.service.js";
@@ -131,7 +133,8 @@ export function buildServices(deps: ContainerDeps): Services {
 
   const pro = new ProService(db, roles, { subscriptionsEnabled: Boolean(cfg.mpAccessToken), clock });
   const cosmetics = new UserCosmeticsService(db, pro, clock);
-  const garden = new GardenService(db, clock);
+  const collaboration = new CollaborationService(db, clock);
+  const garden = new GardenService(db, clock, collaboration);
   const gardenPurchases = new GardenPurchasesService(db, garden, clock, mercadoPago, { webhookEnabled: !!cfg.mpWebhookSecret, webUrl: cfg.publicWebUrl });
 
   // Rooms come before notifications: the seat watch (a notification dependency) needs them.
@@ -167,7 +170,7 @@ export function buildServices(deps: ContainerDeps): Services {
   const checkIns = new CheckInService(db, roomState, presence, securityEvents, studySessions, qr, disputes, roles, roomCache, roomHours);
   const photoVerification = new PhotoVerificationService(db, roomState, presence, seatPhotoVerifier);
   const observations = new ObservationService(
-    db, roomState, presence, securityEvents, abusePolicy, qr, reputation, notifications, disputes, roomCache, roomHours,
+    db, roomState, presence, securityEvents, abusePolicy, qr, reputation, notifications, disputes, roomCache, roomHours, collaboration,
   );
 
   // Admin and moderation.
@@ -195,6 +198,7 @@ export function buildServices(deps: ContainerDeps): Services {
   const groupRanking = new GroupRankingService(db, rooms, rankings, groupStudy);
   const weeklyGoal = new WeeklyGoalService(db, clock);
   const streakBadges = new StreakBadgesService(db, clock);
+  const achievements = new AchievementsService(db, clock, streakBadges, collaboration, garden, rankings);
   const exams = new ExamsService(db, clock);
 
   const jobs = {
@@ -208,6 +212,7 @@ export function buildServices(deps: ContainerDeps): Services {
   };
 
   return {
+    achievements, collaboration,
     db,
     rooms, roomState, roomStats, roomCache, presence, checkIns, photoVerification, observations,
     disputes, tableNames, reputation, rankings, studySessions, study, roomPeople,

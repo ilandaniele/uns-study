@@ -80,7 +80,7 @@ export const requireAdminOnly: MiddlewareHandler<AppEnv> = roleGuard(["ADMIN"]);
 /** Administrative ownership is checked canonically, never through a client-supplied flag. */
 export const requireSuperAdmin: MiddlewareHandler<AppEnv> = async (c, next) => {
   await requireAdminOnly(c, async () => {
-    if (!(await c.var.services.roles.isSuperAdmin(c.var.user!.id))) throw ApiErrors.forbidden("Solo el superadmin puede sumar o sacar horas de estudio.");
+    if (!(await c.var.services.roles.isSuperAdmin(c.var.user!.id))) throw ApiErrors.forbidden("Esta acción está reservada al superadmin.");
     await next();
   });
 };

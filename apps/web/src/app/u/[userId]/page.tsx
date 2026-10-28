@@ -19,6 +19,7 @@ import { ProfileActionsMenu } from "@/features/profile/ProfileActionsMenu";
 import { ProfileAdminAction } from "@/features/profile/ProfileAdminAction";
 import { AdminProfileDetails } from "@/features/profile/AdminProfileDetails";
 import { useMe } from "@/lib/me-store";
+import { PublicAchievements } from "@/features/badges/AchievementCollection";
 
 /** Public profile view: "Enviar mensaje", "Bloquear"/"Desbloquear", "Reportar". */
 export default function PublicProfilePage() {
@@ -131,6 +132,7 @@ export default function PublicProfilePage() {
         ) : null}
 
         {profile.bio ? <p className="mt-5 whitespace-pre-wrap break-words text-sm leading-relaxed text-main">{profile.bio}</p> : null}
+        {profile.adminBadge ? <p className="mt-4 text-sm leading-relaxed text-muted">{profile.adminBadge === "SUPERADMIN" ? "Creador y desarrollador de Sala de Estudio. Propietario de la aplicación." : "Administrador de la sala: colabora con las actualizaciones de lugares y la moderación de la comunidad."}</p> : null}
 
         {profile.instagram || profile.studentNumber ? <dl className="mt-5 grid gap-3 border-t border-app pt-4 text-sm text-muted sm:grid-cols-2">
           {profile.instagram ? (
@@ -175,6 +177,7 @@ export default function PublicProfilePage() {
         <ProfileAdminAction userId={userId} displayName={profile.displayName} onGranted={load} />
       </article>
       <AdminProfileDetails userId={userId} />
+      {!profile.blockedByMe ? <PublicAchievements key={userId} userId={userId}/> : null}
       {!profile.blockedByMe ? <Link href={`/u/${encodeURIComponent(userId)}/jardin`} className="group mt-4 flex min-h-24 items-center gap-4 rounded-3xl border border-app bg-surface px-5 py-5 transition-colors hover:bg-surface-2 sm:px-6">
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-surface-2 text-primary"><PlantIcon aria-hidden="true" size={26} /></span>
         <span className="min-w-0 flex-1"><span className="block text-base font-semibold text-main">{isSelf ? "Mi jardín" : "Visitar jardín"}</span><span className="mt-1 block text-sm leading-relaxed text-muted">Un rincón de árboles nativos que crece con el estudio.</span></span>

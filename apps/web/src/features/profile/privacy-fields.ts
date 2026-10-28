@@ -23,5 +23,5 @@ export const PRIVACY_FIELDS: PrivacyFieldDef[] = [
   { key: "showAvatar", label: "Mostrar foto de perfil", hint: "Tu foto aparece en tu perfil y en la sala." },
   { key: "allowDirectMessages", label: "Permitir mensajes directos", hint: "Otras personas registradas pueden enviarte mensajes privados." },
   { key: "showAliasAnimalOnMap", label: "Mostrar mi animal en el mapa", hint: "Si está apagado, en el mapa aparecés con una silueta." },
-  { key: "showInRanking", label: "Aparecer en el ranking", hint: "Con tu apodo si ocultás tu nombre." },
+  { key: "showInRanking", label: "Mostrar ranking, actividad e insignias", hint: "Si ocultás tu nombre, se muestran en un perfil con tu alias, sin revelar tu identidad. Apagalo para ocultar tu actividad e insignias públicas." },
 ];

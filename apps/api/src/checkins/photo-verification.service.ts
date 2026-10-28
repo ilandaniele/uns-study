@@ -11,6 +11,8 @@ import { Logger } from "../platform/logger.js";
 import type { SeatPhotoVerifier, SeatPhotoVerifierResult } from "../verification/seat-photo-verifier.js";
 import { toDto } from "./checkins.service.js";
 import { isUniqueViolation } from "../common/sqlite-errors.js";
+import { PLAN_MIME, PLAN_WEBP_BASE64 } from "../verification/locator/plan-image.js";
+import { providerFailure } from "../verification/verifier-error.js";
 
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 
@@ -39,6 +41,23 @@ export class PhotoVerificationService {
     private readonly presence: PresenceService,
     private readonly verifier: SeatPhotoVerifier | null,
   ) {}
+
+  /** Owner-only route calls this with the app's own floor plan, never a user's image or check-in. */
+  async testConnection() {
+    if (!this.verifier) throw ApiErrors.verifierUnavailable();
+    const room = this.db.select({ id: schema.rooms.id, slug: schema.rooms.slug }).from(schema.rooms).where(eq(schema.rooms.slug, "principal")).get();
+    if (!room) throw ApiErrors.notFound();
+    const seats = this.db.select({ code: schema.seats.code, x: schema.seats.x, y: schema.seats.y, tableCode: schema.roomTables.code })
+      .from(schema.seats).innerJoin(schema.roomTables, eq(schema.roomTables.id, schema.seats.tableId))
+      .where(and(eq(schema.seats.roomId, room.id), eq(schema.seats.active, true))).all();
+    if (!seats.length) throw ApiErrors.notFound();
+    const started = Date.now();
+    const simulated = !this.verifier.diagnostics;
+    try {
+      const result = await this.verifier.verify({ roomSlug: room.slug, claimedSeatCode: seats[0]!.code, seats, image: { mimeType: PLAN_MIME, base64: PLAN_WEBP_BASE64 } });
+      return { connected: !simulated && !result.failure, simulated, failure: result.failure ?? null, latencyMs: Date.now() - started };
+    } catch (error) { return { connected: false, simulated, failure: providerFailure(error, false), latencyMs: Date.now() - started }; }
+  }
 
   async verify(input: VerifyCheckInPhotoInput): Promise<{ result: PhotoVerificationResultDto; changes: SeatStateChange[] }> {
     if (!this.verifier) throw ApiErrors.verifierUnavailable();
@@ -109,6 +128,7 @@ export class PhotoVerificationService {
       return notVerified("VERIFIER_ERROR");
     }
 
+    if (prediction.failure) return notVerified(prediction.failure === "TIMEOUT" ? "VERIFIER_TIMEOUT" : "VERIFIER_ERROR");
     if (prediction.seatCode == null) return notVerified("NO_PREDICTION");
     if (prediction.seatCode !== row.seatCode) return notVerified("SEAT_MISMATCH");
     if (prediction.confidence < env.seatVerifierMinConfidence) return notVerified("LOW_CONFIDENCE");

@@ -53,3 +53,13 @@ Al eliminar una cuenta:
 
 - `user_reputation` se borra junto con la cuenta (cascade). No hay retención post-mortem: no tiene
   sentido conservar el spam score de una cuenta que ya no existe.
+
+## Insignias y recompensas de colaboración
+
+- `collaboration_updates` conserva usuario, asiento, sala y día local de cada
+  actualización premiable, sin coordenadas. Su clave evita premios duplicados y
+  el saldo de semillas depende de sus conteos. No se agregó purga por antigüedad;
+  antes de purgarlo hay que consolidar las semillas ganadas para no quitar saldos.
+- `user_achievements` conserva la insignia, su fecha y si se mostró la animación.
+  `admin_applications` conserva la solicitud y revisión de ascenso; nunca concede
+  roles por sí sola. Estos tres registros se borran por cascade con la cuenta.

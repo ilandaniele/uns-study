@@ -3,6 +3,7 @@ import { apiFetch, apiPost } from "./api";
 
 export interface VerificationStatus {
   enabled: boolean;
+  provider?: "gemini" | "anthropic" | null;
 }
 
 /** GET /verification/status — whether the seat photo verifier is configured. */
@@ -16,6 +17,6 @@ export interface CapturedPhoto {
 }
 
 /** POST /checkins/:id/photo */
-export function uploadSeatPhoto(checkInId: string, image: CapturedPhoto, location: LocationInput): Promise<PhotoVerificationResultDto> {
+export function uploadSeatPhoto(checkInId: string, image: CapturedPhoto, location?: LocationInput): Promise<PhotoVerificationResultDto> {
   return apiPost<PhotoVerificationResultDto>(`/api/v1/checkins/${checkInId}/photo`, { image, location }, checkInPhotoRequestSchema);
 }
