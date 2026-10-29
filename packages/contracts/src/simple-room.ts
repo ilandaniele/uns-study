@@ -27,4 +27,4 @@ export interface SeatCalibrationDto {
 export type SimpleConfirmationReason = "CALIBRATION_REQUIRED" | "LAYOUT_CHANGED" | "AMBIGUOUS" | "OUTSIDE_CALIBRATED_AREA" | "NO_FREE_SEAT" | "NEAREST_UNAVAILABLE";
 export type SimpleCheckInResult =
   | { outcome: "CHECKED_IN" | "ALREADY_CHECKED_IN"; checkIn: CheckInDto }
-  | { outcome: "CONFIRM"; reason: SimpleConfirmationReason; suggestedSeatId: string | null; candidateSeatIds: string[]; accuracyM: number };
+  | { outcome: "CONFIRM"; reason: SimpleConfirmationReason; suggestedSeatId: string | null; suggestionSource?: "POSITION" | "PREVIOUS_CHECK_IN"; candidateSeatIds: string[]; accuracyM: number };

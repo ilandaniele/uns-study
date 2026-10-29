@@ -32,7 +32,7 @@ export interface CreateCheckInInput {
   qrToken?: string | null;
   /** How long the user will occupy the seat (15..720 min; the router caps non-Pro users at CHECKIN_MINUTES); defaults to CHECKIN_MINUTES. */
   durationMinutes?: number;
-  /** Internal simple-mode policy: no implicit move/refresh, and recheck FREE inside the write transaction. */
+  /** Internal simple-mode policy: no implicit move/refresh; recheck eligibility in the transaction. */
   simpleMode?: { automatic: boolean; guard?: (tx: Db) => boolean };
 }
 
@@ -140,7 +140,7 @@ export class CheckInService {
             if (!input.simpleMode.guard?.(tx)) throw ApiErrors.seatTaken();
             this.roomState.recomputeSeats([input.seatId], { roomId: input.roomId, now, eventType: "RECOMPUTE", tx });
             const live = tx.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, input.seatId)).get();
-            if (live?.status !== "FREE") throw ApiErrors.seatTaken();
+            if (live?.status !== "FREE" && live?.status !== "UNKNOWN") throw ApiErrors.seatTaken();
           }
         }
 

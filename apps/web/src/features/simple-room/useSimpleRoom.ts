@@ -1,13 +1,14 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import type { RoomMapDto, SimpleCheckInResult } from "@sala/contracts";
+import type { LocationInput, RoomMapDto, SimpleCheckInResult } from "@sala/contracts";
 import { apiDelete, apiPost, ApiRequestError } from "@/lib/api";
 import { describeActionError } from "@/lib/errors";
-import { getSeatLocation, GeolocationRequestError } from "@/lib/geolocation";
+import { GeolocationRequestError } from "@/lib/geolocation";
 import { mutateMe, refreshMe } from "@/lib/me-store";
 import { hasCheckedInBefore, markCheckedIn } from "@/lib/engagement";
 import { showPreCheckInAd } from "@/features/ads/ads";
 import { refreshAchievements } from "@/features/badges/achievement-store";
+import { simpleActionLocation } from "./simple-location";
 
 export function useSimpleRoom(map: RoomMapDto | null, refetch: () => void) {
   const [pending, setPending] = useState(false);
@@ -18,7 +19,8 @@ export function useSimpleRoom(map: RoomMapDto | null, refetch: () => void) {
   const [locationHelp, setLocationHelp] = useState(false);
   const busy = useRef(false), alive = useRef(true);
   const retrySeat = useRef<string | undefined>(undefined);
-  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  const attemptLocation = useRef<LocationInput | null>(null);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; attemptLocation.current = null; }; }, []);
 
   async function enter(confirmedSeatId?: string, turnstileToken?: string): Promise<boolean> {
     if (!map || busy.current) return false;
@@ -26,8 +28,9 @@ export function useSimpleRoom(map: RoomMapDto | null, refetch: () => void) {
     try {
       if (!navigator.onLine) throw new TypeError("offline");
       if (!confirmedSeatId && !turnstileToken && hasCheckedInBefore()) showPreCheckInAd();
-      const location = await getSeatLocation(!confirmedSeatId);
+      const location = await simpleActionLocation(attemptLocation.current, Boolean(confirmedSeatId));
       if (!alive.current) return false;
+      attemptLocation.current = location;
       setLocating(false);
       const result = await apiPost<SimpleCheckInResult>("/api/v1/checkins/simple", { roomId: map.room.id, location, showIdentity: true,
         ...(confirmedSeatId ? { confirmedSeatId } : {}), ...(turnstileToken ? { turnstileToken } : {}) });
@@ -35,6 +38,7 @@ export function useSimpleRoom(map: RoomMapDto | null, refetch: () => void) {
       setChallenge(false);
       if (result.outcome === "CONFIRM") { setConfirmation(result); refetch(); return true; }
       mutateMe(current => ({ ...current, activeCheckIn: result.checkIn }));
+      attemptLocation.current = null;
       setConfirmation(null); markCheckedIn(); refreshAchievements();
       void refreshMe().catch(() => undefined); refetch();
       return true;
@@ -65,6 +69,6 @@ export function useSimpleRoom(map: RoomMapDto | null, refetch: () => void) {
     finally { busy.current = false; if (alive.current) setPending(false); }
   }
   return { pending, locating, error, confirmation, challenge, locationHelp, enter, leave,
-    cancelConfirmation: () => { if (!busy.current) { setConfirmation(null); setChallenge(false); setError(null); setLocationHelp(false); } },
+    cancelConfirmation: () => { if (!busy.current) { attemptLocation.current = null; setConfirmation(null); setChallenge(false); setError(null); setLocationHelp(false); } },
     dismissLocationHelp: () => setLocationHelp(false), retryChallenge: (token: string) => enter(retrySeat.current, token) };
 }

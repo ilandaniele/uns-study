@@ -27,7 +27,7 @@ describe("simple room mode HTTP / canonical SQLite", () => {
     const seat = map.seats.find(s => s.code === code)!; const { latitude, longitude } = fix(seat.id); return { seatId: seat.id, latitude, longitude };
   }) as SeatCalibrationInput["anchors"], uncertaintyM: 0.1, source: "Synthetic measured 10 by 20 meter room" });
   const target = () => map.seats.find(s => s.code === "M03-S02")!;
-  const mark = (status: "FREE" | "OCCUPIED" = "FREE", adminOverride = false) => ctx.db.insert(schema.seatObservations).values({ userId: userB, roomId: map.room.id, seatId: target().id, observedStatus: status, adminOverride, presenceVerified: true, confidenceWeight: 1, expiresAt: new Date(Date.now() + 900_000) }).run();
+  const mark = (status: "FREE" | "OCCUPIED" | "SAVED" = "FREE", adminOverride = false) => ctx.db.insert(schema.seatObservations).values({ userId: userB, roomId: map.room.id, seatId: target().id, observedStatus: status, adminOverride, presenceVerified: true, confidenceWeight: 1, expiresAt: new Date(Date.now() + 900_000) }).run();
   beforeEach(async () => {
     savedEnv = { ...env }; Object.assign(env, { isProduction: true, presenceDevBypass: false, ownerEmail: "simple-owner@example.test", betterAuthSecret: "test-only-simple-room-secret-123456789" });
     ctx = buildTestApp(); sequence++;
@@ -73,6 +73,38 @@ describe("simple room mode HTTP / canonical SQLite", () => {
     expect(JSON.stringify(await (await request("/rooms/principal/map")).json())).not.toMatch(/latitude|longitude|uncertaintyM/);
     expect((await request(endpoint, "DELETE", undefined, owner)).status).toBe(200);
     expect(ctx.db.select().from(schema.roomSeatCalibrations).all()).toHaveLength(0);
+  });
+
+  it("offers only the caller's last completed seat for human confirmation, without auto-claiming it", async () => {
+    expect((await request("/checkins/simple", "POST", input(target().id))).status).toBe(201);
+    expect((await request("/checkins/current", "DELETE")).status).toBe(200);
+    const response = await request("/checkins/simple", "POST", input());
+    expect(await response.json()).toMatchObject({ outcome: "CONFIRM", reason: "CALIBRATION_REQUIRED", suggestedSeatId: target().id, suggestionSource: "PREVIOUS_CHECK_IN" });
+    expect(await (await request("/checkins/simple", "POST", input(), userB)).json()).toMatchObject({ outcome: "CONFIRM", suggestedSeatId: null });
+    expect(ctx.db.select().from(schema.checkIns).all().filter(row => row.status === "ACTIVE")).toHaveLength(0);
+  });
+
+  it.each(["cancelled", "unverified", "inactive", "claimed"] as const)("does not suggest a previous seat that is %s", async state => {
+    ctx.db.insert(schema.checkIns).values({ userId: userA, roomId: map.room.id, seatId: target().id, status: state === "cancelled" ? "CANCELLED" : "COMPLETED", presenceVerified: state !== "unverified", expiresAt: new Date(Date.now() - 60_000) }).run();
+    if (state === "inactive") ctx.db.update(schema.seats).set({ active: false }).where(eq(schema.seats.id, target().id)).run();
+    if (state === "claimed") expect((await request("/checkins/simple", "POST", input(target().id), userB)).status).toBe(201);
+    expect(await (await request("/checkins/simple", "POST", input())).json()).toMatchObject({ outcome: "CONFIRM", suggestedSeatId: null });
+    expect(ctx.db.select().from(schema.checkIns).all().filter(row => row.status === "ACTIVE" && row.userId === userA)).toHaveLength(0);
+  });
+
+  it("claims a precisely located UNKNOWN seat without fabricating a FREE observation", async () => {
+    await ctx.services.simpleRoom.saveCalibration(owner, "principal", calibration());
+    expect(await (await request("/checkins/simple", "POST", input())).json()).toMatchObject({ outcome: "CHECKED_IN", checkIn: { seatId: target().id } });
+    expect(ctx.db.select().from(schema.seatObservations).all()).toHaveLength(0);
+    expect(ctx.db.select().from(schema.checkIns).all()).toMatchObject([{ presenceVerified: true, seatId: target().id }]);
+  });
+
+  it.each(["OCCUPIED", "SAVED"] as const)("does not claim an UNKNOWN seat that becomes %s before the transaction", async status => {
+    await ctx.services.simpleRoom.saveCalibration(owner, "principal", calibration());
+    const original = ctx.services.checkIns.checkIn.bind(ctx.services.checkIns);
+    vi.spyOn(ctx.services.checkIns, "checkIn").mockImplementationOnce(async value => { mark(status, true); return original(value); });
+    expect(await (await request("/checkins/simple", "POST", input())).json()).toMatchObject({ outcome: "CONFIRM" });
+    expect(ctx.db.select().from(schema.checkIns).all()).toHaveLength(0);
   });
 
   it("rejects unmeasurable references, out-of-room anchors and duplicate seats", async () => {

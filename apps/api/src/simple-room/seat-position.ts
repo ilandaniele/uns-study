@@ -57,15 +57,18 @@ export function selectSimpleSeat(location: LocationInput, calibration: SeatCalib
   const serverAgeMs = nowMs - capturedMs;
   const fresh = Number.isFinite(ageMs) && ageMs >= -1000 && ageMs <= 10_000 && serverAgeMs >= -1000 && serverAgeMs <= 10_000;
   const ranked = seats.map(seat => ({ seat, point: projection.point(seat), distance: length(minus(projection.point(seat), user)) })).sort((a, b) => a.distance - b.distance || a.seat.code.localeCompare(b.seat.code));
-  const available = ranked.filter(s => s.seat.status === "FREE" && !s.seat.dispute && !s.seat.occupiedUntil);
+  // The button is an explicit self check-in: UNKNOWN may be claimed just as in the manual flow.
+  // Never reinterpret an occupied/guarded/disputed seat, or another person's check-in, as available.
+  const available = ranked.filter(s => (s.seat.status === "FREE" || s.seat.status === "UNKNOWN") && !s.seat.dispute && !s.seat.occupiedUntil);
   const nearest = available[0];
+  const suggestion = nearest && nearest.seat.id === ranked[0]?.seat.id && fresh && location.accuracy > 0 && location.accuracy <= 5 && projection.contains(user) && nearest.distance <= radius + 1 ? nearest.seat.id : null;
   const confirm = (reason: Extract<SimpleCheckInResult, { outcome: "CONFIRM" }>["reason"]): Extract<SimpleCheckInResult, { outcome: "CONFIRM" }> => ({ outcome: "CONFIRM", reason,
-    suggestedSeatId: nearest && fresh && location.accuracy <= 5 && projection.contains(user) ? nearest.seat.id : null,
+    suggestedSeatId: suggestion, ...(suggestion ? { suggestionSource: "POSITION" as const } : {}),
     candidateSeatIds: available.slice(0, 5).map(s => s.seat.id), accuracyM: location.accuracy,
   });
   if (!nearest) return confirm("NO_FREE_SEAT");
   if (!projection.contains(user, radius)) return confirm("OUTSIDE_CALIBRATED_AREA");
-  // Never hop over a physically closer occupied/unknown chair to assign some other free one.
+  // Never hop over a physically closer unavailable chair to assign some other one.
   if (ranked[0]?.seat.id !== nearest.seat.id) return confirm("NEAREST_UNAVAILABLE");
   if (!fresh || location.accuracy <= 0 || nearest.distance + radius > 1) return confirm("AMBIGUOUS");
   for (const other of ranked) {

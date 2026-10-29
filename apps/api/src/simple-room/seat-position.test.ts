@@ -27,10 +27,17 @@ describe("measured seat positioning", () => {
     expect(selectSimpleSeat(location(300, 600, 5), calibration(), seats)).toMatchObject({ outcome: "CONFIRM" });
     expect(selectSimpleSeat(location(), { ...calibration(), uncertaintyM: 0.5 }, seats)).toMatchObject({ outcome: "CONFIRM" });
   });
-  it("does not skip a physically closer occupied chair or infer that unknown means free", () => {
-    const occupied = seats.map(s => s.id === "target" ? { ...s, status: "OCCUPIED" as const } : s);
-    expect(selectSimpleSeat(location(), calibration(), occupied)).toMatchObject({ outcome: "CONFIRM", reason: "NEAREST_UNAVAILABLE" });
-    expect(selectSimpleSeat(location(), calibration(), seats.map(s => ({ ...s, status: "UNKNOWN" })))).toMatchObject({ outcome: "CONFIRM", reason: "NO_FREE_SEAT" });
+  it("does not skip a physically closer occupied, guarded or disputed chair", () => {
+    for (const status of ["OCCUPIED", "SAVED", "UNCERTAIN"] as const) {
+      const unavailable = seats.map(s => s.id === "target" ? { ...s, status } : s);
+      expect(selectSimpleSeat(location(), calibration(), unavailable)).toMatchObject({ outcome: "CONFIRM", reason: "NEAREST_UNAVAILABLE", suggestedSeatId: null });
+    }
+  });
+  it("accepts an explicit self check-in into UNKNOWN only when the position identifies one chair", () => {
+    const unknown = seats.map(s => ({ ...s, status: "UNKNOWN" as const }));
+    expect(selectSimpleSeat(location(), calibration(), unknown)).toEqual({ seatId: "target" });
+    expect(selectSimpleSeat(location(340, 600), calibration(), unknown)).toMatchObject({ outcome: "CONFIRM", reason: "AMBIGUOUS" });
+    expect(selectSimpleSeat(location(), calibration(), unknown.map(s => s.id === "target" ? { ...s, occupiedUntil: new Date(Date.now() + 60_000).toISOString() } : s))).toMatchObject({ outcome: "CONFIRM", reason: "NEAREST_UNAVAILABLE" });
   });
   it("requires a recent positive-accuracy fix and refuses a distant or exterior location", () => {
     const delayed = new Date(Date.now() - 20_000).toISOString();

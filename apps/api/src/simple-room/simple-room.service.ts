@@ -1,6 +1,6 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
-import { seatCalibrationSchema, type RoomModeDto, type SeatCalibrationDto, type SeatCalibrationInput, type SimpleCheckInResult, type simpleCheckInRequestSchema } from "@sala/contracts";
+import { seatCalibrationSchema, type RoomMapDto, type RoomModeDto, type SeatCalibrationDto, type SeatCalibrationInput, type SimpleCheckInResult, type simpleCheckInRequestSchema } from "@sala/contracts";
 import type { z } from "zod";
 import { ApiErrors, ApiException } from "../common/api-error.js";
 import type { RoomsService } from "../rooms/rooms.service.js";
@@ -62,11 +62,11 @@ export class SimpleRoomService {
     let guard: ((tx: Db) => boolean) | undefined;
     if (!seatId) {
       const row = this.db.select().from(schema.roomSeatCalibrations).where(eq(schema.roomSeatCalibrations.roomId, map.room.id)).get();
-      const uncalibrated = (reason: "CALIBRATION_REQUIRED" | "LAYOUT_CHANGED") => ({ result: { outcome: "CONFIRM" as const, reason, suggestedSeatId: null, candidateSeatIds: [], accuracyM: input.location.accuracy }, write: null });
+      const uncalibrated = (reason: "CALIBRATION_REQUIRED" | "LAYOUT_CHANGED") => ({ result: this.withPreviousSeat(userId, map, { outcome: "CONFIRM", reason, suggestedSeatId: null, candidateSeatIds: [], accuracyM: input.location.accuracy }), write: null });
       if (!row) return uncalibrated("CALIBRATION_REQUIRED");
       if (!seatCalibrationSchema.safeParse(row.calibration).success || row.layoutHash !== await seatLayoutHash(map.seats)) return uncalibrated("LAYOUT_CHANGED");
       const decision = selectSimpleSeat(input.location, row.calibration, map.seats);
-      if ("outcome" in decision) return { result: decision, write: null };
+      if ("outcome" in decision) return { result: this.withPreviousSeat(userId, map, decision), write: null };
       seatId = decision.seatId;
       guard = tx => {
         const current = tx.select().from(schema.roomSeatCalibrations).where(eq(schema.roomSeatCalibrations.roomId, map.room.id)).get();
@@ -87,5 +87,17 @@ export class SimpleRoomService {
       }
       throw error;
     }
+  }
+
+  /** Existing own history is only a shortcut for HUMAN confirmation, never a GPS substitute. */
+  private withPreviousSeat(userId: string, map: RoomMapDto, result: Extract<SimpleCheckInResult, { outcome: "CONFIRM" }>): Extract<SimpleCheckInResult, { outcome: "CONFIRM" }> {
+    if (result.suggestedSeatId) return result;
+    const previous = this.db.select({ seatId: schema.checkIns.seatId, status: schema.checkIns.status, presenceVerified: schema.checkIns.presenceVerified, active: schema.seats.active })
+      .from(schema.checkIns).innerJoin(schema.seats, eq(schema.seats.id, schema.checkIns.seatId)).where(and(eq(schema.checkIns.userId, userId), eq(schema.checkIns.roomId, map.room.id)))
+      .orderBy(desc(schema.checkIns.createdAt), desc(schema.checkIns.id)).limit(1).get();
+    if (!previous?.active || !previous.presenceVerified || (previous.status !== "COMPLETED" && previous.status !== "EXPIRED")) return result;
+    const seat = map.seats.find(s => s.id === previous.seatId);
+    if (!seat || seat.occupiedUntil || seat.dispute || (seat.status !== "FREE" && seat.status !== "UNKNOWN")) return result;
+    return { ...result, suggestedSeatId: seat.id, suggestionSource: "PREVIOUS_CHECK_IN" };
   }
 }
