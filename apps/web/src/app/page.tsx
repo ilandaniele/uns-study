@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { RoomSkeleton } from "@/features/room/RoomSkeleton";
-import { RoomPageClient } from "./sala/[slug]/RoomPageClient";
+import { RoomExperience } from "@/features/simple-room/RoomExperience";
 
 export const metadata: Metadata = {
   title: "Sala",
@@ -14,9 +14,8 @@ export default function HomePage() {
   return (
     <>
       <Suspense fallback={<RoomSkeleton />}>
-        <RoomPageClient slug="principal" />
+        <RoomExperience slug="principal" about={<AboutSection />} />
       </Suspense>
-      <AboutSection />
     </>
   );
 }

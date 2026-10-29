@@ -62,12 +62,11 @@ export function pickBestFix(samples: Sample[], startedAt: number, now: number = 
  * Indoors the first fix is often a coarse Wi-Fi/cell estimate (80-150 m). Instead of taking it,
  * this watches the position for up to {@link SAMPLE_WINDOW_MS} — starting from the first fix, so
  * the time spent waiting on the browser's permission prompt never eats into the sampling window —
- * and keeps the most precise reading, returning early once one is good enough. Never reuses a
- * cached position (`maximumAge: 0`) since the server checks staleness, and separately discards any
- * fix whose own timestamp predates sampling start (a cached fix `watchPosition` handed back
- * instantly despite `maximumAge: 0`).
+ * and keeps the most precise reading, returning early once one is good enough. Requests no
+ * cached position (`maximumAge: 0`), but some stationary phones still supply one. Prefer fresh
+ * samples; preserve a recent cached fallback's original timestamp so the server checks its age.
  */
-function sampleLocation(): Promise<LocationInput> {
+function sampleLocation(options: { precise?: boolean } = {}): Promise<LocationInput> {
   return new Promise((resolve, reject) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       reject(new GeolocationRequestError("UNAVAILABLE", "La geolocalización no está disponible en este dispositivo."));
@@ -92,6 +91,8 @@ function sampleLocation(): Promise<LocationInput> {
       settled = true;
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
       clearTimers();
+      // Stationary phones may supply only a recent OS-cached fix. Preserve its original timestamp:
+      // the server may use it for room presence + MANUAL confirmation, never automatic seating.
       const best = pickBestFix(samples, calledAt, Date.now());
       if (best) {
         if (best.accuracy >= COARSE_ACCURACY_M) {
@@ -131,10 +132,10 @@ function sampleLocation(): Promise<LocationInput> {
       (position) => {
         if (settled) return;
         if (firstFixAt === null) {
-          // The 8 s sampling window starts on the FIRST successful fix, not at call time — the
+          // Sampling starts on the FIRST successful fix, not at call time — the
           // permission prompt's duration must not eat into it.
           firstFixAt = Date.now();
-          windowTimer = setTimeout(() => finish(), SAMPLE_WINDOW_MS);
+          windowTimer = setTimeout(() => finish(), options.precise ? 6_000 : SAMPLE_WINDOW_MS);
         }
         samples.push({
           latitude: position.coords.latitude,
@@ -143,7 +144,7 @@ function sampleLocation(): Promise<LocationInput> {
           timestamp: position.timestamp,
         });
         // Stop early only on a precise *fresh* fix; a precise cached one keeps sampling for a newer read.
-        if (position.coords.accuracy <= GOOD_ENOUGH_ACCURACY_M && position.timestamp >= calledAt - CACHED_FIX_TOLERANCE_MS) finish();
+        if (position.coords.accuracy <= (options.precise ? 0.25 : GOOD_ENOUGH_ACCURACY_M) && position.timestamp >= calledAt - CACHED_FIX_TOLERANCE_MS) finish();
       },
       (error) => {
         if (settled) return;
@@ -173,6 +174,11 @@ function sampleLocation(): Promise<LocationInput> {
       },
     );
   });
+}
+
+/** Seat attempts bypass the shared cache; an OS-cached fallback keeps its original timestamp. */
+export function getSeatLocation(precise = true): Promise<LocationInput> {
+  return sampleLocation({ precise });
 }
 
 /** A recent, precise-enough fix is reused for this long instead of sampling the GPS again. */

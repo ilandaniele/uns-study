@@ -133,3 +133,10 @@ Keep furniture positions in DB so the layout can later be adjusted without rewri
 See `reference-images/`.
 
 The photos are visual references only. Do not infer exact dimensions from perspective photography.
+
+## Optional simple-mode georeferencing
+
+The simple mode preserves this layout and every seat ID. It does not treat SVG pixels as meters.
+Automatic assignment requires owner-supplied measured references and a sufficient device accuracy;
+otherwise the person confirms their table and chair. See [SIMPLE_ROOM_MODE.md](docs/SIMPLE_ROOM_MODE.md)
+for calibration, uncertainty, privacy and concurrency rules. No fictional calibration is seeded.

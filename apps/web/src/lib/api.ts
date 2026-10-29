@@ -84,6 +84,8 @@ async function fetchWithTimeout(path: string, init: RequestInit | undefined, tim
   const onOuterAbort = () => controller.abort();
   outerSignal?.addEventListener("abort", onOuterAbort, { once: true });
   try {
+    // A view can disappear during the GET retry delay. Do not fetch from an aborted/old document.
+    if (outerSignal?.aborted) throw outerSignal.reason ?? new DOMException("Aborted", "AbortError");
     return await fetch(`${API_URL}${path}`, {
       ...init,
       signal: controller.signal,

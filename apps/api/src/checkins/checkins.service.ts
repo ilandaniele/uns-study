@@ -32,6 +32,8 @@ export interface CreateCheckInInput {
   qrToken?: string | null;
   /** How long the user will occupy the seat (15..720 min; the router caps non-Pro users at CHECKIN_MINUTES); defaults to CHECKIN_MINUTES. */
   durationMinutes?: number;
+  /** Internal simple-mode policy: no implicit move/refresh, and recheck FREE inside the write transaction. */
+  simpleMode?: { automatic: boolean; guard?: (tx: Db) => boolean };
 }
 
 export class CheckInService {
@@ -131,6 +133,16 @@ export class CheckInService {
           .where(and(eq(schema.checkIns.userId, input.userId), eq(schema.checkIns.status, "ACTIVE")))
           .limit(1)
           .get();
+
+        if (input.simpleMode) {
+          if (existing) throw ApiErrors.seatTaken();
+          if (input.simpleMode.automatic) {
+            if (!input.simpleMode.guard?.(tx)) throw ApiErrors.seatTaken();
+            this.roomState.recomputeSeats([input.seatId], { roomId: input.roomId, now, eventType: "RECOMPUTE", tx });
+            const live = tx.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, input.seatId)).get();
+            if (live?.status !== "FREE") throw ApiErrors.seatTaken();
+          }
+        }
 
         let row: typeof schema.checkIns.$inferSelect | undefined;
         if (existing && existing.seatId === input.seatId) {

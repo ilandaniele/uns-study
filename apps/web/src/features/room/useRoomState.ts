@@ -51,6 +51,8 @@ export function useRoomState(slug: string): RoomState {
   const [connected, setConnected] = useState(false);
   const [mapLoading, setMapLoading] = useState(() => !lastSnapshots.has(slug));
   const [error, setError] = useState<string | null>(null);
+  const activeView = useRef(true);
+  const requests = useRef(new Set<AbortController>());
 
   // Latest `me`, readable from socket handlers below without re-subscribing on every fetch.
   const meRef = useRef<MeDto | null>(null);
@@ -67,19 +69,35 @@ export function useRoomState(slug: string): RoomState {
   const lastMapStartRef = useRef(0);
 
   const loadMap = useCallback(async () => {
+    if (!activeView.current) return;
+    const request = new AbortController();
+    requests.current.add(request);
     lastMapStartRef.current = ++seqRef.current;
     try {
-      const mapDto = await apiFetch<RoomMapDto>(`/api/v1/rooms/${slug}/map`);
+      const mapDto = await apiFetch<RoomMapDto>(`/api/v1/rooms/${slug}/map`, { signal: request.signal });
+      if (request.signal.aborted) return;
       setMap((prev) => mergeSnapshot(prev, mapDto));
       setError(null);
     } catch (err) {
-      setError(err instanceof ApiRequestError && err.status === 404 ? ROOM_NOT_FOUND : "No pudimos cargar el mapa de la sala.");
+      if (!request.signal.aborted) setError(err instanceof ApiRequestError && err.status === 404 ? ROOM_NOT_FOUND : "No pudimos cargar el mapa de la sala.");
     } finally {
-      setMapLoading(false);
+      requests.current.delete(request);
+      if (!request.signal.aborted) setMapLoading(false);
     }
   }, [slug]);
 
+  useEffect(() => {
+    activeView.current = true;
+    const pending = requests.current;
+    const hide = () => { activeView.current = false; for (const request of pending) request.abort(); pending.clear(); };
+    const show = (event: PageTransitionEvent) => { if (event.persisted) { activeView.current = true; void loadMap(); } };
+    window.addEventListener("pagehide", hide);
+    window.addEventListener("pageshow", show);
+    return () => { hide(); window.removeEventListener("pagehide", hide); window.removeEventListener("pageshow", show); };
+  }, [loadMap]);
+
   const load = useCallback(() => {
+    if (!activeView.current) return Promise.resolve();
     void refreshMe().catch(() => undefined);
     return loadMap();
   }, [loadMap]);

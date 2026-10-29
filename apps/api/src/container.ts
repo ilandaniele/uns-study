@@ -25,6 +25,7 @@ import type { RealtimeHub } from "./realtime/realtime-hub.js";
 import type { Services } from "./services.js";
 import { RoomCache } from "./common/cache/room-cache.service.js";
 import { RoomsService } from "./rooms/rooms.service.js";
+import { SimpleRoomService } from "./simple-room/simple-room.service.js";
 import { RoomStateService } from "./rooms/room-state.service.js";
 import { RoomStatsService } from "./rooms/room-stats.service.js";
 import { PresenceService } from "./presence/presence.service.js";
@@ -171,6 +172,7 @@ export function buildServices(deps: ContainerDeps): Services {
     db, roomState, presence, securityEvents, studySessions, reputation, restriction, realtime, rateLimit, abusePolicy, notifications,
   );
   const checkIns = new CheckInService(db, roomState, presence, securityEvents, studySessions, qr, disputes, roles, roomCache, roomHours);
+  const simpleRoom = new SimpleRoomService(db, rooms, checkIns, presence, roles);
   const photoVerification = new PhotoVerificationService(db, roomState, presence, seatPhotoVerifier);
   const observations = new ObservationService(
     db, roomState, presence, securityEvents, abusePolicy, qr, reputation, notifications, disputes, roomCache, roomHours, collaboration,
@@ -219,7 +221,7 @@ export function buildServices(deps: ContainerDeps): Services {
     friends: new FriendsService(db, clock, hub, alias),
     achievements, collaboration,
     db,
-    rooms, roomState, roomStats, roomCache, presence, checkIns, photoVerification, observations,
+    rooms, roomState, roomStats, roomCache, presence, checkIns, simpleRoom, photoVerification, observations,
     disputes, tableNames, reputation, rankings, studySessions, study, roomPeople,
     chat, dm, groups, blocks, profiles, avatars, alias, roles, restriction, reactions,
     adminUsers, adminReports, adminRooms, adminAudit, adminStudySessions, moderation,

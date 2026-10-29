@@ -25,6 +25,7 @@ import { authProvidersRouter } from "./auth-providers.router.js";
 import { e2eTestHooksRouter } from "./e2e-test-hooks.router.js";
 import { realtimeTokenRouter } from "../realtime/realtime-token.router.js";
 import { roomsRouter } from "../rooms/rooms.router.js";
+import { simpleRoomRouter } from "../simple-room/simple-room.router.js";
 import { roomStatsRouter } from "../rooms/room-stats.router.js";
 import { presenceRouter } from "../presence/presence.router.js";
 import { checkinsRouter } from "../checkins/checkins.router.js";
@@ -117,6 +118,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
     meRouter,
     realtimeTokenRouter,
     roomsRouter,
+    simpleRoomRouter,
     roomStatsRouter,
     presenceRouter,
     checkinsRouter,

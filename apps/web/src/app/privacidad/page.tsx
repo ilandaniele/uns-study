@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BackButton } from "@/components/BackButton";
-import { LEGAL_CONTACT, LEGAL_DATE_LABEL, PROJECT_HOLDER } from "@/lib/legal";
+import { LEGAL_CONTACT, PROJECT_HOLDER } from "@/lib/legal";
 
 export const metadata: Metadata = { title: "Política de privacidad" };
 
@@ -10,7 +10,7 @@ export default function PrivacyPage() {
     <main className="mx-auto max-w-prose space-y-4 px-4 py-8 text-sm leading-relaxed text-main">
       <BackButton fallbackHref="/" />
       <h1 className="t-heading">Política de privacidad</h1>
-      <p className="text-xs text-muted">Actualizada el {LEGAL_DATE_LABEL}.</p>
+      <p className="text-xs text-muted">Actualizada el 29 de octubre de 2026.</p>
       <p>
         Sala de Estudio es un proyecto independiente de estudiantes para compartir en tiempo real la
         disponibilidad de lugares en la sala de estudio. No es un servicio oficial de la Universidad Nacional del
@@ -23,6 +23,7 @@ export default function PrivacyPage() {
         <li>Cuenta: nombre y email. Si entrás con Google, recibimos sólo tu nombre, email y foto de perfil.</li>
         <li>Perfil: los campos que vos completes (apodo, carrera, materia, bio, Instagram, legajo). Todos son opcionales y privados por defecto.</li>
         <li>Actividad en la sala: check-ins (&quot;Estoy acá&quot;), observaciones de lugares, mensajes de chat y reportes.</li>
+        <li>Modo de uso: guardamos en tu cuenta si preferís el modo común o simple. Esta preferencia es privada y se elimina con tu cuenta.</li>
         <li>Insignias y colaboración: logros conseguidos, fecha de obtención, confirmación de que los viste y lugares distintos actualizados por día para calcular recompensas de semillas. No se guardan coordenadas en este registro.</li>
       </ul>
 
@@ -37,7 +38,9 @@ export default function PrivacyPage() {
 
       <h2 className="pt-2 text-lg font-semibold text-main">Ubicación</h2>
       <p>
-        Usamos tu ubicación sólo en el momento de marcar un lugar, para comprobar que estás cerca de la sala. No
+        Usamos tu ubicación en el momento de marcar un lugar para comprobar que estás cerca de la sala. En modo simple
+        también intentamos identificar el asiento más cercano cuando hay referencias medidas y precisión suficiente;
+        si hay dudas te pedimos confirmar el lugar. El botón solicita una lectura nueva, sin seguimiento continuo. No
         guardamos tus coordenadas exactas ni las mostramos a otras personas: sólo conservamos la precisión del GPS y si
         estabas dentro del área.
       </p>

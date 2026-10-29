@@ -5,6 +5,7 @@ import { CheckIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch, ApiRequestError } from "@/lib/api";
 import { getFreshLocation, GeolocationRequestError } from "@/lib/geolocation";
+import { SeatCalibrationAdmin } from "@/features/simple-room/SeatCalibrationAdmin";
 
 /** Accuracy required before "Usar mi ubicación como centro" is enabled — a coarse fix would miscalibrate the room. */
 const MAX_CENTER_ACCURACY_M = 30;
@@ -172,6 +173,7 @@ export function GeofenceAdmin({ roomSlug }: { roomSlug: string }) {
         </button>
       </div>
 
+      <SeatCalibrationAdmin roomSlug={roomSlug} />
       {error ? <p className="text-sm text-[var(--seat-occupied)]">{error}</p> : null}
     </div>
   );

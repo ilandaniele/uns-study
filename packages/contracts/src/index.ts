@@ -286,6 +286,15 @@ export const locationInputSchema = z.object({
  */
 export const PRESENCE_GRANT_MINUTES = 60;
 
+/** Every simple-mode attempt needs a location reading, not just an earlier presence grant. */
+export const simpleCheckInRequestSchema = z.object({
+  roomId: z.string().uuid(),
+  location: locationInputSchema,
+  confirmedSeatId: z.string().uuid().optional(),
+  showIdentity: z.boolean().default(false),
+  turnstileToken: z.string().max(4096).optional(),
+}).strict();
+
 export const checkInRequestSchema = z.object({
   roomId: z.string().uuid(),
   seatId: z.string().uuid(),
@@ -437,3 +446,4 @@ export interface ApiError {
 export * from "./usage";
 export * from "./focus";
 export * from "./friends";
+export * from "./simple-room";

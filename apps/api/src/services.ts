@@ -5,6 +5,7 @@ import type { Db } from "@sala/database";
 import type { ReactionsService } from "./chat/reactions.service.js";
 import type { FocusService } from "./focus/focus.service.js";
 import type { FriendsService } from "./friends/friends.service.js";
+import type { SimpleRoomService } from "./simple-room/simple-room.service.js";
 import type { GardenGiftsService } from "./garden/garden-gifts.service.js";
 import type { GardenService } from "./garden/garden.service.js";
 import type { AchievementsService } from "./badges/achievements.service.js";
@@ -89,6 +90,7 @@ export interface Services {
   reactions: ReactionsService;
   focus: FocusService;
   friends: FriendsService;
+  simpleRoom: SimpleRoomService;
   gardenGifts: GardenGiftsService;
   garden: GardenService;
   gardenPurchases: GardenPurchasesService;
