@@ -54,12 +54,26 @@ export class SimpleRoomService {
     });
   }
 
-  async attempt(userId: string, input: z.infer<typeof simpleCheckInRequestSchema>, presence: PresenceGrant): Promise<{ result: SimpleCheckInResult; write: Awaited<ReturnType<CheckInService["checkIn"]>> | null }> {
+  async attempt(userId: string, input: z.infer<typeof simpleCheckInRequestSchema>, presence: PresenceGrant, studyDeviceId: string | null = null): Promise<{ result: SimpleCheckInResult; write: Awaited<ReturnType<CheckInService["checkIn"]>> | null }> {
     const active = await this.checkIns.getActiveCheckIn(userId);
     if (active) return { result: { outcome: "ALREADY_CHECKED_IN", checkIn: active }, write: null };
     const map = await this.rooms.getRoomMap(input.roomId);
     let seatId = input.confirmedSeatId;
     let guard: ((tx: Db) => boolean) | undefined;
+    let qrSeat = false;
+    if (input.qrToken) {
+      const qr = this.db.select().from(schema.roomQrCodes).where(and(eq(schema.roomQrCodes.token, input.qrToken), eq(schema.roomQrCodes.roomId, input.roomId), eq(schema.roomQrCodes.active, true))).get();
+      if (!qr) throw ApiErrors.invalidQr();
+      if (qr.seatId) {
+        if (seatId && seatId !== qr.seatId) throw ApiErrors.invalidQr();
+        const seat = map.seats.find(s => s.id === qr.seatId);
+        if (!seat || seat.occupiedUntil || seat.dispute) throw ApiErrors.seatTaken();
+        seatId = qr.seatId; qrSeat = true;
+        guard = tx => Boolean(tx.select({ id: schema.roomQrCodes.id }).from(schema.roomQrCodes)
+          .innerJoin(schema.seats, eq(schema.seats.id, schema.roomQrCodes.seatId))
+          .where(and(eq(schema.roomQrCodes.id, qr.id), eq(schema.roomQrCodes.active, true), eq(schema.roomQrCodes.seatId, qr.seatId!), eq(schema.seats.active, true), eq(schema.seats.roomId, input.roomId))).get());
+      }
+    }
     if (!seatId) {
       const row = this.db.select().from(schema.roomSeatCalibrations).where(eq(schema.roomSeatCalibrations.roomId, map.room.id)).get();
       const uncalibrated = (reason: "CALIBRATION_REQUIRED" | "LAYOUT_CHANGED") => ({ result: this.withPreviousSeat(userId, map, { outcome: "CONFIRM", reason, suggestedSeatId: null, candidateSeatIds: [], accuracyM: input.location.accuracy }), write: null });
@@ -77,7 +91,7 @@ export class SimpleRoomService {
       };
     }
     try {
-      const write = await this.checkIns.checkIn({ userId, roomId: input.roomId, seatId, location: input.location, presence, showIdentity: input.showIdentity, simpleMode: { automatic: !input.confirmedSeatId, guard } });
+      const write = await this.checkIns.checkIn({ userId, studyDeviceId, roomId: input.roomId, seatId, location: input.location, presence, showIdentity: input.showIdentity, qrToken: input.qrToken, simpleMode: { automatic: !input.confirmedSeatId && !qrSeat, guard } });
       return { result: { outcome: "CHECKED_IN", checkIn: write.checkIn }, write };
     } catch (error) {
       // A concurrent check-in or report may win after selection. Never silently pick another chair.

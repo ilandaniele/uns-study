@@ -5,6 +5,8 @@ import { RoomStateService, type SeatStateChange } from "../rooms/room-state.serv
 import { PresenceService, type PresenceGrant } from "../presence/presence.service.js";
 import { SecurityEventService } from "../security/security-event.service.js";
 import { StudySessionService } from "../rankings/study-session.service.js";
+import { beginStudyPresence, presenceDto, sampleStudyPresence } from "../presence/study-presence.js";
+import { STUDY_ABSENCE_RELEASE_MS, type StudyPresenceDto } from "@sala/contracts";
 import { QrService } from "../qr/qr.service.js";
 import { DisputeService } from "../disputes/disputes.service.js";
 import { RolesService } from "../users/roles.service.js";
@@ -20,6 +22,7 @@ const RAPID_TOGGLE_THRESHOLD = 4;
 const RAPID_TOGGLE_WINDOW_MIN = 10;
 
 export interface CreateCheckInInput {
+  studyDeviceId?: string | null;
   userId: string;
   roomId: string;
   seatId: string;
@@ -105,7 +108,7 @@ export class CheckInService {
 
     // External lookups come first: the write below is one synchronous transaction, so nothing in it can await.
     const [qrVerified, isAdmin] = await Promise.all([
-      this.qr.isValidForTable(input.qrToken, input.roomId, seat.tableId),
+      this.qr.isValidForTable(input.qrToken, input.roomId, seat.tableId, seat.id),
       this.roles.hasRole(input.userId, ["ADMIN", "MODERATOR"]).catch((err: unknown) => {
         this.logger.error("Failed to look up roles for admin-present check", err instanceof Error ? err.stack : String(err));
         return false;
@@ -136,8 +139,9 @@ export class CheckInService {
 
         if (input.simpleMode) {
           if (existing) throw ApiErrors.seatTaken();
+          if (input.simpleMode.guard && !input.simpleMode.guard(tx)) throw ApiErrors.seatTaken();
           if (input.simpleMode.automatic) {
-            if (!input.simpleMode.guard?.(tx)) throw ApiErrors.seatTaken();
+            if (!input.simpleMode.guard) throw ApiErrors.seatTaken();
             this.roomState.recomputeSeats([input.seatId], { roomId: input.roomId, now, eventType: "RECOMPUTE", tx });
             const live = tx.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, input.seatId)).get();
             if (live?.status !== "FREE" && live?.status !== "UNKNOWN") throw ApiErrors.seatTaken();
@@ -197,6 +201,7 @@ export class CheckInService {
             .returning()
             .get();
           if (!row) throw new Error("Failed to create check-in");
+          beginStudyPresence(tx, row.id, now, input.studyDeviceId);
 
           // The person now seated takes over an admin "ocupado" mark: it ends here, so the seat
           // doesn't keep reading OCCUPIED after they leave.
@@ -327,6 +332,36 @@ export class CheckInService {
     }
 
     return { roomId: existing.roomId, changes };
+  }
+
+  studyPresence(userId: string, deviceId: string | null = null): StudyPresenceDto | null {
+    const row = this.db.select({ monitor: schema.checkInMonitors }).from(schema.checkIns)
+      .innerJoin(schema.checkInMonitors, eq(schema.checkInMonitors.checkInId, schema.checkIns.id))
+      .where(and(eq(schema.checkIns.userId, userId), eq(schema.checkIns.status, "ACTIVE"), gt(schema.checkIns.expiresAt, new Date()))).get();
+    return row ? { ...presenceDto(row.monitor, new Date()), trackingHere: !row.monitor.deviceId || row.monitor.deviceId === deviceId } : null;
+  }
+
+  async samplePresence(userId: string, checkInId: string, location: LocationInput, deviceId: string | null = null): Promise<{ presence: StudyPresenceDto; ended: Awaited<ReturnType<CheckInService["checkOut"]>> }> {
+    const now = new Date();
+    const stay = this.db.select().from(schema.checkIns).where(and(eq(schema.checkIns.id, checkInId), eq(schema.checkIns.userId, userId), eq(schema.checkIns.status, "ACTIVE"))).get();
+    if (!stay) throw ApiErrors.noActiveCheckIn();
+    const monitor = this.db.select().from(schema.checkInMonitors).where(eq(schema.checkInMonitors.checkInId, stay.id)).get();
+    if (monitor?.deviceId && monitor.deviceId !== deviceId) return { presence: { ...presenceDto(monitor, now), trackingHere: false }, ended: null };
+    // A returning device cannot revive an hour-long absence, even if the sweep was delayed.
+    if (stay.expiresAt <= now || (monitor?.outsideSince && +monitor.outsideSince + STUDY_ABSENCE_RELEASE_MS <= +now)) {
+      const ended = await this.checkOut(userId);
+      return { presence: monitor ? presenceDto(monitor, now, true) : { checkInId, state: "RELEASED", verifiedUntil: now.toISOString(), releaseAt: null }, ended };
+    }
+    const room = await this.roomCache.getRoom(this.db, stay.roomId);
+    const presence = this.db.transaction(tx => {
+      // Ownership and status are rechecked after the asynchronous room lookup.
+      const current = tx.select().from(schema.checkIns).where(and(eq(schema.checkIns.id, checkInId), eq(schema.checkIns.userId, userId), eq(schema.checkIns.status, "ACTIVE"))).get();
+      if (!current) throw ApiErrors.noActiveCheckIn();
+      const currentMonitor = tx.select().from(schema.checkInMonitors).where(eq(schema.checkInMonitors.checkInId, checkInId)).get();
+      if (currentMonitor?.deviceId && currentMonitor.deviceId !== deviceId) return { ...presenceDto(currentMonitor, now), trackingHere: false };
+      return sampleStudyPresence(tx, checkInId, room, location, now, deviceId);
+    });
+    return { presence, ended: null };
   }
 
   /**

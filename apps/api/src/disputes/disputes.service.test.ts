@@ -267,6 +267,7 @@ describe("DisputeService", () => {
     it("no votes in 5 minutes: the reporter wins — check-in ended, study time recorded, seat FREE, holder told", async () => {
       const { checkIn } = await checkIns.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
       await db.update(schema.checkIns).set({ startedAt: new Date(Date.now() - 60 * 60_000) }).where(eq(schema.checkIns.id, checkIn.id));
+      await db.update(schema.checkInMonitors).set({ countingFrom: new Date(Date.now() - 60 * 60_000) }).where(eq(schema.checkInMonitors.checkInId, checkIn.id));
       const { dispute } = await observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "FREE", location });
       expect(dispute?.kind).toBe("ABSENT");
       await flushBackground();

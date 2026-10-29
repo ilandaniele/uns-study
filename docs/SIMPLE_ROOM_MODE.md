@@ -36,3 +36,24 @@ La confirmación pide que la persona ya esté sentada allí; permite confirmar u
 ## Pruebas
 
 Geometría con rotaciones, límites de incertidumbre, posiciones exteriores/vencidas y referencias inválidas; HTTP real sobre Hono/SQLite para permisos, aislamiento de preferencias, fallback, grants insuficientes, confirmación, carreras, reportes intercalados, calibración retirada y límites antiabuso. Muestreo de navegador para no reutilizar GPS de otra silla. QA de navegador con cuentas/datos sintéticos, sin marcar asientos reales ni cambiar preferencias o referencias de personas en los entornos desplegados.
+
+
+## QR por asiento y control de permanencia (29/10/2026)
+
+Administración → Códigos QR permite generar un código de un asiento (`M01-S01`) o el conjunto completo. La generación del conjunto conserva los tokens activos existentes: volver a generarlo no invalida las etiquetas ya impresas. Los códigos desactivados se omiten al imprimir. Hay que imprimir y colocar cada etiqueta en su asiento real; el despliegue no coloca etiquetas físicas.
+
+La cámara del teléfono abre `/q/:token`. Un QR de asiento presenta temporalmente el modo simple, sin cambiar la preferencia guardada. La persona toca Estoy acá para declarar que está sentada allí. El servidor resuelve el token, comprueba cercanía, vigencia, silla activa y disponibilidad, y vuelve a comprobar el QR dentro de la transacción. No necesita calibración de sillas ni precisión GPS de interiores. Copiar un QR no omite geofence, restricciones ni Turnstile. Los QR anteriores de sala o mesa conservan su función.
+
+El control de permanencia se aplica a los check-ins, en ambos modos. El cliente obtiene una lectura breve cada tres minutos mientras el documento está visible. Cada prueba válida dentro del radio de 50 m renueva por cinco minutos el período acreditable. Si faltan lecturas, hay error, se retira el permiso o se suspende la página, las horas se detienen al vencer ese período, aunque el navegador no ejecute más JavaScript. Al regresar, una nueva prueba inicia otro intervalo: el hueco no se rellena.
+
+Una salida se considera detectada sólo cuando la distancia al centro de la sala MENOS el error GPS supera 50 m. Para confirmar regreso, distancia MÁS error debe quedar dentro de 50 m y del geofence configurado. Lecturas ambiguas, vencidas, futuras, de precisión nula o excesiva no confirman salida ni renuevan estudio. La antigüedad máxima de una muestra es 45 s.
+
+Una salida detectada pausa las horas y el reloj de foco de esa cuenta. Una hora después, si no se confirmó regreso, el job persistido de expiración termina el check-in, registra sólo el estudio acreditado y recalcula el asiento; no fabrica un reporte Libre. Funciona incluso si el teléfono se cierra después de comunicar la salida. Un regreso posterior no revive la presencia vencida. Falta de GPS no prueba una salida: pausa el estudio, y el asiento mantiene su vencimiento normal.
+
+El navegador de origen se vincula con un identificador aleatorio local, sin coordenadas. Otros dispositivos autenticados pueden consultar el estado, pero sus ubicaciones no pueden pausar ni renovar esa presencia. Los check-ins previos al cambio sólo pueden vincularse por primera vez desde un dispositivo con lectura dentro de la sala. El identificador no reemplaza la autenticación ni concede permisos.
+
+La migración 0016 añade los intervalos y estados derivados y el alcance de asiento del QR; conserva el tiempo previo de presencias activas y las horas históricas. No guarda coordenadas ni recorridos. Historial, rankings, rachas, insignias y crecimiento del jardín usan los mismos intervalos efectivos, incluidos los descansos y cruces de medianoche. Las modificaciones manuales del superadmin mantienen sus reglas.
+
+### Límite de la plataforma web
+
+Los navegadores no garantizan geolocalización continua cuando se bloquea la pantalla o se cierra la app. No se promete seguimiento en segundo plano. El vencimiento del período acreditable evita sumar horas indefinidas sin pruebas; detectar una salida concreta requiere que llegue al servidor una ubicación suficientemente precisa. Las referencias cartográficas exteriores no activan una calibración de sillas.

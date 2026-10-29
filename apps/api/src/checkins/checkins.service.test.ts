@@ -205,6 +205,8 @@ describe("CheckInService", () => {
   it("checking out records exactly one study session for a check-in long enough to count", async () => {
     const { checkIn } = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
     await db.update(schema.checkIns).set({ startedAt: new Date(Date.now() - 30 * 60_000) }).where(eq(schema.checkIns.id, checkIn.id));
+    // This fixture represents a stay with continuous earlier location proof.
+    await db.update(schema.checkInMonitors).set({ countingFrom: new Date(Date.now() - 30 * 60_000) }).where(eq(schema.checkInMonitors.checkInId, checkIn.id));
 
     await svc.checkOut("u1");
     const sessions = await db.select().from(schema.studySessions).where(eq(schema.studySessions.checkInId, checkIn.id));
@@ -215,6 +217,8 @@ describe("CheckInService", () => {
   it("moving seats records a study session for the seat left behind, exactly once", async () => {
     const { checkIn } = await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[0]!, location, showIdentity: false });
     await db.update(schema.checkIns).set({ startedAt: new Date(Date.now() - 20 * 60_000) }).where(eq(schema.checkIns.id, checkIn.id));
+    // This fixture represents a stay with continuous earlier location proof.
+    await db.update(schema.checkInMonitors).set({ countingFrom: new Date(Date.now() - 20 * 60_000) }).where(eq(schema.checkInMonitors.checkInId, checkIn.id));
 
     await svc.checkIn({ userId: "u1", roomId, seatId: seatIds[1]!, location, showIdentity: false });
     const sessions = await db.select().from(schema.studySessions).where(eq(schema.studySessions.checkInId, checkIn.id));

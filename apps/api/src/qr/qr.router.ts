@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { createQrCodeSchema } from "@sala/contracts";
 import { ApiErrors } from "../common/api-error.js";
-import type { AppEnv } from "../http/context.js";
+import { currentUser, type AppEnv } from "../http/context.js";
 import { requireAdminOnly } from "../http/guards.js";
 import { reply } from "../http/reply.js";
 import { uuidParam, zBody } from "../http/validate.js";
@@ -14,13 +14,20 @@ qrRouter.post("/admin/rooms/:idOrSlug/qr", requireAdminOnly, zBody(createQrCodeS
   const { qr, rooms } = c.var.services;
   const room = await rooms.findRoomRow(c.req.param("idOrSlug"));
   const tableCode = c.req.valid("json").tableCode?.trim() || null;
-  return reply(c, await qr.create(room.id, tableCode), 201);
+  return reply(c, await qr.create(room.id, tableCode, c.req.valid("json").seatCode?.trim()), 201);
 });
 
 qrRouter.get("/admin/rooms/:idOrSlug/qr", requireAdminOnly, async (c) => {
   const { qr, rooms } = c.var.services;
   const room = await rooms.findRoomRow(c.req.param("idOrSlug"));
   return reply(c, await qr.list(room.id));
+});
+
+qrRouter.post("/admin/rooms/:idOrSlug/qr/seats", requireAdminOnly, async c => {
+  const { qr, rooms, rateLimit } = c.var.services;
+  if (!(await rateLimit.check(`qr-seat-set:${currentUser(c).id}`, 3, 60)).allowed) throw ApiErrors.rateLimited();
+  const room = await rooms.findRoomRow(c.req.param("idOrSlug"));
+  return reply(c, await qr.createSeatSet(room.id), 201);
 });
 
 qrRouter.delete("/admin/rooms/:idOrSlug/qr/:id", requireAdminOnly, uuidParam("id"), async (c) => {

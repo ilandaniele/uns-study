@@ -1,4 +1,5 @@
 import type { ApiError, ApiErrorCode, PresenceDetails } from "@sala/contracts";
+import { getStudyDeviceId } from "./study-device";
 
 /**
  * Base URL for REST calls to the API. Empty/unset `NEXT_PUBLIC_API_URL` means "same origin" — the
@@ -86,6 +87,7 @@ async function fetchWithTimeout(path: string, init: RequestInit | undefined, tim
   try {
     // A view can disappear during the GET retry delay. Do not fetch from an aborted/old document.
     if (outerSignal?.aborted) throw outerSignal.reason ?? new DOMException("Aborted", "AbortError");
+    const studyDevice = path.startsWith("/api/v1/checkins") ? getStudyDeviceId() : null;
     return await fetch(`${API_URL}${path}`, {
       ...init,
       signal: controller.signal,
@@ -93,6 +95,7 @@ async function fetchWithTimeout(path: string, init: RequestInit | undefined, tim
       // Only requests with a body declare a content type (keeps GETs "simple" for CORS/proxies).
       headers: {
         ...(init?.body != null ? { "Content-Type": "application/json" } : {}),
+        ...(studyDevice ? { "X-Study-Device": studyDevice } : {}),
         ...init?.headers,
       },
     });

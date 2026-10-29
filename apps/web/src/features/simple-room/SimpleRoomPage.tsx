@@ -5,6 +5,7 @@ import { useRoomState } from "@/features/room/useRoomState";
 import { seatCodeLabel } from "@/features/room/format";
 import { useSimpleRoom } from "./useSimpleRoom";
 import { SimpleSeatConfirmation } from "./SimpleSeatConfirmation";
+import { useQrContext } from "@/lib/qr-context";
 
 const TurnstileChallenge = dynamic(() => import("@/features/room/TurnstileChallenge").then(m => m.TurnstileChallenge));
 const LocationHelpDialog = dynamic(() => import("@/features/room/LocationHelpDialog").then(m => m.LocationHelpDialog));
@@ -12,6 +13,7 @@ const LocationHelpDialog = dynamic(() => import("@/features/room/LocationHelpDia
 export function SimpleRoomPage({ slug, onPendingChange }: { slug: string; onPendingChange: (pending: boolean) => void }) {
   const { map, me, error: loadError, refetch } = useRoomState(slug);
   const action = useSimpleRoom(map, refetch);
+  const qr = useQrContext();
   useEffect(() => { onPendingChange(action.pending); return () => onPendingChange(false); }, [action.pending, onPendingChange]);
   const active = me?.activeCheckIn;
   const closed = map?.room.operatingHours?.open === false;
@@ -33,7 +35,8 @@ export function SimpleRoomPage({ slug, onPendingChange }: { slug: string; onPend
       {active ? <p><span className="font-semibold text-main">{seatCodeLabel(active.seatCode)}</span><br/>Tu lugar está marcado hasta las {new Date(active.expiresAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: map?.room.timezone ?? "America/Argentina/Buenos_Aires" })}.</p>
         : closed ? <p>La sala está cerrada. Podés volver a marcar cuando abra.</p>
         : !map ? <p>{loadError ?? "Preparando la sala…"}</p>
-        : <p>Tocalo cuando ya estés sentado. Usamos tu ubicación y te pedimos confirmar el asiento si hay dudas.</p>}
+        : qr.qrToken && qr.seatCode ? <p>QR de <strong className="text-main">{seatCodeLabel(qr.seatCode)}</strong>. Tocá el botón cuando estés sentado ahí: identificamos el asiento y comprobamos que estés en la sala.</p>
+        : <p>Tocalo cuando ya estés sentado. Usamos tu ubicación y te pedimos confirmar el asiento si hay dudas. También podés escanear el QR de tu asiento con la cámara del teléfono.</p>}
     </div>
     {loadError ? <button type="button" onClick={refetch} className="mt-3 min-h-11 rounded-full border border-app px-5 text-sm font-semibold text-main">Reintentar</button> : null}
     {action.error && !action.confirmation ? <p role="alert" className="mt-4 max-w-sm text-sm text-[var(--seat-occupied)]">{action.error}</p> : null}

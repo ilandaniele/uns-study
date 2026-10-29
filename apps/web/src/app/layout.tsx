@@ -12,6 +12,7 @@ import { EmailVerificationNotice } from "@/features/auth/EmailVerificationNotice
 import { VoteNotification } from "@/features/room/VoteNotification";
 import { AutoExtendRuntime } from "@/features/auto-extend/AutoExtendRuntime";
 import { FocusRuntime } from "@/features/focus/FocusRuntime";
+import { StudyPresenceRuntime } from "@/features/presence/StudyPresenceRuntime";
 import { ProUpsellDialog } from "@/features/subscriptions/ProUpsellDialog";
 import { PushPermissionPrompt } from "@/features/notifications/PushPermissionPrompt";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -76,6 +77,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <OfflineBanner />
         <Header />
         <EmailVerificationNotice />
+        <StudyPresenceRuntime />
         {children}
         <ChatLauncher />
         <BottomNav />

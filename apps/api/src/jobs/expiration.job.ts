@@ -1,4 +1,6 @@
-import { and, eq, gt, inArray, lte } from "drizzle-orm";
+import { and, eq, gt, inArray, lte, or, sql } from "drizzle-orm";
+import { STUDY_ABSENCE_RELEASE_MS } from "@sala/contracts";
+import type { FocusService } from "../focus/focus.service.js";
 import { schema, type Db } from "@sala/database";
 import { Logger } from "../platform/logger.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
@@ -18,6 +20,7 @@ export class ExpirationJob {
     private readonly studySessions: StudySessionService,
     private readonly disputes: DisputeService,
     private readonly hours: RoomHours | null = null,
+    private readonly focus: FocusService | null = null,
   ) {}
 
   /** Scheduler entry point (`expiration`, every 30 s). */
@@ -46,10 +49,11 @@ export class ExpirationJob {
         }
       }
     }
+    const due = or(lte(schema.checkIns.expiresAt, now), sql`exists (select 1 from check_in_monitors m where m.check_in_id = ${schema.checkIns.id} and m.outside_since <= ${+now - STUDY_ABSENCE_RELEASE_MS})`);
     const candidates = this.db
       .select({ id: schema.checkIns.id })
       .from(schema.checkIns)
-      .where(and(eq(schema.checkIns.status, "ACTIVE"), lte(schema.checkIns.expiresAt, now)))
+      .where(and(eq(schema.checkIns.status, "ACTIVE"), due))
       .all();
 
     // Expire (and only then act on) the candidates with one conditional update — a concurrent
@@ -76,7 +80,7 @@ export class ExpirationJob {
                 candidates.map((c) => c.id),
               ),
               eq(schema.checkIns.status, "ACTIVE"),
-              lte(schema.checkIns.expiresAt, now),
+              due,
             ),
           )
           .returning({
@@ -106,6 +110,7 @@ export class ExpirationJob {
     // must not abort the sweep for every other check-in that already expired.
     for (const checkIn of expiredCheckIns) {
       try {
+        if (this.db.select().from(schema.checkInMonitors).where(and(eq(schema.checkInMonitors.checkInId, checkIn.id), sql`${schema.checkInMonitors.outsideSince} is not null`)).get()) this.focus?.pauseForAbsence(checkIn.userId);
         await this.disputes.resolveForEndedCheckIn(checkIn.id, now);
       } catch (err) {
         this.logger.error(`Failed to resolve dispute for expired check-in ${checkIn.id}`, err instanceof Error ? err.stack : String(err));

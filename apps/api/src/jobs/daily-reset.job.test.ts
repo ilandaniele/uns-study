@@ -146,6 +146,7 @@ describe("DailyResetJob", () => {
       .update(schema.checkIns)
       .set({ startedAt: new Date(after.getTime() - 45 * 60_000), expiresAt: new Date(after.getTime() + 15 * 60_000) })
       .where(eq(schema.checkIns.id, checkIn.id));
+    await db.update(schema.checkInMonitors).set({ countingFrom: new Date(after.getTime() - 45 * 60_000), verifiedUntil: after }).where(eq(schema.checkInMonitors.checkInId, checkIn.id));
     await job.runReset(roomId, after);
 
     const sessions = await db.select().from(schema.studySessions).where(eq(schema.studySessions.checkInId, checkIn.id));

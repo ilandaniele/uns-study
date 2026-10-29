@@ -124,6 +124,7 @@ export function buildServices(deps: ContainerDeps): Services {
   const alias = new AliasService(db);
   const reputation = new ReputationService(db);
   const studySessions = new StudySessionService(db);
+  const focus = new FocusService(db, clock, hub);
   const securityEvents = new SecurityEventService(db, reputation);
   const rateLimit = new RateLimitService(db, cfg.ownerEmail);
   const turnstile = new TurnstileService();
@@ -207,7 +208,7 @@ export function buildServices(deps: ContainerDeps): Services {
   const exams = new ExamsService(db, clock);
 
   const jobs = {
-    expiration: new ExpirationJob(db, roomState, realtime, studySessions, disputes, roomHours),
+    expiration: new ExpirationJob(db, roomState, realtime, studySessions, disputes, roomHours, focus),
     disputeResolution: new DisputeResolutionJob(disputes),
     dailyReset: new DailyResetJob(db, realtime, studySessions, forecast, seatWatch, quietRoom),
     attachmentSweep: new AttachmentSweepJob(db, storage),
@@ -217,7 +218,7 @@ export function buildServices(deps: ContainerDeps): Services {
   };
 
   return {
-    focus: new FocusService(db, clock, hub),
+    focus,
     friends: new FriendsService(db, clock, hub, alias),
     achievements, collaboration,
     db,

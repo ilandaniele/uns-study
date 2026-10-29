@@ -21,6 +21,7 @@ export default function QrRedirectPage() {
         trackEvent("qr_scan");
         const search = new URLSearchParams({ source: "qr", qr: params.token });
         if (dto.tableCode) search.set("table", dto.tableCode);
+        if (dto.seatCode) search.set("seat", dto.seatCode);
         router.replace(`/sala/${dto.roomSlug}?${search.toString()}`);
       })
       .catch((err) => {

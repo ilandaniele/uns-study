@@ -5,6 +5,7 @@ import { inChunks, schema, type Db } from "@sala/database";
 import type { ProfileFlairDto, RankingCategory, RankingDto, RankingEntryDto, RankingPeriod } from "@sala/contracts";
 import { minutesByLocalDay, verifiedMinutesFor } from "./study-session.service.js";
 import { localDateOf } from "../common/dates.js";
+import { monitoredStudyParts } from "../presence/study-presence.js";
 import { STREAK_LOOKBACK_DAYS, STREAK_MIN_MINUTES } from "../study-history/streak.js";
 import { loadFrozenDates } from "../study-history/frozen-dates.js";
 import type { RoomsService } from "../rooms/rooms.service.js";
@@ -295,6 +296,7 @@ export class RankingsService {
         minutes: schema.studySessions.verifiedMinutes,
         localDate: schema.studySessions.localDate,
         source: schema.studySessions.source,
+        endedAt: schema.studySessions.endedAt,
       })
       .from(schema.studySessions)
       .where(and(...conditions))
@@ -311,7 +313,9 @@ export class RankingsService {
     for (const s of sessions) {
       if (s.source === "MANUAL" && inRange(s.localDate)) manualParts.push({ userId: s.userId, day: s.localDate, value: s.minutes });
     }
-    for (const stay of [...sessions.filter((s) => s.source !== "MANUAL"), ...live]) {
+    const recordedParts = monitoredStudyParts(this.db, sessions.filter(s => s.checkInId !== null).map(s => ({ id: s.checkInId!, startedAt: s.startedAt, expiresAt: s.endedAt, settled: true })), now);
+    const settled = sessions.filter(s => s.source !== "MANUAL").flatMap(s => recordedParts.has(s.checkInId ?? "") ? recordedParts.get(s.checkInId!)!.map(part => ({ ...part, userId: s.userId })) : [s]);
+    for (const stay of [...settled, ...live]) {
       for (const part of minutesByLocalDay(stay.startedAt, stay.minutes, room.timezone)) {
         if ((!start || part.day >= start) && (!end || part.day <= end)) parts.push({ userId: stay.userId, day: part.day, value: part.minutes });
       }
@@ -333,12 +337,13 @@ export class RankingsService {
       .from(schema.checkIns)
       .where(and(eq(schema.checkIns.roomId, room.id), eq(schema.checkIns.status, "ACTIVE")))
       .all();
-    return active.map((c) => ({
+    const parts = monitoredStudyParts(this.db, active, now);
+    return active.flatMap((c) => parts.has(c.id) ? parts.get(c.id)!.map(part => ({ ...part, checkInId: c.id, userId: c.userId })) : [{
       checkInId: c.id,
       userId: c.userId,
       startedAt: c.startedAt,
       minutes: verifiedMinutesFor(c.startedAt, c.expiresAt, now),
-    }));
+    }]);
   }
 
   private async streakValues(room: { id: string; timezone: string }, now: Date): Promise<Map<string, number>> {

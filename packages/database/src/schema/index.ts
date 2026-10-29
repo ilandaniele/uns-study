@@ -26,3 +26,4 @@ export * from "./achievements.js";
 export * from "./focus.js";
 export * from "./friends.js";
 export * from "./simple-room.js";
+export * from "./checkin-monitor.js";

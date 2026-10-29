@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@sala/database";
 import { schema } from "@sala/database";
 import { eq } from "drizzle-orm";
-import { buildNotificationService, freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
+import { buildNotificationService, keepStudyingUntil, freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { PresenceService } from "../presence/presence.service.js";
 import { RoomStateService } from "../rooms/room-state.service.js";
 import { RoomsService } from "../rooms/rooms.service.js";
@@ -84,6 +84,7 @@ describe("study time end to end", () => {
 
   function at(iso: string): Date {
     vi.useFakeTimers({ toFake: ["Date"] });
+    keepStudyingUntil(db, new Date(iso));
     vi.setSystemTime(new Date(iso));
     return new Date(iso);
   }
@@ -97,6 +98,7 @@ describe("study time end to end", () => {
   }
 
   async function value(period: "today" | "week" | "all", now: Date, userId = "u1", category: "study_time" | "streak" = "study_time"): Promise<number> {
+    keepStudyingUntil(db, now);
     const ranking = await rankings.getRankings(roomSlug, period, category, userId, now);
     return ranking.me?.value ?? 0;
   }

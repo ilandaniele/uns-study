@@ -40,7 +40,13 @@ export default function PrivacyPage() {
       <p>
         Usamos tu ubicación en el momento de marcar un lugar para comprobar que estás cerca de la sala. En modo simple
         también intentamos identificar el asiento más cercano cuando hay referencias medidas y precisión suficiente;
-        si hay dudas te pedimos confirmar el lugar. El botón solicita una lectura nueva, sin seguimiento continuo. No
+        si hay dudas te pedimos confirmar el lugar. Mientras tenés un check-in activo y la app está visible, revisamos
+        periódicamente la ubicación con el permiso del navegador. Si detectamos una salida a más de 50 metros,
+        pausamos las horas y, tras una hora sin regreso confirmado, finalizamos el check-in. Si el navegador deja
+        de enviar ubicaciones válidas, las horas se pausan a los cinco minutos; los períodos sin comprobación no
+        se acreditan al regresar. Un identificador aleatorio de este navegador vincula el control al dispositivo
+        donde marcaste el lugar, para que otro dispositivo de tu cuenta no contradiga la ubicación. Guardamos
+        ese identificador, los intervalos de estudio y los momentos de verificación o salida. No
         guardamos tus coordenadas exactas ni las mostramos a otras personas: sólo conservamos la precisión del GPS y si
         estabas dentro del área.
       </p>

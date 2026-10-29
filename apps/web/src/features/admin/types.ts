@@ -39,6 +39,7 @@ export interface AdminUserSearchResultDto {
 }
 
 export interface RoomQrCodeDto {
+  seatCode?: string;
   id: string;
   token: string;
   tableCode: string | null;

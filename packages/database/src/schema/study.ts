@@ -1,5 +1,5 @@
 import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
-import { rooms } from "./rooms.js";
+import { rooms, seats } from "./rooms.js";
 import { user } from "./auth.js";
 
 export const studySessionSourceEnum = { enumValues: ["CHECK_IN", "MANUAL"] as const };
@@ -37,6 +37,7 @@ export const roomQrCodes = sqliteTable(
       .notNull()
       .references(() => rooms.id, { onDelete: "cascade" }),
     tableId: text("table_id"),
+    seatId: text("seat_id").references(() => seats.id, { onDelete: "cascade" }),
     token: text("token").notNull().unique(),
     active: integer("active", { mode: "boolean" }).notNull().default(true),
     scanCount: integer("scan_count").notNull().default(0),

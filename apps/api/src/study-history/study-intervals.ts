@@ -2,6 +2,7 @@ import { and, eq, gte } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import { localDateOf } from "../common/dates.js";
 import { minutesByLocalDay, verifiedMinutesFor } from "../rankings/study-session.service.js";
+import { monitoredStudyParts } from "../presence/study-presence.js";
 
 export interface StudyInterval {
   startedAt: Date;
@@ -29,27 +30,31 @@ export async function loadStudyIntervals(db: Db, userId: string, sinceLocalDate:
       minutes: schema.studySessions.verifiedMinutes,
       roomId: schema.studySessions.roomId,
       source: schema.studySessions.source,
+      endedAt: schema.studySessions.endedAt,
     })
     .from(schema.studySessions)
     .where(and(eq(schema.studySessions.userId, userId), gte(schema.studySessions.localDate, sinceLocalDate)))
     .all();
   const recorded = new Set(sessions.map((s) => s.checkInId).filter((id): id is string => id !== null));
 
-  const out: StudyInterval[] = sessions.map((s) => ({
+  const tracked = monitoredStudyParts(db, sessions.filter(s => s.checkInId !== null).map(s => ({ id: s.checkInId!, startedAt: s.startedAt, expiresAt: s.endedAt, settled: true })), now);
+  const out: StudyInterval[] = sessions.flatMap((s) => tracked.has(s.checkInId ?? "") ? tracked.get(s.checkInId!)!.map(part => ({ ...part, roomId: s.roomId, live: false })) : [{
     startedAt: s.startedAt,
     minutes: s.minutes,
     roomId: s.roomId,
     live: false,
     manual: s.source === "MANUAL",
-  }));
+  }]);
 
   const active = db
     .select({ id: schema.checkIns.id, roomId: schema.checkIns.roomId, startedAt: schema.checkIns.startedAt, expiresAt: schema.checkIns.expiresAt })
     .from(schema.checkIns)
     .where(and(eq(schema.checkIns.userId, userId), eq(schema.checkIns.status, "ACTIVE")))
     .all();
+  const liveParts = monitoredStudyParts(db, active, now);
   for (const c of active) {
     if (recorded.has(c.id)) continue;
+    if (liveParts.has(c.id)) { out.push(...liveParts.get(c.id)!.map(part => ({ ...part, roomId: c.roomId, live: true }))); continue; }
     const minutes = verifiedMinutesFor(c.startedAt, c.expiresAt, now);
     if (minutes > 0) out.push({ startedAt: c.startedAt, minutes, roomId: c.roomId, live: true });
   }

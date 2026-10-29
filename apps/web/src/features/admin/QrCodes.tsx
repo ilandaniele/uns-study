@@ -22,6 +22,8 @@ function friendlyTableName(tableCode: string): string {
 export function QrCodes({ roomSlug }: { roomSlug: string }) {
   const [items, setItems] = useState<RoomQrCodeDto[]>([]);
   const [tableCode, setTableCode] = useState("");
+  const [seatCode, setSeatCode] = useState("");
+  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [svgs, setSvgs] = useState<Record<string, string>>({});
 
@@ -59,8 +61,9 @@ export function QrCodes({ roomSlug }: { roomSlug: string }) {
 
   async function create() {
     try {
-      await apiPost(`/api/v1/admin/rooms/${roomSlug}/qr`, tableCode.trim() ? { tableCode: tableCode.trim() } : {}, createQrCodeSchema);
+      await apiPost(`/api/v1/admin/rooms/${roomSlug}/qr`, { ...(tableCode.trim() ? { tableCode: tableCode.trim() } : {}), ...(seatCode.trim() ? { seatCode: seatCode.trim().toUpperCase() } : {}) }, createQrCodeSchema);
       setTableCode("");
+      setSeatCode("");
       await load();
     } catch {
       setError("No pudimos generar el código. Revisá que la mesa exista.");
@@ -74,14 +77,20 @@ export function QrCodes({ roomSlug }: { roomSlug: string }) {
 
   return (
     <div className="qr-print-page flex flex-col gap-4">
-      <div className="qr-print-hide flex gap-2 border-t border-app pt-4">
+      <p className="qr-print-hide text-sm text-muted">Para el modo simple, generá un QR por asiento e imprimilo para pegarlo en ese lugar. La cámara del teléfono abre el botón de ingreso; el QR identifica la silla y la ubicación comprueba cercanía.</p>
+      <button type="button" disabled={generating} onClick={() => {
+        setGenerating(true); setError(null);
+        void apiPost<RoomQrCodeDto[]>(`/api/v1/admin/rooms/${roomSlug}/qr/seats`, {}).then(setItems).catch(() => setError("No pudimos generar los QR de los asientos. Reintentá en un momento.")).finally(() => setGenerating(false));
+      }} className="qr-print-hide min-h-11 self-start rounded-full border border-app px-4 text-sm font-semibold text-main disabled:opacity-50">{generating ? "Generando…" : "Generar QR de todos los asientos"}</button>
+      <div className="qr-print-hide flex flex-wrap gap-2 border-t border-app pt-4">
         <input
           value={tableCode}
           aria-label="Código de mesa"
           onChange={(e) => setTableCode(e.target.value)}
           placeholder="Código de mesa (opcional, ej. M01)"
-          className="flex-1 rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
+          className="min-w-0 flex-1 rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm"
         />
+        <input value={seatCode} onChange={e => setSeatCode(e.target.value)} aria-label="Código de asiento" placeholder="Asiento (ej. M01-S01)" className="min-w-0 flex-1 rounded-lg border border-app bg-surface px-3 py-2 text-base text-main sm:text-sm" />
         <button type="button" onClick={() => void create()} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">
           Generar QR
         </button>
@@ -98,7 +107,7 @@ export function QrCodes({ roomSlug }: { roomSlug: string }) {
           {items.map((item) => (
             <div
               key={item.id}
-              className="qr-print-card flex min-w-0 flex-col items-center gap-2 border-t border-app pt-4"
+              className={`qr-print-card flex min-w-0 flex-col items-center gap-2 border-t border-app pt-4 ${item.active ? "" : "print:hidden"}`}
             >
               {svgs[item.id] ? (
                 // Trusted output of the `qrcode` library, not user input.
@@ -107,7 +116,8 @@ export function QrCodes({ roomSlug }: { roomSlug: string }) {
                 <div className="aspect-square w-full max-w-[200px] rounded-md animate-pulse bg-[var(--surface-2)]" />
               )}
               <p className="text-lg font-semibold text-main">{item.tableCode ? friendlyTableName(item.tableCode) : "Sala completa"}</p>
-              {item.tableCode ? <p className="font-mono text-[11px] text-muted">{item.tableCode}</p> : null}
+              {item.seatCode ? <p className="text-base font-bold text-main">Asiento {Number(item.seatCode.split("-S")[1])}</p> : null}
+              {item.tableCode ? <p className="font-mono text-[11px] text-muted">{item.seatCode ?? item.tableCode}</p> : null}
               <p className="w-full break-all text-center font-mono text-[11px] text-muted">{qrUrl(item.token)}</p>
               <p
                 className="qr-print-hide text-xs font-semibold"

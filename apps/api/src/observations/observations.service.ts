@@ -99,7 +99,7 @@ export class ObservationService {
     // The async lookups first, then the database reads right before the checks that use them.
     const [limits, qrVerified, reputationWeight] = await Promise.all([
       input.limits ?? this.abusePolicy.observationLimits(input.userId),
-      this.qr.isValidForTable(input.qrToken, input.roomId, seat.tableId),
+      this.qr.isValidForTable(input.qrToken, input.roomId, seat.tableId, seat.id),
       this.reputation.observationWeight(input.userId),
     ]);
     // The caller's own active check-in and whoever holds this seat, in a single query.

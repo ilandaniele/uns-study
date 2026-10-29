@@ -291,6 +291,7 @@ export const simpleCheckInRequestSchema = z.object({
   roomId: z.string().uuid(),
   location: locationInputSchema,
   confirmedSeatId: z.string().uuid().optional(),
+  qrToken: z.string().min(1).max(128).optional(),
   showIdentity: z.boolean().default(false),
   turnstileToken: z.string().max(4096).optional(),
 }).strict();
@@ -398,7 +399,11 @@ export const presenceValidateSchema = z.object({
 
 export const createQrCodeSchema = z.object({
   tableCode: z.string().max(50).optional(),
+  seatCode: z.string().min(1).max(50).optional(),
 });
+
+export const studyPresenceRequestSchema = z.object({ checkInId: z.string().uuid(), location: locationInputSchema }).strict();
+export * from "./attendance";
 
 // ---- API error shape ----
 

@@ -1,3 +1,4 @@
+import { studyDeviceId } from "../presence/study-presence.js";
 import { Hono } from "hono";
 import { roomModeSchema, seatCalibrationSchema, simpleCheckInRequestSchema } from "@sala/contracts";
 import { ApiErrors } from "../common/api-error.js";
@@ -26,7 +27,7 @@ simpleRoomRouter.post("/checkins/simple", requireAuth(), zBody(simpleCheckInRequ
   await services.antiAbuse.enforceRateLimit({ key: `checkin:${userId}`, limit: 5, windowSeconds: 60,
     event: { userId, eventType: "RATE_LIMITED", ip, metadata: { bucket: "checkin" } } });
   await services.antiAbuse.assertChallengePassed(userId, input.turnstileToken, ip);
-  const { result, write } = await services.simpleRoom.attempt(userId, input, presence);
+  const { result, write } = await services.simpleRoom.attempt(userId, input, presence, studyDeviceId(c.req.header("x-study-device")));
   if (write) {
     await services.realtime.broadcastSeatChanges(input.roomId, write.changes);
     if (write.previousRoom) await services.realtime.broadcastSeatChanges(write.previousRoom.roomId, write.previousRoom.changes);

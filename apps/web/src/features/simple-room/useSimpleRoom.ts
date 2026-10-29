@@ -9,8 +9,10 @@ import { hasCheckedInBefore, markCheckedIn } from "@/lib/engagement";
 import { showPreCheckInAd } from "@/features/ads/ads";
 import { refreshAchievements } from "@/features/badges/achievement-store";
 import { simpleActionLocation } from "./simple-location";
+import { useQrContext } from "@/lib/qr-context";
 
 export function useSimpleRoom(map: RoomMapDto | null, refetch: () => void) {
+  const qr = useQrContext();
   const [pending, setPending] = useState(false);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,16 +30,22 @@ export function useSimpleRoom(map: RoomMapDto | null, refetch: () => void) {
     try {
       if (!navigator.onLine) throw new TypeError("offline");
       if (!confirmedSeatId && !turnstileToken && hasCheckedInBefore()) showPreCheckInAd();
-      const location = await simpleActionLocation(attemptLocation.current, Boolean(confirmedSeatId));
+      const location = await simpleActionLocation(attemptLocation.current, Boolean(confirmedSeatId || (qr.qrToken && qr.seatCode)));
       if (!alive.current) return false;
       attemptLocation.current = location;
       setLocating(false);
       const result = await apiPost<SimpleCheckInResult>("/api/v1/checkins/simple", { roomId: map.room.id, location, showIdentity: true,
+        ...(qr.qrToken ? { qrToken: qr.qrToken } : {}),
         ...(confirmedSeatId ? { confirmedSeatId } : {}), ...(turnstileToken ? { turnstileToken } : {}) });
       if (!alive.current) return false;
       setChallenge(false);
       if (result.outcome === "CONFIRM") { setConfirmation(result); refetch(); return true; }
       mutateMe(current => ({ ...current, activeCheckIn: result.checkIn }));
+      if (qr.qrToken) {
+        const url = new URL(window.location.href);
+        for (const key of ["source", "qr", "seat", "table"]) url.searchParams.delete(key);
+        window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+      }
       attemptLocation.current = null;
       setConfirmation(null); markCheckedIn(); refreshAchievements();
       void refreshMe().catch(() => undefined); refetch();

@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { schema, type Db, type Tx } from "@sala/database";
 import { DEFAULT_TIMEZONE, localDateOf, nextLocalMidnight } from "../common/dates.js";
+import { monitoredStudyParts } from "../presence/study-presence.js";
 
 // A renewed ("Sigo acá") check-in stays one row for its whole stay, so the per-check-in cap is the
 // daily ranking cap (720 in rankings.service.ts), which is what actually bounds abuse.
@@ -65,7 +66,8 @@ export class StudySessionService {
     const startedAt = new Date(checkIn.startedAt);
     const expiresAt = new Date(checkIn.expiresAt);
     const effectiveEnd = endedAt.getTime() < expiresAt.getTime() ? endedAt : expiresAt;
-    const verifiedMinutes = verifiedMinutesFor(startedAt, expiresAt, endedAt);
+    const parts = monitoredStudyParts(tx, [checkIn], endedAt).get(checkIn.id);
+    const verifiedMinutes = parts ? parts.reduce((sum, part) => sum + part.minutes, 0) : verifiedMinutesFor(startedAt, expiresAt, endedAt);
     if (verifiedMinutes === 0) return;
 
     const room = tx.select({ timezone: schema.rooms.timezone }).from(schema.rooms).where(eq(schema.rooms.id, checkIn.roomId)).limit(1).get();

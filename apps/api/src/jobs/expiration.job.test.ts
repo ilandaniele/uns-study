@@ -85,6 +85,9 @@ describe("ExpirationJob", () => {
       .set({ startedAt: new Date(Date.now() - 45 * 60_000), expiresAt: new Date(Date.now() - 1000) })
       .where(eq(schema.checkIns.id, checkIn.id));
 
+    // Earlier verified presence belongs to the backdated synthetic stay.
+    await db.update(schema.checkInMonitors).set({ countingFrom: new Date(Date.now() - 45 * 60_000) }).where(eq(schema.checkInMonitors.checkInId, checkIn.id));
+
     await job.runSweep(new Date());
     // A second sweep must not double-record the same check-in (idempotent via check_in_id).
     await job.runSweep(new Date());

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { RoomSkeleton } from "@/features/room/RoomSkeleton";
-import { RoomPageClient } from "./RoomPageClient";
+import { RoomExperience } from "@/features/simple-room/RoomExperience";
 
 export const metadata: Metadata = {
   title: "Sala",
@@ -19,7 +19,7 @@ export default async function RoomPage(props: { params: Promise<{ slug: string }
   const { slug } = await props.params;
   return (
     <Suspense fallback={<RoomSkeleton />}>
-      <RoomPageClient slug={slug} />
+      <RoomExperience slug={slug} about={null} />
     </Suspense>
   );
 }

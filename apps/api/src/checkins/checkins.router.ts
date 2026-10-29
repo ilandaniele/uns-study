@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { CHECKIN_MINUTES, checkInPhotoRequestSchema, checkInRequestSchema, extendRequestSchema } from "@sala/contracts";
+import { CHECKIN_MINUTES, checkInPhotoRequestSchema, checkInRequestSchema, extendRequestSchema, studyPresenceRequestSchema } from "@sala/contracts";
 import { ApiErrors } from "../common/api-error.js";
 import { allInOrder } from "../common/background.js";
 import { currentUser, type AppEnv } from "../http/context.js";
@@ -8,11 +8,27 @@ import { reply } from "../http/reply.js";
 import { uuidParam, zBody } from "../http/validate.js";
 import { hashIp } from "../security/security-event.service.js";
 import type { Services } from "../services.js";
+import { studyDeviceId } from "../presence/study-presence.js";
 
 /** Automatic "Sigo acá" is only accepted with this much time (or less) left on the check-in. */
 const AUTO_EXTEND_WINDOW_MS = 15 * 60_000;
 
 export const checkinsRouter = new Hono<AppEnv>();
+
+checkinsRouter.get("/checkins/current/presence", requireAuth(), c => {
+  c.header("Cache-Control", "private, no-store");
+  return c.json(c.var.services.checkIns.studyPresence(currentUser(c).id, studyDeviceId(c.req.header("x-study-device"))));
+});
+checkinsRouter.post("/checkins/current/presence", requireAuth(), zBody(studyPresenceRequestSchema), async c => {
+  c.header("Cache-Control", "private, no-store");
+  const userId = currentUser(c).id, { services } = c.var;
+  if (!(await services.rateLimit.check(`study-presence:${userId}`, 12, 60)).allowed) throw ApiErrors.rateLimited();
+  const input = c.req.valid("json");
+  const result = await services.checkIns.samplePresence(userId, input.checkInId, input.location, studyDeviceId(c.req.header("x-study-device")));
+  if (result.ended) await services.realtime.broadcastSeatChanges(result.ended.roomId, result.ended.changes);
+  if (result.presence.trackingHere !== false && (result.presence.state === "AWAY" || result.presence.state === "RELEASED")) services.focus.pauseForAbsence(userId);
+  return reply(c, result.presence);
+});
 
 /** Only Pro stays longer than the default block; everyone else may pick a shorter stay, and longer asks are forced to CHECKIN_MINUTES. */
 async function allowedDuration(services: Services, userId: string, requested: number): Promise<number> {
@@ -39,6 +55,7 @@ checkinsRouter.post("/checkins", requireAuth(), zBody(checkInRequestSchema), asy
 
   const { checkIn, changes, previousRoom, adminPresent } = await services.checkIns.checkIn({
     userId: user.id,
+    studyDeviceId: studyDeviceId(c.req.header("x-study-device")),
     roomId: body.roomId,
     seatId: body.seatId,
     location: body.location,

@@ -1,6 +1,7 @@
 export interface QrResolveDto {
   roomSlug: string;
   tableCode: string | null;
+  seatCode?: string;
 }
 
 /** One closed operational day (Buenos Aires calendar date), snapshotted by the daily reset job. */

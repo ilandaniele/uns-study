@@ -18,6 +18,7 @@ import { NotificationService } from "./notifications/notification.service.js";
 import { PushService } from "./notifications/push.service.js";
 import { RecordingHub } from "./realtime/realtime-hub.js";
 import { ManualScheduler } from "./platform/scheduler.js";
+import { sampleStudyPresence } from "./presence/study-presence.js";
 
 /** The migrated and seeded template that src/test-global-setup.ts serializes once per run. */
 let template: Buffer | undefined;
@@ -56,6 +57,21 @@ export async function getRoom(db: Db) {
 
 export async function getSeats(db: Db) {
   return db.select().from(schema.seats).orderBy(schema.seats.code);
+}
+
+/** Synthetic evidence for tests explicitly modeling uninterrupted physical presence. */
+export function keepStudyingUntil(db: Db, until: Date): void {
+  const active = db.select().from(schema.checkIns).all().filter(c => c.status === "ACTIVE");
+  for (const stay of active) {
+    const monitor = db.select().from(schema.checkInMonitors).all().find(m => m.checkInId === stay.id);
+    const room = db.select().from(schema.rooms).all().find(r => r.id === stay.roomId);
+    if (!monitor || !room) continue;
+    const end = Math.min(+until, +stay.expiresAt);
+    for (let ms = +monitor.lastSampleAt + 3 * 60_000; ms < end; ms += 3 * 60_000) {
+      const now = new Date(ms);
+      db.transaction(tx => sampleStudyPresence(tx, stay.id, room, { latitude: room.latitude, longitude: room.longitude, accuracy: 5, capturedAt: now.toISOString(), sentAt: now.toISOString() }, now));
+    }
+  }
 }
 
 /** A `NotificationService` wired against a real db but with no VAPID keys configured, so its push

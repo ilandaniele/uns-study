@@ -197,4 +197,42 @@ describe("simple room mode HTTP / canonical SQLite", () => {
     expect(response.status).toBe(403); expect(await response.json()).toMatchObject({ error: { code: "TURNSTILE_REQUIRED" } });
     expect(ctx.db.select().from(schema.checkIns).all()).toHaveLength(0);
   });
+  it("seat QR identifies the exact chair without calibration, retains account mode and rejects a forged seat", async () => {
+    const qr = await ctx.services.qr.create(map.room.id, null, target().code);
+    const resolved = await request(`/qr/${qr.token}`);
+    expect(await resolved.json()).toMatchObject({ seatCode: target().code });
+    const response = await request("/checkins/simple", "POST", { ...input(), qrToken: qr.token });
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({ outcome: "CHECKED_IN", checkIn: { seatId: target().id } });
+    expect(await (await request("/me/room-mode")).json()).toEqual({ mode: "COMMON" });
+    await request("/checkins/current", "DELETE");
+    const other = map.seats.find(s => s.id !== target().id)!;
+    expect((await request("/checkins/simple", "POST", { ...input(other.id), qrToken: qr.token })).status).toBe(404);
+  });
+  it("revoked or inactive-seat QR cannot create a presence and a copied QR still requires real geofence presence", async () => {
+    const qr = await ctx.services.qr.create(map.room.id, null, target().code);
+    expect((await request("/checkins/simple", "POST", { ...input(), qrToken: qr.token, location: { ...fix(), latitude: 0 } })).status).toBe(403);
+    await ctx.services.qr.deactivate(map.room.id, qr.id);
+    expect((await request("/checkins/simple", "POST", { ...input(), qrToken: qr.token })).status).toBe(404);
+    const next = await ctx.services.qr.create(map.room.id, null, target().code);
+    ctx.db.update(schema.seats).set({ active: false }).where(eq(schema.seats.id, target().id)).run();
+    const inactive = await request("/checkins/simple", "POST", { ...input(), qrToken: next.token });
+    expect([200, 409]).toContain(inactive.status);
+    if (inactive.status === 200) expect(await inactive.json()).toMatchObject({ outcome: "CONFIRM" });
+    expect(ctx.db.select().from(schema.checkIns).all()).toHaveLength(0);
+  });
+  it("only administrators can generate a complete reusable set of seat QR codes", async () => {
+    const path = "/admin/rooms/principal/qr/seats";
+    expect((await request(path, "POST", {}, userA)).status).toBe(403);
+    expect((await request(path, "POST", {}, staff)).status).toBe(201);
+    const first = await ctx.services.qr.list(map.room.id);
+    expect(first).toHaveLength(108); expect(new Set(first.map(row => row.seatCode)).size).toBe(108);
+    await request(path, "POST", {}, staff);
+    expect(await ctx.services.qr.list(map.room.id)).toEqual(first);
+    const own = first.find(row => row.seatCode === target().code)!;
+    const tableId = map.seats.find(s => s.id === target().id)!.tableId;
+    expect(await ctx.services.qr.isValidForTable(own.token, map.room.id, tableId, target().id)).toBe(true);
+    expect(await ctx.services.qr.isValidForTable(own.token, map.room.id, tableId, map.seats.find(s => s.id !== target().id)!.id)).toBe(false);
+  });
+
 });

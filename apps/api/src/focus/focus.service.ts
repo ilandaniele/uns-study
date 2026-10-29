@@ -20,6 +20,11 @@ export class FocusService {
     return this.change(userId, input);
   }
 
+  pauseForAbsence(userId: string): void {
+    const row = this.db.select().from(schema.userFocus).where(eq(schema.userFocus.userId, userId)).get();
+    if (row && (JSON.parse(row.state) as FocusSnapshot).timer.status === "running") this.change(userId, { version: row.version, command: { action: "pause" } });
+  }
+
   private change(userId: string, input?: FocusCommandRequest): FocusSyncDto {
     const now = this.clock.now().getTime();
     let changed = false;

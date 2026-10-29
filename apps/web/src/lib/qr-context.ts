@@ -8,6 +8,7 @@ export interface QrContext {
   highlightTableCode: string | null;
   /** QR token to attach to check-in/observation requests, from `?qr=` (only when `source=qr`). */
   qrToken: string | null;
+  seatCode?: string | null;
 }
 
 /**
@@ -23,6 +24,7 @@ export function parseQrContext(searchParams: Pick<URLSearchParams, "get">): QrCo
   return {
     highlightTableCode: table && table.trim().length > 0 ? table : null,
     qrToken: source === "qr" && qr && qr.trim().length > 0 ? qr : null,
+    ...(source === "qr" && qr && searchParams.get("seat") ? { seatCode: searchParams.get("seat") } : {}),
   };
 }
 
