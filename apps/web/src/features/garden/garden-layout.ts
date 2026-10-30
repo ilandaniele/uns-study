@@ -14,7 +14,7 @@ export function createGardenLayout(plotCount = GARDEN_SIZE, seed = 1) {
   const rows = count / 5;
   const variant = Math.abs(Math.floor(seed)) % 6;
   const dx = Math.min(46, 440 / (rows + 4)), dy = dx * .52;
-  const origin = { x: 300 + (rows-5)*dx/2, y: 112 };
+  const origin = { x: 300 + (rows-5)*dx/2, y: 120 };
   const project = (col: number,row: number): GardenPoint => ({ x: round(origin.x+(col-row)*dx), y: round(origin.y+(col+row)*dy) });
   const horizontal = variant === 2;
   const acrossRows = variant === 1 || variant === 4;

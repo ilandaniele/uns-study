@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextNavigationEntry, type NavigationEntry } from "../nav-history";
+import { nextNavigationEntry, nextNavigationState, type NavigationEntry } from "../nav-history";
 
 const visit = (path: string, previous: NavigationEntry | null = null) => nextNavigationEntry(path, previous, null, null);
 
@@ -20,6 +20,17 @@ describe("app Back history", () => {
     expect(profile.depth).toBe(0);
     expect(profile.previousPath).toBeNull();
     expect(nextNavigationEntry("/personas", profile, null, "/personas")).toEqual(visit("/personas"));
+  });
+  it("keeps a direct-entry fallback through late hydration of the source page", () => {
+    const pending = { from: "/u/test/jardin", to: "/u/test" };
+    const lateGarden = nextNavigationState(pending.from, null, null, pending);
+    const repeatedGarden = nextNavigationState(pending.from, lateGarden.entry, lateGarden.entry, lateGarden.replacement);
+    const profile = nextNavigationState(pending.to, repeatedGarden.entry, repeatedGarden.entry, repeatedGarden.replacement);
+    expect(profile.entry).toEqual(visit("/u/test"));
+    expect(profile.replacement).toBeNull();
+    const people = nextNavigationState("/personas", profile.entry, null, { from: "/u/test", to: "/personas" });
+    expect(people.entry).toEqual(visit("/personas"));
+    expect(people.replacement).toBeNull();
   });
   it("does not count repeated effects or copied metadata from another pathname as a restored entry", () => {
     const source = visit("/personas"), profile = visit("/u/test", source);

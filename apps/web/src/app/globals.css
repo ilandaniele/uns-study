@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-.forest-diorama { background: radial-gradient(ellipse at 50% 30%, var(--garden-tile), var(--garden-bg) 72%); }
+.forest-diorama { background: radial-gradient(ellipse at 50% 42%, var(--garden-scene-glow), transparent 69%), var(--garden-bg); }
 .garden-plant-motion {
   transform-box: view-box;
   transform-origin: 128px 270px;
@@ -20,11 +20,11 @@
   0%, 100% { transform: translateY(0) rotate(-.45deg); }
   50% { transform: translateY(-1px) rotate(.45deg); }
 }
-@keyframes garden-current { to { stroke-dashoffset: -48; } }
+@keyframes garden-current { 0%, 100% { opacity: .35; } 50% { opacity: .75; } }
 @media (prefers-reduced-motion: reduce) {
   .garden-plant-motion, .garden-stream-current { animation: none !important; transform: none !important; }
 }
-.forest-parcel:hover > path, .forest-parcel:focus-visible > path { stroke: var(--garden-accent); stroke-width: 3px; }
+.forest-parcel:hover > path, .forest-parcel:focus-visible > path { stroke: var(--garden-plot-ink); stroke-width: 3px; fill: var(--garden-plot-selected); }
 
 /* Reserve the test-environment notice before fitting the room into a phone viewport. */
 body:has(> .room-staging-banner) { --room-banner-space: 48px; }
@@ -147,6 +147,12 @@ body:has(> .room-staging-banner) { --room-banner-space: 48px; }
   --shadow-tint: 19 24 22;
   --garden-accent: #367952;
   --garden-bg: #edf3e7;
+  --garden-scene-glow: #d7e6c4;
+  --garden-grass-light: #c5df83;
+  --garden-grass: #94bd5d;
+  --garden-grass-edge: #769f51;
+  --garden-plot-ink: #294f37;
+  --garden-plot-selected: #dceeb4;
   --garden-soil: #d4e2c4;
   --garden-tile: #e8efd9;
   --garden-tile-border: #c3d3ad;
@@ -227,6 +233,12 @@ body:has(> .room-staging-banner) { --room-banner-space: 48px; }
   --shadow-tint: 0 0 0;
   --garden-accent: #91c4a0;
   --garden-bg: #1c2b21;
+  --garden-scene-glow: #3d5739;
+  --garden-grass-light: #a8ca73;
+  --garden-grass: #7da554;
+  --garden-grass-edge: #618847;
+  --garden-plot-ink: #223f2b;
+  --garden-plot-selected: #c8e7a4;
   --garden-soil: #273d2c;
   --garden-tile: #344a32;
   --garden-tile-border: #4a6141;

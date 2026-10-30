@@ -1,35 +1,77 @@
-import { useId } from "react";
+﻿import { useId } from "react";
 import { polygonPoints, type GardenLayout } from "./garden-layout";
-/** Original layered island drawing. Decorations never intercept planting or keyboard input. */
-export function GardenLandscape({layout}: {layout: GardenLayout}) {
-  const id=useId().replace(/[^a-zA-Z0-9_-]/g,"");
-  const bottom=Math.max(...layout.plots.map(p=>p.y+p.halfHeight));
+
+/** Small landscape details are decoration, never earned plants or extra plots. */
+export function GardenLandscape({ layout }: { layout: GardenLayout }) {
+  const id = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const bottom = Math.max(...layout.plots.map(p => p.y + p.halfHeight));
   return <g aria-hidden="true" pointerEvents="none">
     <defs>
-      <linearGradient id={`grass-${id}`} x1="0" y1="0" x2=".7" y2="1"><stop stopColor="var(--garden-tile)"/><stop offset="1" stopColor="var(--garden-soil)"/></linearGradient>
-      <linearGradient id={`water-${id}`} x1="0" x2="1"><stop stopColor="var(--garden-water-deep)"/><stop offset=".45" stopColor="var(--garden-water)"/><stop offset="1" stopColor="var(--garden-water-deep)"/></linearGradient>
-      <pattern id={`grass-grain-${id}`} width="19" height="15" patternUnits="userSpaceOnUse"><path d="m3 8 1-3 2 4m8-2 2-2m-7 8 2-2" stroke="var(--garden-empty)" strokeWidth=".7" opacity=".14" fill="none"/></pattern>
+      <linearGradient id={`grass-${id}`} x1="0" y1="0" x2=".8" y2="1"><stop stopColor="var(--garden-grass-light)" /><stop offset="1" stopColor="var(--garden-grass)" /></linearGradient>
+      <linearGradient id={`earth-${id}`} x2="0" y2="1"><stop stopColor="#a48148" /><stop offset="1" stopColor="#655033" /></linearGradient>
+      <linearGradient id={`water-${id}`} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="600" y2="430"><stop stopColor="#89d2cc" /><stop offset=".5" stopColor="#51adb8" /><stop offset="1" stopColor="#31899b" /></linearGradient>
+      <pattern id={`ripples-${id}`} width="32" height="19" patternUnits="userSpaceOnUse"><path d="M2 5q4 2 9 0m8 9q3 1 6-1" fill="none" stroke="#d5f5e9" strokeWidth="1.1" strokeLinecap="round" /></pattern>
+      <radialGradient id={`shadow-${id}`}><stop stopColor="#102418" stopOpacity=".3" /><stop offset="1" stopColor="#102418" stopOpacity="0" /></radialGradient>
+      {layout.banks.map((bank, i) => <clipPath key={i} id={`bank-${id}-${i}`}><polygon points={polygonPoints(bank)} /></clipPath>)}
     </defs>
-    <ellipse cx="300" cy={bottom+32} rx="222" ry="16" fill="#09170d" opacity=".12"/>
-    {layout.banks.map((bank,i)=><g key={i}>
-      <polygon points={polygonPoints(bank.map(p=>({...p,y:p.y+16})))} fill={i ? "#94754f" : "#ae9061"}/>
-      <polygon points={polygonPoints(bank)} fill={`url(#grass-${id})`} stroke="var(--garden-tile-border)" strokeWidth="1.3" strokeLinejoin="round"/>
-      <polygon points={polygonPoints(bank)} fill={`url(#grass-grain-${id})`}/>
-      <polyline points={polygonPoints(bank.slice(0,3))} fill="none" stroke="var(--garden-accent)" strokeOpacity=".23" strokeWidth="2"/>
-    </g>)}
-    <path d={layout.riverPath} fill="none" stroke="var(--garden-water-deep)" strokeWidth="22" strokeLinecap="round"/>
-    <path d={layout.riverPath} fill="none" stroke={`url(#water-${id})`} strokeWidth="16" strokeLinecap="round"/>
-    <path className="garden-stream-current" d={layout.riverPath} fill="none" stroke="var(--garden-water-light)" strokeWidth="1.4" strokeDasharray="8 20" opacity=".65"/>
-    <g fill="var(--garden-empty)" opacity=".4"><path d={`M82 ${bottom-24}l3-7 3 8 4-5-1 9m410-170 2-8 4 8 4-3-2 8`}/></g>
-    <g fill="#8d9981" opacity=".55"><ellipse cx="91" cy={bottom+4} rx="5" ry="2.5"/><ellipse cx="102" cy={bottom+5} rx="3" ry="1.7"/></g>
+    <ellipse cx="300" cy={bottom + 30} rx="240" ry="27" fill={`url(#shadow-${id})`} />
+    {layout.banks.map((bank, i) => {
+      const middleY = bank.reduce((sum, p) => sum + p.y, 0) / bank.length;
+      return <g key={i}>
+        <polygon points={polygonPoints(bank.map(p => ({ ...p, y: p.y + 22 })))} fill={`url(#earth-${id})`} />
+        {bank.map((a, edge) => {
+          const b = bank[(edge + 1) % bank.length]!;
+          if ((a.y + b.y) / 2 < middleY) return null;
+          const steps = Math.max(2, Math.floor(Math.hypot(b.x - a.x, b.y - a.y) / 17));
+          return <g key={edge}>
+            <polygon points={`${a.x},${a.y} ${b.x},${b.y} ${b.x},${b.y + 22} ${a.x},${a.y + 22}`} fill={b.x > a.x ? "#927347" : "#78603d"} />
+            {Array.from({ length: steps }, (_, n) => {
+              const t = (n + .5) / steps, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t;
+              return <g key={n}>
+                <path d={`M${x - 3} ${y + 3}q-2 7 1 11m2-8 3 4`} fill="none" stroke="#604d30" strokeWidth="1" opacity=".6" />
+                <ellipse cx={x + 4} cy={y + 14 + n % 3} rx={3 + n % 3} ry="2.5" fill={n % 2 ? "#b19b69" : "#6c7146"} />
+                <ellipse cx={x} cy={y + 2} rx="7" ry="4" fill="var(--garden-grass)" />
+              </g>;
+            })}
+          </g>;
+        })}
+        <polygon points={polygonPoints(bank)} fill={`url(#grass-${id})`} stroke="var(--garden-grass-edge)" strokeWidth="1.5" strokeLinejoin="round" />
+        <g clipPath={`url(#bank-${id}-${i})`}>
+          {layout.plots.filter(p => p.bank === i).map(p => <g key={p.plot}>
+            <path d={`M${p.x} ${p.y - p.halfHeight}l${p.halfWidth} ${p.halfHeight}-${p.halfWidth} ${p.halfHeight}-${p.halfWidth}-${p.halfHeight}Z`} fill={p.plot % 3 ? "#effab0" : "#42783d"} opacity={p.plot % 3 ? ".08" : ".06"} />
+            <path d={`m${p.x - 19} ${p.y + 3} 2-4 1 4 3-2m16-8 2-3 1 3m-9 17 1-3 2 3`} stroke="var(--garden-grass-edge)" strokeWidth="1" opacity=".45" fill="none" />
+          </g>)}
+        </g>
+        {bank.map((a, edge) => {
+          const b = bank[(edge + 1) % bank.length]!;
+          return <g key={edge}>
+            {[.19, .51, .81].map((t, n) => {
+              const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t;
+              return <g key={t} transform={`translate(${x} ${y - 2})`}>
+                <path d="M0 1q-7-4-6-10Q0-6 0 1q1-12 6-15Q9-7 0 1q7-8 10-6L0 1" fill={n % 2 ? "#548549" : "#729d4c"} />
+                {n === (i + edge) % 3 ? <><path d="M-3 0v-9m6 9v-6" stroke="#668844" /><circle cx="-3" cy="-10" r="2.3" fill="#f7e6a0" /><circle cx="3" cy="-7" r="2" fill="#f4efcf" /><circle cx="-3" cy="-10" r=".8" fill="#d6aa47" /></> : null}
+              </g>;
+            })}
+          </g>;
+        })}
+      </g>;
+    })}
+    <path d={layout.riverPath} fill="none" stroke="var(--garden-grass-edge)" strokeWidth="29" strokeLinecap="round" />
+    <path d={layout.riverPath} fill="none" stroke="#397f83" strokeWidth="23" strokeLinecap="round" />
+    <path d={layout.riverPath} fill="none" stroke={`url(#water-${id})`} strokeWidth="18" strokeLinecap="round" />
+    <path className="garden-stream-current" d={layout.riverPath} fill="none" stroke={`url(#ripples-${id})`} strokeWidth="17" strokeLinecap="round" opacity=".65" />
   </g>;
 }
-export function GardenBridge({layout}: {layout: GardenLayout}) {
-  const {x,y,angle}=layout.bridge;
+
+export function GardenBridge({ layout }: { layout: GardenLayout }) {
+  const { x, y, angle } = layout.bridge;
   return <g aria-hidden="true" pointerEvents="none" transform={`translate(${x} ${y}) rotate(${angle})`}>
-    <rect x="-20" y="-6" width="40" height="15" rx="2" fill="#694d35"/>
-    <rect x="-20" y="-8" width="40" height="13" rx="2" fill="#c4a572" stroke="#856343"/>
-    {[-14,-7,0,7,14].map(p=><path key={p} d={`M${p} -7v11`} stroke="#8e6e47" strokeWidth=".9"/>)}
-    <path d="M-20-8H20M-20 5H20" stroke="#e0c491" strokeWidth="1.4"/>
+    <rect x="-21" y="-5" width="42" height="18" rx="2" fill="#526d4c" opacity=".25" />
+    <rect x="-23" y="-8" width="46" height="15" rx="2" fill="#806039" />
+    <path d="M-23-9Q0-13 23-9V3Q0-1-23 3Z" fill="#cead74" stroke="#9d7a47" />
+    {[-17, -10, -3, 4, 11, 18].map(p => <path key={p} d={`M${p} -9v11`} stroke="#9d794b" strokeWidth="1" />)}
+    <path d="M-23-10Q0-14 23-10M-23 3Q0-1 23 3" fill="none" stroke="#f0d89c" strokeWidth="1.6" />
+    {[-21, 21].map(p => <g key={p}><path d={`M${p} -8v-7m0 17v-7`} stroke="#795b37" strokeWidth="2.5" strokeLinecap="round" /><circle cx={p} cy="-15" r="1.7" fill="#e0c38b" /></g>)}
+    <path d="M-21-15Q0-19 21-15" fill="none" stroke="#aa864f" strokeWidth="1.7" />
   </g>;
 }

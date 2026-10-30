@@ -80,6 +80,14 @@ estadísticas y herramientas de ventana conservan sus gates Pro.
 
 ## Bosque en perspectiva y visitas
 
+El paisaje usa césped luminoso, pequeños detalles decorativos de pastizal y flores,
+un corte de tierra con piedras y raíces y un arroyo con reflejos. Se conserva la
+misma proyección e identidad de parcelas para quien planta y quien visita. Las
+decoraciones no son ejemplares ganados ni se incluyen en las estadísticas.
+Las cruces para plantar aparecen sólo en el jardín propio; las visitas muestran
+el paisaje limpio, la identidad pública y los conteos reales de plantas, especies
+y ejemplares adultos. No muestran saldo ni tiempo privado de estudio.
+
 El jardin usa una isla isometrica con ilustraciones originales de las mismas
 60 especies nativas. Un arroyo separa las dos orillas del jardin y las acuaticas
 tienen una superficie de agua. Las 25 parcelas mantienen su numero, saldo, crecimiento y

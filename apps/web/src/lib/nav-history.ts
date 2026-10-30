@@ -6,7 +6,8 @@ import { useEffect } from "react";
 export interface NavigationEntry { path: string; depth: number; previousPath: string | null }
 const HISTORY_KEY = "salaNavigation";
 let currentEntry: NavigationEntry | null = null;
-let replacementPath: string | null = null;
+interface NavigationReplacement { from: string; to: string }
+let replacement: NavigationReplacement | null = null;
 
 /** Restored entries retain their original depth; a fallback replaces the landing page. */
 export function nextNavigationEntry(path: string, previous: NavigationEntry | null, restored: NavigationEntry | null, replacement: string | null): NavigationEntry {
@@ -14,6 +15,14 @@ export function nextNavigationEntry(path: string, previous: NavigationEntry | nu
   if (restored?.path === path) return restored;
   if (previous?.path === path) return previous;
   return { path, depth: previous ? previous.depth + 1 : 0, previousPath: previous?.path ?? null };
+}
+
+/** A late effect for the source page must not consume the pending destination. */
+export function nextNavigationState(path: string, previous: NavigationEntry | null, restored: NavigationEntry | null, pending: NavigationReplacement | null) {
+  return {
+    entry: nextNavigationEntry(path, previous, restored, pending?.to ?? null),
+    replacement: pending?.from === path ? pending : null,
+  };
 }
 
 function storedEntry(): NavigationEntry | null {
@@ -31,15 +40,16 @@ export function hasInAppHistory(parentHref?: string): boolean {
 
 /** The next fallback must not manufacture another entry or an apparent Back destination. */
 export function markBackFallback(href: string): void {
-  replacementPath = new URL(href, window.location.href).pathname;
+  replacement = { from: window.location.pathname, to: new URL(href, window.location.href).pathname };
 }
 
 export function useTrackNavigation(): void {
   const pathname = usePathname();
   useEffect(() => {
-    if (!pathname) return;
-    currentEntry = nextNavigationEntry(pathname, currentEntry, storedEntry(), replacementPath);
-    replacementPath = null;
+    if (!pathname || pathname !== window.location.pathname) return;
+    const next = nextNavigationState(pathname, currentEntry, storedEntry(), replacement);
+    currentEntry = next.entry;
+    replacement = next.replacement;
     // Keep Next's own history fields intact. This metadata contains paths, not account data.
     window.history.replaceState({ ...window.history.state, [HISTORY_KEY]: currentEntry }, "");
   }, [pathname]);
