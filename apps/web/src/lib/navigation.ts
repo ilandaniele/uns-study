@@ -23,6 +23,9 @@ export function isDesktopNavActive(href: string, pathname: string): boolean {
 }
 
 export function isNavActive(href: string, pathname: string): boolean {
+  // A visited garden belongs to Jardín; a public profile belongs to Personas.
+  if (/^\/u\/[^/]+\/jardin(?:\/|$)/.test(pathname)) pathname = "/jardin";
+  else if (/^\/u\/[^/]+(?:\/|$)/.test(pathname)) pathname = "/personas";
   if (href === "/") return pathname === "/" || pathname.startsWith("/sala/");
   if (href === "/mas")
     return [

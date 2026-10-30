@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { PublicProfileDto, SharedGardenDto } from "@sala/contracts";
 import { apiFetch, ApiRequestError } from "@/lib/api";
 import { GardenScene } from "./GardenScene";
+import { BackButton } from "@/components/BackButton";
 
 export function SharedGardenView({ userId }: { userId: string }) {
   const [data, setData] = useState<{ profile: PublicProfileDto; garden: SharedGardenDto } | null>(null);
@@ -21,7 +22,7 @@ export function SharedGardenView({ userId }: { userId: string }) {
     return () => { cancelled = true; };
   }, [userId]);
   return <main className="mx-auto max-w-3xl px-4 pb-28 pt-6">
-    <Link href={`/u/${encodeURIComponent(userId)}`} className="inline-flex min-h-11 items-center text-sm text-primary">← Volver al perfil</Link>
+    <BackButton fallbackHref={`/u/${encodeURIComponent(userId)}`} label="Volver al perfil" showLabel matchFallback />
     <h1 className="mt-4 text-3xl font-bold">{data ? `El bosque de ${data.profile.displayName}` : "Un rincón nativo"}</h1>
     {error ? <div className="mt-6 rounded-2xl border border-app bg-surface p-6"><p role="status">{error}</p>{needsLogin ? <Link href={`/login?next=${encodeURIComponent(`/u/${userId}/jardin`)}`} className="mt-3 inline-flex min-h-11 items-center text-primary">Ingresar a la sala</Link> : null}</div> : data ? <>
       <p className="my-4 text-sm text-muted">{data.garden.plants.length} plantas · Un jardín que crece con tiempo compartido en la sala.</p>
