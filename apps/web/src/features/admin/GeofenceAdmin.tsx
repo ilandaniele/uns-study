@@ -173,7 +173,7 @@ export function GeofenceAdmin({ roomSlug }: { roomSlug: string }) {
         </button>
       </div>
 
-      <SeatCalibrationAdmin roomSlug={roomSlug} />
+      <SeatCalibrationAdmin roomSlug={roomSlug} roomCenter={geofence ? { latitude: geofence.latitude, longitude: geofence.longitude } : null} />
       {error ? <p className="text-sm text-[var(--seat-occupied)]">{error}</p> : null}
     </div>
   );

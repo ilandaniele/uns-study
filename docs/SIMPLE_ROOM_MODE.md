@@ -20,6 +20,33 @@ Sólo SUPERADMIN puede leer, guardar o eliminar las referencias en Administraci�
 
 Una transformación afín deriva las coordenadas geográficas de cada silla conservando los IDs y el dibujo existentes. Se validan referencias dentro del geofence y dimensiones no degeneradas. Un hash del conjunto de sillas/posiciones invalida las referencias si el plano lógico cambia. Revisar físicamente la calibración cuando se mueva el mobiliario, aunque el SVG no cambie.
 
+### Calibración desde el centro, sin QR
+
+El dueño también puede definir centro geográfico, ancho y largo del área representada,
+orientación de la parte superior del dibujo y error máximo, con fuente y fecha.
+0° apunta al norte geográfico, 90° al este, 180° al sur y 270° al oeste; el rumbo del
+teléfono no representa automáticamente la orientación del edificio. El módulo puro
+`seat-frame.ts` conserva los IDs y transforma el marco de 1000 × 1600 unidades a
+coordenadas, eligiendo tres referencias separadas y no alineadas. Se envía el mismo
+contrato existente: permisos, geofence, auditoría y controles del servidor se mantienen.
+
+La previsualización es local y no ocupa asientos ni cambia la calibración. Muestra
+los asientos calculados y un límite necesario de precisión del dispositivo, obtenido
+de la menor separación entre sillas, el máximo de cercanía permitido y el error del
+plano. No garantiza asignación: cada intento real también comprueba posición,
+frescura, vecinos y disponibilidad. Un presupuesto de precisión nulo no se presenta
+como un GPS suficiente ni reduce el margen declarado.
+
+“Probar precisión de este dispositivo” mide sólo al tocarlo, no guarda coordenadas
+ni modifica el geofence. Las muestras vencidas o sin precisión positiva no se muestran
+como aptas. Copiar el centro de cercanía configurado no certifica su precisión para
+sillas; deben verificarse el punto, las medidas y el error total del mobiliario.
+No hay medidas, orientación o precisión inventadas como valores predeterminados.
+Guardar requiere una acción explícita después de previsualizar; los cambios de
+campos descartan el borrador calculado para no enviar coordenadas anteriores.
+
+La investigación de referencias y sus límites está en `SEAT_LOCATION_RESEARCH.md`.
+
 ## Decisión y concurrencia
 
 `POST /api/v1/checkins/simple` exige autenticación y ubicación en cada intento. Un grant anterior por sí solo no basta. Sin `confirmedSeatId`, el servidor:

@@ -36,7 +36,7 @@ export function SimpleRoomPage({ slug, onPendingChange }: { slug: string; onPend
         : closed ? <p>La sala está cerrada. Podés volver a marcar cuando abra.</p>
         : !map ? <p>{loadError ?? "Preparando la sala…"}</p>
         : qr.qrToken && qr.seatCode ? <p>QR de <strong className="text-main">{seatCodeLabel(qr.seatCode)}</strong>. Tocá el botón cuando estés sentado ahí: identificamos el asiento y comprobamos que estés en la sala.</p>
-        : <p>Tocalo cuando ya estés sentado. Usamos tu ubicación y te pedimos confirmar el asiento si hay dudas. También podés escanear el QR de tu asiento con la cámara del teléfono.</p>}
+        : <p>Tocalo cuando ya estés sentado. Usamos tu ubicación para encontrar tu lugar. Si la precisión no permite distinguirlo, te pedimos una confirmación breve.</p>}
     </div>
     {loadError ? <button type="button" onClick={refetch} className="mt-3 min-h-11 rounded-full border border-app px-5 text-sm font-semibold text-main">Reintentar</button> : null}
     {action.error && !action.confirmation ? <p role="alert" className="mt-4 max-w-sm text-sm text-[var(--seat-occupied)]">{action.error}</p> : null}
