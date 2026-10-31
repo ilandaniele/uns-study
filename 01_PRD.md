@@ -195,7 +195,7 @@ The canonical seat state is derived from recent signals.
 
 Initial observation lifetimes:
 
-- FREE observation: 15 minutes;
+- FREE observation: 120 minutes (2 hours);
 - OCCUPIED observation: 120 minutes (2 hours);
 - corroborated evidence may influence state slightly longer.
 

@@ -40,16 +40,24 @@ describe("ExpirationJob", () => {
     await insertUsers(db, ["u1"]);
   });
 
-  it("does not clear a two-hour occupied report at the old twenty-minute deadline", async () => {
+  it.each(["FREE", "OCCUPIED"] as const)("keeps a two-hour %s report until its exact deadline", async status => {
     const now = new Date();
     const deadline = new Date(now.getTime() + 120 * 60_000);
-    await db.insert(schema.seatObservations).values({ userId: "u1", roomId, seatId, observedStatus: "OCCUPIED", presenceVerified: true, confidenceWeight: 1, observedAt: now, expiresAt: deadline });
+    await db.insert(schema.seatObservations).values({ userId: "u1", roomId, seatId, observedStatus: status, presenceVerified: true, confidenceWeight: 1, observedAt: now, expiresAt: deadline });
     new RoomStateService(db).recomputeSeats([seatId], { roomId, now, eventType: "OBSERVATION", actingUserId: "u1" });
-    for (const minutes of [5, 20, 60, 119]) {
+    for (const minutes of [5, 15, 20, 60, 119]) {
       await job.runSweep(new Date(now.getTime() + minutes * 60_000));
-      expect(db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatId)).get()?.status).toBe("OCCUPIED");
+      expect(db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatId)).get()?.status).toBe(status);
     }
     await job.runSweep(deadline);
+    expect(db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatId)).get()?.status).toBe("UNKNOWN");
+  });
+
+  it("does not revive legacy FREE reports with an already expired fifteen-minute lifetime", async () => {
+    const began = new Date(Date.now() - 16 * 60_000);
+    await db.insert(schema.seatObservations).values({ userId: "u1", roomId, seatId, observedStatus: "FREE", presenceVerified: true, confidenceWeight: 1, observedAt: began, expiresAt: new Date(+began + 15 * 60_000) });
+    new RoomStateService(db).recomputeSeats([seatId], { roomId, now: began, eventType: "OBSERVATION", actingUserId: "u1" });
+    await job.runSweep(new Date());
     expect(db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatId)).get()?.status).toBe("UNKNOWN");
   });
 

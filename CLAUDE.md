@@ -38,7 +38,7 @@ Do not replace this stack unless there is a blocking incompatibility. If there i
 - GPS proves approximate room presence, not exact seat.
 - QR is optional and not required for MVP.
 - Check-in = 180 minutes. "Sigo acá" reminder 10 minutes before expiry.
-- Initial FREE observation = 15 minutes.
+- FREE observation = 120 minutes (2 hours).
 - OCCUPIED observation = 120 minutes (2 hours).
 - Daily operational reset ≈ 04:00 America/Argentina/Buenos_Aires.
 - Initial room = 108 places.

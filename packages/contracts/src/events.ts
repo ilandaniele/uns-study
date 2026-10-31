@@ -6,7 +6,8 @@
 export const CHECKIN_MINUTES = 180;
 /** Pro users pick their own end time, up to this many minutes ahead. */
 export const CHECKIN_PRO_MAX_MINUTES = 720;
-export const FREE_OBS_MINUTES = 15;
+/** A member's free-seat report stays fresh for two hours unless superseded. */
+export const FREE_OBS_MINUTES = 120;
 /** A member's occupied report stays fresh for two hours unless superseded. */
 export const OCCUPIED_OBS_MINUTES = 120;
 /** "Está guardado" (belongings left, nobody sitting) observation lifetime. */

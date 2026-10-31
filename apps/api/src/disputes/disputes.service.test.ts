@@ -546,6 +546,10 @@ describe("DisputeService", () => {
       const [state] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatIds[0]!));
       expect(state?.status).toBe("FREE");
       expect(state?.sourceSummary).toBe("SAVED");
+      const free = db.select().from(schema.seatObservations).where(eq(schema.seatObservations.seatId, seatIds[0]!)).all()
+        .find(report => report.observedStatus === "FREE");
+      expect(free).toBeDefined();
+      expect((+free!.expiresAt - +free!.observedAt) / 60_000).toBe(120);
     });
 
     it("with an active check-in, winning as absent cancels it", async () => {

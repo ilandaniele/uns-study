@@ -60,17 +60,19 @@ describe("ObservationService", () => {
     await insertUsers(db, ["u1", "u2", "u3"]);
   });
 
-  it("a single FREE observation sets the seat FREE with 15-minute expiry", async () => {
-    const before = Date.now();
+  it("a single FREE observation remains fresh for two hours, including after the old fifteen-minute deadline", async () => {
     await observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "FREE", location });
 
     const [state] = await db.select().from(schema.seatCurrentState).where(eq(schema.seatCurrentState.seatId, seatIds[0]!));
     expect(state?.status).toBe("FREE");
 
     const [obs] = await db.select().from(schema.seatObservations).where(eq(schema.seatObservations.seatId, seatIds[0]!));
-    const minutes = (new Date(obs!.expiresAt).getTime() - before) / 60_000;
-    expect(minutes).toBeGreaterThan(14.9);
-    expect(minutes).toBeLessThanOrEqual(15.01);
+    expect((+obs!.expiresAt - +obs!.observedAt) / 60_000).toBe(120);
+    const live = new RoomStateService(db);
+    for (const offset of [15 * 60_000, 60 * 60_000, 120 * 60_000 - 1]) {
+      expect((await live.getLiveSeatStates(roomId, new Date(+obs!.observedAt + offset))).get(seatIds[0]!)?.status).toBe("FREE");
+    }
+    expect((await live.getLiveSeatStates(roomId, obs!.expiresAt)).get(seatIds[0]!)?.status).toBe("UNKNOWN");
   });
 
   it("a FREE observation on a checked-in seat opens an ABSENT vote and pushes the holder once", async () => {
