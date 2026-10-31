@@ -20,6 +20,7 @@ import { SeedShop } from "./SeedShop";
 import { GardenScene } from "./GardenScene";
 import { GardenNursery } from "./GardenNursery";
 import { GardenExpansion } from "./GardenExpansion";
+import { CollaborationRewardProgress } from "@/features/badges/CollaborationRewardProgress";
 
 const STAGES = {
   seed: "Recién plantado",
@@ -219,6 +220,7 @@ function GardenAccount() {
             </span>
           </div>
           {garden.collaboration ? <div className="mt-4 rounded-2xl border border-app bg-surface-2 p-4 text-sm"><p className="font-semibold">Sembrá colaborando</p><p className="mt-1 text-muted">{garden.collaboration.todaySeeds} semillas ganadas hoy actualizando lugares. {garden.collaboration.nextSeedPlaces ? `Faltan ${garden.collaboration.nextSeedPlaces} lugares distintos para la próxima.` : "Alcanzaste las 10 semillas de colaboración del día."}</p><Link href="/" className="mt-2 inline-flex min-h-11 items-center font-semibold text-primary">Actualizar la sala →</Link><p className="text-xs text-muted">1 semilla cada 10 lugares distintos por día. Las repeticiones y el marcado masivo no cuentan.</p></div> : null}
+          {garden.collaboration ? <CollaborationRewardProgress collaboration={garden.collaboration} /> : null}
         </section>
         <section
           ref={panel}

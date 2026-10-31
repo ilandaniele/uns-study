@@ -55,7 +55,7 @@ describe("community achievements, rewards and approved staff applications", () =
     expect(fixture.services.collaboration.progress("member")).toMatchObject({ places: 10, seeds: 1, nextSeedPlaces: 10 });
     record(108);
     expect(fixture.services.collaboration.progress("member")).toMatchObject({ places: 100, seeds: 10, nextSeedPlaces: 0 });
-    expect((await fixture.services.garden.get("member")).seeds).toBe(40);
+    expect((await fixture.services.garden.get("member")).seeds).toBe(70); // starter + daily seeds + weekly bonus
   });
 
   it("uses Buenos Aires midnight and keeps earned seeds through spending and report expiry", async () => {

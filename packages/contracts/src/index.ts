@@ -234,6 +234,8 @@ export interface MeDto {
   adFree: boolean;
   /** isPro(): Pro features unlocked. Same function as the server guard. */
   pro: boolean;
+  /** Private promotional access; independent of any Mercado Pago subscription. */
+  proGiftExpiresAt?: string | null;
   /** Boolean(MP_ACCESS_TOKEN) on the API; same value for anonymous callers. */
   subscriptionsEnabled: boolean;
   /** env.subscriptionPriceArs (default 1500); same value for anonymous callers. */

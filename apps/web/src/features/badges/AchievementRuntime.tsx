@@ -5,25 +5,51 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { apiPost } from "@/lib/api";
-import { useMe } from "@/lib/me-store";
+import { useMe, refreshMe } from "@/lib/me-store";
 import { useAchievements } from "./achievement-store";
 import { BadgeMedal } from "./BadgeMedal";
 import styles from "./achievement-reveal.module.css";
+import { CollaborationRewardDialog } from "./CollaborationRewardDialog";
 
 export function AchievementRuntime() {
   const { me } = useMe();
+  const giftExpiresAt = me?.proGiftExpiresAt;
+  useEffect(() => {
+    if (!giftExpiresAt) return;
+    const timer = setTimeout(() => { void refreshMe().catch(() => undefined); }, Math.min(2147483647, Math.max(1000, Date.parse(giftExpiresAt) - Date.now() + 1000)));
+    return () => clearTimeout(timer);
+  }, [giftExpiresAt]);
   return me?.user ? <SignedInAchievements key={me.user.id} userId={me.user.id}/> : null;
 }
 
 function SignedInAchievements({ userId }: { userId: string }) {
   const { data, refresh } = useAchievements(userId);
   const [dismissed, setDismissed] = useState<BadgeId[]>([]);
+  const [dismissedRewards, setDismissedRewards] = useState<string[]>([]);
+  const [modalBlocked, setModalBlocked] = useState(false);
+  const [checkedReward, setCheckedReward] = useState<string>();
+  const reward = data?.rewards?.find(item => !dismissedRewards.includes(item.id));
+  const rewardId = reward?.id;
+  useEffect(() => { if (rewardId) void refreshMe().catch(() => undefined); }, [rewardId]);
+  useEffect(() => {
+    if (!rewardId) return;
+    const update = () => {
+      setModalBlocked(Array.from(document.querySelectorAll('[aria-modal="true"]:not([data-collaboration-reward-dialog])'))
+        .some(dialog => !dialog.closest('[hidden], [aria-hidden="true"]') && dialog.getClientRects().length > 0));
+      setCheckedReward(rewardId);
+    };
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["aria-modal", "hidden", "aria-hidden"] });
+    return () => observer.disconnect();
+  }, [rewardId]);
   useEffect(() => {
     const update = () => { if (document.visibilityState === "visible") void refresh(); };
+    const onVisible = () => { if (!document.hidden) { update(); void refreshMe().catch(() => undefined); } };
     const timer = setInterval(update, 5 * 60_000);
-    document.addEventListener("visibilitychange", update);
+    document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("sala:achievements-refresh", update);
-    return () => { clearInterval(timer); document.removeEventListener("visibilitychange", update); window.removeEventListener("sala:achievements-refresh", update); };
+    return () => { clearInterval(timer); document.removeEventListener("visibilitychange", onVisible); window.removeEventListener("sala:achievements-refresh", update); };
   }, [refresh]);
   const unseen = data?.badges.filter(badge => data.unseenIds.includes(badge.id) && !dismissed.includes(badge.id)) ?? [];
   const ids = unseen.map(badge => badge.id);
@@ -31,6 +57,12 @@ function SignedInAchievements({ userId }: { userId: string }) {
     setDismissed(previous => [...new Set([...previous, ...seen])]);
     void apiPost("/api/v1/me/achievements/seen", { ids: seen }, seenAchievementsSchema).catch(() => undefined);
   }, []);
+  const dismissReward = useCallback(() => {
+    if (!rewardId) return;
+    setDismissedRewards(previous => [...previous, rewardId]);
+    void apiPost(`/api/v1/me/collaboration-rewards/${encodeURIComponent(rewardId)}/seen`).catch(() => undefined);
+  }, [rewardId]);
+  if (reward) return checkedReward !== reward.id || modalBlocked ? null : <CollaborationRewardDialog key={reward.id} reward={reward} onClose={dismissReward} />;
   if (!unseen.length || !data) return null;
   return <AchievementReveal key={ids.join(",")} data={data} ids={ids} onDismiss={acknowledge}/>;
 }

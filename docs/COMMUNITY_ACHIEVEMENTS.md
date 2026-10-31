@@ -29,7 +29,7 @@ no se pueden recuperar las coordenadas o los detalles de mails por esa vía.
 ## Semillas por actualizaciones
 
 - Cada 10 lugares distintos actualizados dentro del mismo día local dan 1 semilla.
-- Máximo 100 lugares y 10 semillas por persona y día, en la zona horaria de la sala.
+- Máximo 100 lugares y 10 semillas base por persona y día, en la zona horaria de la sala.
 - La fecha de la sala principal se determina en America/Argentina/Buenos_Aires.
 - Cuenta un reporte individual que terminó correctamente, tras validar presencia,
   asiento, rate limits y reglas de abuso. No cuenta observar el asiento propio.
@@ -44,6 +44,38 @@ no se pueden recuperar las coordenadas o los detalles de mails por esa vía.
   describía la realidad. Los límites y la revisión humana siguen siendo necesarios.
 - Se mantienen las semillas por tiempo, las compras y los canjes existentes. Las
   semillas extra no hacen crecer plantas: el crecimiento requiere estudio registrado.
+
+## Premio semanal por colaboración
+
+Desde esta actualización, alcanzar 30 lugares distintos en el mismo día local da
+30 semillas adicionales y 7 días de Pro promocional. Requiere correo verificado.
+Se puede obtener como máximo una vez cada 7 días completos, desde el momento de
+la obtención anterior. Sólo cuentan los reportes individuales aceptados y
+verificados por presencia; las repeticiones, rechazos y acciones masivas no cuentan.
+
+`collaboration_rewards` conserva una obtención por usuario/día con su vencimiento
+y confirmación de lectura. El crédito de colaboración, el premio y el incremento
+de semillas se escriben en una sola transacción. Reintentar, releer el perfil,
+cerrar el popup o limpiar la auditoría no vuelve a otorgar el premio. No se concede
+un premio sólo por consultar actividad anterior; se dispara al registrar una
+actualización nueva que cumpla las condiciones.
+
+El pase Pro es independiente de Mercado Pago: no crea ni modifica suscripciones,
+pagos o períodos de facturación. `/me`, el guard Pro, las consultas en lote y el
+badge reconocen el pase mientras siga vigente. Al cumplirse exactamente el plazo
+deja de dar acceso; las semillas y las suscripciones pagas existentes se conservan.
+El premio tampoco concede roles ni omite la aprobación de solicitudes de admin.
+
+El popup privado muestra el premio y su vencimiento, permite ir al jardín y
+respeta movimiento reducido y foco de teclado. Espera si hay otro modal abierto.
+Su lectura se confirma sólo para la cuenta autenticada. Las recompensas pendientes
+y fechas de vencimiento no aparecen en perfiles públicos ni perfiles con alias.
+Se muestra también el progreso en el jardín y en las insignias del perfil.
+Los otros dispositivos consultan el acceso y los avisos al volver al primer plano.
+
+Migración aditiva `0017_collaboration_rewards`: tabla de recibos con índices por
+usuario/fecha y eliminación en cascada con la cuenta. Este registro es operativo,
+independiente de la retención del log de moderación.
 
 ## Insignias y ascenso
 

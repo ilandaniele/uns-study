@@ -4,6 +4,17 @@ import type { SharedGardenDto } from "./garden";
 
 export const COLLABORATION_PLACES_PER_SEED = 10;
 export const COLLABORATION_DAILY_SEED_CAP = 10;
+export const COLLABORATION_REWARD_PLACES = 30;
+export const COLLABORATION_REWARD_SEEDS = 30;
+export const COLLABORATION_REWARD_PRO_DAYS = 7;
+export const COLLABORATION_REWARD_COOLDOWN_DAYS = 7;
+export interface CollaborationRewardDto {
+  id: string;
+  places: number;
+  seeds: number;
+  earnedAt: string;
+  proExpiresAt: string;
+}
 export const ADMIN_APPLICATION_MIN_PLACES = 100;
 export const ADMIN_APPLICATION_MIN_DAYS = 3;
 export type AchievementTier = "bronze" | "silver" | "gold" | "diamond";
@@ -18,6 +29,7 @@ export interface CollaborationProgressDto {
   nextSeedPlaces: number;
   eligibleForAdmin: boolean;
   applicationStatus: AdminApplicationStatus | null;
+  weeklyReward?: { targetPlaces: number; seeds: number; proDays: number; nextEligibleAt: string | null; emailVerified: boolean };
 }
 export interface AchievementStatsDto { studyMinutes: number; studyDays: number }
 export interface AchievementsDto {
@@ -25,6 +37,8 @@ export interface AchievementsDto {
   unseenIds: BadgeId[];
   stats: AchievementStatsDto;
   collaboration: CollaborationProgressDto;
+  /** Private, unacknowledged, still-active promotional rewards. Never returned in public profiles. */
+  rewards?: CollaborationRewardDto[];
 }
 export interface PublicAchievementsDto {
   badges: AchievementDto[];

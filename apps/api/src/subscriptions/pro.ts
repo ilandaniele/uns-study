@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, lte } from "drizzle-orm";
 import { inChunks, schema, type Db } from "@sala/database";
 import type { Clock } from "../platform/clock.js";
 import type { RolesService } from "../users/roles.service.js";
@@ -7,6 +7,8 @@ export interface EntitlementInput {
   /** `user_subscriptions.status`, or null without a subscription. */
   subscriptionStatus: string | null;
   currentPeriodEnd: Date | null;
+  /** Earned promotional access; never changes payment-provider state. */
+  giftExpiresAt?: Date | null;
   /** RolesService roles; non-empty = staff. */
   roles: readonly string[];
   now: Date;
@@ -19,9 +21,9 @@ export function hasPaidEntitlement(i: Omit<EntitlementInput, "roles">): boolean 
   return lapsing && i.currentPeriodEnd !== null && i.currentPeriodEnd.getTime() > i.now.getTime();
 }
 
-/** Paid entitlement, or staff. Drives `MeDto.adFree`. */
+/** Paid entitlement, active promotional pass, or staff. Drives `MeDto.adFree`. */
 export function hasProEntitlement(i: EntitlementInput): boolean {
-  return i.roles.length > 0 || hasPaidEntitlement(i);
+  return i.roles.length > 0 || hasPaidEntitlement(i) || (i.giftExpiresAt?.getTime() ?? 0) > i.now.getTime();
 }
 
 /** Pro features unlocked: everyone while subscriptions are disabled, else `hasProEntitlement`. Drives `MeDto.pro` and `requirePro`. */
@@ -37,6 +39,14 @@ export class ProService {
     private readonly opts: { subscriptionsEnabled: boolean; clock: Clock },
   ) {}
 
+  giftExpiresAt(userId: string): Date | null {
+    const now = this.opts.clock.now();
+    const row = this.db.select({ expiresAt: schema.collaborationRewards.proExpiresAt }).from(schema.collaborationRewards)
+      .where(and(eq(schema.collaborationRewards.userId, userId), lte(schema.collaborationRewards.earnedAt, now), gt(schema.collaborationRewards.proExpiresAt, now)))
+      .orderBy(desc(schema.collaborationRewards.proExpiresAt)).limit(1).get();
+    return row?.expiresAt ?? null;
+  }
+
   /** isPro for one user (1 subscription read + roles lookup). */
   async isProUser(userId: string): Promise<boolean> {
     if (!this.opts.subscriptionsEnabled) return true;
@@ -51,6 +61,7 @@ export class ProService {
     return isPro({
       subscriptionStatus: subscription?.status ?? null,
       currentPeriodEnd: subscription?.currentPeriodEnd ?? null,
+      giftExpiresAt: this.giftExpiresAt(userId),
       roles,
       now: this.opts.clock.now(),
       subscriptionsEnabled: this.opts.subscriptionsEnabled,
@@ -73,7 +84,7 @@ export class ProService {
     return new Set([...paid, ...staff.map((r) => r.userId)]);
   }
 
-  /** Subset with hasPaidEntitlement (batched, chunked IN query). Used for the proBadge DTO flag. */
+  /** Paid subscribers and active promotional passes. Staff alone still get no Pro badge. */
   async badgeIds(userIds: readonly string[]): Promise<Set<string>> {
     const unique = [...new Set(userIds)];
     if (unique.length === 0) return new Set();
@@ -89,8 +100,10 @@ export class ProService {
         .where(inArray(schema.userSubscriptions.userId, part))
         .all(),
     );
-    return new Set(
-      rows.filter((r) => hasPaidEntitlement({ subscriptionStatus: r.status, currentPeriodEnd: r.currentPeriodEnd, now })).map((r) => r.userId),
-    );
+    const promotional = inChunks(unique, part => this.db.select({ userId: schema.collaborationRewards.userId }).from(schema.collaborationRewards)
+      .where(and(inArray(schema.collaborationRewards.userId, part), lte(schema.collaborationRewards.earnedAt, now), gt(schema.collaborationRewards.proExpiresAt, now))).all());
+    return new Set([...promotional.map(row => row.userId),
+      ...rows.filter((r) => hasPaidEntitlement({ subscriptionStatus: r.status, currentPeriodEnd: r.currentPeriodEnd, now })).map((r) => r.userId),
+    ]);
   }
 }

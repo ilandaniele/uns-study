@@ -10,7 +10,7 @@ import { hasProEntitlement, isPro } from "../subscriptions/pro.js";
 export const meRouter = new Hono<AppEnv>();
 
 meRouter.get("/me", optionalAuth, async (c) => {
-  const { checkIns, clock, db, roles, restriction } = c.var.services;
+  const { checkIns, clock, db, roles, restriction, pro } = c.var.services;
   const user = c.var.user;
   const subscriptionsEnabled = Boolean(env.mpAccessToken);
   const subscriptionPriceArs = env.subscriptionPriceArs;
@@ -49,6 +49,7 @@ meRouter.get("/me", optionalAuth, async (c) => {
   const entitlement = {
     subscriptionStatus: subscription?.status ?? null,
     currentPeriodEnd: subscription?.currentPeriodEnd ?? null,
+    giftExpiresAt: pro.giftExpiresAt(user.id),
     roles: userRoles,
     now: clock.now(),
   };
@@ -62,6 +63,7 @@ meRouter.get("/me", optionalAuth, async (c) => {
     profileCompleted: Boolean(profile && (profile.firstName || profile.nickname)),
     adFree: hasProEntitlement(entitlement),
     pro: isPro({ ...entitlement, subscriptionsEnabled }),
+    proGiftExpiresAt: entitlement.giftExpiresAt?.toISOString() ?? null,
     subscriptionsEnabled,
     subscriptionPriceArs,
     canManageAdmins: canManageStaff,

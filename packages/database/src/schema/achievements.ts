@@ -1,4 +1,4 @@
-import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { user } from "./auth.js";
 import { rooms, seats } from "./rooms.js";
 
@@ -17,6 +17,18 @@ export const userAchievements = sqliteTable("user_achievements", {
   earnedAt: integer("earned_at", { mode: "timestamp_ms" }).notNull(),
   seenAt: integer("seen_at", { mode: "timestamp_ms" }),
 }, t => [primaryKey({ columns: [t.userId, t.badgeId] })]);
+
+/** Durable reward receipts and promotional Pro access; independent of billing and audit retention. */
+export const collaborationRewards = sqliteTable("collaboration_rewards", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  localDate: text("local_date").notNull(),
+  places: integer("places").notNull(),
+  seeds: integer("seeds").notNull(),
+  earnedAt: integer("earned_at", { mode: "timestamp_ms" }).notNull(),
+  proExpiresAt: integer("pro_expires_at", { mode: "timestamp_ms" }).notNull(),
+  seenAt: integer("seen_at", { mode: "timestamp_ms" }),
+}, t => [uniqueIndex("uq_collaboration_rewards_user_day").on(t.userId, t.localDate), index("idx_collaboration_rewards_user_earned").on(t.userId, t.earnedAt)]);
 
 /** Reaching a milestone never grants staff privileges. Only the superadmin may approve a request. */
 export const adminApplications = sqliteTable("admin_applications", {

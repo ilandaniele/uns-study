@@ -1,6 +1,6 @@
-import { and, count, countDistinct, eq, inArray } from "drizzle-orm";
+import { and, count, countDistinct, desc, eq, gt, inArray, isNull, lte, sql } from "drizzle-orm";
 import { schema, type Db, type Tx } from "@sala/database";
-import { ADMIN_APPLICATION_MIN_DAYS, ADMIN_APPLICATION_MIN_PLACES, COLLABORATION_DAILY_SEED_CAP, COLLABORATION_PLACES_PER_SEED, type AdminApplicationDto, type CollaborationProgressDto } from "@sala/contracts";
+import { ADMIN_APPLICATION_MIN_DAYS, ADMIN_APPLICATION_MIN_PLACES, COLLABORATION_DAILY_SEED_CAP, COLLABORATION_PLACES_PER_SEED, COLLABORATION_REWARD_PLACES, COLLABORATION_REWARD_SEEDS, COLLABORATION_REWARD_PRO_DAYS, COLLABORATION_REWARD_COOLDOWN_DAYS, type AdminApplicationDto, type CollaborationProgressDto, type CollaborationRewardDto } from "@sala/contracts";
 import { ApiErrors } from "../common/api-error.js";
 import { DEFAULT_TIMEZONE, localDateOf } from "../common/dates.js";
 import type { Clock } from "../platform/clock.js";
@@ -16,7 +16,36 @@ export class CollaborationService {
     const today = tx.select({ total: count() }).from(schema.collaborationUpdates)
       .where(and(eq(schema.collaborationUpdates.userId, userId), eq(schema.collaborationUpdates.localDate, localDate))).get()!.total;
     if (today >= COLLABORATION_DAILY_SEED_CAP * COLLABORATION_PLACES_PER_SEED) return;
-    tx.insert(schema.collaborationUpdates).values({ userId, roomId, seatId, localDate, createdAt: now }).onConflictDoNothing().run();
+    const inserted = tx.insert(schema.collaborationUpdates).values({ userId, roomId, seatId, localDate, createdAt: now }).onConflictDoNothing().returning({ seatId: schema.collaborationUpdates.seatId }).get();
+    if (!inserted || today + 1 < COLLABORATION_REWARD_PLACES) return;
+    const verified = tx.select({ verified: schema.user.emailVerified }).from(schema.user).where(eq(schema.user.id, userId)).get()?.verified;
+    if (!verified) return;
+    const last = this.latestReward(userId, tx);
+    if (last && now.getTime() - last.earnedAt.getTime() < COLLABORATION_REWARD_COOLDOWN_DAYS * 86400_000) return;
+    const awarded = tx.insert(schema.collaborationRewards).values({
+      id: crypto.randomUUID(), userId, localDate, places: today + 1, seeds: COLLABORATION_REWARD_SEEDS, earnedAt: now,
+      proExpiresAt: new Date(Math.max(now.getTime(), last?.proExpiresAt.getTime() ?? 0) + COLLABORATION_REWARD_PRO_DAYS * 86400_000),
+    }).onConflictDoNothing().returning({ id: schema.collaborationRewards.id }).get();
+    if (!awarded) return;
+    // Receipt, seed balance and promotional access commit with the distinct-seat credit.
+    tx.insert(schema.userGardens).values({ userId, bonusSeeds: COLLABORATION_REWARD_SEEDS, updatedAt: now })
+      .onConflictDoUpdate({ target: schema.userGardens.userId, set: { bonusSeeds: sql`${schema.userGardens.bonusSeeds} + ${COLLABORATION_REWARD_SEEDS}`, updatedAt: now } }).run();
+  }
+
+  private latestReward(userId: string, db: Db | Tx = this.db) {
+    return db.select().from(schema.collaborationRewards).where(eq(schema.collaborationRewards.userId, userId)).orderBy(desc(schema.collaborationRewards.earnedAt)).limit(1).get();
+  }
+
+  pendingRewards(userId: string): CollaborationRewardDto[] {
+    const now = this.clock.now();
+    return this.db.select().from(schema.collaborationRewards).where(and(eq(schema.collaborationRewards.userId, userId), isNull(schema.collaborationRewards.seenAt), lte(schema.collaborationRewards.earnedAt, now), gt(schema.collaborationRewards.proExpiresAt, now)))
+      .orderBy(desc(schema.collaborationRewards.earnedAt)).limit(3).all().map(row => ({ id: row.id, places: row.places, seeds: row.seeds, earnedAt: row.earnedAt.toISOString(), proExpiresAt: row.proExpiresAt.toISOString() }));
+  }
+
+  markRewardSeen(userId: string, rewardId: string): void {
+    const reward = this.db.select({ seenAt: schema.collaborationRewards.seenAt }).from(schema.collaborationRewards).where(and(eq(schema.collaborationRewards.userId, userId), eq(schema.collaborationRewards.id, rewardId))).get();
+    if (!reward) throw ApiErrors.notFound();
+    if (!reward.seenAt) this.db.update(schema.collaborationRewards).set({ seenAt: this.clock.now() }).where(and(eq(schema.collaborationRewards.userId, userId), eq(schema.collaborationRewards.id, rewardId))).run();
   }
 
   progress(userId: string): CollaborationProgressDto {
@@ -29,11 +58,16 @@ export class CollaborationService {
     const application = this.db.select().from(schema.adminApplications).where(eq(schema.adminApplications.userId, userId)).get();
     const staff = this.db.select().from(schema.userRoles).where(eq(schema.userRoles.userId, userId)).get();
     const reputation = this.db.select().from(schema.userReputation).where(eq(schema.userReputation.userId, userId)).get();
+    const last = this.latestReward(userId);
+    const nextEligibleAt = last ? new Date(last.earnedAt.getTime() + COLLABORATION_REWARD_COOLDOWN_DAYS * 86400_000) : null;
     return {
       places, days: days.length, seeds: days.reduce((sum, day) => sum + seedCount(day.places), 0), todayPlaces,
       todaySeeds: seedCount(todayPlaces), nextSeedPlaces: seedCount(todayPlaces) >= COLLABORATION_DAILY_SEED_CAP ? 0 : COLLABORATION_PLACES_PER_SEED - todayPlaces % COLLABORATION_PLACES_PER_SEED,
       eligibleForAdmin: !staff && places >= ADMIN_APPLICATION_MIN_PLACES && days.length >= ADMIN_APPLICATION_MIN_DAYS && (reputation?.spamScore ?? 0) < 5,
       applicationStatus: application?.status ?? null,
+      weeklyReward: { targetPlaces: COLLABORATION_REWARD_PLACES, seeds: COLLABORATION_REWARD_SEEDS, proDays: COLLABORATION_REWARD_PRO_DAYS,
+        nextEligibleAt: nextEligibleAt && nextEligibleAt > this.clock.now() ? nextEligibleAt.toISOString() : null,
+        emailVerified: this.db.select({ verified: schema.user.emailVerified }).from(schema.user).where(eq(schema.user.id, userId)).get()?.verified === true },
     };
   }
 

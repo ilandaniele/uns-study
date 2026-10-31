@@ -18,6 +18,11 @@ achievementsRouter.post("/me/achievements/seen", requireAuth(), zBody(seenAchiev
   c.var.services.achievements.markSeen(currentUser(c).id, c.req.valid("json").ids);
   return reply(c, { ok: true });
 });
+achievementsRouter.post("/me/collaboration-rewards/:id/seen", requireAuth(), async c => {
+  if (!(await c.var.services.rateLimit.check(`collaboration-reward-seen:${currentUser(c).id}`, 120, 3600)).allowed) throw ApiErrors.rateLimited();
+  c.var.services.collaboration.markRewardSeen(currentUser(c).id, c.req.param("id"));
+  return reply(c, { ok: true });
+});
 achievementsRouter.get("/profiles/:userId/achievements", requireAuth(), privateRead, async c => reply(c, await c.var.services.achievements.publicFor(currentUser(c).id, c.req.param("userId"))));
 achievementsRouter.get("/aliases/:alias/profile", requireAuth(), privateRead, async c => reply(c, await c.var.services.achievements.aliasProfile(currentUser(c).id, c.req.param("alias"))));
 achievementsRouter.post("/me/admin-application", requireAuth(), async c => {

@@ -35,7 +35,7 @@ export class AchievementsService {
       const tier = achievementPresentation(rule.id)!.tier;
       return { ...rule, earned: Boolean(award), progress: award ? 1 : rule.progress, tier, earnedAt: award?.earnedAt.toISOString() ?? null };
     });
-    return { badges, stats: { studyMinutes: stats.studyMinutes, studyDays: stats.studyDays }, collaboration, unseenIds: stored.filter(award => !award.seenAt && achievementPresentation(award.badgeId)).map(award => award.badgeId as BadgeId) };
+    return { badges, stats: { studyMinutes: stats.studyMinutes, studyDays: stats.studyDays }, collaboration, rewards: this.collaboration.pendingRewards(userId), unseenIds: stored.filter(award => !award.seenAt && achievementPresentation(award.badgeId)).map(award => award.badgeId as BadgeId) };
   }
 
   markSeen(userId: string, ids: BadgeId[]): void {

@@ -120,6 +120,13 @@
       "when": 1793307371933,
       "tag": "0016_seat_qr_presence",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1793416050391,
+      "tag": "0017_collaboration_rewards",
+      "breakpoints": true
     }
   ]
 }

@@ -73,7 +73,7 @@ export interface PublicProfileDto {
   blockedByMe: boolean;
   /** Visible staff badge, preserving identity and badge privacy settings. */
   adminBadge: AdminBadgeLevel;
-  /** Draw the Pro ring: a paid subscription (staff do not get it). */
+  /** Draw the Pro ring for a paid subscription or an active gift (staff alone do not get it). */
   proBadge?: boolean;
   /** Pro "Perfil destacado"; absent = draw defaults. */
   flair?: ProfileFlairDto;
@@ -103,7 +103,7 @@ export interface RoomPersonDto {
   aliasAnimal?: string;
   /** Visible staff badge (visible identities only). */
   adminBadge?: AdminBadgeLevel;
-  /** Draw the Pro ring: a paid subscription (staff do not get it). */
+  /** Draw the Pro ring for a paid subscription or an active gift (staff alone do not get it). */
   proBadge?: boolean;
   /** Pro "Perfil destacado"; absent = draw defaults. */
   flair?: ProfileFlairDto;
