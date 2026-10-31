@@ -18,8 +18,9 @@ describe("personal garden projection",()=>{
   }
  });
  it("is stable for owner and visitor, with opposite and distinct meandering rivers",()=>{const paths=Array.from({length:6},(_,i)=>createGardenLayout(25,i+1).riverPath);expect(new Set(paths).size).toBe(6);expect(createGardenLayout(35,7)).toEqual(createGardenLayout(35,7));expect(createGardenLayout(35,7).riverPath).not.toBe(createGardenLayout(35,8).riverPath);});
- it("keeps every plant on its own selectable bank, outside the water, at every expansion",()=>{
-  for(const count of [25,30,35,40,45,50])for(let seed=1;seed<=32;seed++){
+ // Keep the complete seed matrix, with a separate timeout budget per expansion on shared CI runners.
+ it.each([25,30,35,40,45,50])("keeps every plant on its own selectable bank and outside the water with %i plots",count=>{
+  for(let seed=1;seed<=32;seed++){
    const layout=createGardenLayout(count,seed);
    for(const p of layout.plots){
     expect(contains(layout.banks[p.bank]!,p)).toBe(true);
