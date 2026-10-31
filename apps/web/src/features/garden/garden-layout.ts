@@ -1,49 +1,84 @@
 import { GARDEN_SIZE, GARDEN_MAX_SIZE } from "@sala/contracts";
+
 export interface GardenPoint { x: number; y: number }
 const round = (n: number) => Math.round(n * 100) / 100;
 export const polygonPoints = (points: GardenPoint[]) => points.map(p => `${round(p.x)},${round(p.y)}`).join(" ");
-function hull(points: GardenPoint[]) {
-  const sorted = [...points].sort((a,b) => a.x-b.x || a.y-b.y);
-  const cross = (a: GardenPoint,b: GardenPoint,c: GardenPoint) => (b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
-  const half = (items: GardenPoint[]) => { const result: GardenPoint[]=[]; for(const p of items) { while(result.length>1 && cross(result[result.length-2]!,result.at(-1)!,p)<=0) result.pop(); result.push(p); } return result; };
-  return [...half(sorted).slice(0,-1),...half(sorted.reverse()).slice(0,-1)];
-}
-/** Plot numbers are permanent. Only the projection and decorative banks vary. */
+
+/** Plot numbers are permanent; the whole landscape follows the same curved banks. */
 export function createGardenLayout(plotCount = GARDEN_SIZE, seed = 1) {
   const count = Number.isInteger(plotCount) && plotCount >= GARDEN_SIZE && plotCount <= GARDEN_MAX_SIZE && plotCount % 5 === 0 ? plotCount : GARDEN_SIZE;
   const rows = count / 5;
-  const variant = Math.abs(Math.floor(seed)) % 6;
-  const dx = Math.min(46, 440 / (rows + 4)), dy = dx * .52;
-  const origin = { x: 300 + (rows-5)*dx/2, y: 120 };
-  const project = (col: number,row: number): GardenPoint => ({ x: round(origin.x+(col-row)*dx), y: round(origin.y+(col+row)*dy) });
-  const horizontal = variant === 2;
-  const acrossRows = variant === 1 || variant === 4;
-  const colCut = variant === 5 ? (Math.floor(seed/6)%2 ? 3.5 : .5) : 1.5;
-  const rowCut = Math.floor(rows/2)-.5;
-  const diagonalCut = Math.floor((rows+3)/2)+.5;
-  const plots = Array.from({length: count},(_,plot) => {
-    const row=Math.floor(plot/5), col=plot%5;
-    const side = horizontal ? row+col < diagonalCut : acrossRows ? row < rowCut : col < colCut;
-    const direction=side ? -1 : 1;
-    const p = horizontal ? project(col,row) : acrossRows ? project(col,row+direction*.43) : project(col+direction*.43,row);
-    return {plot,row,col,bank:side ? 0 : 1,x:p.x,y:round(p.y+(horizontal ? direction*23 : 0)),halfWidth:dx,halfHeight:dy};
-  }).sort((a,b) => a.y-b.y || a.x-b.x);
-  const banks = [0,1].map(bank => hull(plots.filter(p => p.bank===bank).flatMap(p => [
-    {x:p.x,y:p.y-dy},{x:p.x+dx,y:p.y},{x:p.x,y:p.y+dy},{x:p.x-dx,y:p.y},
-  ])));
-  const at = (t: number) => {
-    if(horizontal) { const low=Math.max(-.65,diagonalCut-(rows-.35)),high=Math.min(4.65,diagonalCut+.65); return project(low+(high-low)*t,diagonalCut-low-(high-low)*t); }
-    const p=acrossRows ? project(-.65+5.3*t,rowCut) : project(colCut,-.65+(rows+.3)*t);
-    const wave=variant===3 || variant===4 ? Math.sin(t*Math.PI*2)*4 : 0;
-    return {x:round(p.x+wave),y:round(p.y+wave*.5)};
+  const stableSeed = Number.isFinite(seed) ? Math.abs(Math.trunc(seed)) % 65536 : 1;
+  const variant = stableSeed % 6;
+  const acrossRows = variant % 2 === 1;
+  const dx = Math.min(44, 410 / (rows + 4)), dy = dx * .52;
+  const origin = { x: 300 + (rows - 5) * dx / 2, y: 120 };
+  const alongCount = acrossRows ? 5 : rows;
+  const acrossCount = acrossRows ? rows : 5;
+  const cut = acrossRows ? Math.floor(rows / 2) - .5 : .5 + Math.floor(variant / 2);
+  const amplitude = [.64, .82, .72, .58, .88, .74][variant]!;
+  const phase = (stableSeed % 7) * .37;
+  // Smooth, asymmetric meanders; both banks and plot corners share this mapping.
+  const bend = (v: number) => {
+    const t = (v + .5) / alongCount;
+    return amplitude * Math.sin(t * Math.PI * 2 + phase)
+      + .19 * Math.sin(t * Math.PI * 4 + phase + .8);
   };
-  const river = Array.from({length:25},(_,i) => at(i/24));
-  const bridgeAt = .35+(seed%3)*.14;
-  const bridge = at(bridgeAt), tangent=at(bridgeAt+.02);
-  return {count,plots,banks,variant,riverPath:river.map((p,i) => `${i ? "L" : "M"}${p.x} ${p.y}`).join(" "),
-    bridge:{...bridge,angle:Math.atan2(tangent.y-bridge.y,tangent.x-bridge.x)*180/Math.PI+90},
+  const project = (u: number, v: number, side: number): GardenPoint => {
+    // Taper the meanders into the terrain: the outer island stays straight,
+    // while the riverbank and its neighbouring plots follow the water.
+    const influence = u <= cut ? (u + .5) / (cut + .5) : (acrossCount - .5 - u) / (acrossCount - .5 - cut);
+    const across = u + bend(v) * influence + side * .52;
+    const col = acrossRows ? v : across, row = acrossRows ? across : v;
+    return { x: round(origin.x + (col - row) * dx), y: round(origin.y + (col + row) * dy) };
+  };
+  const plots = Array.from({ length: count }, (_, plot) => {
+    const row = Math.floor(plot / 5), col = plot % 5;
+    const u = acrossRows ? row : col, v = acrossRows ? col : row;
+    const bank = u < cut ? 0 : 1, side = bank ? 1 : -1;
+    const edge = (across: number, reverse: boolean) => Array.from({ length: 13 }, (_, i) => project(across, v - .5 + (reverse ? 1 - i / 12 : i / 12), side));
+    const outline = [...edge(u - .5, false), ...edge(u + .5, true)];
+    return { plot, row, col, bank, ...project(u, v, side), outline, halfWidth: dx, halfHeight: dy };
+  }).sort((a, b) => a.y - b.y || a.x - b.x);
+  const banks = [0, 1].map(bank => {
+    const side = bank ? 1 : -1, low = bank ? cut : -.5, high = bank ? acrossCount - .5 : cut;
+    const edge = (u: number, reverse: boolean) => Array.from({ length: alongCount * 12 + 1 }, (_, i) => project(u, -.5 + (reverse ? 1 - i / (alongCount * 12) : i / (alongCount * 12)) * alongCount, side));
+    // Follow the concave shoreline instead of filling its convex hull.
+    const points = [...edge(low, false), ...edge(high, true)];
+    const area = points.reduce((sum, p, i) => { const next = points[(i + 1) % points.length]!; return sum + p.x * next.y - next.x * p.y; }, 0);
+    return area > 0 ? points : points.reverse();
+  });
+  const at = (t: number) => project(cut, -.5 + alongCount * t, 0);
+  const river = Array.from({ length: 121 }, (_, i) => at(i / 120));
+  const shoreline = (side: number) => Array.from({ length: 121 }, (_, i) => project(cut, -.5 + alongCount * i / 120, side));
+  const channel = [...shoreline(-1), ...shoreline(1).reverse()];
+  const bridgeAt = .32 + (stableSeed % 3) * .16;
+  const bridge = at(bridgeAt), before = at(bridgeAt - .002), after = at(bridgeAt + .002);
+  const shoreA = project(cut, -.5 + alongCount * bridgeAt, -1), shoreB = project(cut, -.5 + alongCount * bridgeAt, 1);
+  const tangent = { x: after.x - before.x, y: after.y - before.y };
+  const crossingWidth = Math.abs((shoreB.x - shoreA.x) * tangent.y - (shoreB.y - shoreA.y) * tangent.x) / Math.hypot(tangent.x, tangent.y);
+  const earthFaces = banks.map(bank => {
+    const faces: { edge: GardenPoint[]; light: boolean }[] = [];
+    let current: (typeof faces)[number] | undefined;
+    for (let i = 0; i < bank.length; i++) {
+      const a = bank[i]!, b = bank[(i + 1) % bank.length]!;
+      if (b.x >= a.x) { current = undefined; continue; }
+      const light = b.y > a.y;
+      if (!current || current.light !== light) {
+        current = { edge: [a], light };
+        faces.push(current);
+      }
+      current.edge.push(b);
+    }
+    return faces;
+  });
+  // Keep the wooden crossing perpendicular to the local current, including bends.
+  return { count, plots, banks, earthFaces, variant, river, channel,
+    riverPath: river.map((p, i) => `${i ? "L" : "M"}${p.x} ${p.y}`).join(" "),
+    riverShape: `M${polygonPoints(channel).replaceAll(" ", " L")}Z`,
+    bridge: { ...bridge, span: round(crossingWidth + 16), angle: Math.atan2(tangent.y, tangent.x) * 180 / Math.PI + 90 },
   };
 }
-export const gardenPlotPosition = (plot: number) => createGardenLayout().plots.find(p=>p.plot===plot)!;
+export const gardenPlotPosition = (plot: number) => createGardenLayout().plots.find(p => p.plot === plot)!;
 export const GARDEN_PLOT_ORDER = createGardenLayout().plots;
 export type GardenLayout = ReturnType<typeof createGardenLayout>;

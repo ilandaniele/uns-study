@@ -8,23 +8,22 @@ export function GardenLandscape({ layout }: { layout: GardenLayout }) {
   return <g aria-hidden="true" pointerEvents="none">
     <defs>
       <linearGradient id={`grass-${id}`} x1="0" y1="0" x2=".8" y2="1"><stop stopColor="var(--garden-grass-light)" /><stop offset="1" stopColor="var(--garden-grass)" /></linearGradient>
-      <linearGradient id={`earth-${id}`} x2="0" y2="1"><stop stopColor="#a48148" /><stop offset="1" stopColor="#655033" /></linearGradient>
-      <linearGradient id={`water-${id}`} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="600" y2="430"><stop stopColor="#89d2cc" /><stop offset=".5" stopColor="#51adb8" /><stop offset="1" stopColor="#31899b" /></linearGradient>
+      <linearGradient id={`water-${id}`} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="600" y2="430"><stop stopColor="#88c5bb" /><stop offset=".5" stopColor="#60a9ac" /><stop offset="1" stopColor="#3b8191" /></linearGradient>
       <pattern id={`ripples-${id}`} width="32" height="19" patternUnits="userSpaceOnUse"><path d="M2 5q4 2 9 0m8 9q3 1 6-1" fill="none" stroke="#d5f5e9" strokeWidth="1.1" strokeLinecap="round" /></pattern>
       <radialGradient id={`shadow-${id}`}><stop stopColor="#102418" stopOpacity=".3" /><stop offset="1" stopColor="#102418" stopOpacity="0" /></radialGradient>
+      <clipPath id={`channel-${id}`}><path d={layout.riverShape} /></clipPath>
       {layout.banks.map((bank, i) => <clipPath key={i} id={`bank-${id}-${i}`}><polygon points={polygonPoints(bank)} /></clipPath>)}
     </defs>
     <ellipse cx="300" cy={bottom + 30} rx="240" ry="27" fill={`url(#shadow-${id})`} />
     {layout.banks.map((bank, i) => {
-      const middleY = bank.reduce((sum, p) => sum + p.y, 0) / bank.length;
       return <g key={i}>
-        <polygon points={polygonPoints(bank.map(p => ({ ...p, y: p.y + 22 })))} fill={`url(#earth-${id})`} />
+        {layout.earthFaces[i]!.map((face, n) => <polygon key={n} data-garden-earth-face points={polygonPoints([...face.edge, ...[...face.edge].reverse().map(p => ({ x: p.x, y: p.y + 16 }))])} fill={face.light ? "#927347" : "#78603d"} />)}
         {bank.map((a, edge) => {
           const b = bank[(edge + 1) % bank.length]!;
-          if ((a.y + b.y) / 2 < middleY) return null;
-          const steps = Math.max(2, Math.floor(Math.hypot(b.x - a.x, b.y - a.y) / 17));
+          if (b.x >= a.x) return null;
+          const length = Math.hypot(b.x - a.x, b.y - a.y);
+          const steps = length > 12 || edge % 8 === 0 ? Math.max(1, Math.floor(length / 22)) : 0;
           return <g key={edge}>
-            <polygon points={`${a.x},${a.y} ${b.x},${b.y} ${b.x},${b.y + 22} ${a.x},${a.y + 22}`} fill={b.x > a.x ? "#927347" : "#78603d"} />
             {Array.from({ length: steps }, (_, n) => {
               const t = (n + .5) / steps, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t;
               return <g key={n}>
@@ -38,14 +37,15 @@ export function GardenLandscape({ layout }: { layout: GardenLayout }) {
         <polygon points={polygonPoints(bank)} fill={`url(#grass-${id})`} stroke="var(--garden-grass-edge)" strokeWidth="1.5" strokeLinejoin="round" />
         <g clipPath={`url(#bank-${id}-${i})`}>
           {layout.plots.filter(p => p.bank === i).map(p => <g key={p.plot}>
-            <path d={`M${p.x} ${p.y - p.halfHeight}l${p.halfWidth} ${p.halfHeight}-${p.halfWidth} ${p.halfHeight}-${p.halfWidth}-${p.halfHeight}Z`} fill={p.plot % 3 ? "#effab0" : "#42783d"} opacity={p.plot % 3 ? ".08" : ".06"} />
+            <polygon points={polygonPoints(p.outline)} fill={p.plot % 3 ? "#effab0" : "#42783d"} opacity={p.plot % 3 ? ".08" : ".06"} />
             <path d={`m${p.x - 19} ${p.y + 3} 2-4 1 4 3-2m16-8 2-3 1 3m-9 17 1-3 2 3`} stroke="var(--garden-grass-edge)" strokeWidth="1" opacity=".45" fill="none" />
           </g>)}
         </g>
         {bank.map((a, edge) => {
           const b = bank[(edge + 1) % bank.length]!;
+          if (Math.hypot(b.x - a.x, b.y - a.y) < 12 && edge % 8 !== 0) return null;
           return <g key={edge}>
-            {[.19, .51, .81].map((t, n) => {
+            {(Math.hypot(b.x - a.x, b.y - a.y) > 50 ? [.19, .51, .81] : [.5]).map((t, n) => {
               const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t;
               return <g key={t} transform={`translate(${x} ${y - 2})`}>
                 <path d="M0 1q-7-4-6-10Q0-6 0 1q1-12 6-15Q9-7 0 1q7-8 10-6L0 1" fill={n % 2 ? "#548549" : "#729d4c"} />
@@ -56,16 +56,20 @@ export function GardenLandscape({ layout }: { layout: GardenLayout }) {
         })}
       </g>;
     })}
-    <path d={layout.riverPath} fill="none" stroke="var(--garden-grass-edge)" strokeWidth="29" strokeLinecap="round" />
-    <path d={layout.riverPath} fill="none" stroke="#397f83" strokeWidth="23" strokeLinecap="round" />
-    <path d={layout.riverPath} fill="none" stroke={`url(#water-${id})`} strokeWidth="18" strokeLinecap="round" />
-    <path className="garden-stream-current" d={layout.riverPath} fill="none" stroke={`url(#ripples-${id})`} strokeWidth="17" strokeLinecap="round" opacity=".65" />
+    <g strokeLinejoin="round">
+      <path data-garden-river d={layout.riverShape} fill={`url(#water-${id})`} stroke="#a6a77b" strokeWidth="4" />
+      <g clipPath={`url(#channel-${id})`}>
+        <path d={layout.riverShape} fill="none" stroke="#c1ddd0" strokeWidth="2" opacity=".55" />
+        <path className="garden-stream-current" d={layout.riverShape} fill={`url(#ripples-${id})`} opacity=".55" />
+        <path d={layout.riverPath} fill="none" stroke="#c7ede2" strokeWidth="1" strokeDasharray="12 24 5 30" strokeLinecap="round" opacity=".3" />
+      </g>
+    </g>
   </g>;
 }
 
 export function GardenBridge({ layout }: { layout: GardenLayout }) {
-  const { x, y, angle } = layout.bridge;
-  return <g aria-hidden="true" pointerEvents="none" transform={`translate(${x} ${y}) rotate(${angle})`}>
+  const { x, y, angle, span } = layout.bridge;
+  return <g aria-hidden="true" pointerEvents="none" transform={`translate(${x} ${y}) rotate(${angle}) scale(${span / 46} 1)`}>
     <rect x="-21" y="-5" width="42" height="18" rx="2" fill="#526d4c" opacity=".25" />
     <rect x="-23" y="-8" width="46" height="15" rx="2" fill="#806039" />
     <path d="M-23-9Q0-13 23-9V3Q0-1-23 3Z" fill="#cead74" stroke="#9d7a47" />

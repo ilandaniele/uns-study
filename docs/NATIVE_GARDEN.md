@@ -137,3 +137,18 @@ del vivero, conservando la parcela libre elegida. No cambia las reglas de juego.
 
 Las ampliaciones, los paisajes personales, el vivero compacto y el reloj de foco por cuenta
 se describen en [GARDEN_LANDSCAPES_FOCUS_SYNC.md](GARDEN_LANDSCAPES_FOCUS_SYNC.md).
+
+## Cauce y terreno — 2026-10-30
+
+Las seis variantes de paisaje usan meandros asimétricos, con recorridos estables
+por cuenta y compartidos con sus visitantes. El agua rellena el canal entre
+ambas orillas, sin extremos redondos de canal artificial. Las parcelas vecinas
+siguen las curvas y conservan sus números; el borde exterior de la isla queda
+recto. El puente sigue la dirección local de la corriente.
+
+La tierra se dibuja únicamente en las caras frontales visibles, uniendo sus
+segmentos para evitar rayas. Se elimina el polígono inferior completo que
+parecía un segundo cuadrado. Las plantas y la capacidad de 25 a 50 parcelas
+se conservan. Todo el cambio es SVG calculado: sin nuevos assets ni dependencias.
+Las animaciones existentes mantienen la pausa fuera de pantalla y la variante
+estática con prefers-reduced-motion.
