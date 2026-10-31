@@ -210,16 +210,17 @@ describe("ObservationService", () => {
     expect((await live.getLiveSeatStates(roomId, new Date(now + 121 * 60_000))).get(seatIds[0]!)?.status).toBe("UNKNOWN");
   });
 
-  it("an admin OCCUPIED mark is an admin_override that holds the seat for one check-in block", async () => {
-    const before = Date.now();
+  it("an admin OCCUPIED report expires after two hours without becoming a self check-in", async () => {
     await observations.observe({ userId: "u1", roomId, seatId: seatIds[0]!, status: "OCCUPIED", location, adminMark: true });
 
     const [obs] = await db.select().from(schema.seatObservations).where(eq(schema.seatObservations.seatId, seatIds[0]!));
     expect(obs?.adminOverride).toBe(true);
     expect(obs?.confidenceWeight).toBe(1000);
-    const minutes = (new Date(obs!.expiresAt).getTime() - before) / 60_000;
-    expect(minutes).toBeGreaterThan(179.9);
-    expect(minutes).toBeLessThanOrEqual(180.01);
+    expect((+obs!.expiresAt - +obs!.observedAt) / 60_000).toBe(120);
+    const live = new RoomStateService(db);
+    expect((await live.getLiveSeatStates(roomId, new Date(+obs!.observedAt + 119 * 60_000))).get(seatIds[0]!)?.status).toBe("OCCUPIED");
+    expect((await live.getLiveSeatStates(roomId, obs!.expiresAt)).get(seatIds[0]!)?.status).toBe("UNKNOWN");
+    expect(await db.select().from(schema.checkIns)).toHaveLength(0);
 
     // A single member "Está libre" does not flip the admin mark to FREE.
     const result = await observations.observe({ userId: "u2", roomId, seatId: seatIds[0]!, status: "FREE", location });

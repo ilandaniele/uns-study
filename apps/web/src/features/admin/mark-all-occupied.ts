@@ -1,8 +1,8 @@
-import type { SeatDto } from "@sala/contracts";
+import { ADMIN_MARK_OCCUPIED_DEFAULT_MINUTES, type SeatDto } from "@sala/contracts";
 
 /** Durations offered by the "Todos los lugares ocupados" dialog, in minutes. */
-export const MARK_ALL_OCCUPIED_DURATIONS = [30, 60, 120, 240] as const;
-export const MARK_ALL_OCCUPIED_DEFAULT_MINUTES = 60;
+export const MARK_ALL_OCCUPIED_DURATIONS = [30, 60, 120] as const;
+export const MARK_ALL_OCCUPIED_DEFAULT_MINUTES = ADMIN_MARK_OCCUPIED_DEFAULT_MINUTES;
 
 /**
  * Seats the bulk action will flip: everything not already OCCUPIED. An UNCERTAIN seat with someone

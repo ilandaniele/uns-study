@@ -340,8 +340,18 @@ describe("AdminRoomsService — mark all occupied", () => {
     const obs = await db.select().from(schema.seatObservations);
     expect(obs).toHaveLength(2);
     expect(obs.every((o) => o.adminOverride && o.confidenceWeight === 1000)).toBe(true);
+    expect(obs.every(o => (+o.expiresAt - +o.observedAt) / 60_000 === 120)).toBe(true);
+    const expired = await roomState.getLiveSeatStates(roomId, result.expiresAt);
+    expect(expired.get(seatIds[1]!)?.status).toBe("UNKNOWN");
+    expect(expired.get(seatIds[0]!)?.status).toBe("OCCUPIED"); // The person's real check-in still lasts three hours.
     const [row] = await audit("ADMIN_MARK_SEATS");
     expect(row?.metadata).toMatchObject({ status: "OCCUPIED", count: 2 });
+  });
+
+  it("rejects a bulk occupied duration over two hours without changing seats or audit", async () => {
+    await expect(svc.markAllOccupied(roomId, "admin1", 240)).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    expect(await db.select().from(schema.seatObservations)).toHaveLength(0);
+    expect(await audit("ADMIN_MARK_ALL_OCCUPIED")).toHaveLength(0);
   });
 
   it("supports selecting the whole room while leaving active check-ins untouched", async () => {

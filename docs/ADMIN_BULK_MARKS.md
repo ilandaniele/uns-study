@@ -1,5 +1,13 @@
 # Marcado administrativo y deshacer
 
+Los reportes nuevos de Ocupado hechos por otra persona duran dos horas, también
+cuando los hace un admin de forma individual o seleccionando varios asientos.
+El marcado total ofrece 30 minutos, 1 hora o 2 horas, con 2 horas por defecto y
+como máximo en la API y el servicio. No se crea un check-in ni se atribuyen horas
+de estudio a quien reporta. «Estoy acá» y sus renovaciones conservan sus plazos;
+las marcas administrativas de Libre conservan sus tres horas. No se reescriben
+los vencimientos de reportes que ya existían al publicar este cambio.
+
 “Todos los lugares ocupados” guarda los identificadores de las observaciones
 creadas por esa operación en su entrada de auditoría. “Deshacer marcado total”
 vence sólo las observaciones todavía vigentes de ese último marcado total,

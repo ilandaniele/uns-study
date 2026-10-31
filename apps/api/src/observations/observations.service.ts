@@ -21,8 +21,8 @@ const SPREAD_WINDOW_MIN = 10;
 const QR_VERIFIED_FACTOR = 1.5;
 /** Weight of an admin `admin_override` observation: it outweighs any mix of member reports. */
 export const ADMIN_OVERRIDE_WEIGHT = 1000;
-/** An admin's "Está ocupado" or "Está libre" holds for one standard check-in block. */
-export const ADMIN_MARK_MINUTES = CHECKIN_MINUTES;
+/** Admin FREE overrides keep their established three-hour window; OCCUPIED reports use the normal two hours. */
+export const ADMIN_FREE_MARK_MINUTES = CHECKIN_MINUTES;
 
 export interface CreateObservationInput {
   userId: string;
@@ -40,7 +40,7 @@ export interface CreateObservationInput {
   limits?: ObservationLimits;
   /**
    * The caller holds the ADMIN role and reports OCCUPIED or FREE: the report is stored as an
-   * `admin_override` (ADMIN_OVERRIDE_WEIGHT, lasting ADMIN_MARK_MINUTES), replaces any earlier admin mark on the seat and skips the distinct-seat spread cap.
+   * `admin_override` (ADMIN_OVERRIDE_WEIGHT; OCCUPIED two hours, FREE three hours), replaces any earlier admin mark on the seat and skips the distinct-seat spread cap.
    */
   adminMark?: boolean;
 }
@@ -134,13 +134,11 @@ export class ObservationService {
     if (activeCheckIns.some((c) => c.userId === input.userId && c.seatId === input.seatId)) throw ApiErrors.ownSeatObservation();
 
     const adminMark = input.adminMark === true && input.status !== "SAVED";
-    const minutes = adminMark
-      ? ADMIN_MARK_MINUTES
-      : input.status === "FREE"
-        ? FREE_OBS_MINUTES
-        : input.status === "SAVED"
-          ? SAVED_OBS_MINUTES
-          : OCCUPIED_OBS_MINUTES;
+    const minutes = input.status === "FREE"
+      ? (adminMark ? ADMIN_FREE_MARK_MINUTES : FREE_OBS_MINUTES)
+      : input.status === "SAVED"
+        ? SAVED_OBS_MINUTES
+        : OCCUPIED_OBS_MINUTES;
     const expiresAt = new Date(now.getTime() + minutes * 60_000);
     const confidenceWeight = adminMark ? ADMIN_OVERRIDE_WEIGHT : reputationWeight * (qrVerified ? QR_VERIFIED_FACTOR : 1);
 

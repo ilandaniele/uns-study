@@ -1,13 +1,13 @@
 import { and, count, desc, eq, getTableColumns, gt, gte, inArray, sql } from "drizzle-orm";
 import { chunk, inChunks, rowsPerInsert, schema, type Db, type Tx } from "@sala/database";
-import { type GeofenceTestResultDto, type LocationInput, type RoomDailyStatDto, type RoomGeofenceDto, type RoomStatsDto } from "@sala/contracts";
+import { ADMIN_MARK_OCCUPIED_MIN_MINUTES, ADMIN_MARK_OCCUPIED_MAX_MINUTES, OCCUPIED_OBS_MINUTES, type GeofenceTestResultDto, type LocationInput, type RoomDailyStatDto, type RoomGeofenceDto, type RoomStatsDto } from "@sala/contracts";
 import { env } from "../env.js";
 import { RoomsService } from "../rooms/rooms.service.js";
 import { RoomStateService, type SeatStateChange } from "../rooms/room-state.service.js";
 import { PresenceService } from "../presence/presence.service.js";
 import { RolesService } from "../users/roles.service.js";
 import { RoomCache } from "../common/cache/room-cache.service.js";
-import { ADMIN_MARK_MINUTES, ADMIN_OVERRIDE_WEIGHT } from "../observations/observations.service.js";
+import { ADMIN_FREE_MARK_MINUTES, ADMIN_OVERRIDE_WEIGHT } from "../observations/observations.service.js";
 import { ApiErrors } from "../common/api-error.js";
 import type { AdminMarkAllUndoDto } from "@sala/contracts";
 
@@ -240,6 +240,9 @@ export class AdminRoomsService {
     actorId: string,
     minutes: number,
   ): Promise<{ roomId: string; count: number; actionId: string | null; expiresAt: Date; changes: SeatStateChange[] }> {
+    if (!Number.isInteger(minutes) || minutes < ADMIN_MARK_OCCUPIED_MIN_MINUTES || minutes > ADMIN_MARK_OCCUPIED_MAX_MINUTES) {
+      throw ApiErrors.validation("El marcado ocupado debe durar entre 15 minutos y 2 horas.");
+    }
     const room = await this.rooms.findRoomRow(idOrSlug);
     const now = new Date();
     const expiresAt = new Date(now.getTime() + minutes * 60_000);
@@ -297,7 +300,7 @@ export class AdminRoomsService {
 
   /**
    * Marks the chosen seats OCCUPIED or FREE via admin-attributed `admin_override` observations
-   * (both hold for ADMIN_MARK_MINUTES, one check-in block). Any earlier live admin
+   * (OCCUPIED lasts two hours; FREE keeps its three-hour admin window). Any earlier live admin
    * mark on those seats is ended first, so the new one replaces it. Seats with an active check-in,
    * inactive seats and seats of other rooms are skipped. No presence check.
    */
@@ -309,7 +312,7 @@ export class AdminRoomsService {
   ): Promise<{ roomId: string; count: number; skipped: number; expiresAt: Date; changes: SeatStateChange[] }> {
     const room = await this.rooms.findRoomRow(idOrSlug);
     const now = new Date();
-    const minutes = ADMIN_MARK_MINUTES;
+    const minutes = status === "OCCUPIED" ? OCCUPIED_OBS_MINUTES : ADMIN_FREE_MARK_MINUTES;
     const expiresAt = new Date(now.getTime() + minutes * 60_000);
     const requested = [...new Set(seatIds)];
 

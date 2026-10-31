@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CHECKIN_MINUTES, CHECKIN_MIN_MINUTES, CHECKIN_PRO_MAX_MINUTES } from "./events";
+import { CHECKIN_MINUTES, CHECKIN_MIN_MINUTES, CHECKIN_PRO_MAX_MINUTES, OCCUPIED_OBS_MINUTES } from "./events";
 
 export * from "./animals";
 export * from "./careers";
@@ -370,8 +370,8 @@ export const updateGeofenceSchema = z.object({
 });
 
 export const ADMIN_MARK_OCCUPIED_MIN_MINUTES = 15;
-export const ADMIN_MARK_OCCUPIED_MAX_MINUTES = 480;
-export const ADMIN_MARK_OCCUPIED_DEFAULT_MINUTES = 60;
+export const ADMIN_MARK_OCCUPIED_MAX_MINUTES = OCCUPIED_OBS_MINUTES;
+export const ADMIN_MARK_OCCUPIED_DEFAULT_MINUTES = OCCUPIED_OBS_MINUTES;
 
 export const markAllOccupiedSchema = z.object({
   minutes: z.number().int().min(ADMIN_MARK_OCCUPIED_MIN_MINUTES).max(ADMIN_MARK_OCCUPIED_MAX_MINUTES).default(ADMIN_MARK_OCCUPIED_DEFAULT_MINUTES),

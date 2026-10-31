@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { confirmMessage, countMarkableSeats, durationLabel, markedToastMessage } from "./mark-all-occupied";
+import { confirmMessage, countMarkableSeats, durationLabel, markedToastMessage, MARK_ALL_OCCUPIED_DEFAULT_MINUTES, MARK_ALL_OCCUPIED_DURATIONS } from "./mark-all-occupied";
 
 describe("mark-all-occupied helpers", () => {
+  it("defaults to two hours and never offers longer occupied reports", () => {
+    expect(MARK_ALL_OCCUPIED_DEFAULT_MINUTES).toBe(120);
+    expect(MARK_ALL_OCCUPIED_DURATIONS).toContain(120);
+    expect(MARK_ALL_OCCUPIED_DURATIONS.every(minutes => minutes <= 120)).toBe(true);
+  });
   it("counts every seat that is not OCCUPIED", () => {
     const seats = [{ status: "FREE" }, { status: "UNKNOWN" }, { status: "UNCERTAIN" }, { status: "OCCUPIED" }] as const;
     expect(countMarkableSeats([...seats])).toBe(3);

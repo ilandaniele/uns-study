@@ -15,8 +15,9 @@ imágenes descargadas ni dependencias nuevas.
 ## Duración de los reportes
 
 Desde este cambio, los reportes individuales nuevos «Está libre» duran 120 minutos,
-igual que «Está ocupado». «Está guardado» conserva sus 30 minutos; las marcas de
-administración Libre/Ocupado conservan sus 180 minutos. Las confirmaciones Libre
+igual que «Está ocupado», incluidos los reportes Ocupado de administradores.
+«Está guardado» conserva sus 30 minutos; las marcas administrativas de Libre
+conservan sus 180 minutos. Las confirmaciones Libre
 producidas por una votación usan también la constante compartida de 120 minutos.
 Una presencia activa y las votaciones conservan sus reglas de prioridad.
 

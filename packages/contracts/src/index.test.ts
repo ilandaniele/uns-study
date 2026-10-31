@@ -7,11 +7,23 @@ import {
   extendRequestSchema,
   createQrCodeSchema,
   updateGeofenceSchema,
+  markAllOccupiedSchema,
 } from "./index.js";
 import { proposeTableNameSchema } from "./table-names.js";
 
 const ROOM = "11111111-1111-4111-8111-111111111111";
 const SEAT = "22222222-2222-4222-8222-222222222222";
+
+describe("bulk occupied observation lifetime", () => {
+  it("defaults to two hours and permits shorter explicit reports", () => {
+    expect(markAllOccupiedSchema.parse({}).minutes).toBe(120);
+    expect(markAllOccupiedSchema.parse({ minutes: 15 }).minutes).toBe(15);
+    expect(markAllOccupiedSchema.parse({ minutes: 120 }).minutes).toBe(120);
+  });
+  it.each([14, 121, 240, 480, Infinity])("rejects an out-of-policy lifetime of %s minutes", minutes => {
+    expect(markAllOccupiedSchema.safeParse({ minutes }).success).toBe(false);
+  });
+});
 
 const validLocation = {
   latitude: -38.702,
