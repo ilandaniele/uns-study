@@ -12,7 +12,7 @@ const REFETCH_DEBOUNCE_MS = 1000;
 export interface UseOccupantsResult {
   /** seatId -> occupant, for every checked-in seat (hidden users have `userId: null`). */
   bySeatId: Map<string, SeatOccupantDto>;
-  /** seatId -> who marked it "Está ocupado", for OCCUPIED seats with nobody checked in. */
+  /** seatId -> latest public observer for FREE/OCCUPIED/SAVED seats without a check-in. */
   markedBySeatId: Map<string, SeatMarkedByDto>;
   refetch: () => void;
 }
@@ -83,23 +83,25 @@ export function useOccupants(roomSlug: string): UseOccupantsResult {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => void load(), REFETCH_DEBOUNCE_MS);
     };
-    // Only seats that become OCCUPIED (a new occupant / marker) or that we currently list
-    // (occupant may have left) can change this overlay; other seat events are noise.
+    // Any report can introduce/change its author, including FREE -> FREE and SAVED -> SAVED.
     const onSeatStateChanged = (event: SeatStateChangedEvent) => {
-      if (event.status === "OCCUPIED" || bySeatIdRef.current.has(event.seatId) || markedRef.current.has(event.seatId)) scheduleReload();
+      if (event.status === "FREE" || event.status === "OCCUPIED" || event.status === "SAVED" || bySeatIdRef.current.has(event.seatId) || markedRef.current.has(event.seatId)) scheduleReload();
     };
     const onConnect = () => {
       if (seenConnect) scheduleReload();
       seenConnect = true;
     };
+    const onVisible = () => { if (!document.hidden) scheduleReload(); };
 
     socket.on(SocketEvents.SeatStateChanged, onSeatStateChanged);
     socket.on("connect", onConnect);
+    document.addEventListener("visibilitychange", onVisible);
 
     return () => {
       if (timeout) clearTimeout(timeout);
       socket.off(SocketEvents.SeatStateChanged, onSeatStateChanged);
       socket.off("connect", onConnect);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [load]);
 

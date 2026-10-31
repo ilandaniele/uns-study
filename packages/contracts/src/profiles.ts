@@ -128,10 +128,10 @@ export interface SeatOccupantDto {
   flair?: ProfileFlairDto;
 }
 
-/** A seat that reads OCCUPIED ("Está ocupado") or SAVED ("Está guardado") only because someone marked it; nobody is checked in. */
+/** Latest live FREE/OCCUPIED/SAVED observation on a seat with nobody checked in. Public identity only. */
 export interface SeatMarkedByDto {
   seatId: string;
-  kind: "OCCUPIED" | "SAVED";
+  kind: "FREE" | "OCCUPIED" | "SAVED";
   markedBy: { displayName: string; observedAt: string };
 }
 

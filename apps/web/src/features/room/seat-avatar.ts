@@ -1,4 +1,4 @@
-import { animalAvatarPath, animalBackdrop, isAnimalId, type SeatAvatarDto } from "@sala/contracts";
+import { animalAvatarPath, animalBackdrop, isAnimalId, type SeatAvatarDto, type SeatMarkedByDto } from "@sala/contracts";
 
 /** Light blue-grey backdrop of the silhouette; animals get their own colour (`animalBackdrop`). */
 export const AVATAR_BACKDROP = "#c5d0e6";
@@ -23,10 +23,11 @@ export function seatAvatarRender(avatar: SeatAvatarDto | null | undefined, seatO
   return { type: "silhouette" };
 }
 
-/** "Marcado por: Ana · hace 5 min" — shown for seats that are OCCUPIED only because someone marked them. */
-export function markedByLabel(name: string, observedAt: string, now: Date = new Date(), kind: "OCCUPIED" | "SAVED" = "OCCUPIED"): string {
+/** Public author and observation age; never implies the observer is sitting in this seat. */
+export function markedByLabel(name: string, observedAt: string, now: Date = new Date(), kind: SeatMarkedByDto["kind"] = "OCCUPIED"): string {
   const minutes = Math.max(0, Math.floor((now.getTime() - new Date(observedAt).getTime()) / 60_000));
   const ago = minutes < 1 ? "hace instantes" : minutes < 60 ? `hace ${minutes} min` : `hace ${Math.floor(minutes / 60)} h`;
+  if (kind === "FREE") return `${name} indicó que está libre · ${ago}`;
   return kind === "SAVED" ? `${name} avisó que este lugar lo guardaron · ${ago}` : `Marcado por: ${name} · ${ago}`;
 }
 

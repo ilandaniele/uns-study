@@ -153,6 +153,15 @@ Admin actions later:
 
 All moderation actions should be audited.
 
+An explicitly requested cleanup of existing audit history is available only to
+SUPERADMIN through `DELETE /api/v1/admin/audit` with the exact confirmation
+`DELETE_EXISTING_AUDIT`. It deletes audit records up to a server-side cutoff in
+one transaction and records a new minimal `AUDIT_CLEARED` receipt. It does not
+remove restrictions, reports, security signals, study time, seeds or seat state.
+A cleanup is rejected while any affected total-mark record backs a live undo,
+so deleting history cannot silently break "Deshacer". Normal audit logging stays
+enabled after cleanup.
+
 SUPERADMIN is the verified `OWNER_EMAIL` account with the ADMIN role, derived on the server rather than stored as a grantable role. Only this unrestricted account may add or subtract study time. Other ADMIN and MODERATOR accounts must receive 403 even if they forge capability flags. `/me` exposes `isSuperAdmin` and `canManageStudyTime` for presentation; neither flag is an authorization input. Public badges distinguish the superadmin while retaining the existing identity and badge-visibility rules. A badge never grants permissions.
 
 Only SUPERADMIN may clear the room chat, manage announcements, read/test/update the room geofence, access email campaigns/recipient counts, grant/revoke ADMIN, shield/delete accounts, or review collaboration-based staff applications. ADMIN keeps reports, feedback, moderation, bulk seat marking and undo. Published announcements remain public. The owner is presented as creator/developer; room admins are identified as collaborators/moderators of the room. See `docs/COMMUNITY_ACHIEVEMENTS.md` for the permission matrix and reward invariants.

@@ -375,11 +375,13 @@ describe("AdminRoomsService — mark all occupied", () => {
     expect(after.get(seatIds[2]!)?.status).toBe("FREE");
   });
 
-  it("shows 'Administración' as the marker without exposing the admin", async () => {
+  it("shows only the admin's chosen public name as the marker", async () => {
+    await db.insert(schema.userProfiles).values({ userId: "admin1", firstName: "Marina", identityMode: "FIRST_NAME" });
     await svc.markAllOccupied(roomId, "admin1", 60);
     const entries = (await people.listOccupants(roomId)) as SeatMarkedByDto[];
     expect(entries).toHaveLength(seatIds.length);
-    expect(entries.every((e) => e.markedBy.displayName === "Administración")).toBe(true);
+    expect(entries.every((e) => e.markedBy.displayName === "Marina")).toBe(true);
+    expect(JSON.stringify(entries)).not.toMatch(/admin1|userId|@/);
   });
 
   it("rolls the whole bulk mark back when anything inside the transaction fails", async () => {

@@ -307,7 +307,7 @@ describe("RoomPeopleService", () => {
       const minutes = (n: number) => new Date(Date.now() + n * 60_000);
       await db.insert(schema.seatObservations).values([
         { userId: "u2", roomId, seatId: seatIds[3]!, observedStatus: "OCCUPIED", observedAt: minutes(-5), expiresAt: minutes(15) },
-        // Expired, superseded-by-FREE and checked-in seats must not produce entries.
+        // Expired and checked-in seats must not produce entries; FREE replaces an older report.
         { userId: "u2", roomId, seatId: seatIds[4]!, observedStatus: "OCCUPIED", observedAt: minutes(-60), expiresAt: minutes(-40) },
         { userId: "u2", roomId, seatId: seatIds[5]!, observedStatus: "OCCUPIED", observedAt: minutes(-4), expiresAt: minutes(15) },
         { userId: "u2", roomId, seatId: seatIds[5]!, observedStatus: "FREE", observedAt: minutes(-2), expiresAt: minutes(15) },
@@ -316,12 +316,35 @@ describe("RoomPeopleService", () => {
       await db.insert(schema.seatObservations).values({ userId: "u2", roomId, seatId: seatIds[6]!, observedStatus: "OCCUPIED", expiresAt: minutes(15) });
 
       const marked = (await people.listOccupants(roomId)).filter((e): e is SeatMarkedByDto => "markedBy" in e);
-      expect(marked).toHaveLength(1);
-      expect(marked[0]?.seatId).toBe(seatIds[3]);
-      expect(marked[0]?.markedBy.displayName).toBe("Beto");
-      expect(Date.parse(marked[0]!.markedBy.observedAt)).toBeLessThan(Date.now() - 4 * 60_000);
-      expect(JSON.stringify(marked[0])).not.toContain("u2");
-      expect(marked[0]?.kind).toBe("OCCUPIED");
+      expect(marked).toHaveLength(2);
+      const occupied = marked.find(entry => entry.seatId === seatIds[3])!;
+      expect(occupied.markedBy.displayName).toBe("Beto");
+      expect(Date.parse(occupied.markedBy.observedAt)).toBeLessThan(Date.now() - 4 * 60_000);
+      expect(JSON.stringify(marked)).not.toContain("u2");
+      expect(occupied.kind).toBe("OCCUPIED");
+      expect(marked.find(entry => entry.seatId === seatIds[5])).toMatchObject({ kind: "FREE", markedBy: { displayName: "Beto" } });
+    });
+
+    it("shows public identities for administrative FREE marks and never leaks account identifiers", async () => {
+      await setProfile("u2", { firstName: "Beto", identityMode: "FIRST_NAME" });
+      const now = new Date();
+      await db.insert(schema.seatObservations).values({ userId: "u2", roomId, seatId: seatIds[3]!, observedStatus: "FREE", adminOverride: true, observedAt: now, expiresAt: new Date(+now + 60_000) });
+      const marked = (await people.listOccupants(roomId, "viewer")).filter((e): e is SeatMarkedByDto => "markedBy" in e);
+      expect(marked).toEqual([{ seatId: seatIds[3], kind: "FREE", markedBy: { displayName: "Beto", observedAt: now.toISOString() } }]);
+    });
+
+    it("uses the hidden observer's alias for FREE and keeps both block directions anonymous", async () => {
+      await setProfile("u2", { firstName: "Private Name", identityMode: "HIDDEN" });
+      await db.insert(schema.seatObservations).values({ userId: "u2", roomId, seatId: seatIds[3]!, observedStatus: "FREE", adminOverride: true, expiresAt: new Date(Date.now() + 60_000) });
+      const [entry] = (await people.listOccupants(roomId, "viewer")).filter((e): e is SeatMarkedByDto => "markedBy" in e);
+      expect(entry?.kind).toBe("FREE"); expect(entry?.markedBy.displayName).not.toBe("Usuario anónimo");
+      expect(JSON.stringify(entry)).not.toMatch(/Private Name|u2|@|userId|adminOverride/);
+      for (const reverse of [false, true]) {
+        await db.delete(schema.userBlocks);
+        await db.insert(schema.userBlocks).values({ blockerId: reverse ? "u2" : "viewer", blockedId: reverse ? "viewer" : "u2" });
+        const blocked = (await people.listOccupants(roomId, "viewer")).filter((e): e is SeatMarkedByDto => "markedBy" in e);
+        expect(blocked[0]?.markedBy.displayName).toBe("Alguien");
+      }
     });
 
     it("reports 'markedBy' with kind SAVED for seats whose freshest observation is SAVED", async () => {

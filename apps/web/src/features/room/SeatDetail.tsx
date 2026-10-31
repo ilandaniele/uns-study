@@ -1,6 +1,6 @@
 "use client";
 
-import type { DisputeKind, DisputeVote, MeDto, SeatDisputeDto, SeatDto, SeatOccupantDto, TableDto } from "@sala/contracts";
+import type { DisputeKind, DisputeVote, MeDto, SeatDisputeDto, SeatDto, SeatMarkedByDto, SeatOccupantDto, TableDto } from "@sala/contracts";
 import { CaretDownIcon, EyeIcon, ShieldCheckIcon, StarIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -45,8 +45,8 @@ export interface SeatDetailProps {
   isMySeat: boolean;
   /** The occupant who chose to be identified for this seat, if any (from `GET /rooms/:id/occupants`). */
   occupant?: SeatOccupantDto | null;
-  /** Who marked this seat "Está ocupado" when nobody is checked in (from `GET /rooms/:id/occupants`). */
-  markedBy?: { displayName: string; observedAt: string; kind?: "OCCUPIED" | "SAVED" } | null;
+  /** Public author of the latest live observation when nobody is checked in. */
+  markedBy?: SeatMarkedByDto["markedBy"] & { kind?: SeatMarkedByDto["kind"] } | null;
   pending: boolean;
   /** True while `getFreshLocation()` is sampling GPS for the in-flight action; swaps in "Buscando tu ubicación…" on the primary buttons below. Optional so callers can adopt it incrementally. */
   locating?: boolean;
@@ -159,7 +159,7 @@ export function SeatDetail({
   const unit = isBar ? "Lugar" : "Asiento";
   const tableLine = [tableDisplayName(table, seat.code), table?.nickname ? `"${table.nickname}"` : null, side].filter(Boolean).join(" · ");
   const facts = [recency, seat.confidence > 0 ? confidenceWording(seat.confidence) : null].filter(Boolean).join(" · ");
-  const showMarkedBy = !isMySeat && !occupant && markedBy != null && (seat.status === "OCCUPIED" || (seat.status === "SAVED" && markedBy.kind === "SAVED"));
+  const showMarkedBy = !isMySeat && !occupant && markedBy != null && seat.status === (markedBy.kind ?? "OCCUPIED");
   const showOccupiedUntil = !isMySeat && seat.status === "OCCUPIED" && seat.occupiedUntil != null;
   const showOccupant = !isMySeat && occupant != null;
 
@@ -361,7 +361,7 @@ export function SeatDetail({
               {occupant.userId && me?.user && me.user.id !== occupant.userId ? <MessageOccupantButton userId={occupant.userId} /> : null}
             </div>
           ) : null}
-          {showMarkedBy && markedBy ? <p className="py-2">{markedByLabel(markedBy.displayName, markedBy.observedAt, now, markedBy.kind)}</p> : null}
+          {showMarkedBy && markedBy ? <p className="break-words py-2">{markedByLabel(markedBy.displayName, markedBy.observedAt, now, markedBy.kind)}</p> : null}
           {showOccupiedUntil && seat.occupiedUntil ? <p className="py-2">Ocupado hasta las {clockLabel(seat.occupiedUntil)}</p> : null}
           {facts && !peek ? <p className="py-2 text-[13px]">{facts}</p> : null}
         </div>

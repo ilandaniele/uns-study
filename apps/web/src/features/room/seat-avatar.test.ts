@@ -28,6 +28,8 @@ describe("seatAvatarRender", () => {
     expect(markedByLabel("Zorro Astuto", "2026-01-01T11:59:50Z", now)).toBe("Marcado por: Zorro Astuto · hace instantes");
     expect(markedByLabel("Ana", "2026-01-01T09:00:00Z", now)).toBe("Marcado por: Ana · hace 3 h");
     expect(markedByLabel("Ana", "2026-01-01T11:55:00Z", now, "SAVED")).toBe("Ana avisó que este lugar lo guardaron · hace 5 min");
+    expect(markedByLabel("Ana", "2026-01-01T11:55:00Z", now, "FREE")).toBe("Ana indicó que está libre · hace 5 min");
+    expect(markedByLabel("Zorro Astuto", "2026-01-01T11:59:50Z", now, "FREE")).toBe("Zorro Astuto indicó que está libre · hace instantes");
   });
 
   it("gives every animal its own drawing and backdrop colour", () => {

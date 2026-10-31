@@ -6,6 +6,13 @@ Prefix REST API with:
 
 The exact transport may evolve, but do not expose raw DB writes from the browser.
 
+Authenticated `GET /rooms/:idOrSlug/occupants` also returns the latest live
+FREE/OCCUPIED/SAVED observation per seat without a check-in. Its author is the
+chosen public display name or alias, including administrative marks. Account
+IDs, emails and hidden names are never included; blocked observers remain
+"Alguien". The seat detail displays attribution only when its kind matches the
+current seat state, and refreshes it when opening a seat or returning to the app.
+
 ## 1. Room reads
 
 ### GET /rooms

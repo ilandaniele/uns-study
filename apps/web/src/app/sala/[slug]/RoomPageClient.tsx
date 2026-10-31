@@ -155,6 +155,10 @@ export function RoomPageClient({ slug }: { slug: string }) {
     return () => window.clearTimeout(id);
   }, [preloadSeatDetail]);
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
+  useEffect(() => {
+    // A repeated report can change its author/time without changing the canonical seat state.
+    if (selectedSeatId) refetchOccupants();
+  }, [selectedSeatId, refetchOccupants]);
   // Admin multi-select: while on, a map tap picks the seat for a bulk mark instead of opening its detail.
   const [multiSelect, setMultiSelect] = useState(false);
   const [multiSeatIds, setMultiSeatIds] = useState<ReadonlySet<string>>(() => new Set());
