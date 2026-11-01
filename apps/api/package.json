@@ -17,21 +17,21 @@
     "@sala/contracts": "workspace:*",
     "@sala/database": "workspace:*",
     "aws4fetch": "^1.0.20",
-    "better-auth": "1.7.8",
+    "better-auth": "1.7.14",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "drizzle-orm": "^0.45.4",
-    "hono": "4.13.13",
+    "hono": "4.13.14",
     "zod": "^4.6.6"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20261014.1",
+    "@cloudflare/workers-types": "^5.20261029.1",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^22.10.5",
     "better-sqlite3": "13.0.3",
     "typescript": "^5.7.2",
     "vite": "^7.3.6",
-    "vitest": "^5.0.3",
-    "wrangler": "4.151.0"
+    "vitest": "^5.0.5",
+    "wrangler": "4.156.0"
   }
 }
