@@ -23,9 +23,9 @@
   },
   "devDependencies": {
     "eslint": "^9.17.0",
-    "turbo": "^2.11.7",
+    "turbo": "^2.11.10",
     "typescript": "^5.7.2",
-    "typescript-eslint": "~8.71.1"
+    "typescript-eslint": "~8.72.1"
   },
   "pnpm": {
     "overrides": {
