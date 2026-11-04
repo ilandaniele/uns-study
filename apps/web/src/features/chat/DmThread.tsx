@@ -92,6 +92,8 @@ export function DmThread({ conversationId, currentUserId, conversation, variant 
           {otherUserId ? (
             <MessageMenu
               isOwn={false}
+              placement="bottom"
+              label="Opciones de la conversación"
               onReport={() => router.push(`/reportar/${otherUserId}?context=DM`)}
               onBlock={() => void block(otherUserId)}
             />

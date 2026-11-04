@@ -17,6 +17,42 @@ test("DM: A opens B's profile, sends a message, B sees it unread in /chat/dm", a
     const dialog = pageA.getByRole("dialog");
     await expect(dialog).toBeVisible();
 
+    // Header actions must be usable inside the clipped, rounded widget on both layouts.
+    for (const width of [1440, 440]) {
+      await pageA.setViewportSize({ width, height: 960 });
+      const options = dialog.getByRole("button", { name: "Opciones de la conversación" });
+      await options.click();
+      const menu = dialog.getByRole("menu", { name: "Opciones de la conversación" });
+      await expect(menu).toBeVisible();
+      const anchor = (await options.boundingBox())!;
+      const bounds = (await menu.boundingBox())!;
+      expect(bounds.y).toBeGreaterThanOrEqual(anchor.y + anchor.height);
+      expect(bounds.x).toBeGreaterThanOrEqual(0);
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+      for (const label of ["Reportar", "Bloquear"]) {
+        const item = menu.getByRole("menuitem", { name: label });
+        // Visibility alone misses overflow clipping; check the actual touch target.
+        expect(await item.evaluate(element => {
+          const rect = element.getBoundingClientRect();
+          return element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+        })).toBe(true);
+      }
+      await expect(menu.getByRole("menuitem", { name: "Reportar" })).toBeFocused();
+      await pageA.keyboard.press("ArrowDown");
+      await expect(menu.getByRole("menuitem", { name: "Bloquear" })).toBeFocused();
+      await pageA.keyboard.press("Escape");
+      await expect(menu).toBeHidden();
+      await expect(options).toBeFocused();
+      await expect(dialog).toBeVisible();
+      await options.click();
+      await expect(menu).toBeVisible();
+      await options.click();
+      await expect(menu).toBeHidden();
+      await options.click();
+      await dialog.locator('textarea[maxlength="1000"]').click();
+      await expect(menu).toBeHidden();
+    }
+
     // The room-chat panel stays mounted in the dialog; the DM composer is the one with the 1000-char limit.
     const composer = dialog.locator('textarea[maxlength="1000"]');
     const content = `dm-${Date.now()}`;
