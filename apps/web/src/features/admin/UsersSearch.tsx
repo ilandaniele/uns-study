@@ -102,17 +102,17 @@ export function UsersSearch() {
                 className={`flex flex-col divide-y divide-[var(--border)] border-y border-app transition-opacity ${searching ? "opacity-60" : ""}`}
               >
                 {results.map((user) => (
-                  <Link
+                  <div
                     key={user.userId}
-                    href={`/admin/users/${user.userId}`}
-                    className="flex flex-col gap-0.5 px-4 py-3 text-sm hover:bg-[var(--surface-2)] sm:flex-row sm:items-center sm:justify-between"
+                    className="flex flex-wrap items-center gap-2 px-4 py-3 text-sm hover:bg-[var(--surface-2)]"
                   >
-                    <span className="flex min-w-0 items-center gap-2">
+                    <Link href={`/u/${encodeURIComponent(user.userId)}?from=admin`} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg hover:text-primary">
                       <span className="truncate font-medium text-main">{user.name}</span>
                       {user.isAdmin ? <AdminTag kind={user.isSuperAdmin ? "SUPERADMIN" : true} /> : null}
-                    </span>
+                    </Link>
                     <span className="truncate text-muted">{user.email ?? "sin email"}</span>
-                  </Link>
+                    <Link href={`/admin/users/${encodeURIComponent(user.userId)}`} className="inline-flex min-h-11 items-center rounded-full border border-app px-3 font-semibold text-primary hover:bg-surface-2" aria-label={`Moderar a ${user.name}`}>Moderar</Link>
+                  </div>
                 ))}
                 {results.length === 0 ? (
                   <p className="px-4 py-3 text-sm text-muted">

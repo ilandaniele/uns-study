@@ -46,9 +46,9 @@ export function StudyPresenceRuntime() {
   return <aside aria-label="Control de presencia" className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-2 text-xs text-muted">
     <p role="status" className="max-w-3xl">{current?.trackingHere === false ? "La ubicación se verifica en el navegador donde marcaste tu lugar. Este dispositivo sólo consulta el estado."
       : current?.state === "AWAY" ? <>Horas en pausa: detectamos que saliste de la sala. Si no volvés, liberamos el lugar a las {new Date(current.releaseAt!).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Buenos_Aires" })}.</>
-      : unavailable ? "No pudimos leer tu ubicación. Revisá el permiso del navegador; las horas se pausan sin lecturas válidas."
-      : paused ? "Revisando presencia. Sin una ubicación válida, las horas se pausan a los 5 minutos."
-      : "Horas activas · mantené la app visible para verificar que seguís en la sala. No guardamos tus coordenadas."}</p>
+      : unavailable ? "No pudimos leer tu ubicación. Las horas siguen mientras tu lugar esté vigente; revisá el permiso para poder detectar una salida."
+      : paused ? "Consultando el estado de tu lugar…"
+      : "Horas activas · siguen con la pantalla apagada hasta que venza tu lugar o detectemos una salida. No guardamos tus coordenadas."}</p>
     {current?.trackingHere === false ? null : <button type="button" disabled={sampling} onClick={() => setRetry(n => n + 1)} className="min-h-9 rounded-full border border-app px-3 font-semibold text-main disabled:opacity-60">{sampling ? "Revisando…" : "Revisar ubicación"}</button>}
   </aside>;
 }

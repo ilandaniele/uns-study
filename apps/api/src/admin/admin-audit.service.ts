@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, lt, lte, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNotNull, lt, lte, sql } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
 import type { Page } from "@sala/contracts";
 import { displayName } from "../users/display-name.js";
@@ -21,6 +21,18 @@ export interface AuditEntryDto {
 /** Audit read model and explicitly requested owner-only cleanup. */
 export class AdminAuditService {
   constructor(private readonly db: Db) {}
+
+  /** Clears account histories only. Room undo receipts, restrictions and security events survive. */
+  clearUserHistories(actorId: string): { count: number; clearedBefore: string } {
+    const now = new Date();
+    return this.db.transaction(tx => {
+      const filter = and(isNotNull(schema.moderationActions.targetUserId), lte(schema.moderationActions.createdAt, now));
+      const removed = tx.select({ total: count() }).from(schema.moderationActions).where(filter).get()!.total;
+      tx.delete(schema.moderationActions).where(filter).run();
+      if (removed) tx.insert(schema.moderationActions).values({ actorId, action: "USER_MODERATION_HISTORY_CLEARED", metadata: { count: removed, clearedBefore: now.toISOString() }, createdAt: new Date(+now + 1) }).run();
+      return { count: removed, clearedBefore: now.toISOString() };
+    });
+  }
 
   /** The route requires SUPERADMIN. Only existing audit rows are removed, never moderation state. */
   clearExisting(actorId: string): { count: number; clearedBefore: string } {

@@ -201,7 +201,7 @@ export class CheckInService {
             .returning()
             .get();
           if (!row) throw new Error("Failed to create check-in");
-          beginStudyPresence(tx, row.id, now, input.studyDeviceId);
+          beginStudyPresence(tx, row.id, now, row.expiresAt, input.studyDeviceId);
 
           // The person now seated takes over an admin "ocupado" mark: it ends here, so the seat
           // doesn't keep reading OCCUPIED after they leave.
@@ -335,10 +335,10 @@ export class CheckInService {
   }
 
   studyPresence(userId: string, deviceId: string | null = null): StudyPresenceDto | null {
-    const row = this.db.select({ monitor: schema.checkInMonitors }).from(schema.checkIns)
+    const row = this.db.select({ monitor: schema.checkInMonitors, expiresAt: schema.checkIns.expiresAt }).from(schema.checkIns)
       .innerJoin(schema.checkInMonitors, eq(schema.checkInMonitors.checkInId, schema.checkIns.id))
       .where(and(eq(schema.checkIns.userId, userId), eq(schema.checkIns.status, "ACTIVE"), gt(schema.checkIns.expiresAt, new Date()))).get();
-    return row ? { ...presenceDto(row.monitor, new Date()), trackingHere: !row.monitor.deviceId || row.monitor.deviceId === deviceId } : null;
+    return row ? { ...presenceDto(row.monitor, new Date(), false, row.expiresAt), trackingHere: !row.monitor.deviceId || row.monitor.deviceId === deviceId } : null;
   }
 
   async samplePresence(userId: string, checkInId: string, location: LocationInput, deviceId: string | null = null): Promise<{ presence: StudyPresenceDto; ended: Awaited<ReturnType<CheckInService["checkOut"]>> }> {
@@ -346,7 +346,7 @@ export class CheckInService {
     const stay = this.db.select().from(schema.checkIns).where(and(eq(schema.checkIns.id, checkInId), eq(schema.checkIns.userId, userId), eq(schema.checkIns.status, "ACTIVE"))).get();
     if (!stay) throw ApiErrors.noActiveCheckIn();
     const monitor = this.db.select().from(schema.checkInMonitors).where(eq(schema.checkInMonitors.checkInId, stay.id)).get();
-    if (monitor?.deviceId && monitor.deviceId !== deviceId) return { presence: { ...presenceDto(monitor, now), trackingHere: false }, ended: null };
+    if (monitor?.deviceId && monitor.deviceId !== deviceId) return { presence: { ...presenceDto(monitor, now, false, stay.expiresAt), trackingHere: false }, ended: null };
     // A returning device cannot revive an hour-long absence, even if the sweep was delayed.
     if (stay.expiresAt <= now || (monitor?.outsideSince && +monitor.outsideSince + STUDY_ABSENCE_RELEASE_MS <= +now)) {
       const ended = await this.checkOut(userId);
@@ -358,8 +358,8 @@ export class CheckInService {
       const current = tx.select().from(schema.checkIns).where(and(eq(schema.checkIns.id, checkInId), eq(schema.checkIns.userId, userId), eq(schema.checkIns.status, "ACTIVE"))).get();
       if (!current) throw ApiErrors.noActiveCheckIn();
       const currentMonitor = tx.select().from(schema.checkInMonitors).where(eq(schema.checkInMonitors.checkInId, checkInId)).get();
-      if (currentMonitor?.deviceId && currentMonitor.deviceId !== deviceId) return { ...presenceDto(currentMonitor, now), trackingHere: false };
-      return sampleStudyPresence(tx, checkInId, room, location, now, deviceId);
+      if (currentMonitor?.deviceId && currentMonitor.deviceId !== deviceId) return { ...presenceDto(currentMonitor, now, false, current.expiresAt), trackingHere: false };
+      return sampleStudyPresence(tx, checkInId, room, location, now, current.expiresAt, deviceId);
     });
     return { presence, ended: null };
   }

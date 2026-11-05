@@ -8,6 +8,7 @@ import type { AuditEntryDto } from "./types";
 
 const ACTION_LABEL: Record<string, string> = {
   AUDIT_CLEARED: "Historial de auditoría limpiado por el súper admin",
+  USER_MODERATION_HISTORY_CLEARED: "Historial de moderación de usuarios limpiado por el súper admin",
   WARN: "Advertencia",
   MUTE_CHAT: "Silencio en chat",
   RESTRICT_OBSERVATIONS: "Restricción de observaciones",

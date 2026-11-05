@@ -30,18 +30,32 @@ export function useRankings(roomSlug: string, period: RankingPeriod, category: R
     if (cached) setRanking(cached);
     setLoading(true);
     setError(null);
-    fetchCached<RankingDto>(path, FRESH_MS)
+    let busy = false;
+    const load = (maxAge = 0) => {
+      if (busy || cancelled) return;
+      busy = true;
+      void fetchCached<RankingDto>(path, maxAge)
       .then((dto) => {
-        if (!cancelled) setRanking(dto);
+        if (!cancelled) { setRanking(dto); setError(null); }
       })
       .catch(() => {
         if (!cancelled) setError("No pudimos cargar el ranking.");
       })
       .finally(() => {
+        busy = false;
         if (!cancelled) setLoading(false);
       });
+    };
+    load(FRESH_MS);
+    const refresh = () => { if (document.visibilityState === "visible") load(); };
+    const interval = window.setInterval(refresh, 60_000);
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("online", refresh);
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("online", refresh);
     };
   }, [path]);
 

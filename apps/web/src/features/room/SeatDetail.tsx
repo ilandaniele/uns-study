@@ -162,6 +162,8 @@ export function SeatDetail({
   const showMarkedBy = !isMySeat && !occupant && markedBy != null && seat.status === (markedBy.kind ?? "OCCUPIED");
   const showOccupiedUntil = !isMySeat && seat.status === "OCCUPIED" && seat.occupiedUntil != null;
   const showOccupant = !isMySeat && occupant != null;
+  const occupantHref = occupant?.userId ? `/u/${encodeURIComponent(occupant.userId)}`
+    : occupant?.avatar.kind === "animal" ? `/alias/${encodeURIComponent(occupant.displayName)}` : null;
 
   const locationHint = locationPrompt ? (
     <p className="text-center text-xs text-muted">
@@ -339,16 +341,16 @@ export function SeatDetail({
         <div className="-mt-1 flex flex-col divide-y divide-[var(--border)] text-sm text-muted">
           {showOccupant && occupant ? (
             <div className="flex flex-wrap items-center gap-2 py-2">
-              {occupant.userId ? (
-                <Link href={`/u/${occupant.userId}`} aria-hidden="true" tabIndex={-1} className="shrink-0 rounded-full">
+              {occupantHref ? (
+                <Link href={occupantHref} aria-label={`Ver perfil de ${occupant.displayName}`} className="shrink-0 rounded-full">
                   <OccupantAvatar avatar={occupant.avatar} size={32} adminBadge={occupant.adminBadge} proBadge={occupant.proBadge} frame={frameOf(occupant.flair)} />
                 </Link>
               ) : (
                 <OccupantAvatar avatar={occupant.avatar} size={32} adminBadge={occupant.adminBadge} proBadge={occupant.proBadge} frame={frameOf(occupant.flair)} />
               )}
               <span className="min-w-0 flex-1 break-words">
-                {occupant.userId ? (
-                  <Link href={`/u/${occupant.userId}`} className="font-semibold text-primary hover:underline" style={nameColorStyle(occupant.flair)}>
+                {occupantHref ? (
+                  <Link href={occupantHref} className="font-semibold text-primary hover:underline" style={nameColorStyle(occupant.flair)}>
                     {occupant.displayName}
                   </Link>
                 ) : (

@@ -69,7 +69,7 @@ export function keepStudyingUntil(db: Db, until: Date): void {
     const end = Math.min(+until, +stay.expiresAt);
     for (let ms = +monitor.lastSampleAt + 3 * 60_000; ms < end; ms += 3 * 60_000) {
       const now = new Date(ms);
-      db.transaction(tx => sampleStudyPresence(tx, stay.id, room, { latitude: room.latitude, longitude: room.longitude, accuracy: 5, capturedAt: now.toISOString(), sentAt: now.toISOString() }, now));
+      db.transaction(tx => sampleStudyPresence(tx, stay.id, room, { latitude: room.latitude, longitude: room.longitude, accuracy: 5, capturedAt: now.toISOString(), sentAt: now.toISOString() }, now, stay.expiresAt));
     }
   }
 }

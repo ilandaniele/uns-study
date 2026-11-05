@@ -14,6 +14,24 @@ describe("AdminAuditService", () => {
     await insertUsers(db, ["admin", "antonella", "other"]);
   });
 
+  it("clears all existing per-user histories while preserving restrictions, security events and room undo", async () => {
+    const past = new Date(Date.now() - 60_000), future = new Date(Date.now() + 60_000);
+    await db.insert(schema.moderationActions).values([
+      { actorId: "admin", targetUserId: "antonella", action: "WARN", createdAt: past },
+      { actorId: "admin", targetUserId: "other", action: "BAN", createdAt: past },
+      { actorId: "admin", action: "ADMIN_MARK_ALL_OCCUPIED", metadata: { observationIds: ["keep-undo"] }, createdAt: past },
+      { actorId: "admin", targetUserId: "other", action: "LIFT", createdAt: future },
+    ]);
+    await db.insert(schema.userRestrictions).values({ userId: "other", type: "BANNED", reason: "Test" });
+    await db.insert(schema.securityEvents).values({ userId: "other", eventType: "TEST" });
+    expect(svc.clearUserHistories("admin").count).toBe(2);
+    expect((await svc.list(undefined, "antonella")).items).toHaveLength(0);
+    expect((await svc.list(undefined)).items.map(r => r.action).sort()).toEqual(["ADMIN_MARK_ALL_OCCUPIED", "LIFT", "USER_MODERATION_HISTORY_CLEARED"]);
+    expect(await db.select().from(schema.userRestrictions)).toHaveLength(1);
+    expect(await db.select().from(schema.securityEvents)).toHaveLength(1);
+    expect(svc.clearUserHistories("admin").count).toBe(0);
+  });
+
   it("clears existing history while retaining current restrictions and a new cleanup receipt", async () => {
     await db.insert(schema.moderationActions).values({ actorId: "admin", targetUserId: "antonella", action: "BAN", createdAt: new Date(Date.now() - 60_000) });
     await db.insert(schema.userRestrictions).values({ userId: "antonella", type: "BANNED", reason: "Test" });

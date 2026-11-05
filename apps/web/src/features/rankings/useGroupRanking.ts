@@ -32,9 +32,13 @@ export function useGroupRanking(groupId: string | null, period: RankingPeriod, c
     setLoading(true);
     setError(null);
     setProRequired(false);
-    fetchCached<GroupRankingDto>(path, FRESH_MS)
+    let busy = false;
+    const load = (maxAge = 0) => {
+      if (busy || cancelled) return;
+      busy = true;
+      void fetchCached<GroupRankingDto>(path, maxAge)
       .then((dto) => {
-        if (!cancelled) setRanking(dto);
+        if (!cancelled) { setRanking(dto); setError(null); setProRequired(false); }
       })
       .catch((err) => {
         if (cancelled) return;
@@ -42,10 +46,20 @@ export function useGroupRanking(groupId: string | null, period: RankingPeriod, c
         else setError("No pudimos cargar el ranking del grupo.");
       })
       .finally(() => {
+        busy = false;
         if (!cancelled) setLoading(false);
       });
+    };
+    load(FRESH_MS);
+    const refresh = () => { if (document.visibilityState === "visible") load(); };
+    const interval = window.setInterval(refresh, 60_000);
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("online", refresh);
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("online", refresh);
     };
   }, [active, path]);
 

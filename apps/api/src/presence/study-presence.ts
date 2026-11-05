@@ -1,6 +1,6 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { inChunks, schema, type Db, type Tx } from "@sala/database";
-import { STUDY_ABSENCE_RELEASE_MS, STUDY_PRESENCE_LEASE_MS, type LocationInput, type StudyPresenceDto } from "@sala/contracts";
+import { STUDY_ABSENCE_RELEASE_MS, type LocationInput, type StudyPresenceDto } from "@sala/contracts";
 import { PresenceService, type PresenceRoom } from "./presence.service.js";
 
 type Store = Db | Tx;
@@ -11,13 +11,14 @@ export function studyDeviceId(value: string | undefined): string | null {
   return value && /^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/i.test(value) ? value : null;
 }
 
-export function beginStudyPresence(tx: Store, checkInId: string, now: Date, deviceId: string | null = null): void {
-  tx.insert(schema.checkInMonitors).values({ checkInId, countingFrom: now, verifiedUntil: new Date(+now + STUDY_PRESENCE_LEASE_MS), lastSampleAt: now, deviceId }).onConflictDoNothing().run();
+export function beginStudyPresence(tx: Store, checkInId: string, now: Date, expiresAt: Date, deviceId: string | null = null): void {
+  tx.insert(schema.checkInMonitors).values({ checkInId, countingFrom: now, verifiedUntil: expiresAt, lastSampleAt: now, deviceId }).onConflictDoNothing().run();
 }
 
-export function presenceDto(row: typeof schema.checkInMonitors.$inferSelect, now: Date, released = false): StudyPresenceDto {
-  return { checkInId: row.checkInId, state: released ? "RELEASED" : row.outsideSince ? "AWAY" : row.countingFrom && row.verifiedUntil > now ? "COUNTING" : "PAUSED",
-    verifiedUntil: row.verifiedUntil.toISOString(), releaseAt: row.outsideSince ? new Date(+row.outsideSince + STUDY_ABSENCE_RELEASE_MS).toISOString() : null };
+export function presenceDto(row: typeof schema.checkInMonitors.$inferSelect, now: Date, released = false, expiresAt = row.verifiedUntil): StudyPresenceDto {
+  const until = row.countingFrom && !row.outsideSince ? expiresAt : row.verifiedUntil;
+  return { checkInId: row.checkInId, state: released ? "RELEASED" : row.outsideSince ? "AWAY" : row.countingFrom && until > now ? "COUNTING" : "PAUSED",
+    verifiedUntil: until.toISOString(), releaseAt: row.outsideSince ? new Date(+row.outsideSince + STUDY_ABSENCE_RELEASE_MS).toISOString() : null };
 }
 
 /** Server and device freshness, and the entire accuracy circle, are considered. */
@@ -30,20 +31,20 @@ export function classifyStudyLocation(room: PresenceRoom, location: LocationInpu
 }
 
 /** Called inside the same transaction that checked ownership and ACTIVE status. */
-export function sampleStudyPresence(tx: Store, checkInId: string, room: PresenceRoom, location: LocationInput, now: Date, deviceId: string | null = null): StudyPresenceDto {
-  beginStudyPresence(tx, checkInId, now);
+export function sampleStudyPresence(tx: Store, checkInId: string, room: PresenceRoom, location: LocationInput, now: Date, expiresAt: Date, deviceId: string | null = null): StudyPresenceDto {
+  beginStudyPresence(tx, checkInId, now, expiresAt);
   const row = tx.select().from(schema.checkInMonitors).where(eq(schema.checkInMonitors.checkInId, checkInId)).get()!;
   const sampleAt = new Date(location.capturedAt);
-  if (sampleAt <= row.lastSampleAt) return presenceDto(row, now);
+  if (sampleAt <= row.lastSampleAt) return presenceDto(row, now, false, expiresAt);
   const classification = classifyStudyLocation(room, location, now);
-  if (classification === "UNKNOWN") return presenceDto(row, now);
+  if (classification === "UNKNOWN") return presenceDto(row, now, false, expiresAt);
   // Old stays without a browser binding can only be adopted by a device actually inside.
-  if (!row.deviceId && deviceId && classification !== "INSIDE") return { ...presenceDto(row, now), trackingHere: false };
+  if (!row.deviceId && deviceId && classification !== "INSIDE") return { ...presenceDto(row, now, false, expiresAt), trackingHere: false };
   const close = (end: Date) => {
     if (row.countingFrom && end > row.countingFrom) tx.insert(schema.checkInStudySpans).values({ checkInId, startedAt: row.countingFrom, endedAt: end }).run();
   };
   if (classification === "OUTSIDE") {
-    const end = new Date(Math.min(+now, +sampleAt, +row.verifiedUntil));
+    const end = new Date(Math.min(+now, +sampleAt, +expiresAt));
     close(end);
     const updated = tx.update(schema.checkInMonitors).set({ countingFrom: null, verifiedUntil: end, outsideSince: row.outsideSince ?? now, lastSampleAt: sampleAt }).where(eq(schema.checkInMonitors.checkInId, checkInId)).returning().get()!;
     if (!row.outsideSince) {
@@ -52,11 +53,17 @@ export function sampleStudyPresence(tx: Store, checkInId: string, room: Presence
     }
     return presenceDto(updated, now);
   }
-  // An unobserved gap is never filled retrospectively, including after a locked phone returns.
-  const gap = !row.countingFrom || row.verifiedUntil < now;
-  if (gap && row.countingFrom) close(row.verifiedUntil);
-  const updated = tx.update(schema.checkInMonitors).set({ countingFrom: gap ? now : row.countingFrom, verifiedUntil: new Date(+now + STUDY_PRESENCE_LEASE_MS), outsideSince: null, lastSampleAt: sampleAt, deviceId: row.deviceId ?? deviceId }).where(eq(schema.checkInMonitors.checkInId, checkInId)).returning().get()!;
+  // A sleeping browser is not evidence of departure. Only a confirmed exit ends a span.
+  const updated = tx.update(schema.checkInMonitors).set({ countingFrom: row.countingFrom ?? now, verifiedUntil: expiresAt, outsideSince: null, lastSampleAt: sampleAt, deviceId: row.deviceId ?? deviceId }).where(eq(schema.checkInMonitors.checkInId, checkInId)).returning().get()!;
   return presenceDto(updated, now);
+}
+
+/** Persist the last span's end before settlement; never rewrite an already recorded stay. */
+export function finishStudyPresence(tx: Store, checkInId: string, endedAt: Date): void {
+  tx.update(schema.checkInMonitors).set({ verifiedUntil: endedAt }).where(and(
+    eq(schema.checkInMonitors.checkInId, checkInId), isNotNull(schema.checkInMonitors.countingFrom),
+    sql`not exists (select 1 from ${schema.studySessions} where ${schema.studySessions.checkInId} = ${checkInId})`,
+  )).run();
 }
 
 /** Batched shared accounting for live rankings, history, seeds and finalized check-ins. */
@@ -77,7 +84,7 @@ export function monitoredStudyParts(db: Store, stays: readonly Stay[], now: Date
     const stay = byId.get(monitor.checkInId)!;
     const start = +new Date(stay.startedAt), end = Math.min(stay.settled ? Infinity : +now, +new Date(stay.expiresAt));
     const intervals = spansByStay.get(monitor.checkInId) ?? [];
-    if (monitor.countingFrom) intervals.push({ start: +monitor.countingFrom, end: +monitor.verifiedUntil });
+    if (monitor.countingFrom) intervals.push({ start: +monitor.countingFrom, end: stay.settled ? +monitor.verifiedUntil : end });
     intervals.sort((a,b) => a.start - b.start);
     const parts: StudyPart[] = []; let totalMs = 0, totalMinutes = 0;
     for (const interval of intervals) {

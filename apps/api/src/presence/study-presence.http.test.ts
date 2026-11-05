@@ -24,6 +24,7 @@ describe("verified study presence / real HTTP and SQLite", () => {
     vi.useFakeTimers({ toFake: ["Date"] }); at(0); device = undefined;
     savedEnv = { ...env }; Object.assign(env, { isProduction: true, presenceDevBypass: false, betterAuthSecret: "test-only-study-presence-secret-123456789" });
     ctx = buildTestApp(); room = await getRoom(ctx.db);
+    vi.spyOn(ctx.services.clock, "now").mockImplementation(() => new Date());
     await insertUsers(ctx.db, ["study-a", "study-b"]); ctx.db.update(schema.user).set({ emailVerified: true }).run();
     const auth = { api: { getSession: async ({ headers }: { headers: Headers }) => {
       const id = headers.get("x-study-actor"); return id ? { user: ctx.db.select().from(schema.user).where(eq(schema.user.id, id)).get() } : null;
@@ -34,13 +35,49 @@ describe("verified study presence / real HTTP and SQLite", () => {
   });
   afterEach(() => { Object.assign(env, savedEnv); vi.useRealTimers(); vi.restoreAllMocks(); });
 
-  it("stops at the five-minute lease without GPS and never credits a hidden/offline gap", async () => {
-    at(20); expect(await minutes()).toBe(5);
-    expect(await (await request("/checkins/current/presence")).json()).toMatchObject({ state: "PAUSED", checkInId });
+  it("keeps counting a valid check-in while a locked/offline browser cannot send GPS", async () => {
+    at(20); expect(await minutes()).toBe(20);
+    expect((await ctx.services.rankings.rawValues(room, "today", "study_time", new Date())).get("study-a")).toBe(20);
+    expect((await ctx.services.garden.get("study-a")).studyMinutes).toBe(20);
+    expect(await (await request("/checkins/current/presence")).json()).toMatchObject({ state: "COUNTING", checkInId });
     expect((await sample()).status).toBe(200);
-    at(24); expect(await minutes()).toBe(9);
-    await request("/checkins/current", "DELETE"); expect(await minutes()).toBe(9);
-    expect(ctx.db.select().from(schema.studySessions).get()?.verifiedMinutes).toBe(9);
+    at(24); expect(await minutes()).toBe(24);
+    await request("/checkins/current", "DELETE"); expect(await minutes()).toBe(24);
+    expect(ctx.db.select().from(schema.studySessions).get()?.verifiedMinutes).toBe(24);
+    at(90); expect(await minutes()).toBe(24);
+    expect((await ctx.services.rankings.rawValues(room, "today", "study_time", new Date())).get("study-a")).toBe(24);
+    expect((await ctx.services.garden.get("study-a")).studyMinutes).toBe(24);
+  });
+
+  it("repairs the still-open interval of a legacy five-minute monitor without growing settled history", async () => {
+    ctx.db.update(schema.checkInMonitors).set({ verifiedUntil: new Date(start + 5 * 60_000) }).where(eq(schema.checkInMonitors.checkInId, checkInId)).run();
+    at(65); expect(await minutes()).toBe(65);
+    expect(await (await request("/checkins/current/presence")).json()).toMatchObject({ state: "COUNTING" });
+    await request("/checkins/current", "DELETE");
+    at(150); expect(await minutes()).toBe(65);
+  });
+
+  it("never counts beyond check-in expiry and finalizes exactly once after a long browser sleep", async () => {
+    at(240); expect(await minutes()).toBe(180);
+    await ctx.services.jobs.expiration.runSweep(new Date());
+    expect(ctx.db.select().from(schema.studySessions).get()?.verifiedMinutes).toBe(180);
+    at(300); expect(await minutes()).toBe(180);
+    await ctx.services.jobs.expiration.runSweep(new Date());
+    expect(ctx.db.select().from(schema.studySessions).all()).toHaveLength(1);
+  });
+
+  it("counts a renewed stay beyond its original expiry without requiring constant GPS", async () => {
+    at(170); expect((await request("/checkins/current/extend", "POST", { location: fix() })).status).toBe(201);
+    at(230); expect(await minutes()).toBe(230);
+    at(400); expect(await minutes()).toBe(350);
+  });
+
+  it("a late confident exit ends the ongoing span, and an actual return excludes the entire absence", async () => {
+    at(40); expect(await (await sample(fix(100))).json()).toMatchObject({ state: "AWAY" });
+    at(70); expect(await minutes()).toBe(40); await sample();
+    at(80); expect(await minutes()).toBe(50);
+    await request("/checkins/current", "DELETE");
+    at(120); expect(await minutes()).toBe(50);
   });
 
   it("pauses on a confident exit, resumes without counting the break, and retains actual intervals", async () => {
@@ -76,7 +113,7 @@ describe("verified study presence / real HTTP and SQLite", () => {
       expect(classifyStudyLocation(room, location, new Date())).toBe("UNKNOWN"); await sample(location);
     }
     const monitor = ctx.db.select().from(schema.checkInMonitors).get()!;
-    expect(monitor.outsideSince).toBeNull(); expect(+monitor.verifiedUntil).toBe(start + 5 * 60_000);
+    expect(monitor.outsideSince).toBeNull(); expect(+monitor.verifiedUntil).toBe(start + 180 * 60_000);
     expect(JSON.stringify(monitor)).not.toMatch(/latitude|longitude/);
   });
 

@@ -1,6 +1,8 @@
 "use client";
 
 import { manualStudySessionSchema, moderationActionSchema, type AdminUserDto, type ModerationActionType } from "@sala/contracts";
+import { UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
+import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { apiDelete, apiFetch, apiPost, apiPut } from "@/lib/api";
 import { buenosAiresLocalToIso } from "./manual-study-session";
@@ -159,6 +161,9 @@ export function UserDetail({ userId }: { userId: string }) {
     <div className="flex flex-col gap-4">
       <div className="border-t border-app pt-4">
         <h2 className="font-display text-lg font-semibold text-main">{user.name}</h2>
+        <Link href={`/u/${encodeURIComponent(user.userId)}?from=admin`} className="my-3 inline-flex min-h-11 items-center gap-2 rounded-full border border-app px-4 text-sm font-semibold text-primary hover:bg-surface-2">
+          <UserCircleIcon size={20} aria-hidden="true" /> Ver perfil completo
+        </Link>
         <p className="text-sm text-muted">{user.email ?? "sin email"}</p>
         {user.emailVerified !== undefined ? <p className="text-xs text-muted">{user.emailVerified ? "Correo verificado" : "Correo sin verificar"}</p> : null}
         <p className="font-mono text-xs text-muted">Miembro desde {new Date(user.createdAt).toLocaleDateString("es-AR")}</p>

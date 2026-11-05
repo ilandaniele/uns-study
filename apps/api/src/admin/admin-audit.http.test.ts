@@ -49,4 +49,25 @@ describe("owner audit cleanup HTTP boundary", () => {
     expect(await response.json()).toMatchObject({ count: 1 });
     expect(await fixture.db.select().from(schema.moderationActions)).toMatchObject([{ actorId: "owner", action: "AUDIT_CLEARED" }]);
   });
+
+  it("requires a verified superadmin, trusted origin and exact confirmation for user-history cleanup", async () => {
+    await fixture.db.insert(schema.moderationActions).values({ actorId: "admin", targetUserId: "plain", action: "WARN", createdAt: new Date(Date.now() - 1000) });
+    const body = { confirmation: "DELETE_EXISTING_USER_MODERATION_HISTORY" };
+    const remove = (input: unknown = body, origin = "http://localhost:3000") => app.request("/api/v1/admin/audit/users", { method: "DELETE", headers: baseHeaders({ "content-type": "application/json", origin }), body: JSON.stringify(input) });
+    for (const id of ["admin", "moderator", "plain", null]) {
+      actor = id; expect((await remove()).status).toBe(id ? 403 : 401);
+    }
+    actor = "owner";
+    await fixture.db.update(schema.user).set({ emailVerified: false }).where(eq(schema.user.id, "owner"));
+    expect((await remove()).status).toBe(403);
+    await fixture.db.update(schema.user).set({ emailVerified: true }).where(eq(schema.user.id, "owner"));
+    expect((await remove({})).status).toBe(400);
+    expect((await remove({ ...body, userId: "plain" })).status).toBe(400);
+    expect((await remove(body, "https://outside.example.test")).status).toBe(403);
+    expect(await fixture.db.select().from(schema.moderationActions)).toHaveLength(2);
+    const response = await remove();
+    expect(response.status).toBe(200); expect(await response.json()).toMatchObject({ count: 1 });
+    expect((await fixture.services.adminAudit.list(undefined, "plain")).items).toHaveLength(0);
+    expect((await fixture.services.adminAudit.list(undefined)).items.map(r => r.action).sort()).toEqual(["USER_MODERATION_HISTORY_CLEARED", "WARN"]);
+  });
 });

@@ -8,6 +8,12 @@ import { ApiErrors } from "../common/api-error.js";
 
 export const adminAuditRouter = new Hono<AppEnv>();
 
+adminAuditRouter.delete("/admin/audit/users", requireSuperAdmin, zBody(z.object({ confirmation: z.literal("DELETE_EXISTING_USER_MODERATION_HISTORY") }).strict()), async c => {
+  const actorId = currentUser(c).id;
+  if (!(await c.var.services.rateLimit.check(`admin:user-history-clear:${actorId}`, 2, 60)).allowed) throw ApiErrors.rateLimited();
+  return reply(c, c.var.services.adminAudit.clearUserHistories(actorId));
+});
+
 adminAuditRouter.delete("/admin/audit", requireSuperAdmin, zBody(z.object({ confirmation: z.literal("DELETE_EXISTING_AUDIT") }).strict()), async c => {
   const actorId = currentUser(c).id;
   const limit = await c.var.services.rateLimit.check(`admin:audit-clear:${actorId}`, 2, 60);
