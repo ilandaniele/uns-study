@@ -1,6 +1,6 @@
 import { and, eq, inArray, or } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
-import type { AchievementDto, AchievementsDto, AliasProfileDto, BadgeDto, BadgeId, PublicAchievementsDto } from "@sala/contracts";
+import type { AchievementCategory, AchievementDto, AchievementsDto, AliasProfileDto, BadgeDto, BadgeId, PublicAchievementsDto } from "@sala/contracts";
 import { ApiErrors } from "../common/api-error.js";
 import { needsAlias } from "../users/display-name.js";
 import type { Clock } from "../platform/clock.js";
@@ -17,9 +17,11 @@ export class AchievementsService {
   async get(userId: string): Promise<AchievementsDto> {
     const { badges: studyBadges, stats } = await this.streak.badgeSummary(userId);
     const collaboration = this.collaboration.progress(userId);
-    const rules: BadgeDto[] = [...studyBadges, ...COLLABORATION_BADGES.map(rule => ({
-      id: rule.id, title: rule.title, description: `Actualizaste ${rule.target} lugares distintos. Cada lugar cuenta una vez por día.`,
-      earned: collaboration.places >= rule.target, progress: Math.min(1, collaboration.places / rule.target),
+    const rules: (BadgeDto & { category: AchievementCategory })[] = [...studyBadges.map(badge => ({ ...badge, category: "study" as const })), ...COLLABORATION_BADGES.map(rule => ({
+      id: rule.id, title: rule.title, category: rule.category,
+      description: `${rule.category === "free" ? "Avisá de" : rule.category === "occupied" ? "Informá sobre" : "Actualizá"} ${rule.target} lugares ${rule.category === "free" ? "libres" : rule.category === "occupied" ? "ocupados" : "de la sala"}.`,
+      earned: collaboration[rule.metric] >= rule.target, progress: Math.min(1, collaboration[rule.metric] / rule.target),
+      goal: { current: collaboration[rule.metric], target: rule.target, unit: "lugares" as const },
     }))];
     let stored = this.db.select().from(schema.userAchievements).where(eq(schema.userAchievements.userId, userId)).all();
     const missing = rules.filter(rule => rule.earned && !stored.some(award => award.badgeId === rule.id));
@@ -33,7 +35,9 @@ export class AchievementsService {
     const badges: AchievementDto[] = rules.map(rule => {
       const award = awards.get(rule.id);
       const tier = achievementPresentation(rule.id)!.tier;
-      return { ...rule, earned: Boolean(award), progress: award ? 1 : rule.progress, tier, earnedAt: award?.earnedAt.toISOString() ?? null };
+      return { ...rule, earned: Boolean(award), progress: award ? 1 : rule.progress,
+        ...(rule.goal && award ? { goal: { ...rule.goal, current: Math.max(rule.goal.current, rule.goal.target) } } : {}),
+        tier, earnedAt: award?.earnedAt.toISOString() ?? null };
     });
     return { badges, stats: { studyMinutes: stats.studyMinutes, studyDays: stats.studyDays }, collaboration, rewards: this.collaboration.pendingRewards(userId), unseenIds: stored.filter(award => !award.seenAt && achievementPresentation(award.badgeId)).map(award => award.badgeId as BadgeId) };
   }

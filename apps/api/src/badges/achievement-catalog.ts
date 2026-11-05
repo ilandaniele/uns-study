@@ -2,10 +2,18 @@ import type { AchievementDto, BadgeId } from "@sala/contracts";
 import { evaluateBadges } from "./badge-rules.js";
 
 export const COLLABORATION_BADGES = [
-  { id: "collaboration_10", title: "Mano amiga", target: 10, tier: "bronze" },
-  { id: "collaboration_50", title: "Guardián del mapa", target: 50, tier: "silver" },
-  { id: "collaboration_100", title: "Referente de la sala", target: 100, tier: "gold" },
-  { id: "collaboration_500", title: "Pilar de la comunidad", target: 500, tier: "diamond" },
+  { id: "collaboration_10", title: "Primer mate", target: 10, tier: "bronze", category: "collaboration", metric: "places" },
+  { id: "collaboration_25", title: "Bombilla compañera", target: 25, tier: "bronze", category: "collaboration", metric: "places" },
+  { id: "collaboration_50", title: "Termo compartido", target: 50, tier: "silver", category: "collaboration", metric: "places" },
+  { id: "collaboration_100", title: "Ronda de la sala", target: 100, tier: "gold", category: "collaboration", metric: "places" },
+  { id: "collaboration_250", title: "Ceibo de la comunidad", target: 250, tier: "gold", category: "collaboration", metric: "places" },
+  { id: "collaboration_500", title: "Hornero de la sala", target: 500, tier: "diamond", category: "collaboration", metric: "places" },
+  { id: "free_5", title: "Mate disponible", target: 5, tier: "bronze", category: "free", metric: "freePlaces" },
+  { id: "free_25", title: "Ronda abierta", target: 25, tier: "silver", category: "free", metric: "freePlaces" },
+  { id: "free_100", title: "Sol de la sala", target: 100, tier: "gold", category: "free", metric: "freePlaces" },
+  { id: "occupied_5", title: "Termo atento", target: 5, tier: "bronze", category: "occupied", metric: "occupiedPlaces" },
+  { id: "occupied_25", title: "Ronda cuidada", target: 25, tier: "silver", category: "occupied", metric: "occupiedPlaces" },
+  { id: "occupied_100", title: "Ceibo guardián", target: 100, tier: "gold", category: "occupied", metric: "occupiedPlaces" },
 ] as const;
 const studyBadges = evaluateBadges({ totalMinutes: 0, sessionCount: 0, longestStreak: 0, hasEarly: false, hasLate: false });
 export type FeaturedAchievement = Pick<AchievementDto, "id" | "title" | "tier">;

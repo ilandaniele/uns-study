@@ -13,7 +13,7 @@ vi.mock("react", () => ({
 function snapshot(places: number): AchievementsDto {
   return {
     badges: [], unseenIds: [], stats: { studyMinutes: 0, studyDays: 0 },
-    collaboration: { places, days: 1, seeds: 3, todayPlaces: places, todaySeeds: 3, nextSeedPlaces: 10, eligibleForAdmin: false, applicationStatus: null },
+    collaboration: { places, freePlaces: 0, occupiedPlaces: 0, days: 1, seeds: 3, todayPlaces: places, todaySeeds: 3, nextSeedPlaces: 10, eligibleForAdmin: false, applicationStatus: null },
     rewards: places < 30 ? [] : [{ id: "earned-reward", places, seeds: 30, earnedAt: "2026-10-31T14:00:00Z", proExpiresAt: "2026-11-07T14:00:00Z" }],
   };
 }

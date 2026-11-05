@@ -127,6 +127,13 @@
       "when": 1793416050391,
       "tag": "0017_collaboration_rewards",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1793843845961,
+      "tag": "0018_collaboration_badge_kinds",
+      "breakpoints": true
     }
   ]
 }

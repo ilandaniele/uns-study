@@ -265,7 +265,7 @@ export class ObservationService {
       }
     }
 
-    if (this.collaboration) this.db.transaction(tx => this.collaboration!.record(tx, input.userId, input.roomId, input.seatId, room.timezone, now));
+    if (this.collaboration) this.db.transaction(tx => this.collaboration!.record(tx, input.userId, input.roomId, input.seatId, room.timezone, now, input.status));
     return { roomId: input.roomId, changes, dispute };
   }
 

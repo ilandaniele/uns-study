@@ -78,7 +78,7 @@ function AchievementReveal({ data, ids, onDismiss }: { data: AchievementsDto; id
     <div className={styles.rays} aria-hidden="true"/>
     <div className="relative flex flex-col items-center">
       <span className="text-[10px] font-bold uppercase tracking-[.24em] text-amber-200">Insignia desbloqueada</span>
-      <div className={`${styles.medal} my-3`}><BadgeMedal tier={medal.tier} size={112}/></div>
+      <div className={`${styles.medal} my-3`}><BadgeMedal tier={medal.tier} badgeId={medal.id} size={112}/></div>
       <h2 className="text-xl font-bold">{medal.title}</h2><p className="mt-2 text-sm leading-relaxed text-slate-300">{medal.description}</p>
       {earned.length > 1 ? <p className="mt-2 text-xs text-amber-200">Y {earned.length - 1} {earned.length === 2 ? "insignia más" : "insignias más"} en tu colección</p> : null}
       <div className="pointer-events-auto mt-5 flex items-center justify-center gap-3"><Link href="/perfil#insignias" onClick={() => onDismiss(ids)} className="inline-flex min-h-11 items-center rounded-full bg-amber-200 px-5 text-sm font-bold text-slate-950">Ver insignias</Link><button type="button" onClick={() => onDismiss(ids)} className="min-h-11 rounded-full border border-white/25 px-4 text-sm font-semibold">Cerrar</button></div>

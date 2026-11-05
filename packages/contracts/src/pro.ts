@@ -115,7 +115,9 @@ export interface StreakDto {
   freezeAvailableThisMonth: boolean;
   freezableDates: string[];
 }
-export type BadgeId = "first_session" | "hours_10" | "hours_50" | "hours_100" | "streak_7" | "streak_30" | "early_bird" | "night_owl" | "collaboration_10" | "collaboration_50" | "collaboration_100" | "collaboration_500";
+export const BADGE_IDS = ["first_session", "hours_10", "hours_50", "hours_100", "streak_7", "streak_30", "early_bird", "night_owl", "collaboration_10", "collaboration_25", "collaboration_50", "collaboration_100", "collaboration_250", "collaboration_500", "free_5", "free_25", "free_100", "occupied_5", "occupied_25", "occupied_100"] as const;
+export type BadgeId = typeof BADGE_IDS[number];
+export interface BadgeGoalDto { current: number; target: number; unit: "lugares" | "minutos" | "días" | "sesiones" }
 export interface BadgeDto {
   id: BadgeId;
   title: string;
@@ -123,6 +125,7 @@ export interface BadgeDto {
   earned: boolean;
   /** 0..1 */
   progress: number;
+  goal?: BadgeGoalDto;
 }
 export interface BadgesDto {
   badges: BadgeDto[];

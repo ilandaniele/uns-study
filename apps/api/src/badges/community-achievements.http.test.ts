@@ -37,8 +37,8 @@ describe("community achievements, rewards and approved staff applications", () =
   function call(path: string, method = "GET", body?: unknown) {
     return app.request(`/api/v1${path}`, { method, headers: baseHeaders({ "content-type": "application/json" }), ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
   }
-  function record(n: number, userId = "member", now = clock.now()) {
-    for (let i = 0; i < n; i++) fixture.db.transaction(tx => fixture.services.collaboration.record(tx, userId, room.id, seats[i % seats.length]!.id, room.timezone, now));
+  function record(n: number, userId = "member", now = clock.now(), status: "FREE" | "OCCUPIED" | "SAVED" | null = null) {
+    for (let i = 0; i < n; i++) fixture.db.transaction(tx => fixture.services.collaboration.record(tx, userId, room.id, seats[i % seats.length]!.id, room.timezone, now, status));
   }
   function qualify() {
     record(40, "member", new Date("2026-10-25T15:00:00Z"));
@@ -76,7 +76,7 @@ describe("community achievements, rewards and approved staff applications", () =
     const presence = { roomId: room.id, expiresAt: new Date(Date.now() + 60_000) };
     await fixture.services.observations.observe({ ...input, presence });
     await fixture.services.observations.observe({ ...input, presence });
-    expect(fixture.services.collaboration.progress("member").places).toBe(1);
+    expect(fixture.services.collaboration.progress("member")).toMatchObject({ places: 1, freePlaces: 0, occupiedPlaces: 1 });
     fixture.db.insert(schema.checkIns).values({ userId: "member", roomId: room.id, seatId: seats[1]!.id, expiresAt: new Date(Date.now() + 60_000) }).run();
     await expect(fixture.services.observations.observe({ ...input, seatId: seats[1]!.id, presence })).rejects.toMatchObject({ code: "OWN_SEAT_OBSERVATION" });
     await fixture.services.adminRooms.markAllOccupied(room.id, "admin", 60);
@@ -87,12 +87,12 @@ describe("community achievements, rewards and approved staff applications", () =
   it("persists earned medals once, acknowledges only the current user's awards and grants no role", async () => {
     qualify();
     const first = await (await call("/me/achievements")).json() as AchievementsDto;
-    expect(first.badges).toHaveLength(12);
+    expect(first.badges).toHaveLength(20);
     expect(first.unseenIds).toEqual(expect.arrayContaining(["collaboration_10", "collaboration_50", "collaboration_100"]));
     const earnedAt = first.badges.find(b => b.id === "collaboration_100")!.earnedAt;
     clock.advance(60_000);
     await call("/me/achievements");
-    expect(fixture.db.select().from(schema.userAchievements).all()).toHaveLength(3);
+    expect(fixture.db.select().from(schema.userAchievements).all()).toHaveLength(4);
     expect(await fixture.services.roles.rolesFor("member")).toEqual([]);
     expect((await call("/me/achievements/seen", "POST", { ids: ["collaboration_100"], userId: "viewer" })).status).toBe(400);
     expect((await call("/me/achievements/seen", "POST", { ids: ["collaboration_100"] })).status).toBe(200);
@@ -100,6 +100,51 @@ describe("community achievements, rewards and approved staff applications", () =
     const again = await fixture.services.achievements.get("member");
     expect(again.unseenIds).not.toContain("collaboration_100");
     expect(again.badges.find(b => b.id === "collaboration_100")).toMatchObject({ earned: true, earnedAt });
+  });
+
+  it("reports exact progress by the first accepted state; toggles and saved reports cannot farm both tracks", async () => {
+    record(4, "member", clock.now(), "FREE");
+    const before = await fixture.services.achievements.get("member");
+    expect(before.badges.find(b => b.id === "free_5")).toMatchObject({ earned: false, progress: 0.8, goal: { current: 4, target: 5, unit: "lugares" } });
+    record(4, "member", clock.now(), "OCCUPIED");
+    expect(fixture.services.collaboration.progress("member")).toMatchObject({ places: 4, freePlaces: 4, occupiedPlaces: 0 });
+    record(5, "member", clock.now(), "FREE");
+    record(10, "member", clock.now(), "OCCUPIED");
+    record(11, "member", clock.now(), "SAVED");
+    const after = await fixture.services.achievements.get("member");
+    expect(after.collaboration).toMatchObject({ places: 11, freePlaces: 5, occupiedPlaces: 5, seeds: 1 });
+    expect(after.unseenIds).toEqual(expect.arrayContaining(["free_5", "occupied_5", "collaboration_10"]));
+    clock.advance(86400_000); record(5, "member", clock.now(), "OCCUPIED");
+    expect(fixture.services.collaboration.progress("member")).toMatchObject({ places: 16, freePlaces: 5, occupiedPlaces: 10, days: 2 });
+  });
+
+  it.each([
+    ["FREE", "free_5", 5], ["FREE", "free_25", 25], ["FREE", "free_100", 100],
+    ["OCCUPIED", "occupied_5", 5], ["OCCUPIED", "occupied_25", 25], ["OCCUPIED", "occupied_100", 100],
+  ] as const)("awards %s badge %s exactly at %i distinct credited seats", async (status, id, target) => {
+    record(target - 1, "member", clock.now(), status);
+    expect((await fixture.services.achievements.get("member")).badges.find(b => b.id === id)).toMatchObject({ earned: false, goal: { current: target - 1, target } });
+    record(target, "member", clock.now(), status);
+    const earned = (await fixture.services.achievements.get("member")).badges.find(b => b.id === id)!;
+    expect(earned).toMatchObject({ earned: true, progress: 1, goal: { current: target, target } });
+    clock.advance(1000); record(target, "member", clock.now(), status);
+    const again = await fixture.services.achievements.get("member");
+    expect(again.badges.find(b => b.id === id)?.earnedAt).toBe(earned.earnedAt);
+    expect(fixture.db.select().from(schema.userAchievements).where(eq(schema.userAchievements.badgeId, id)).all()).toHaveLength(1);
+    expect(await fixture.services.roles.rolesFor("member")).toEqual([]);
+  });
+
+  it("preserves legacy credits without guessing their status or letting seen requests grant new badges", async () => {
+    record(100);
+    const balance = (await fixture.services.garden.get("member")).seeds;
+    record(108, "member", clock.now(), "FREE");
+    expect(fixture.services.collaboration.progress("member")).toMatchObject({ places: 100, freePlaces: 0, occupiedPlaces: 0 });
+    expect((await fixture.services.garden.get("member")).seeds).toBe(balance);
+    expect((await call("/me/achievements/seen", "POST", { ids: ["free_100"] })).status).toBe(200);
+    expect((await fixture.services.achievements.get("member")).badges.find(b => b.id === "free_100")).toMatchObject({ earned: false, progress: 0 });
+    expect(fixture.db.select().from(schema.userAchievements).where(eq(schema.userAchievements.badgeId, "free_100")).all()).toHaveLength(0);
+    const general = (await fixture.services.achievements.get("member")).badges.find(b => b.id === "collaboration_100")!;
+    expect(general.earned).toBe(true);
   });
 
   it("requires sustained participation and explicit owner approval, atomically and idempotently", async () => {
@@ -142,7 +187,7 @@ describe("community achievements, rewards and approved staff applications", () =
     const profile = await response.json() as AliasProfileDto;
     expect(profile.alias).toBe("Coipo Ingenioso");
     expect(profile.stats?.places).toBe(100);
-    expect(profile.badges).toHaveLength(3);
+    expect(profile.badges).toHaveLength(4);
     expect(profile.garden).toMatchObject({ plants: [], collection: {}, plotCount:25 });
     const json = JSON.stringify(profile);
     for (const forbidden of ["member", "example.test", "Nombre privado", "Apodo privado", "instagram", "studentNumber", "SUPERADMIN", "userId"]) expect(json).not.toContain(forbidden);

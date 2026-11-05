@@ -79,10 +79,38 @@ independiente de la retención del log de moderación.
 
 ## Insignias y ascenso
 
-Las ocho insignias de estudio existentes se combinan con cuatro de colaboración:
-10, 50, 100 y 500 lugares. Las medallas son ilustraciones SVG propias, con niveles
-bronce, plata, oro y diamante. La animación de desbloqueo no usa material de juegos,
-no reproduce audio automáticamente y se vuelve estática con reduced motion.
+La colección tiene veinte insignias: ocho de estudio y doce de colaboración.
+Los dibujos SVG propios representan mate, termo, bombilla, sol, ceibo, hornero y
+bandera, con niveles bronce, plata, oro y diamante. El perfil, el ranking y la
+animación de desbloqueo usan el dibujo de cada insignia. No hay imágenes pesadas
+ni dependencias nuevas. La animación no reproduce audio y respeta reduced motion.
+
+| Serie | Metas acumuladas | Insignias |
+| --- | --- | --- |
+| Colaboración general | 10, 25, 50, 100, 250 y 500 | Primer mate, Bombilla compañera, Termo compartido, Ronda de la sala, Ceibo de la comunidad, Hornero de la sala |
+| Lugares libres | 5, 25 y 100 | Mate disponible, Ronda abierta, Sol de la sala |
+| Lugares ocupados | 5, 25 y 100 | Termo atento, Ronda cuidada, Ceibo guardián |
+
+Cuenta el primer reporte individual aceptado de cada lugar y día. El estado de ese
+primer crédito decide la serie: cambiarlo después no suma al otro contador. Un
+reporte SAVED conserva su crédito general, sin contar como FREE ni OCCUPIED. Se
+mantiene el tope existente de cien créditos por día; el asiento propio, los rechazos
+y las acciones masivas no cuentan. Las metas son acumuladas entre días.
+
+La migración aditiva `0018_collaboration_badge_kinds` agrega `observed_status` al
+registro operativo de colaboración. Los créditos anteriores quedan en NULL:
+conservan sus semillas y progreso general, sin inventar si fueron libres u
+ocupados. Los contadores específicos empiezan con nuevos reportes. Los IDs de las
+insignias existentes se conservan, junto con fechas de obtención y lectura; cambiar
+nombre o dibujo no repite el aviso ni elimina logros. Las nuevas metas generales
+de 25 y 250 sí pueden reconocer colaboración previa registrada.
+
+Cada insignia devuelve progreso, valor actual, meta y unidad desde el servidor.
+El perfil muestra una barra accesible con el contador y lo que falta (también horas
+y minutos para estudio). La vista inicial prioriza la próxima meta de cada serie
+de colaboración; los filtros y «Ver las insignias» permiten explorar el resto sin
+desplegar toda la colección automáticamente. Los perfiles ajenos sólo publican
+insignias ganadas bajo las reglas de privacidad existentes.
 
 El servidor persiste una obtención por usuario/insignia en `user_achievements`.
 Los logros ya obtenidos son permanentes mientras exista la cuenta. La confirmación

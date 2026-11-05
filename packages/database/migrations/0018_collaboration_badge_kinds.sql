@@ -1,0 +1,1 @@
+ALTER TABLE `collaboration_updates` ADD `observed_status` text;

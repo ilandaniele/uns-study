@@ -27,14 +27,14 @@ interface BadgeRule {
 const hours = (h: number) => h * 60;
 
 const RULES: readonly BadgeRule[] = [
-  { id: "first_session", title: "Primera sesión", description: "Estudiaste por primera vez en la sala.", measure: (i) => ({ value: i.sessionCount, target: 1 }) },
-  { id: "hours_10", title: "10 horas", description: "Sumaste 10 horas de estudio.", measure: (i) => ({ value: i.totalMinutes, target: hours(10) }) },
-  { id: "hours_50", title: "50 horas", description: "Sumaste 50 horas de estudio.", measure: (i) => ({ value: i.totalMinutes, target: hours(50) }) },
-  { id: "hours_100", title: "100 horas", description: "Sumaste 100 horas de estudio.", measure: (i) => ({ value: i.totalMinutes, target: hours(100) }) },
-  { id: "streak_7", title: "Racha de 7 días", description: "Estudiaste 7 días seguidos.", measure: (i) => ({ value: i.longestStreak, target: 7 }) },
-  { id: "streak_30", title: "Racha de 30 días", description: "Estudiaste 30 días seguidos.", measure: (i) => ({ value: i.longestStreak, target: 30 }) },
-  { id: "early_bird", title: "Madrugador", description: "Empezaste a estudiar antes de las 8.", measure: (i) => ({ value: i.hasEarly ? 1 : 0, target: 1 }) },
-  { id: "night_owl", title: "Nocturno", description: "Estudiaste después de las 21.", measure: (i) => ({ value: i.hasLate ? 1 : 0, target: 1 }) },
+  { id: "first_session", title: "Primera cebada", description: "Completá tu primera sesión de estudio en la sala.", measure: (i) => ({ value: i.sessionCount, target: 1 }) },
+  { id: "hours_10", title: "Mate aplicado", description: "Sumá 10 horas de estudio en la sala.", measure: (i) => ({ value: i.totalMinutes, target: hours(10) }) },
+  { id: "hours_50", title: "Termo incansable", description: "Sumá 50 horas de estudio en la sala.", measure: (i) => ({ value: i.totalMinutes, target: hours(50) }) },
+  { id: "hours_100", title: "Hornero estudioso", description: "Sumá 100 horas de estudio en la sala.", measure: (i) => ({ value: i.totalMinutes, target: hours(100) }) },
+  { id: "streak_7", title: "Ronda de 7 días", description: "Estudiá 7 días seguidos en la sala.", measure: (i) => ({ value: i.longestStreak, target: 7 }) },
+  { id: "streak_30", title: "Tradición de 30 días", description: "Estudiá 30 días seguidos en la sala.", measure: (i) => ({ value: i.longestStreak, target: 30 }) },
+  { id: "early_bird", title: "Mate al amanecer", description: "Empezá una sesión antes de las 8, cuando el horario de la sala lo permita.", measure: (i) => ({ value: i.hasEarly ? 1 : 0, target: 1 }) },
+  { id: "night_owl", title: "Mate trasnochado", description: "Estudiá después de las 21 en la sala.", measure: (i) => ({ value: i.hasLate ? 1 : 0, target: 1 }) },
 ];
 
 /** Every badge with its earned flag and 0..1 progress, in display order. */
@@ -42,7 +42,8 @@ export function evaluateBadges(input: BadgeInput): BadgeDto[] {
   return RULES.map((rule) => {
     const { value, target } = rule.measure(input);
     const progress = Math.min(1, Math.max(0, value / target));
-    return { id: rule.id, title: rule.title, description: rule.description, earned: value >= target, progress };
+    return { id: rule.id, title: rule.title, description: rule.description, earned: value >= target, progress,
+      goal: { current: Math.max(0, value), target, unit: rule.id.startsWith("hours_") ? "minutos" : rule.id.startsWith("streak_") ? "días" : "sesiones" } };
   });
 }
 

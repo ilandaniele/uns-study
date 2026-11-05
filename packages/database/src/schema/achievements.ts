@@ -8,6 +8,8 @@ export const collaborationUpdates = sqliteTable("collaboration_updates", {
   localDate: text("local_date").notNull(),
   seatId: text("seat_id").notNull().references(() => seats.id, { onDelete: "cascade" }),
   roomId: text("room_id").notNull().references(() => rooms.id, { onDelete: "cascade" }),
+  /** First accepted state for this credited seat/day. NULL on legacy credits, never guessed. */
+  observedStatus: text("observed_status", { enum: ["FREE", "OCCUPIED", "SAVED"] }),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 }, t => [primaryKey({ columns: [t.userId, t.localDate, t.seatId] })]);
 

@@ -14,7 +14,7 @@ export function rankingProfileHref(entry: RankingEntryDto): string | null {
 }
 
 function FeaturedBadge({ entry }: { entry: RankingEntryDto }) {
-  return entry.achievement ? <span title={entry.achievement.title} className="inline-flex shrink-0 align-middle"><BadgeMedal tier={entry.achievement.tier} size={24} label={`Insignia: ${entry.achievement.title}`}/></span> : null;
+  return entry.achievement ? <span title={entry.achievement.title} className="inline-flex shrink-0 align-middle"><BadgeMedal tier={entry.achievement.tier} badgeId={entry.achievement.id} size={28} label={`Insignia: ${entry.achievement.title}`}/></span> : null;
 }
 
 export function RankingTable({ ranking }: { ranking: RankingDto }) {

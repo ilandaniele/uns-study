@@ -11,12 +11,12 @@ export class CollaborationService {
   constructor(private readonly db: Db, private readonly clock: Clock) {}
 
   /** Called only after a presence-checked individual report, in its existing write transaction. */
-  record(tx: Tx, userId: string, roomId: string, seatId: string, timezone: string, now: Date): void {
+  record(tx: Tx, userId: string, roomId: string, seatId: string, timezone: string, now: Date, observedStatus: "FREE" | "OCCUPIED" | "SAVED" | null = null): void {
     const localDate = localDateOf(now, timezone);
     const today = tx.select({ total: count() }).from(schema.collaborationUpdates)
       .where(and(eq(schema.collaborationUpdates.userId, userId), eq(schema.collaborationUpdates.localDate, localDate))).get()!.total;
     if (today >= COLLABORATION_DAILY_SEED_CAP * COLLABORATION_PLACES_PER_SEED) return;
-    const inserted = tx.insert(schema.collaborationUpdates).values({ userId, roomId, seatId, localDate, createdAt: now }).onConflictDoNothing().returning({ seatId: schema.collaborationUpdates.seatId }).get();
+    const inserted = tx.insert(schema.collaborationUpdates).values({ userId, roomId, seatId, localDate, observedStatus, createdAt: now }).onConflictDoNothing().returning({ seatId: schema.collaborationUpdates.seatId }).get();
     if (!inserted || today + 1 < COLLABORATION_REWARD_PLACES) return;
     const verified = tx.select({ verified: schema.user.emailVerified }).from(schema.user).where(eq(schema.user.id, userId)).get()?.verified;
     if (!verified) return;
@@ -50,7 +50,10 @@ export class CollaborationService {
 
   progress(userId: string): CollaborationProgressDto {
     const today = localDateOf(this.clock.now(), DEFAULT_TIMEZONE);
-    const days = this.db.select({ date: schema.collaborationUpdates.localDate, places: count() })
+    const days = this.db.select({ date: schema.collaborationUpdates.localDate, places: count(),
+      free: sql<number>`sum(case when ${schema.collaborationUpdates.observedStatus} = 'FREE' then 1 else 0 end)`,
+      occupied: sql<number>`sum(case when ${schema.collaborationUpdates.observedStatus} = 'OCCUPIED' then 1 else 0 end)`,
+    })
       .from(schema.collaborationUpdates).where(eq(schema.collaborationUpdates.userId, userId)).groupBy(schema.collaborationUpdates.localDate).all();
     const places = days.reduce((sum, day) => sum + day.places, 0);
     const seedCount = (n: number) => Math.min(COLLABORATION_DAILY_SEED_CAP, Math.floor(n / COLLABORATION_PLACES_PER_SEED));
@@ -61,7 +64,8 @@ export class CollaborationService {
     const last = this.latestReward(userId);
     const nextEligibleAt = last ? new Date(last.earnedAt.getTime() + COLLABORATION_REWARD_COOLDOWN_DAYS * 86400_000) : null;
     return {
-      places, days: days.length, seeds: days.reduce((sum, day) => sum + seedCount(day.places), 0), todayPlaces,
+      places, freePlaces: days.reduce((sum, day) => sum + day.free, 0), occupiedPlaces: days.reduce((sum, day) => sum + day.occupied, 0),
+      days: days.length, seeds: days.reduce((sum, day) => sum + seedCount(day.places), 0), todayPlaces,
       todaySeeds: seedCount(todayPlaces), nextSeedPlaces: seedCount(todayPlaces) >= COLLABORATION_DAILY_SEED_CAP ? 0 : COLLABORATION_PLACES_PER_SEED - todayPlaces % COLLABORATION_PLACES_PER_SEED,
       eligibleForAdmin: !staff && places >= ADMIN_APPLICATION_MIN_PLACES && days.length >= ADMIN_APPLICATION_MIN_DAYS && (reputation?.spamScore ?? 0) < 5,
       applicationStatus: application?.status ?? null,

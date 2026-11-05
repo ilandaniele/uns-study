@@ -1,17 +1,25 @@
 "use client";
 
-import type { AchievementDto, PublicAchievementsDto } from "@sala/contracts";
+import type { AchievementCategory, AchievementDto, PublicAchievementsDto } from "@sala/contracts";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { BadgeMedal } from "./BadgeMedal";
+import { badgeProgressText } from "./badge-progress";
+import styles from "./achievements.module.css";
+
+export const ACHIEVEMENT_CATEGORY_LABELS: Record<AchievementCategory, string> = { collaboration: "Colaboración", free: "Libres", occupied: "Ocupados", study: "Estudio" };
+export const achievementCategory = (badge: AchievementDto): AchievementCategory => badge.category ?? (badge.id.startsWith("collaboration_") ? "collaboration" : "study");
 
 export function AchievementGrid({ badges }: { badges: AchievementDto[] }) {
-  return <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-    {badges.map(badge => <li key={badge.id} className={`flex min-w-0 flex-col items-center rounded-2xl border border-app bg-surface p-4 text-center ${badge.earned ? "" : "opacity-55"}`}>
-      <BadgeMedal tier={badge.tier} size={76}/><h3 className="mt-2 text-sm font-bold text-main">{badge.title}</h3>
+  return <ul className={`grid grid-cols-2 gap-3 ${badges.length === 4 ? "" : "sm:grid-cols-3"}`}>
+    {badges.map(badge => {
+      const progress = badgeProgressText(badge);
+      return <li key={badge.id} data-achievement-id={badge.id} data-earned={badge.earned} className={`flex min-w-0 flex-col items-center rounded-2xl border bg-surface p-4 text-center ${badge.earned ? "border-primary/35" : "border-app"}`}>
+      <span className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted">{ACHIEVEMENT_CATEGORY_LABELS[achievementCategory(badge)]}</span>
+      <div className={badge.earned ? "" : "opacity-75 saturate-75"}><BadgeMedal tier={badge.tier} badgeId={badge.id} size={88}/></div><h3 className="mt-2 text-sm font-bold text-main">{badge.title}</h3>
       <p className="mt-1 text-xs leading-relaxed text-muted">{badge.description}</p>
-      {badge.earned ? <span className="mt-3 text-xs font-semibold text-primary">Conseguida</span> : <div className="mt-3 w-full"><progress aria-label={`Avance de ${badge.title}`} value={badge.progress} max={1} className="h-1.5 w-full accent-[var(--primary)]"/><span className="mt-1 block text-xs text-muted">{Math.floor(badge.progress * 100)}%</span></div>}
-    </li>)}
+      <div className="mt-auto w-full pt-4"><p className="mb-2 text-xs font-semibold tabular-nums text-main">{badge.earned ? "Conseguida" : progress.count}</p><progress aria-label={`Avance de ${badge.title}`} aria-valuetext={`${progress.count}. ${progress.remaining}`} value={badge.earned ? 1 : badge.progress} max={1} className={styles.progress}/><p className={`mt-2 text-xs ${badge.earned ? "font-semibold text-primary" : "text-muted"}`}>{progress.remaining}</p></div>
+    </li>;})}
   </ul>;
 }
 
