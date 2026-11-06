@@ -1,3 +1,5 @@
+import { ROOM_GUIDE } from "./room-guide";
+
 export type GuideSection = { heading: string; paragraphs: string[]; list?: string[] };
 export type Guide = {
   slug: string;
@@ -9,6 +11,7 @@ export type Guide = {
 };
 
 export const GUIDES: readonly Guide[] = [
+  ROOM_GUIDE,
   {
     slug: "tecnica-pomodoro",
     title: "La técnica Pomodoro: cómo usarla de verdad para estudiar",

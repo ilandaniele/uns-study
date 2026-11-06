@@ -58,12 +58,13 @@ export default function ProjectPage() {
         <section className="space-y-3">
           <h2 className="text-xl font-bold">Herramientas para tu tiempo de estudio</h2>
           <p>Foco permite organizar bloques de trabajo y descansos. Las guías proponen maneras de preparar un final, practicar ejercicios, leer y repasar. El jardín representa el tiempo de presencia registrado con árboles nativos argentinos: sus semillas y ejemplares son virtuales.</p>
-          <p>El temporizador de Foco y el registro «Estoy acá» cumplen funciones distintas. Usar el temporizador por sí solo no acredita horas de presencia para hacer crecer el jardín. Compartir un jardín es opcional y no muestra el saldo de semillas ni los horarios personales de estudio.</p>
+          <p>El temporizador de Foco y el registro «Estoy acá» cumplen funciones distintas. Usar el temporizador por sí solo no acredita horas de presencia para hacer crecer el jardín. Los jardines se pueden visitar desde los perfiles; no muestran el saldo de semillas ni los horarios personales de estudio.</p>
           <div className="flex flex-wrap gap-x-6"><Link href="/foco" className={`inline-flex min-h-11 items-center ${link}`}>Ir a Foco</Link><Link href="/guias" className={`inline-flex min-h-11 items-center ${link}`}>Leer las guías</Link></div>
         </section>
 
         <section id="contenido" className="scroll-mt-24 space-y-3 border-t border-app pt-6">
           <h2 className="text-xl font-bold">Sobre las guías y las ilustraciones</h2>
+          <p>Ilan Daniele es el responsable de publicar y mantener este material. La <Link href="/guias/visitar-la-sala-de-estudio-uns" className={link}>guía para visitar la sala de Alem</Link> distingue los datos institucionales de los ejemplos de uso de la aplicación, con enlaces a las fuentes de la UNS.</p>
           <p>Las guías de Sala de Estudio son material de apoyo con ejemplos para adaptar a tu materia y al tiempo que tenés. Incluyen lecturas complementarias de universidades y otras fuentes identificadas al final de cada artículo. Esas instituciones no patrocinan ni avalan esta app.</p>
           <p>Se utilizan herramientas de inteligencia artificial para asistir la redacción y crear ilustraciones, incluidos los árboles del jardín. Los textos no se presentan como publicaciones de una cátedra ni como asesoramiento profesional. Priorizá el programa y la bibliografía de tu materia; las guías sobre bienestar tampoco reemplazan una consulta de salud.</p>
           <p>Si encontrás una explicación incorrecta o un enlace que dejó de funcionar, enviá el título de la guía y el fragmento a corregir por el canal de contacto. La fecha de cada artículo corresponde a su contenido; las lecturas complementarias indican cuándo se consultaron.</p>

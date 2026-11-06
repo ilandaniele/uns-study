@@ -1,6 +1,7 @@
 // Keep this small: advertising policy runs in client components, whereas guide prose stays on
 // the server. The policy tests check this registry against the actual published articles.
 export const PUBLISHED_GUIDE_PATHS = [
+  "/guias/visitar-la-sala-de-estudio-uns",
   "/guias/tecnica-pomodoro",
   "/guias/practica-de-recuperacion-y-repaso-espaciado",
   "/guias/como-preparar-un-final",

@@ -19,6 +19,13 @@ export default function GuidesIndexPage() {
         Guías de Sala de Estudio con ejemplos para organizar la cursada y los finales. Cada artículo incluye lecturas complementarias para profundizar.
       </p>
 
+      <section aria-labelledby="visit-guide" className="space-y-3 rounded-2xl border border-app bg-surface p-5">
+        <p className="t-label text-primary">Para usar esta sala</p>
+        <h2 id="visit-guide" className="text-xl font-bold">¿Es tu primera visita a Alem?</h2>
+        <p className="text-muted">Ubicación de la sala Manuel Gil, diferencias entre los horarios publicados y ejemplos para entender por qué un asiento pasa de libre a «Sin datos».</p>
+        <Link href="/guias/visitar-la-sala-de-estudio-uns" className="inline-flex min-h-11 items-center font-semibold text-primary underline underline-offset-4">Leer la guía de visita →</Link>
+      </section>
+
       <GuideLibrary guides={GUIDES.map(({ slug, title, description, readingMinutes }) => ({ slug, title, description, readingMinutes }))} />
 
       <p className="text-muted">

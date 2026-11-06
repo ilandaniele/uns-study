@@ -1,4 +1,6 @@
 export const GUIDE_RESOURCES_CHECKED = "2026-10-26";
+// Existing references retain their actual consultation date; only these were checked again.
+export const ROOM_GUIDE_RESOURCES_CHECKED = "2026-11-06";
 type Resource = { title: string; url: string };
 const strategies: Resource = { title: "Cornell University · Effective Study Strategies", url: "https://lsc.cornell.edu/how-to-study/studying-for-and-taking-exams/effective-study-strategies/" };
 const schedule: Resource = { title: "Cornell University · Cómo organizar un cronograma de estudio", url: "https://lsc.cornell.edu/how-to-study/studying-for-and-taking-exams/guidelines-for-creating-a-study-schedule/" };
@@ -6,6 +8,11 @@ const study: Resource = { title: "Cornell University · How to Study", url: "htt
 
 /** Complementary reading, not an attribution of authorship or endorsement by these institutions. */
 export const GUIDE_RESOURCES: Readonly<Record<string, readonly Resource[]>> = {
+  "visitar-la-sala-de-estudio-uns": [
+    { title: "Biblioteca Central UNS · Salas de lectura, dirección y condiciones de uso", url: "https://bc.uns.edu.ar/salasdelectura/" },
+    { title: "UNS · Bienvenida a ingresantes 2025 (referencia de horario de apertura)", url: "https://www.enfoqueu.uns.edu.ar/bienvenida-a-los-ingresantes-2025/" },
+    { title: "Biblioteca Central UNS · Servicios y contacto institucional", url: "https://bc.uns.edu.ar/servicios/" },
+  ],
   "tecnica-pomodoro": [{ title: "Francesco Cirillo · Pomodoro Technique resources", url: "https://www.pomodorotechnique.com/pomodoro-resources/" }, schedule],
   "practica-de-recuperacion-y-repaso-espaciado": [strategies],
   "como-preparar-un-final": [{ title: "Cornell University · Five-Day Study Plan", url: "https://lsc.cornell.edu/how-to-study/studying-for-and-taking-exams/the-five-day-study-plan/" }, strategies],
