@@ -20,6 +20,12 @@ function withCsp(request: NextRequest) {
   headers.set("content-security-policy", csp);
   const response = NextResponse.next({ request: { headers } });
   response.headers.set("content-security-policy", csp);
+  // Account-specific garden utility: let crawlers read noindex even before streamed metadata
+  // is processed. This changes search indexing only; account/data access stays in its guards.
+  const pathname = request.nextUrl.pathname;
+  if (pathname === "/jardin" || pathname.startsWith("/jardin/")) {
+    response.headers.set("x-robots-tag", "noindex, nofollow");
+  }
   return response;
 }
 

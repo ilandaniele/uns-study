@@ -73,6 +73,18 @@ describe("proxy CSP nonce", () => {
     expect(res.headers.get("content-security-policy")).toBeNull();
   });
 
+  it.each(["/jardin", "/jardin?utm_source=google", "/jardin/"])("keeps %s out of search without blocking its page response", path => {
+    const res = proxy(new NextRequest(`https://saladeestudio.com.ar${path}`));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("x-robots-tag")).toBe("noindex, nofollow");
+    expect(res.headers.get("content-security-policy")).toContain("'strict-dynamic'");
+  });
+
+  it.each(["/", "/guias/procrastinacion", "/jardineria", "/api/v1/garden"])("does not apply the garden search exclusion to %s", path => {
+    const res = proxy(new NextRequest(`https://saladeestudio.com.ar${path}`));
+    expect(res.headers.get("x-robots-tag")).toBeNull();
+  });
+
   it("allows the same-origin WebSocket in production", () => {
     const csp = buildCsp("n", false);
     expect(csp).toContain("wss://saladeestudio.com.ar");

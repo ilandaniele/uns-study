@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: "Mi jardín",
   description:
     "Cultivá un jardín virtual de árboles nativos argentinos con tus horas en la sala.",
+  robots: { index: false, follow: false },
 };
 export default function GardenPage() {
   return <GardenView />;
