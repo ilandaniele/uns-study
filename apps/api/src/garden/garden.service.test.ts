@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { eq, sql } from "drizzle-orm";
 import { schema, type Db } from "@sala/database";
+import { GARDEN_BIOMES } from "@sala/contracts";
 import { FixedClock } from "../platform/clock.js";
 import { freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { GardenService } from "./garden.service.js";
@@ -54,6 +55,18 @@ describe("GardenService", () => {
     await expect(garden.chooseBiome("u1",{biome:"andino"})).rejects.toThrow();
     expect((await garden.get("u1")).biome).toBe("ribera");
     expect(await garden.chooseBiome("u1",{biome:"pampa"})).toMatchObject({biome:"pampa"});
+  });
+  it.each(GARDEN_BIOMES.filter(b=>b.requiredPlaces>30))("persists $id only after its collaboration threshold and keeps visitors on the same landscape",async biome=>{
+    const seats=await getSeats(db);
+    db.insert(schema.collaborationUpdates).values(seats.slice(0,biome.requiredPlaces-1).map(seat=>({userId:"u1",roomId,seatId:seat.id,localDate:"2026-10-24",observedStatus:"FREE" as const,createdAt:NOW}))).run();
+    const before=await garden.get("u1");
+    await expect(garden.chooseBiome("u1",{biome:biome.id})).rejects.toThrow();
+    expect(await garden.get("u1")).toEqual(before);
+    db.insert(schema.collaborationUpdates).values({userId:"u1",roomId,seatId:seats[biome.requiredPlaces-1]!.id,localDate:"2026-10-24",observedStatus:"OCCUPIED",createdAt:NOW}).run();
+    const balance=(await garden.get("u1")).seeds;
+    expect(await garden.chooseBiome("u1",{biome:biome.id})).toMatchObject({biome:biome.id,seeds:balance});
+    expect(await garden.visit("u2","u1")).toMatchObject({biome:biome.id});
+    expect((await new GardenService(db,clock).get("u1")).biome).toBe(biome.id);
   });
   it("always shares plants and collection, including existing unshared gardens, without exposing account data", async () => {
     expect(await garden.visit("u2", "u1")).toMatchObject({ plants: [], collection: {},plotCount:25 });

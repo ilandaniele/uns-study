@@ -25,18 +25,43 @@
   --garden-water-light: #94b8bb; --garden-water-deep: #3b6878; --garden-river-bank: #8a9786;
   --garden-earth-light: #8c8b73; --garden-earth-dark: #686d60; --garden-decor-green: #3c725b;
 }
+.scene[data-biome="paranaense"] {
+  --garden-grass:#476746; --garden-earth-dark:#704737; --garden-river-bank:#8d7153;
+  --garden-water-light:#829c77; --garden-water-deep:#3f6251;
+}
+.scene[data-biome="yungas"] {
+  --garden-grass:#658260; --garden-earth-dark:#544d3e; --garden-river-bank:#7d8a70;
+  --garden-water-light:#92b2a0; --garden-water-deep:#3d6a66;
+}
+.scene[data-biome="monte"] {
+  --garden-grass:#a69871; --garden-earth-dark:#8b7056; --garden-river-bank:#b6a27a;
+  --garden-water-light:#a5b49e; --garden-water-deep:#65867b; --garden-reflection-opacity:.32;
+}
+.scene[data-biome="estepa"] {
+  --garden-grass:#89917d; --garden-earth-dark:#6b675a; --garden-river-bank:#a1a08a;
+  --garden-water-light:#9ab7b1; --garden-water-deep:#526f77; --garden-reflection-opacity:.36;
+}
+.scene[data-biome="puna"] {
+  --garden-grass:#aaa184; --garden-earth-dark:#86745f; --garden-river-bank:#b6aa8e;
+  --garden-water-light:#a6b8b1; --garden-water-deep:#668483; --garden-reflection-opacity:.32;
+}
+.scene[data-biome="ibera"] {
+  --garden-grass:#688c51; --garden-earth-dark:#565b3c; --garden-river-bank:#8e9b69;
+  --garden-water-light:#9aa57b; --garden-water-deep:#56694a; --garden-reflection-opacity:.58;
+}
 .surface {
-  animation: surface-drift 8s linear infinite;
+  animation: surface-drift 24s linear infinite;
   animation-play-state: paused;
-  opacity: .5;
+  opacity: var(--garden-reflection-opacity,.44);
 }
 .flow {
-  animation: river-flow 7s linear infinite;
+  animation: river-flow 18s linear infinite;
   animation-play-state: paused;
+  opacity: .18;
 }
 [data-motion-visible="true"] .surface, [data-motion-visible="true"] .flow { animation-play-state: running; }
-@keyframes surface-drift { from { transform: translate(0,0); } to { transform: translate(96px,57px); } }
-@keyframes river-flow { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -84; } }
+@keyframes surface-drift { from { transform: translate(0,0); } to { transform: translate(192px,128px); } }
+@keyframes river-flow { from { transform: translate(0,0); } to { transform: translate(-128px,-64px); } }
 @media (prefers-reduced-motion: reduce) { .surface, .flow { animation: none !important; transform: none !important; } }
 .plotMarker { opacity: .23; transition: opacity .16s; }
 .scene [role="button"]:hover .plotMarker,

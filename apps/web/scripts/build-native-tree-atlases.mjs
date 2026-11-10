@@ -10,8 +10,9 @@ const expansion = process.argv[2] === "--expansion";
 const wetland = process.argv[2] === "--wetland";
 const biomes = process.argv[2] === "--biomes";
 const scenery = process.argv[2] === "--scenery";
-const sources = process.argv.slice(expansion || wetland || riverside || biomes || scenery ? 3 : 2);
-if (sources.length !== (scenery || biomes ? 2 : riverside ? 1 : expansion ? 5 : 3)) throw new Error("Unexpected atlas inputs. Scenery: ground/decor PNG; biomes: adult/young PNG; expansion: five PNGs; riverside: one PNG; default/wetland: three PNGs.");
+const ecoregions = process.argv[2] === "--ecoregions";
+const sources = process.argv.slice(expansion || wetland || riverside || biomes || scenery || ecoregions ? 3 : 2);
+if (sources.length !== (ecoregions || scenery || biomes ? 2 : riverside ? 1 : expansion ? 5 : 3)) throw new Error("Unexpected atlas inputs. Ecoregions: ground/water PNG; scenery: ground/decor PNG; biomes: adult/young PNG; expansion: five PNGs; riverside: one PNG; default/wetland: three PNGs.");
 const destination = fileURLToPath(new URL("../public/garden/", import.meta.url));
 const CELL_WIDTH = 256;
 const CELL_HEIGHT = 288;
@@ -90,6 +91,15 @@ async function pack(source, columns, rows, filename, dimensions, quality = 74) {
 }
 
 await mkdir(destination, { recursive: true });
+if(ecoregions) {
+  const ground = `${destination}/ecorregiones-argentinas-gpt-v3.webp`, water = `${destination}/agua-arroyo-gpt-v3.webp`;
+  await sharp(sources[0]).resize(1152,768,{fit:"fill"}).webp({quality:64,effort:6,smartSubsample:true}).toFile(ground);
+  await sharp(sources[1]).resize(1024,512,{fit:"fill"}).webp({quality:66,effort:6,smartSubsample:true}).toFile(water);
+  const bytes=(await stat(ground)).size+(await stat(water)).size;
+  console.log(`Ecoregions: ${(await stat(ground)).size} bytes; water: ${(await stat(water)).size} bytes; total: ${bytes}`);
+  if(bytes>500_000)throw new Error("Ecoregion assets exceed 500 KB budget.");
+  process.exit(0);
+}
 if (scenery) {
   const ground = `${destination}/suelos-nativos-gpt-v2.webp`;
   await sharp(sources[0]).resize(1024,1024,{fit:"fill"}).webp({quality:72,effort:6,smartSubsample:true}).toFile(ground);

@@ -7,8 +7,8 @@ import {
 } from "./garden.js";
 
 describe("native garden catalog and requests", () => {
-  it("offers four progressive cosmetic biomes and rejects forged unlock claims", () => {
-    expect(GARDEN_BIOMES.map(item=>item.requiredPlaces)).toEqual([0,5,15,30]);
+  it("offers ten progressive cosmetic biomes while preserving existing unlocks and rejecting forged claims", () => {
+    expect(GARDEN_BIOMES.map(item=>item.requiredPlaces)).toEqual([0,5,15,30,40,50,60,70,80,100]);
     for(const biome of GARDEN_BIOMES) expect(gardenBiomeSchema.safeParse({biome:biome.id}).success).toBe(true);
     expect(gardenBiomeSchema.safeParse({biome:"desert"}).success).toBe(false);
     expect(gardenBiomeSchema.safeParse({biome:"andino",places:1000}).success).toBe(false);
