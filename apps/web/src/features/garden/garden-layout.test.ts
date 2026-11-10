@@ -33,12 +33,15 @@ describe("personal garden projection",()=>{
    }
   }
  });
- it("gives all river variants substantial bends instead of a straight canal",()=>{
+ it("varies between narrow straight streams and substantial bends across both orientations",()=>{
+  const deviations: number[]=[];
   for(const count of [25,50])for(let seed=0;seed<32;seed++){
    const {river}=createGardenLayout(count,seed),a=river[0]!,b=river.at(-1)!;
    const deviation=Math.max(...river.map(p=>Math.abs((b.x-a.x)*(a.y-p.y)-(a.x-p.x)*(b.y-a.y))/Math.hypot(b.x-a.x,b.y-a.y)));
-   expect(deviation).toBeGreaterThan(10);
+   deviations.push(deviation);
   }
+  expect(deviations.some(value=>value<.01)).toBe(true);
+  expect(deviations.filter(value=>value>10).length).toBeGreaterThan(32);
  });
  it("does not render fabricated capacity",()=>{expect(createGardenLayout(1000).count).toBe(25);expect(createGardenLayout(26).count).toBe(25);});
 });

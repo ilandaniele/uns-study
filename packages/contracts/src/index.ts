@@ -19,6 +19,7 @@ export * from "./events";
 export * from "./feedback";
 export * from "./pro";
 export * from "./garden";
+export * from "./garden-biomes";
 export * from "./reactions";
 export * from "./achievements";
 

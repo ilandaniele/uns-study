@@ -7,6 +7,10 @@ import {
   GARDEN_MAX_SIZE,
   GARDEN_SIZE,
   gardenExpansion,
+  GARDEN_BIOMES,
+  GARDEN_BIOME_IDS,
+  type GardenBiomeId,
+  type GardenBiomeRequest,
   type GardenExpandRequest,
   type GardenDto,
   type GardenPlant,
@@ -29,6 +33,7 @@ interface StoredPlant {
   baselineMinutes: number;
 }
 interface GardenState {
+  biome: GardenBiomeId;
   plotCount: number;
   landscapeSeed: number;
   collaboration: CollaborationProgressDto;
@@ -77,6 +82,7 @@ export class GardenService {
     return {
       plotCount: dto.plotCount,
       landscapeSeed: dto.landscapeSeed,
+      biome: dto.biome,
       plants: dto.plants.map(({ plot, speciesId, stage, progress }) => ({ plot, speciesId, stage, progress })),
       collection: dto.collection,
     };
@@ -93,6 +99,9 @@ export class GardenService {
       throw ApiErrors.validation();
     const minutes = await this.studyMinutes(userId);
     return this.mutate(userId, minutes, (state) => {
+      if (state.collaboration.places < (species.requiredPlaces ?? 0)) {
+        throw ApiErrors.forbidden(`Actualizá ${species.requiredPlaces} lugares distintos para desbloquear esta planta.`);
+      }
       if (input.plot >= state.plotCount) throw ApiErrors.validation("Primero ampliá tu jardín para usar esta parcela.");
       if (state.plants.some((p) => p.plot === input.plot))
         throw ApiErrors.validation("Esta parcela ya tiene un árbol.");
@@ -141,6 +150,18 @@ export class GardenService {
     });
   }
 
+  async chooseBiome(userId: string, input: GardenBiomeRequest): Promise<GardenDto> {
+    const biome = GARDEN_BIOMES.find(item => item.id === input.biome);
+    if (!biome) throw ApiErrors.validation("Bioma desconocido.");
+    const minutes = await this.studyMinutes(userId);
+    return this.mutate(userId, minutes, state => {
+      if (state.collaboration.places < biome.requiredPlaces) {
+        throw ApiErrors.forbidden(`Actualizá ${biome.requiredPlaces} lugares distintos para desbloquear este bioma.`);
+      }
+      state.biome = biome.id;
+    });
+  }
+
   private async studyMinutes(userId: string): Promise<number> {
     const intervals = await loadStudyIntervals(
       this.db,
@@ -172,6 +193,7 @@ export class GardenService {
         .get();
       return row
         ? {
+            biome: GARDEN_BIOME_IDS.includes(row.biome as GardenBiomeId) ? row.biome as GardenBiomeId : "pampa",
             plotCount: row.plotCount,
             landscapeSeed: row.landscapeSeed || landscapeSeed,
             collaboration: this.collaboration.progress(userId),
@@ -181,7 +203,7 @@ export class GardenService {
             plants: JSON.parse(row.plants) as StoredPlant[],
             collection: JSON.parse(row.collection) as Record<string, number>,
           }
-        : { plotCount: GARDEN_SIZE, landscapeSeed, shared: false, spentSeeds: 0, bonusSeeds: 0, plants: [], collection: {}, collaboration: this.collaboration.progress(userId) };
+        : { biome: "pampa", plotCount: GARDEN_SIZE, landscapeSeed, shared: false, spentSeeds: 0, bonusSeeds: 0, plants: [], collection: {}, collaboration: this.collaboration.progress(userId) };
     } catch (error) {
       if (isMissingSchemaError(error))
         throw ApiErrors.featureDisabled(
@@ -202,6 +224,7 @@ export class GardenService {
 
   private dto(state: GardenState, minutes: number): GardenDto {
     return {
+      biome: state.biome,
       plotCount: state.plotCount,
       landscapeSeed: state.landscapeSeed,
       collaboration: state.collaboration,
@@ -245,6 +268,7 @@ export class GardenService {
       const state = this.read(userId);
       change(state);
       const values = {
+        biome: state.biome,
         plotCount: state.plotCount,
         landscapeSeed: state.landscapeSeed,
         shared: state.shared,

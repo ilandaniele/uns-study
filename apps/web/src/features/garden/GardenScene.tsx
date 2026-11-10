@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { GARDEN_SIZE, GARDEN_SPECIES, type SharedGardenDto } from "@sala/contracts";
+import { GARDEN_SIZE, GARDEN_SPECIES, type SharedGardenDto, type GardenBiomeId } from "@sala/contracts";
+import styles from "./garden-scene.module.css";
 import { TreeArt } from "./TreeArt";
 import { PlotPicker } from "./PlotPicker";
 import { createGardenLayout, polygonPoints } from "./garden-layout";
@@ -11,7 +12,8 @@ import { usePlantVisibility } from "./plant-motion";
 const stages = { seed: "semilla", sprout: "brote", young: "joven", mature: "adulto" };
 
 /** Upright GPT-painted tree cutouts on a depth-sorted isometric island. */
-export function GardenScene({ plants, selected, onSelect, plotCount = GARDEN_SIZE, landscapeSeed = 1 }: {
+export function GardenScene({ plants, selected, onSelect, plotCount = GARDEN_SIZE, landscapeSeed = 1, biome = "pampa" }: {
+  biome?: GardenBiomeId;
   plants: SharedGardenDto["plants"];
   selected?: number | null;
   onSelect?: (plot: number) => void;
@@ -20,7 +22,7 @@ export function GardenScene({ plants, selected, onSelect, plotCount = GARDEN_SIZ
 }) {
   const sceneRef = usePlantVisibility();
   const layout = useMemo(() => createGardenLayout(plotCount, landscapeSeed), [plotCount, landscapeSeed]);
-  return <div className="forest-diorama relative isolate overflow-hidden rounded-3xl">
+  return <div className={`${styles.scene} relative isolate overflow-hidden rounded-3xl`} data-biome={biome}>
     <svg ref={sceneRef} viewBox="0 0 600 430" width="600" height="430" className="block h-auto w-full" role="group" aria-label={`Bosque nativo: ${layout.count} parcelas`} data-landscape-variant={layout.variant}>
       <GardenLandscape layout={layout} />
       {layout.plots.map(({ plot, x, y, halfWidth, halfHeight, outline }) => {
@@ -34,7 +36,7 @@ export function GardenScene({ plants, selected, onSelect, plotCount = GARDEN_SIZ
           className={onSelect ? "forest-parcel cursor-pointer outline-none" : ""}>
           <title>{label}</title>
           <path d={`M${polygonPoints(outline).replaceAll(" ", " L")}Z`} fill={selected === plot ? "var(--garden-plot-selected)" : "transparent"}
-            stroke={selected === plot ? "var(--garden-plot-ink)" : onSelect ? "var(--garden-grass-edge)" : "transparent"} strokeOpacity={selected === plot ? 1 : .28} strokeWidth={selected === plot ? 2.5 : .7} />
+            stroke={selected === plot ? "var(--garden-plot-ink)" : onSelect ? "var(--garden-grass-edge)" : "transparent"} strokeOpacity={selected === plot ? 1 : .16} strokeWidth={selected === plot ? 2.5 : .6} />
           {species?.habitat ? <g pointerEvents="none" aria-hidden="true">
             <ellipse cx={x} cy={y + 3} rx={halfWidth * .68} ry={halfHeight * .47} fill={species.habitat === "water" ? "#6ab6bc" : "#78a56a"} />
             <path d={`M${x - halfWidth * .5} ${y + 4}q7 3 13 0m10 4q6 2 10-2`} fill="none" stroke="#d3efe3" strokeWidth="1.2" opacity=".7" />

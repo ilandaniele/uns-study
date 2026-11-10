@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   GardenDto,
+  GardenBiomeRequest,
   GardenExpandRequest,
   GardenPlantRequest,
   GardenRedeemRequest,
@@ -72,8 +73,8 @@ export function useGarden() {
   }, [refresh, invalidateRequest]);
 
   async function act(
-    action: "plant" | "redeem" | "expand",
-    input: GardenPlantRequest | GardenRedeemRequest | GardenExpandRequest,
+    action: "plant" | "redeem" | "expand" | "biome",
+    input: GardenPlantRequest | GardenRedeemRequest | GardenExpandRequest | GardenBiomeRequest,
   ): Promise<boolean> {
     if (busy.current) return false;
     busy.current = true;

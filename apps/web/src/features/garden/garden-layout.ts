@@ -9,26 +9,28 @@ export function createGardenLayout(plotCount = GARDEN_SIZE, seed = 1) {
   const count = Number.isInteger(plotCount) && plotCount >= GARDEN_SIZE && plotCount <= GARDEN_MAX_SIZE && plotCount % 5 === 0 ? plotCount : GARDEN_SIZE;
   const rows = count / 5;
   const stableSeed = Number.isFinite(seed) ? Math.abs(Math.trunc(seed)) % 65536 : 1;
-  const variant = stableSeed % 6;
+  const variant = stableSeed % 8;
   const acrossRows = variant % 2 === 1;
   const dx = Math.min(44, 410 / (rows + 4)), dy = dx * .52;
   const origin = { x: 300 + (rows - 5) * dx / 2, y: 120 };
   const alongCount = acrossRows ? 5 : rows;
   const acrossCount = acrossRows ? rows : 5;
   const cut = acrossRows ? Math.floor(rows / 2) - .5 : .5 + Math.floor(variant / 2);
-  const amplitude = [.64, .82, .72, .58, .88, .74][variant]!;
+  // Some accounts receive a straight stream; others receive different meanders and orientations.
+  const amplitude = [.52, .7, 0, .62, .45, 0, .76, .56][variant]!;
   const phase = (stableSeed % 7) * .37;
   // Smooth, asymmetric meanders; both banks and plot corners share this mapping.
   const bend = (v: number) => {
     const t = (v + .5) / alongCount;
     return amplitude * Math.sin(t * Math.PI * 2 + phase)
-      + .19 * Math.sin(t * Math.PI * 4 + phase + .8);
+      + (amplitude ? .13 : 0) * Math.sin(t * Math.PI * 4 + phase + .8);
   };
   const project = (u: number, v: number, side: number): GardenPoint => {
     // Taper the meanders into the terrain: the outer island stays straight,
     // while the riverbank and its neighbouring plots follow the water.
     const influence = u <= cut ? (u + .5) / (cut + .5) : (acrossCount - .5 - u) / (acrossCount - .5 - cut);
-    const across = u + bend(v) * influence + side * .52;
+    const width = .29 + .025 * Math.sin((v + .5) / alongCount * Math.PI * 2 + phase);
+    const across = u + bend(v) * influence + side * width;
     const col = acrossRows ? v : across, row = acrossRows ? across : v;
     return { x: round(origin.x + (col - row) * dx), y: round(origin.y + (col + row) * dy) };
   };

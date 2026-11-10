@@ -1,0 +1,1 @@
+ALTER TABLE `user_gardens` ADD `biome` text DEFAULT 'pampa' NOT NULL;

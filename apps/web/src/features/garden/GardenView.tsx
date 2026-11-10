@@ -20,6 +20,8 @@ import { SeedShop } from "./SeedShop";
 import { GardenScene } from "./GardenScene";
 import { GardenNursery } from "./GardenNursery";
 import { GardenExpansion } from "./GardenExpansion";
+import { GardenBiomePicker } from "./GardenBiomePicker";
+import { GardenSectionNavigation } from "./GardenSectionNavigation";
 import { CollaborationRewardProgress } from "@/features/badges/CollaborationRewardProgress";
 
 const STAGES = {
@@ -174,8 +176,8 @@ function GardenAccount() {
   );
   const mature = garden.plants.filter((p) => p.stage === "mature").length;
   return (
-    <>
-      <nav aria-label="Secciones del jardín" className="mb-5 flex gap-2 rounded-full border border-app bg-surface p-1"><a href="#mi-bosque" className="flex min-h-11 flex-1 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white">Bosque</a><a href="#nursery-title" className="flex min-h-11 flex-1 items-center justify-center rounded-full text-sm font-semibold">Vivero</a><a href="#garden-collection" className="flex min-h-11 flex-1 items-center justify-center rounded-full text-sm font-semibold">Colección</a></nav>
+    <div>
+      <GardenSectionNavigation />
       <div className="mb-5 flex flex-wrap gap-3 sm:gap-6">
         <span className="inline-flex min-h-11 items-center gap-2 rounded-full border border-app bg-surface px-4 text-sm font-semibold">
           <LeafIcon size={19} className="text-primary" aria-hidden="true" />
@@ -189,7 +191,7 @@ function GardenAccount() {
           {hours(garden.studyMinutes)} en la sala
         </span>
       </div>
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div id="mi-bosque" className="scroll-mt-[var(--garden-section-top,140px)] grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section
           aria-label={`Mi jardín: ${garden.plotCount ?? GARDEN_SIZE} parcelas`}
           className="garden-landscape overflow-hidden rounded-[24px] border border-app p-3 sm:p-5"
@@ -207,7 +209,8 @@ function GardenAccount() {
               aria-hidden="true"
             />
           </div>
-          <GardenScene plotCount={garden.plotCount} landscapeSeed={garden.landscapeSeed} plants={garden.plants} selected={selected} onSelect={choose} />
+          <GardenScene biome={garden.biome} plotCount={garden.plotCount} landscapeSeed={garden.landscapeSeed} plants={garden.plants} selected={selected} onSelect={choose} />
+          <GardenBiomePicker biome={garden.biome ?? "pampa"} places={garden.collaboration?.places ?? 0} pending={pending} onChoose={id => { void act("biome", {biome: id}); }} />
           <GardenExpansion key={garden.plotCount} garden={garden} pending={pending} onExpand={async()=>{const ok=await act("expand",{plotCount:garden.plotCount??GARDEN_SIZE});if(ok)setNotice("Tu jardín creció: tenés cinco parcelas nuevas.");return ok;}}/>
           <div className="mt-5 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted">
             <span>
@@ -225,7 +228,7 @@ function GardenAccount() {
         <section
           ref={panel}
           aria-label="Parcela seleccionada"
-          className="scroll-mt-24 rounded-[24px] border border-app bg-surface p-5 sm:p-6"
+          className="scroll-mt-[var(--garden-section-top,140px)] rounded-[24px] border border-app bg-surface p-5 sm:p-6"
         >
           {selected === null ? (
             <div className="py-6 text-center">
@@ -292,7 +295,7 @@ function GardenAccount() {
                 </>
               ) : (
                 <>
-                  <a href="#nursery-title" className="mt-4 inline-flex min-h-11 w-full items-center justify-between gap-3 rounded-full border border-app bg-surface-2 px-4 text-sm font-semibold text-primary hover:border-primary">
+                  <a href="#garden-nursery" className="mt-4 inline-flex min-h-11 w-full items-center justify-between gap-3 rounded-full border border-app bg-surface-2 px-4 text-sm font-semibold text-primary hover:border-primary">
                     Elegir otra especie <ArrowRightIcon size={18} aria-hidden="true" />
                   </a>
                   <p className="mt-3 text-sm text-muted">
@@ -302,13 +305,14 @@ function GardenAccount() {
                   <button
                     type="button"
                     onClick={() => void plant()}
-                    disabled={pending || garden.seeds < species.cost}
+                    disabled={pending || garden.seeds < species.cost || (garden.collaboration?.places ?? 0) < (species.requiredPlaces ?? 0)}
                     className={`${primary} mt-4 w-full`}
                   >
                     {pending
                       ? "Plantando…"
                       : `Plantar · ${species.cost} semillas`}
                   </button>
+                  {(garden.collaboration?.places ?? 0) < (species.requiredPlaces ?? 0) ? <p className="mt-3 text-xs text-primary">Actualizá {species.requiredPlaces} lugares distintos para desbloquear esta especie. Llevás {garden.collaboration?.places ?? 0}.</p> : null}
                   {garden.seeds < species.cost ? (
                     <p className="mt-2 text-xs text-muted">
                       Te faltan {species.cost - garden.seeds} semillas. Podés
@@ -349,12 +353,12 @@ function GardenAccount() {
         </section>
       </div>
       <SeedShop onCredit={refresh} />
-      <GardenNursery collection={garden.collection} selected={speciesId} onChoose={(s: GardenSpecies)=>{
+      <GardenNursery places={garden.collaboration?.places ?? 0} collection={garden.collection} selected={speciesId} onChoose={(s: GardenSpecies)=>{
         setSpeciesId(s.id);
         if(selected===null || selectedPlant) setSelected(Array.from({length:garden.plotCount??GARDEN_SIZE},(_,i)=>i).find(i=>!garden.plants.some(p=>p.plot===i))??null);
         panel.current?.scrollIntoView({behavior:"instant",block:"start"});
       }}/>
-      <details id="garden-collection" className="mt-6 scroll-mt-24 rounded-2xl border border-app bg-surface p-5">
+      <details id="garden-collection" className="mt-6 scroll-mt-[var(--garden-section-top,140px)] rounded-2xl border border-app bg-surface p-5">
         <summary className="cursor-pointer py-1 font-semibold">
           Mi colección · {collected}{" "}
           {collected === 1 ? "árbol canjeado" : "árboles canjeados"}
@@ -379,6 +383,6 @@ function GardenAccount() {
           </ul>
         ) : null}
       </details>
-    </>
+    </div>
   );
 }

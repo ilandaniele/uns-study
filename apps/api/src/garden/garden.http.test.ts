@@ -87,13 +87,19 @@ describe("garden HTTP", () => {
     const shared = await call("GET", path, otherCookie);
     expect(shared.status).toBe(200);
     expect(shared.headers.get("cache-control")).toBe("private, no-store");
-    expect(Object.keys(await shared.json()).sort()).toEqual(["collection", "landscapeSeed", "plants", "plotCount"]);
+    expect(Object.keys(await shared.json()).sort()).toEqual(["biome", "collection", "landscapeSeed", "plants", "plotCount"]);
     await call("POST", "/me/garden/visibility", cookie, { shared: false });
     expect((await call("GET", path, otherCookie)).status).toBe(200);
     const ownGarden = await call("GET", "/me/garden", cookie);
     expect(await ownGarden.json()).toMatchObject({ shared: true });
   });
   it("requires auth for every read and write, and rejects cross-origin writes", async () => {
+    expect((await call("POST","/me/garden/biome",undefined,{biome:"pampa"})).status).toBe(401);
+    expect((await call("POST","/me/garden/biome",cookie,{biome:"pampa"},"https://outside.example")).status).toBe(403);
+    expect((await call("POST","/me/garden/biome",cookie,{biome:"invented"})).status).toBe(400);
+    expect((await call("POST","/me/garden/biome",cookie,{biome:"andino",places:9999})).status).toBe(400);
+    expect((await call("POST","/me/garden/biome",cookie,{biome:"andino"})).status).toBe(403);
+    expect((await call("POST","/me/garden/biome",cookie,{biome:"pampa"})).status).toBe(200);
     for (const [method, path, body] of [
       ["GET", "/me/garden", undefined],
       ["GET", "/me/garden/shop", undefined],

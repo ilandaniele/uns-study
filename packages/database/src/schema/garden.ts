@@ -10,6 +10,7 @@ export const userGardens = sqliteTable("user_gardens", {
   bonusSeeds: integer("bonus_seeds").notNull().default(0),
   plotCount: integer("plot_count").notNull().default(25),
   landscapeSeed: integer("landscape_seed").notNull().default(0),
+  biome: text("biome").notNull().default("pampa"),
   shared: integer("shared", { mode: "boolean" }).notNull().default(false),
   plants: text("plants").notNull().default("[]"),
   collection: text("collection").notNull().default("{}"),

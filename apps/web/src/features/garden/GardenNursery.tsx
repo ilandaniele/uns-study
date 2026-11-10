@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { CaretDownIcon, LeafIcon } from "@phosphor-icons/react/dist/ssr";
 import { GARDEN_SPECIES, type GardenSpecies } from "@sala/contracts";
 import { TreeArt } from "./TreeArt";
@@ -9,20 +9,18 @@ const FILTERS = [
  {id:"flowers",label:"Flores y yuyos"},{id:"grass",label:"Pastos"},{id:"cactus",label:"Cactus"},{id:"aquatic",label:"Acuáticas"},
 ] as const;
 type Filter = typeof FILTERS[number]["id"];
-const featured=["santa-lucia","flechilla","petunia-blanca","saeta","plumerillo-rosado"];
+const featured=["lirio-azul","pasto-miel","azolla","elodea","lirio-del-pastizal"];
 const species=[...featured.map(id=>GARDEN_SPECIES.find(s=>s.id===id)!),...GARDEN_SPECIES.filter(s=>!featured.includes(s.id))];
-export function GardenNursery({collection,selected,onChoose}: {collection:Record<string,number>;selected:string;onChoose:(s:GardenSpecies)=>void}) {
+export function GardenNursery({collection,selected,onChoose,places}: {collection:Record<string,number>;selected:string;onChoose:(s:GardenSpecies)=>void;places:number}) {
  const [filter,setFilter]=useState<Filter>("all"),[expanded,setExpanded]=useState(false);
- const [headerHeight,setHeaderHeight]=useState(64);
  const section=useRef<HTMLElement>(null),heading=useRef<HTMLDivElement>(null);
  const restore=useRef(false);
  const items=species.filter(s=>filter==="all" || (filter==="flowers" ? s.kind==="flower" || s.kind==="shrub" : (s.kind??"tree")===filter));
- useEffect(()=>{const header=document.querySelector("header");if(!header)return;const measure=()=>setHeaderHeight(header.getBoundingClientRect().height);measure();const observer=new ResizeObserver(measure);observer.observe(header);return()=>observer.disconnect();},[]);
- useLayoutEffect(()=>{if(restore.current && section.current){window.scrollTo({top:window.scrollY+section.current.getBoundingClientRect().top-headerHeight-8,behavior:"instant"});restore.current=false;}},[filter,expanded,headerHeight]);
- function change(next:Filter){restore.current=(heading.current?.getBoundingClientRect().top??Infinity)<=headerHeight+10;setFilter(next);setExpanded(false);}
- const cards=(list:readonly GardenSpecies[])=>list.map(s=><SpeciesCard key={s.id} species={s} count={collection[s.id]??0} selected={s.id===selected} onChoose={()=>onChoose(s)}/>);
- return <section ref={section} aria-labelledby="nursery-title" className="mt-9 [overflow-anchor:none]" style={{"--nursery-top":`${headerHeight+8}px`} as CSSProperties}>
-   <div ref={heading} className="sticky top-[var(--nursery-top)] z-20 mb-4 rounded-2xl border border-app bg-surface/95 p-3 shadow-sm backdrop-blur sm:p-4">
+ useLayoutEffect(()=>{if(restore.current && section.current){section.current.scrollIntoView({block:"start",behavior:"instant"});restore.current=false;}},[filter,expanded]);
+ function change(next:Filter){if(next===filter && !expanded)return;restore.current=true;setFilter(next);setExpanded(false);}
+ const cards=(list:readonly GardenSpecies[])=>list.map(s=><SpeciesCard key={s.id} species={s} count={collection[s.id]??0} selected={s.id===selected} places={places} onChoose={()=>onChoose(s)}/>);
+ return <section id="garden-nursery" ref={section} aria-labelledby="nursery-title" className="mt-9 scroll-mt-[var(--garden-section-top,140px)] [overflow-anchor:none]">
+   <div ref={heading} className="sticky top-[var(--garden-section-top,140px)] z-20 mb-4 rounded-2xl border border-app bg-surface/95 p-3 shadow-sm backdrop-blur sm:p-4">
      <div className="flex items-center justify-between gap-3"><div><p className="t-label text-primary">De acá, de Argentina</p><h2 id="nursery-title" className="mt-1 scroll-mt-32 text-xl font-bold sm:text-2xl">El vivero nativo</h2></div><span className="text-right text-xs text-muted">{items.length} especies</span></div>
      <div role="group" aria-label="Tipos de plantas" className="mt-3 flex gap-2 overflow-x-auto pb-1">
        {FILTERS.map(item=><button key={item.id} type="button" aria-pressed={filter===item.id} onClick={()=>change(item.id)} className={`min-h-11 shrink-0 rounded-full border px-3 text-xs font-semibold ${filter===item.id ? "border-primary bg-primary text-white" : "border-app bg-surface-2 text-muted hover:border-primary"}`}>{item.label}</button>)}
@@ -44,11 +42,13 @@ function SpeciesCard({
   count,
   selected,
   onChoose,
+  places,
 }: {
   species: GardenSpecies;
   count: number;
   selected: boolean;
   onChoose: () => void;
+  places: number;
 }) {
   return (
     <article
@@ -69,6 +69,7 @@ function SpeciesCard({
       <p className="mb-4 mt-2 text-xs text-muted">
         {hours(species.growthMinutes)} de crecimiento
       </p>
+      {places < (species.requiredPlaces ?? 0) ? <p className="mb-3 text-xs text-muted">Desbloqueo: {places}/{species.requiredPlaces} lugares<progress className="garden-progress mt-1 h-1 w-full" aria-label={`Desbloquear ${species.name}`} value={places} max={species.requiredPlaces} /></p> : null}
       <button
         type="button"
         onClick={onChoose}

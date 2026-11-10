@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import {
   gardenCheckoutSchema,
+  gardenBiomeSchema,
   gardenExpandSchema,
   gardenPlantSchema,
   gardenRedeemSchema,
@@ -25,6 +26,12 @@ gardenRouter.use("/me/garden*", async (c, next) => {
 gardenRouter.get("/me/garden", async (c) =>
   reply(c, await c.var.services.garden.get(currentUser(c).id)),
 );
+
+gardenRouter.post("/me/garden/biome", zBody(gardenBiomeSchema), async c => {
+  const userId = currentUser(c).id;
+  await c.var.services.antiAbuse.enforceRateLimit({ key: `garden:${userId}`, limit: 40, windowSeconds: 60 });
+  return reply(c, await c.var.services.garden.chooseBiome(userId, c.req.valid("json")));
+});
 
 gardenRouter.post("/me/garden/expand", zBody(gardenExpandSchema), async c => {
   const userId = currentUser(c).id;

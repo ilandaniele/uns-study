@@ -8,8 +8,9 @@ import sharp from "sharp";
 const riverside = process.argv[2] === "--ribera";
 const expansion = process.argv[2] === "--expansion";
 const wetland = process.argv[2] === "--wetland";
-const sources = process.argv.slice(expansion || wetland || riverside ? 3 : 2);
-if (sources.length !== (riverside ? 1 : expansion ? 5 : 3)) throw new Error(expansion ? "Expected trees adult/young, plants adult/young, seedlings PNG paths." : "Expected adult, young and seedling source PNG paths.");
+const biomes = process.argv[2] === "--biomes";
+const sources = process.argv.slice(expansion || wetland || riverside || biomes ? 3 : 2);
+if (sources.length !== (biomes ? 2 : riverside ? 1 : expansion ? 5 : 3)) throw new Error("Unexpected atlas inputs. Biomes: adult/young PNG; expansion: five PNGs; riverside: one PNG; default/wetland: three PNGs.");
 const destination = fileURLToPath(new URL("../public/garden/", import.meta.url));
 const CELL_WIDTH = 256;
 const CELL_HEIGHT = 288;
@@ -88,6 +89,14 @@ async function pack(source, columns, rows, filename, dimensions, quality = 74) {
 }
 
 await mkdir(destination, { recursive: true });
+if (biomes) {
+  const adults = Array.from({length:12},(_,i)=>({width:156,height:i===8 ? 75 : i===10 ? 120 : 180}));
+  const young = adults.map(d=>({width:Math.round(d.width*.7),height:Math.round(d.height*.7)}));
+  const bytes = await pack(sources[0],4,3,"biomas-nativos-adultos-gpt-v1.webp",adults,68)
+    + await pack(sources[1],4,3,"biomas-nativos-jovenes-gpt-v1.webp",young,64);
+  if(bytes>=500_000) throw new Error("Biome atlas budget exceeded.");
+  process.exit(0);
+}
 if (riverside) {
   const adults = [
     { width: 160, height: 186 }, { width: 160, height: 186 }, { width: 160, height: 165 }, { width: 150, height: 175 },

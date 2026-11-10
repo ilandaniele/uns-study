@@ -35,6 +35,26 @@ describe("GardenService", () => {
         source,
       });
   }
+  it("unlocks persistent biomes and special species only from accepted collaboration credits", async () => {
+    expect(await garden.get("u1")).toMatchObject({biome:"pampa"});
+    const before = await garden.get("u1");
+    await expect(garden.chooseBiome("u1",{biome:"ribera"})).rejects.toThrow();
+    await expect(garden.plant("u1",{plot:0,speciesId:"salvia-colorada"})).rejects.toThrow();
+    expect(await garden.get("u1")).toEqual(before);
+    const seats=await getSeats(db);
+    for(let i=0;i<4;i++) db.insert(schema.collaborationUpdates).values({userId:"u1",roomId,seatId:seats[i]!.id,localDate:"2026-10-24",observedStatus:"FREE",createdAt:NOW}).run();
+    await expect(garden.chooseBiome("u1",{biome:"ribera"})).rejects.toThrow();
+    db.insert(schema.collaborationUpdates).values({userId:"u1",roomId,seatId:seats[4]!.id,localDate:"2026-10-24",observedStatus:"OCCUPIED",createdAt:NOW}).run();
+    expect(await garden.chooseBiome("u1",{biome:"ribera"})).toMatchObject({biome:"ribera",seeds:30});
+    expect(await garden.get("u1")).toMatchObject({biome:"ribera"});
+    expect(await garden.visit("u2","u1")).toMatchObject({biome:"ribera"});
+    expect(await garden.get("u2")).toMatchObject({biome:"pampa"});
+    await garden.plant("u1",{plot:0,speciesId:"salvia-colorada"});
+    expect((await garden.get("u1")).plants[0]?.speciesId).toBe("salvia-colorada");
+    await expect(garden.chooseBiome("u1",{biome:"andino"})).rejects.toThrow();
+    expect((await garden.get("u1")).biome).toBe("ribera");
+    expect(await garden.chooseBiome("u1",{biome:"pampa"})).toMatchObject({biome:"pampa"});
+  });
   it("always shares plants and collection, including existing unshared gardens, without exposing account data", async () => {
     expect(await garden.visit("u2", "u1")).toMatchObject({ plants: [], collection: {},plotCount:25 });
     await garden.plant("u1", { plot: 0, speciesId: "ceibo" });
@@ -43,7 +63,7 @@ describe("GardenService", () => {
     const before = await garden.get("u1");
     expect(before.shared).toBe(true);
     const visible = await garden.visit("u2", "u1");
-    expect(Object.keys(visible).sort()).toEqual(["collection", "landscapeSeed", "plants", "plotCount"]);
+    expect(Object.keys(visible).sort()).toEqual(["biome", "collection", "landscapeSeed", "plants", "plotCount"]);
     expect(Object.keys(visible.plants[0]!).sort()).toEqual(["plot", "progress", "speciesId", "stage"]);
     for (const [blockerId, blockedId] of [["u1", "u2"], ["u2", "u1"]]) {
       db.insert(schema.userBlocks).values({ blockerId: blockerId!, blockedId: blockedId!, createdAt: NOW }).run();

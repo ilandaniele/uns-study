@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { GARDEN_BIOMES, gardenBiomeSchema } from "./garden-biomes";
 import {
   GARDEN_SPECIES,
   gardenPlantSchema,
@@ -6,6 +7,14 @@ import {
 } from "./garden.js";
 
 describe("native garden catalog and requests", () => {
+  it("offers four progressive cosmetic biomes and rejects forged unlock claims", () => {
+    expect(GARDEN_BIOMES.map(item=>item.requiredPlaces)).toEqual([0,5,15,30]);
+    for(const biome of GARDEN_BIOMES) expect(gardenBiomeSchema.safeParse({biome:biome.id}).success).toBe(true);
+    expect(gardenBiomeSchema.safeParse({biome:"desert"}).success).toBe(false);
+    expect(gardenBiomeSchema.safeParse({biome:"andino",places:1000}).success).toBe(false);
+    expect(GARDEN_SPECIES).toHaveLength(72);
+    expect(GARDEN_SPECIES.slice(0,60).every(item=>(item.requiredPlaces??0)===0)).toBe(true);
+  });
   it("has unique species with official botanical sources and viable game economics", () => {
     expect(new Set(GARDEN_SPECIES.map((s) => s.id)).size).toBe(
       GARDEN_SPECIES.length,

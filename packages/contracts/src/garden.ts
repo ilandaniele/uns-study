@@ -1,6 +1,8 @@
 import { z } from "zod";
 import type { CollaborationProgressDto } from "./achievements";
 import { EXTRA_NATIVE_SPECIES } from "./garden-native-species";
+import { BIOME_NATIVE_SPECIES } from "./garden-biome-species";
+import type { GardenBiomeId } from "./garden-biomes";
 
 export const GARDEN_SIZE = 25;
 export const GARDEN_MAX_SIZE = 50;
@@ -59,6 +61,8 @@ export interface GardenSpecies {
   kind?: "tree" | "palm" | "shrub" | "flower" | "grass" | "cactus" | "aquatic";
   /** Visual habitat; planting and growth rules stay the same in every numbered plot. */
   habitat?: "water" | "shore";
+  /** Only new special plants require collaboration; existing species retain their access. */
+  requiredPlaces?: number;
 }
 
 const TREES = "https://www.argentina.gob.ar/node/492317";
@@ -259,6 +263,7 @@ export const GARDEN_SPECIES: readonly GardenSpecies[] = [
     bark: "#8c8071",
   },
   ...EXTRA_NATIVE_SPECIES,
+  ...BIOME_NATIVE_SPECIES,
 ];
 
 export interface GardenPlant {
@@ -272,6 +277,7 @@ export interface GardenPlant {
 }
 
 export interface GardenDto {
+  biome?: GardenBiomeId;
   plotCount: number;
   landscapeSeed: number;
   collaboration?: CollaborationProgressDto;
@@ -285,6 +291,7 @@ export interface GardenDto {
 }
 
 export interface SharedGardenDto {
+  biome?: GardenBiomeId;
   plotCount: number;
   landscapeSeed: number;
   plants: Pick<GardenPlant, "plot" | "speciesId" | "stage" | "progress">[];

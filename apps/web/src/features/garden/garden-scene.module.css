@@ -1,0 +1,38 @@
+.scene {
+  --garden-earth-light: #a28b60;
+  --garden-earth-dark: #7b6a45;
+  --garden-water-light: #99d3c4;
+  --garden-water-deep: #478c94;
+  --garden-river-bank: #a6ae7f;
+  --garden-river-stone: #b4b5a1;
+  --garden-decor-green: #54835a;
+  background: radial-gradient(ellipse at 50% 48%, color-mix(in srgb, var(--garden-grass) 25%, transparent), transparent 68%), var(--garden-bg);
+}
+.scene[data-biome="ribera"] {
+  --garden-grass-light: #b3d287; --garden-grass: #74a774; --garden-grass-edge: #527e56;
+  --garden-water-light: #9ad6c2; --garden-water-deep: #357f83; --garden-river-bank: #93ac80;
+  --garden-earth-light: #92784f; --garden-earth-dark: #695d40; --garden-decor-green: #3f7950;
+}
+.scene[data-biome="espinal"] {
+  --garden-grass-light: #d4cb8a; --garden-grass: #b4b66f; --garden-grass-edge: #8b9255;
+  --garden-water-light: #9cc6bd; --garden-water-deep: #527f83; --garden-river-bank: #bfad7e;
+  --garden-earth-light: #bd9464; --garden-earth-dark: #94734c; --garden-decor-green: #7f8e51;
+}
+.scene[data-biome="andino"] {
+  --garden-grass-light: #9ac0a0; --garden-grass: #6b9a7b; --garden-grass-edge: #46775d;
+  --garden-water-light: #a9dce0; --garden-water-deep: #42849c; --garden-river-bank: #9fac9b;
+  --garden-earth-light: #8c8b73; --garden-earth-dark: #686d60; --garden-decor-green: #3c725b;
+}
+.surface {
+  animation: surface-drift 8s linear infinite;
+  animation-play-state: paused;
+  opacity: .24;
+}
+.flow {
+  animation: river-flow 7s linear infinite;
+  animation-play-state: paused;
+}
+[data-motion-visible="true"] .surface, [data-motion-visible="true"] .flow { animation-play-state: running; }
+@keyframes surface-drift { from { transform: translate(0,0); } to { transform: translate(32px,19px); } }
+@keyframes river-flow { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -84; } }
+@media (prefers-reduced-motion: reduce) { .surface, .flow { animation: none !important; transform: none !important; } }

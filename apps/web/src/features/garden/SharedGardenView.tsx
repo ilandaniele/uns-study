@@ -41,7 +41,7 @@ export function SharedGardenView({ userId }: { userId: string }) {
             <p className="mt-2 hidden text-sm leading-relaxed text-muted sm:block">Un pequeño mundo que crece con cada rato en la sala.</p>
           </div>
         </header>
-        <GardenScene plotCount={data.garden.plotCount} landscapeSeed={data.garden.landscapeSeed} plants={data.garden.plants} />
+        <GardenScene biome={data.garden.biome} plotCount={data.garden.plotCount} landscapeSeed={data.garden.landscapeSeed} plants={data.garden.plants} />
         <dl className="grid grid-cols-3 border-t border-app bg-surface px-2 py-5 sm:px-7">
           {[
             { label: count === 1 ? "Planta" : "Plantas", value: count, Icon: PlantIcon },

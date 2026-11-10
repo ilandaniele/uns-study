@@ -1,5 +1,6 @@
 ﻿import { useId } from "react";
 import { polygonPoints, type GardenLayout } from "./garden-layout";
+import styles from "./garden-scene.module.css";
 
 /** Small landscape details are decoration, never earned plants or extra plots. */
 export function GardenLandscape({ layout }: { layout: GardenLayout }) {
@@ -8,8 +9,9 @@ export function GardenLandscape({ layout }: { layout: GardenLayout }) {
   return <g aria-hidden="true" pointerEvents="none">
     <defs>
       <linearGradient id={`grass-${id}`} x1="0" y1="0" x2=".8" y2="1"><stop stopColor="var(--garden-grass-light)" /><stop offset="1" stopColor="var(--garden-grass)" /></linearGradient>
-      <linearGradient id={`water-${id}`} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="600" y2="430"><stop stopColor="#88c5bb" /><stop offset=".5" stopColor="#60a9ac" /><stop offset="1" stopColor="#3b8191" /></linearGradient>
-      <pattern id={`ripples-${id}`} width="32" height="19" patternUnits="userSpaceOnUse"><path d="M2 5q4 2 9 0m8 9q3 1 6-1" fill="none" stroke="#d5f5e9" strokeWidth="1.1" strokeLinecap="round" /></pattern>
+      <linearGradient id={`water-${id}`} gradientUnits="userSpaceOnUse" x1="100" y1="120" x2="480" y2="390"><stop stopColor="var(--garden-water-light)" /><stop offset="1" stopColor="var(--garden-water-deep)" /></linearGradient>
+      <pattern id={`ripples-${id}`} width="32" height="19" patternUnits="userSpaceOnUse"><path d="M1 6q6 2 13 0m7 8 6-1" fill="none" stroke="#e4f6ed" strokeWidth=".7" strokeLinecap="round" /></pattern>
+      <linearGradient id={`water-depth-${id}`} x1="0" y1="0" x2="0" y2="1"><stop stopColor="#163c42" stopOpacity=".18"/><stop offset=".5" stopColor="#e5f6da" stopOpacity="0"/><stop offset="1" stopColor="#163c42" stopOpacity=".12"/></linearGradient>
       <radialGradient id={`shadow-${id}`}><stop stopColor="#102418" stopOpacity=".3" /><stop offset="1" stopColor="#102418" stopOpacity="0" /></radialGradient>
       <clipPath id={`channel-${id}`}><path d={layout.riverShape} /></clipPath>
       {layout.banks.map((bank, i) => <clipPath key={i} id={`bank-${id}-${i}`}><polygon points={polygonPoints(bank)} /></clipPath>)}
@@ -17,7 +19,7 @@ export function GardenLandscape({ layout }: { layout: GardenLayout }) {
     <ellipse cx="300" cy={bottom + 30} rx="240" ry="27" fill={`url(#shadow-${id})`} />
     {layout.banks.map((bank, i) => {
       return <g key={i}>
-        {layout.earthFaces[i]!.map((face, n) => <polygon key={n} data-garden-earth-face points={polygonPoints([...face.edge, ...[...face.edge].reverse().map(p => ({ x: p.x, y: p.y + 16 }))])} fill={face.light ? "#927347" : "#78603d"} />)}
+        {layout.earthFaces[i]!.map((face, n) => <polygon key={n} data-garden-earth-face points={polygonPoints([...face.edge, ...[...face.edge].reverse().map(p => ({ x: p.x, y: p.y + 16 }))])} fill={face.light ? "var(--garden-earth-light)" : "var(--garden-earth-dark)"} />)}
         {bank.map((a, edge) => {
           const b = bank[(edge + 1) % bank.length]!;
           if (b.x >= a.x) return null;
@@ -48,7 +50,7 @@ export function GardenLandscape({ layout }: { layout: GardenLayout }) {
             {(Math.hypot(b.x - a.x, b.y - a.y) > 50 ? [.19, .51, .81] : [.5]).map((t, n) => {
               const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t;
               return <g key={t} transform={`translate(${x} ${y - 2})`}>
-                <path d="M0 1q-7-4-6-10Q0-6 0 1q1-12 6-15Q9-7 0 1q7-8 10-6L0 1" fill={n % 2 ? "#548549" : "#729d4c"} />
+                <path d="M0 1q-7-4-6-10Q0-6 0 1q1-12 6-15Q9-7 0 1q7-8 10-6L0 1" fill="var(--garden-decor-green)" opacity={n % 2 ? .9 : .65} />
                 {n === (i + edge) % 3 ? <><path d="M-3 0v-9m6 9v-6" stroke="#668844" /><circle cx="-3" cy="-10" r="2.3" fill="#f7e6a0" /><circle cx="3" cy="-7" r="2" fill="#f4efcf" /><circle cx="-3" cy="-10" r=".8" fill="#d6aa47" /></> : null}
               </g>;
             })}
@@ -57,11 +59,12 @@ export function GardenLandscape({ layout }: { layout: GardenLayout }) {
       </g>;
     })}
     <g strokeLinejoin="round">
-      <path data-garden-river d={layout.riverShape} fill={`url(#water-${id})`} stroke="#a6a77b" strokeWidth="4" />
+      <path data-garden-river d={layout.riverShape} fill={`url(#water-${id})`} stroke="var(--garden-river-bank)" strokeWidth="3.5" />
       <g clipPath={`url(#channel-${id})`}>
-        <path d={layout.riverShape} fill="none" stroke="#c1ddd0" strokeWidth="2" opacity=".55" />
-        <path className="garden-stream-current" d={layout.riverShape} fill={`url(#ripples-${id})`} opacity=".55" />
-        <path d={layout.riverPath} fill="none" stroke="#c7ede2" strokeWidth="1" strokeDasharray="12 24 5 30" strokeLinecap="round" opacity=".3" />
+        <path d={layout.riverShape} fill={`url(#water-depth-${id})`} stroke="#d4e4c6" strokeWidth="1.4" opacity=".6" />
+        {layout.river.filter((_,n)=>n%11===3).map((p,n)=><ellipse key={n} cx={p.x+3*Math.sin(n)} cy={p.y+2} rx={n%2?3:2} ry="1.2" fill="var(--garden-river-stone)" opacity=".32"/>)}
+        <rect data-river-surface className={styles.surface} x="-64" y="-38" width="728" height="506" fill={`url(#ripples-${id})`} />
+        <path data-river-flow className={styles.flow} d={layout.riverPath} fill="none" stroke="#e3f7ee" strokeWidth=".9" strokeDasharray="3 29 10 42" strokeLinecap="round" opacity=".45" />
       </g>
     </g>
   </g>;
