@@ -1,38 +1,44 @@
 .scene {
+  --garden-plot-selected: color-mix(in srgb, var(--primary) 24%, transparent);
+  --garden-plot-ink: var(--primary);
   --garden-earth-light: #a28b60;
-  --garden-earth-dark: #7b6a45;
-  --garden-water-light: #99d3c4;
-  --garden-water-deep: #478c94;
-  --garden-river-bank: #a6ae7f;
+  --garden-earth-dark: #514f3d;
+  --garden-water-light: #8bafa0;
+  --garden-water-deep: #3d6c70;
+  --garden-river-bank: #9c9e7c;
   --garden-river-stone: #b4b5a1;
   --garden-decor-green: #54835a;
-  background: radial-gradient(ellipse at 50% 48%, color-mix(in srgb, var(--garden-grass) 25%, transparent), transparent 68%), var(--garden-bg);
+  background: radial-gradient(ellipse at 50% 55%, color-mix(in srgb, var(--garden-grass) 13%, transparent), transparent 68%), linear-gradient(145deg,var(--surface),var(--garden-bg));
 }
 .scene[data-biome="ribera"] {
   --garden-grass-light: #b3d287; --garden-grass: #74a774; --garden-grass-edge: #527e56;
-  --garden-water-light: #9ad6c2; --garden-water-deep: #357f83; --garden-river-bank: #93ac80;
+  --garden-water-light: #91b5a2; --garden-water-deep: #376966; --garden-river-bank: #7c9475;
   --garden-earth-light: #92784f; --garden-earth-dark: #695d40; --garden-decor-green: #3f7950;
 }
 .scene[data-biome="espinal"] {
   --garden-grass-light: #d4cb8a; --garden-grass: #b4b66f; --garden-grass-edge: #8b9255;
-  --garden-water-light: #9cc6bd; --garden-water-deep: #527f83; --garden-river-bank: #bfad7e;
+  --garden-water-light: #a2b8a8; --garden-water-deep: #5c807c; --garden-river-bank: #b1a17e;
   --garden-earth-light: #bd9464; --garden-earth-dark: #94734c; --garden-decor-green: #7f8e51;
 }
 .scene[data-biome="andino"] {
   --garden-grass-light: #9ac0a0; --garden-grass: #6b9a7b; --garden-grass-edge: #46775d;
-  --garden-water-light: #a9dce0; --garden-water-deep: #42849c; --garden-river-bank: #9fac9b;
+  --garden-water-light: #94b8bb; --garden-water-deep: #3b6878; --garden-river-bank: #8a9786;
   --garden-earth-light: #8c8b73; --garden-earth-dark: #686d60; --garden-decor-green: #3c725b;
 }
 .surface {
   animation: surface-drift 8s linear infinite;
   animation-play-state: paused;
-  opacity: .24;
+  opacity: .5;
 }
 .flow {
   animation: river-flow 7s linear infinite;
   animation-play-state: paused;
 }
 [data-motion-visible="true"] .surface, [data-motion-visible="true"] .flow { animation-play-state: running; }
-@keyframes surface-drift { from { transform: translate(0,0); } to { transform: translate(32px,19px); } }
+@keyframes surface-drift { from { transform: translate(0,0); } to { transform: translate(96px,57px); } }
 @keyframes river-flow { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -84; } }
 @media (prefers-reduced-motion: reduce) { .surface, .flow { animation: none !important; transform: none !important; } }
+.plotMarker { opacity: .23; transition: opacity .16s; }
+.scene [role="button"]:hover .plotMarker,
+.scene [role="button"]:focus-visible .plotMarker { opacity: .95; }
+@media (hover: none) { .plotMarker { opacity: .5; } }

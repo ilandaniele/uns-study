@@ -29,9 +29,15 @@ export function createGardenLayout(plotCount = GARDEN_SIZE, seed = 1) {
     // Taper the meanders into the terrain: the outer island stays straight,
     // while the riverbank and its neighbouring plots follow the water.
     const influence = u <= cut ? (u + .5) / (cut + .5) : (acrossCount - .5 - u) / (acrossCount - .5 - cut);
-    const width = .29 + .025 * Math.sin((v + .5) / alongCount * Math.PI * 2 + phase);
+    const t = (v + .5) / alongCount;
+    const width = .23 + .045 * Math.sin(t * Math.PI * 2 + phase) + .018 * Math.sin(t * Math.PI * 5 + phase);
     const across = u + bend(v) * influence + side * width;
-    const col = acrossRows ? v : across, row = acrossRows ? across : v;
+    // The ground boundary has small natural lobes; numbered plot centres stay fixed.
+    const lowU = Math.max(0, 1 - Math.abs(u + .5) * 2), highU = Math.max(0, 1 - Math.abs(u - acrossCount + .5) * 2);
+    const lowV = Math.max(0, 1 - Math.abs(v + .5) * 2), highV = Math.max(0, 1 - Math.abs(v - alongCount + .5) * 2);
+    const organicU = across + (highU - lowU) * (.1 + .07 * Math.sin(v * 4.8 + phase) + .025 * Math.sin(v * 11.4));
+    const organicV = v + (highV - lowV) * (.1 + .07 * Math.sin(u * 4.1 + phase) + .025 * Math.sin(u * 10.7));
+    const col = acrossRows ? organicV : organicU, row = acrossRows ? organicU : organicV;
     return { x: round(origin.x + (col - row) * dx), y: round(origin.y + (col + row) * dy) };
   };
   const plots = Array.from({ length: count }, (_, plot) => {
@@ -46,7 +52,9 @@ export function createGardenLayout(plotCount = GARDEN_SIZE, seed = 1) {
     const side = bank ? 1 : -1, low = bank ? cut : -.5, high = bank ? acrossCount - .5 : cut;
     const edge = (u: number, reverse: boolean) => Array.from({ length: alongCount * 12 + 1 }, (_, i) => project(u, -.5 + (reverse ? 1 - i / (alongCount * 12) : i / (alongCount * 12)) * alongCount, side));
     // Follow the concave shoreline instead of filling its convex hull.
-    const points = [...edge(low, false), ...edge(high, true)];
+    const endSamples = Math.ceil((high-low)*12);
+    const end = (v: number, reverse: boolean) => Array.from({length:endSamples+1},(_,i)=>project(low+(high-low)*(reverse ? 1-i/endSamples : i/endSamples),v,side));
+    const points = [...edge(low, false), ...end(alongCount-.5,false).slice(1), ...edge(high, true).slice(1), ...end(-.5,true).slice(1,-1)];
     const area = points.reduce((sum, p, i) => { const next = points[(i + 1) % points.length]!; return sum + p.x * next.y - next.x * p.y; }, 0);
     return area > 0 ? points : points.reverse();
   });
@@ -54,31 +62,9 @@ export function createGardenLayout(plotCount = GARDEN_SIZE, seed = 1) {
   const river = Array.from({ length: 121 }, (_, i) => at(i / 120));
   const shoreline = (side: number) => Array.from({ length: 121 }, (_, i) => project(cut, -.5 + alongCount * i / 120, side));
   const channel = [...shoreline(-1), ...shoreline(1).reverse()];
-  const bridgeAt = .32 + (stableSeed % 3) * .16;
-  const bridge = at(bridgeAt), before = at(bridgeAt - .002), after = at(bridgeAt + .002);
-  const shoreA = project(cut, -.5 + alongCount * bridgeAt, -1), shoreB = project(cut, -.5 + alongCount * bridgeAt, 1);
-  const tangent = { x: after.x - before.x, y: after.y - before.y };
-  const crossingWidth = Math.abs((shoreB.x - shoreA.x) * tangent.y - (shoreB.y - shoreA.y) * tangent.x) / Math.hypot(tangent.x, tangent.y);
-  const earthFaces = banks.map(bank => {
-    const faces: { edge: GardenPoint[]; light: boolean }[] = [];
-    let current: (typeof faces)[number] | undefined;
-    for (let i = 0; i < bank.length; i++) {
-      const a = bank[i]!, b = bank[(i + 1) % bank.length]!;
-      if (b.x >= a.x) { current = undefined; continue; }
-      const light = b.y > a.y;
-      if (!current || current.light !== light) {
-        current = { edge: [a], light };
-        faces.push(current);
-      }
-      current.edge.push(b);
-    }
-    return faces;
-  });
-  // Keep the wooden crossing perpendicular to the local current, including bends.
-  return { count, plots, banks, earthFaces, variant, river, channel,
+  return { count, plots, banks, variant, river, channel,
     riverPath: river.map((p, i) => `${i ? "L" : "M"}${p.x} ${p.y}`).join(" "),
     riverShape: `M${polygonPoints(channel).replaceAll(" ", " L")}Z`,
-    bridge: { ...bridge, span: round(crossingWidth + 16), angle: Math.atan2(tangent.y, tangent.x) * 180 / Math.PI + 90 },
   };
 }
 export const gardenPlotPosition = (plot: number) => createGardenLayout().plots.find(p => p.plot === plot)!;

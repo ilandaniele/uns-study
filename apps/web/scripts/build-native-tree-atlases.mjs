@@ -9,8 +9,9 @@ const riverside = process.argv[2] === "--ribera";
 const expansion = process.argv[2] === "--expansion";
 const wetland = process.argv[2] === "--wetland";
 const biomes = process.argv[2] === "--biomes";
-const sources = process.argv.slice(expansion || wetland || riverside || biomes ? 3 : 2);
-if (sources.length !== (biomes ? 2 : riverside ? 1 : expansion ? 5 : 3)) throw new Error("Unexpected atlas inputs. Biomes: adult/young PNG; expansion: five PNGs; riverside: one PNG; default/wetland: three PNGs.");
+const scenery = process.argv[2] === "--scenery";
+const sources = process.argv.slice(expansion || wetland || riverside || biomes || scenery ? 3 : 2);
+if (sources.length !== (scenery || biomes ? 2 : riverside ? 1 : expansion ? 5 : 3)) throw new Error("Unexpected atlas inputs. Scenery: ground/decor PNG; biomes: adult/young PNG; expansion: five PNGs; riverside: one PNG; default/wetland: three PNGs.");
 const destination = fileURLToPath(new URL("../public/garden/", import.meta.url));
 const CELL_WIDTH = 256;
 const CELL_HEIGHT = 288;
@@ -89,6 +90,15 @@ async function pack(source, columns, rows, filename, dimensions, quality = 74) {
 }
 
 await mkdir(destination, { recursive: true });
+if (scenery) {
+  const ground = `${destination}/suelos-nativos-gpt-v2.webp`;
+  await sharp(sources[0]).resize(1024,1024,{fit:"fill"}).webp({quality:72,effort:6,smartSubsample:true}).toFile(ground);
+  const decorBytes = await pack(sources[1],3,2,"orillas-nativas-gpt-v2.webp",Array.from({length:6},()=>({width:190,height:200})),72);
+  const groundBytes = (await stat(ground)).size;
+  console.log(`New scenery: ${groundBytes} ground + ${decorBytes} detail = ${groundBytes+decorBytes} bytes`);
+  if(groundBytes+decorBytes>500_000) throw new Error("Scenery exceeds 500 KB budget.");
+  process.exit(0);
+}
 if (biomes) {
   const adults = Array.from({length:12},(_,i)=>({width:156,height:i===8 ? 75 : i===10 ? 120 : 180}));
   const young = adults.map(d=>({width:Math.round(d.width*.7),height:Math.round(d.height*.7)}));
