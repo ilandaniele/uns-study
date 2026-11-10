@@ -56,6 +56,7 @@ export const userPrivacySettings = sqliteTable("user_privacy_settings", {
   // Whether the user appears in rankings at all — default true so opting *out* is the deliberate
   // action. Distinct from `showInRoom`: a user can rank under their alias without being linkable.
   showInRanking: integer("show_in_ranking", { mode: "boolean" }).notNull().default(true),
+  showAchievements: integer("show_achievements", { mode: "boolean" }).notNull().default(false),
   // Whether hidden users appear on the map as their alias animal (off = generic silhouette).
   showAliasAnimalOnMap: integer("show_alias_animal_on_map", { mode: "boolean" }).notNull().default(true),
   // Admins only: whether their photo carries the gold "Admin" badge.

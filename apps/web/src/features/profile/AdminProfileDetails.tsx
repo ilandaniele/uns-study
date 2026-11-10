@@ -15,7 +15,7 @@ const PRIVACY: Record<keyof PrivacySettingsDto, string> = {
   showFullName: "Mostrar nombre completo", showNickname: "Mostrar apodo", showCareer: "Mostrar carrera",
   showCurrentSubject: "Mostrar materia", showInstagram: "Mostrar Instagram", showStudentNumber: "Mostrar legajo",
   showAvatar: "Mostrar foto", showInRoom: "Mostrar en la sala", showSeat: "Mostrar asiento",
-  allowDirectMessages: "Permitir mensajes directos", showInRanking: "Aparecer en el ranking",
+  allowDirectMessages: "Permitir mensajes directos", showInRanking: "Aparecer en el ranking", showAchievements: "Mostrar insignias ganadas",
   showInPeopleSearch: "Aparecer en la búsqueda de personas", allowFriendRequests: "Recibir solicitudes de amistad",
   showAliasAnimalOnMap: "Mostrar animal en el mapa", showAdminBadge: "Mostrar insignia de admin",
 };

@@ -1,0 +1,1 @@
+ALTER TABLE `user_privacy_settings` ADD `show_achievements` integer DEFAULT false NOT NULL;

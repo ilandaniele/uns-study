@@ -78,6 +78,7 @@ export class StreakBadgesService {
     const today = localDateOf(now, DEFAULT_TIMEZONE);
     const since = addDays(today, -STREAK_LOOKBACK_DAYS);
     const intervals = await loadStudyIntervals(this.db, userId, ALL_TIME, now);
+    const realStudy = intervals.filter(interval => !interval.manual && interval.minutes >= 1);
     const allDays = minutesByDay(intervals, DEFAULT_TIMEZONE);
     const recent = new Map([...allDays].filter(([day]) => day >= since));
     const frozen = (await loadFrozenDates(this.db, [userId], since)).get(userId) ?? new Set<string>();
@@ -86,10 +87,10 @@ export class StreakBadgesService {
       stats: { studyMinutes: Math.max(0, Math.floor(intervals.reduce((sum, interval) => sum + interval.minutes, 0))), studyDays: qualifyingDays(allDays).size, longestStreak: longest },
       badges: evaluateBadges({
         totalMinutes: intervals.reduce((sum, i) => sum + i.minutes, 0),
-        sessionCount: intervals.length,
+        sessionCount: realStudy.length,
         longestStreak: longest,
-        hasEarly: hasEarlyStart(intervals, DEFAULT_TIMEZONE),
-        hasLate: hasLateMinutes(intervals, DEFAULT_TIMEZONE),
+        hasEarly: hasEarlyStart(realStudy, DEFAULT_TIMEZONE),
+        hasLate: hasLateMinutes(realStudy, DEFAULT_TIMEZONE),
       }),
     };
   }

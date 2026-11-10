@@ -16,6 +16,7 @@ const ALL_OFF: PrivacySettingsDto = {
   showInPeopleSearch: true,
   allowFriendRequests: true,
   showInRanking: true,
+  showAchievements: false,
   showAliasAnimalOnMap: true,
   showAdminBadge: true,
 };

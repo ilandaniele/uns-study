@@ -241,6 +241,7 @@ function toPrivacyDto(row: PrivacyRow): PrivacySettingsDto {
     showInPeopleSearch: row.showInPeopleSearch,
     allowFriendRequests: row.allowFriendRequests,
     showInRanking: row.showInRanking,
+    showAchievements: row.showAchievements,
     showAliasAnimalOnMap: row.showAliasAnimalOnMap,
     showAdminBadge: row.showAdminBadge,
   };

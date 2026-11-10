@@ -25,5 +25,6 @@ export const PRIVACY_FIELDS: PrivacyFieldDef[] = [
   { key: "showInPeopleSearch", label: "Aparecer en la búsqueda de personas", hint: "Te encuentran sólo por tu nombre o alias público. Tu email y los datos ocultos no se pueden buscar." },
   { key: "allowFriendRequests", label: "Recibir solicitudes de amistad", hint: "Vos decidís qué solicitudes aceptar. Ser amigos no habilita datos privados ni mensajes que hayas desactivado." },
   { key: "showAliasAnimalOnMap", label: "Mostrar mi animal en el mapa", hint: "Si está apagado, en el mapa aparecés con una silueta." },
-  { key: "showInRanking", label: "Mostrar ranking, actividad e insignias", hint: "Si ocultás tu nombre, se muestran en un perfil con tu alias, sin revelar tu identidad. Apagalo para ocultar tu actividad e insignias públicas." },
+  { key: "showInRanking", label: "Mostrar ranking y actividad", hint: "Si ocultás tu nombre, se muestran con tu alias. Apagalo para ocultar tu actividad y salir del ranking." },
+  { key: "showAchievements", label: "Mostrar mis insignias", hint: "Elegí si otras personas ven tus insignias ganadas en tu perfil y junto a tu nombre en el ranking. Tu colección y tu progreso se conservan aunque las ocultes." },
 ];

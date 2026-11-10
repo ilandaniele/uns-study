@@ -53,6 +53,7 @@ export interface AchievementsDto {
   rewards?: CollaborationRewardDto[];
 }
 export interface PublicAchievementsDto {
+  badgesVisible?: boolean;
   badges: AchievementDto[];
   stats: (AchievementStatsDto & { places: number; weekRank: number | null }) | null;
 }

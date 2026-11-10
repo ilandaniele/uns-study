@@ -181,6 +181,7 @@ describe("community achievements, rewards and approved staff applications", () =
 
   it("opens an alias profile with activity and garden while never linking the hidden account", async () => {
     qualify(); actor = "viewer";
+    fixture.db.update(schema.userPrivacySettings).set({showAchievements:true}).where(eq(schema.userPrivacySettings.userId,"member")).run();
     const response = await call("/aliases/Coipo%20Ingenioso/profile");
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
@@ -194,6 +195,45 @@ describe("community achievements, rewards and approved staff applications", () =
     fixture.db.update(schema.userProfiles).set({ identityMode: "NICKNAME" }).where(eq(schema.userProfiles.userId, "member")).run();
     expect((await call("/aliases/Coipo%20Ingenioso/profile")).status).toBe(404);
     actor = null; expect((await call("/aliases/Coipo%20Ingenioso/profile")).status).toBe(401);
+  });
+
+  it("requires explicit badge visibility without hiding ranking activity or losing earned awards", async () => {
+    const blank = await fixture.services.achievements.get("viewer");
+    expect(blank.badges.filter(b=>b.earned)).toEqual([]);
+    expect(blank.unseenIds).toEqual([]);
+    qualify();
+    const earned = await fixture.services.achievements.get("member");
+    expect(earned.badges.filter(b=>b.earned)).toHaveLength(4);
+    expect((await fixture.services.rankings.identities(["member"])).get("member")?.achievement).toBeUndefined();
+    const own = await (await call("/profiles/me/privacy")).json();
+    expect(own).toMatchObject({showAchievements:false});
+    actor="viewer";
+    const hidden = await (await call("/profiles/member/achievements")).json() as AliasProfileDto;
+    expect(hidden.badges).toEqual([]); expect(hidden.badgesVisible).toBe(false); expect(hidden.stats?.places).toBe(100);
+    actor="member";
+    const changed = await call("/profiles/me/privacy","PATCH",{showAchievements:true});
+    expect(changed.status).toBe(200); expect(await changed.json()).toMatchObject({showAchievements:true,showInRanking:true});
+    expect((await fixture.services.rankings.identities(["member"])).get("member")?.achievement).toMatchObject({id:"collaboration_100"});
+    actor="viewer";
+    expect((await (await call("/aliases/Coipo%20Ingenioso/profile")).json() as AliasProfileDto).badges).toHaveLength(4);
+    actor="member"; await call("/profiles/me/privacy","PATCH",{showAchievements:false});
+    expect((await fixture.services.rankings.identities(["member"])).get("member")?.achievement).toBeUndefined();
+    actor="viewer";
+    expect((await (await call("/aliases/Coipo%20Ingenioso/profile")).json() as AliasProfileDto).badges).toEqual([]);
+    expect((await fixture.services.achievements.get("member")).badges.filter(b=>b.earned)).toEqual(earned.badges.filter(b=>b.earned));
+  });
+
+  it("rechecks badge opt-out after awaited public reads", async () => {
+    qualify(); actor="viewer";
+    fixture.db.update(schema.userPrivacySettings).set({showAchievements:true}).where(eq(schema.userPrivacySettings.userId,"member")).run();
+    const visit=fixture.services.garden.visit.bind(fixture.services.garden);
+    vi.spyOn(fixture.services.garden,"visit").mockImplementationOnce(async(viewer,target)=>{
+      const result=await visit(viewer,target);
+      fixture.db.update(schema.userPrivacySettings).set({showAchievements:false}).where(eq(schema.userPrivacySettings.userId,target)).run();
+      return result;
+    });
+    const response=await (await call("/aliases/Coipo%20Ingenioso/profile")).json();
+    expect(response).toMatchObject({badges:[],badgesVisible:false});
   });
 
   it("keeps full alias-account lookup in a separate, audited SUPERADMIN-only endpoint", async () => {

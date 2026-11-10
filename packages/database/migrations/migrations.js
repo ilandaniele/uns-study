@@ -19,6 +19,7 @@ import m0016 from './0016_seat_qr_presence.sql';
 import m0017 from './0017_collaboration_rewards.sql';
 import m0018 from './0018_collaboration_badge_kinds.sql';
 import m0019 from './0019_garden_biomes.sql';
+import m0020 from './0020_achievement_visibility.sql';
 
   export default {
     journal,
@@ -42,6 +43,7 @@ m0015,
 m0016,
 m0017,
 m0018,
-m0019
+m0019,
+m0020
     }
   }

@@ -27,7 +27,7 @@ interface BadgeRule {
 const hours = (h: number) => h * 60;
 
 const RULES: readonly BadgeRule[] = [
-  { id: "first_session", title: "Primera cebada", description: "Completá tu primera sesión de estudio en la sala.", measure: (i) => ({ value: i.sessionCount, target: 1 }) },
+  { id: "first_session", title: "Primera cebada", description: "Registrá al menos un minuto real de estudio en la sala.", measure: (i) => ({ value: i.sessionCount, target: 1 }) },
   { id: "hours_10", title: "Mate aplicado", description: "Sumá 10 horas de estudio en la sala.", measure: (i) => ({ value: i.totalMinutes, target: hours(10) }) },
   { id: "hours_50", title: "Termo incansable", description: "Sumá 50 horas de estudio en la sala.", measure: (i) => ({ value: i.totalMinutes, target: hours(50) }) },
   { id: "hours_100", title: "Hornero estudioso", description: "Sumá 100 horas de estudio en la sala.", measure: (i) => ({ value: i.totalMinutes, target: hours(100) }) },

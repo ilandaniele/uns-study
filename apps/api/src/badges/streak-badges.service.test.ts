@@ -125,6 +125,12 @@ describe("StreakBadgesService", () => {
   });
 
   describe("badges", () => {
+    it("does not award a first session or early start for zero study minutes", async () => {
+      await session("u1", "2026-01-14", 0, "2026-01-14T10:00:00Z");
+      expect((await svc.badges("u1")).badges.filter(b=>b.earned)).toEqual([]);
+      await session("u1", "2026-01-14", 1, "2026-01-14T15:00:00Z");
+      expect((await svc.badges("u1")).badges.filter(b=>b.earned).map(b=>b.id)).toEqual(["first_session"]);
+    });
     it("earns nothing for a user with no study", async () => {
       const { badges } = await svc.badges("u1");
       expect(badges).toHaveLength(8);

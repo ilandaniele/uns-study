@@ -204,9 +204,6 @@ export class RankingsService {
     if (!userIds.length) return result;
 
     const profiles = inChunks(userIds, (part) => this.db.select().from(schema.userProfiles).where(inArray(schema.userProfiles.userId, part)).all());
-    const privacyRows = inChunks(userIds, (part) =>
-      this.db.select().from(schema.userPrivacySettings).where(inArray(schema.userPrivacySettings.userId, part)).all(),
-    );
     const aliasByUser = await this.aliases.ensureAliasesForProfiles(profiles);
     const admins = await this.roles.adminBadges(userIds);
     const awards = inChunks(userIds, part => this.db.select({ userId: schema.userAchievements.userId, badgeId: schema.userAchievements.badgeId }).from(schema.userAchievements).where(inArray(schema.userAchievements.userId, part)).all());
@@ -221,6 +218,8 @@ export class RankingsService {
     const flairEligible = new Set(profiles.filter((p) => proIds.has(p.userId) && !needsAlias(p)).map((p) => p.userId));
     const flairByUser = this.cosmetics ? await this.cosmetics.flairFor(flairEligible) : new Map<string, ProfileFlairDto>();
     const profileByUser = new Map(profiles.map((p) => [p.userId, { ...p, alias: aliasByUser.get(p.userId) ?? p.alias }]));
+    // Read privacy after awaited identity/Pro lookups so a concurrent opt-out takes effect.
+    const privacyRows = inChunks(userIds, part => this.db.select().from(schema.userPrivacySettings).where(inArray(schema.userPrivacySettings.userId, part)).all());
     const privacyByUser = new Map(privacyRows.map((p) => [p.userId, p]));
 
     for (const userId of userIds) {
@@ -234,7 +233,7 @@ export class RankingsService {
       const linkable = !shownAsAlias;
       const flair = !shownAsAlias ? flairByUser.get(userId) : undefined;
       result.set(userId, {
-        ...(featured.has(userId) ? { achievement: featured.get(userId)! } : {}),
+        ...(privacy?.showAchievements === true && featured.has(userId) ? { achievement: featured.get(userId)! } : {}),
         ...(flair ? { flair } : {}),
         visible,
         hiddenFromRanking: privacy?.showInRanking === false,

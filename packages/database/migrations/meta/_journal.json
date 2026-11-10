@@ -141,6 +141,13 @@
       "when": 1794281865562,
       "tag": "0019_garden_biomes",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1794283005391,
+      "tag": "0020_achievement_visibility",
+      "breakpoints": true
     }
   ]
 }

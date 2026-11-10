@@ -45,6 +45,8 @@ export interface PrivacySettingsDto {
   allowFriendRequests?: boolean;
   /** Whether the user appears in rankings at all (default true) — under their alias when hidden. */
   showInRanking: boolean;
+  /** Earned badges are public only after explicit opt-in, independently of ranking visibility. */
+  showAchievements?: boolean;
   /** Hidden users appear on the map as their alias animal (default true); off = generic silhouette. */
   showAliasAnimalOnMap: boolean;
   /** Admins only: show the gold "Admin" badge on their photo (default true). Ignored for non-admins. */
@@ -179,6 +181,7 @@ export const updatePrivacySchema = z
     showInPeopleSearch: z.boolean(),
     allowFriendRequests: z.boolean(),
     showInRanking: z.boolean(),
+    showAchievements: z.boolean(),
     showAliasAnimalOnMap: z.boolean(),
     showAdminBadge: z.boolean(),
   })

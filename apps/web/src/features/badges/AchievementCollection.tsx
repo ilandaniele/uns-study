@@ -16,7 +16,8 @@ export function AchievementGrid({ badges }: { badges: AchievementDto[] }) {
       const progress = badgeProgressText(badge);
       return <li key={badge.id} data-achievement-id={badge.id} data-earned={badge.earned} className={`flex min-w-0 flex-col items-center rounded-2xl border bg-surface p-4 text-center ${badge.earned ? "border-primary/35" : "border-app"}`}>
       <span className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted">{ACHIEVEMENT_CATEGORY_LABELS[achievementCategory(badge)]}</span>
-      <div className={badge.earned ? "" : "opacity-75 saturate-75"}><BadgeMedal tier={badge.tier} badgeId={badge.id} size={88}/></div><h3 className="mt-2 text-sm font-bold text-main">{badge.title}</h3>
+      <div className={badge.earned ? "" : "opacity-35 grayscale"}><BadgeMedal tier={badge.tier} badgeId={badge.id} size={88}/></div><h3 className="mt-2 text-sm font-bold text-main">{badge.title}</h3>
+      {!badge.earned ? <span className="mt-1 rounded-full bg-surface-2 px-2 py-1 text-[10px] font-semibold text-muted">Por conseguir</span> : null}
       <p className="mt-1 text-xs leading-relaxed text-muted">{badge.description}</p>
       <div className="mt-auto w-full pt-4"><p className="mb-2 text-xs font-semibold tabular-nums text-main">{badge.earned ? "Conseguida" : progress.count}</p><progress aria-label={`Avance de ${badge.title}`} aria-valuetext={`${progress.count}. ${progress.remaining}`} value={badge.earned ? 1 : badge.progress} max={1} className={styles.progress}/><p className={`mt-2 text-xs ${badge.earned ? "font-semibold text-primary" : "text-muted"}`}>{progress.remaining}</p></div>
     </li>;})}
@@ -30,7 +31,7 @@ export function AchievementSummary({ data }: { data: PublicAchievementsDto }) {
     <dl className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
       {[[`${Math.floor(stats.studyMinutes / 60)}h ${stats.studyMinutes % 60}m`, "Estudio en la sala"], [stats.weekRank ? `#${stats.weekRank}` : "—", "Ranking semanal"], [stats.studyDays, "Días de estudio"], [stats.places, "Lugares actualizados"]].map(([value, label]) => <div key={label} className="rounded-2xl bg-surface-2 p-3"><dd className="text-xl font-bold tabular-nums text-main">{value}</dd><dt className="mt-1 text-xs text-muted">{label}</dt></div>)}
     </dl>
-    {data.badges.length ? <AchievementGrid badges={data.badges}/> : <p className="text-sm text-muted">Sus primeras insignias están por llegar.</p>}
+    {data.badgesVisible === false ? <p className="text-sm text-muted">Esta persona no muestra sus insignias.</p> : data.badges.length ? <AchievementGrid badges={data.badges}/> : <p className="text-sm text-muted">Sus primeras insignias están por llegar.</p>}
   </>;
 }
 

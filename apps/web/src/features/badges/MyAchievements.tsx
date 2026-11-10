@@ -25,7 +25,8 @@ export function MyAchievements({ userId }: { userId: string }) {
   }
   return <section id="insignias" aria-label="Mis insignias" className="scroll-mt-24 lg:scroll-mt-36 2xl:scroll-mt-24">
     <h2 className="mb-3 text-lg font-bold">Tus insignias</h2>
-    <p className="mb-4 text-sm leading-relaxed text-muted">Una colección bien de acá. Ganá mates, termos y símbolos argentinos estudiando y ayudando a actualizar la sala.</p>
+    <p className="mb-2 text-sm leading-relaxed text-muted">Ganá mates, termos y símbolos argentinos estudiando y ayudando a actualizar la sala. Las metas en progreso todavía no son insignias ganadas.</p>
+    <a href="#privacidad" className="mb-4 inline-flex min-h-11 items-center text-sm font-semibold text-primary underline">Elegir si muestro mis insignias</a>
     {data ? <><p className="mb-3 text-sm text-muted">{data.badges.filter(badge => badge.earned).length} de {data.badges.length} conseguidas · Las próximas metas aparecen primero.</p>
       <div role="group" aria-label="Filtrar insignias" className="mb-4 flex gap-2 overflow-x-auto pb-1">
         {(["all", "collaboration", "free", "occupied", "study"] as const).map(value => <button key={value} type="button" aria-pressed={category === value} onClick={() => { setCategory(value); setExpanded(false); }} className={`min-h-11 shrink-0 rounded-full border px-4 text-xs font-semibold ${category === value ? "border-primary bg-primary text-white" : "border-app bg-surface text-muted hover:text-main"}`}>{value === "all" ? "Todas" : ACHIEVEMENT_CATEGORY_LABELS[value]}</button>)}

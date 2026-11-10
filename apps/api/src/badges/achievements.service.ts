@@ -58,12 +58,17 @@ export class AchievementsService {
     return privacy?.showInRanking !== false;
   }
 
+  private badgesVisible(userId: string): boolean {
+    return this.db.select({show: schema.userPrivacySettings.showAchievements}).from(schema.userPrivacySettings).where(eq(schema.userPrivacySettings.userId,userId)).get()?.show === true;
+  }
+
   async publicFor(viewerId: string, userId: string): Promise<PublicAchievementsDto> {
     if (!this.activityVisible(viewerId, userId)) return { badges: [], stats: null };
     const data = await this.get(userId);
     const ranking = await this.rankings.getRankings("principal", "week", "study_time", userId, this.clock.now());
     if (!this.activityVisible(viewerId, userId)) return { badges: [], stats: null };
-    return { badges: data.badges.filter(badge => badge.earned), stats: { ...data.stats, places: data.collaboration.places, weekRank: (ranking.me?.rank ?? 0) > 0 ? ranking.me!.rank : null } };
+    const badgesVisible = this.badgesVisible(userId);
+    return { badgesVisible, badges: badgesVisible ? data.badges.filter(badge => badge.earned) : [], stats: { ...data.stats, places: data.collaboration.places, weekRank: (ranking.me?.rank ?? 0) > 0 ? ranking.me!.rank : null } };
   }
 
   async aliasProfile(viewerId: string, alias: string): Promise<AliasProfileDto> {
@@ -78,7 +83,7 @@ export class AchievementsService {
     const visible = this.activityVisible(viewerId, profile.userId);
     const privacy = this.db.select().from(schema.userPrivacySettings).where(eq(schema.userPrivacySettings.userId, profile.userId)).get();
     // Do not return the account id, staff role, name, email, seat, social links or private profile.
-    return { ...(visible ? data : { badges: [], stats: null }), alias: profile.alias, aliasAnimal: privacy?.showAliasAnimalOnMap === false ? null : profile.aliasAnimal, garden };
+    return { ...(visible ? data : { badges: [], stats: null }), ...(!this.badgesVisible(profile.userId) ? { badges: [], badgesVisible: false } : {}), alias: profile.alias, aliasAnimal: privacy?.showAliasAnimalOnMap === false ? null : profile.aliasAnimal, garden };
   }
 
   async adminAliasProfile(viewerId: string, alias: string, profiles: ProfilesService) {
