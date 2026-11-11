@@ -143,7 +143,8 @@ export class GardenPurchasesService {
               (order.seeds * (order.priceArs - refunded)) / order.priceArs,
             )
           : 0;
-      if (prior?.creditedSeeds === credit && prior.status === payment.status)
+      if (prior?.creditedSeeds === credit && prior.status === payment.status &&
+          prior.updatedAt.getTime() === updatedAt.getTime())
         return;
       const delta = credit - (prior?.creditedSeeds ?? 0);
       if (delta) this.garden.adjustPurchaseCredit(tx, order.userId, delta);

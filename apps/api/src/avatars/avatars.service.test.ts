@@ -177,7 +177,7 @@ describe("AvatarsService", () => {
       expect(url).toMatch(/^\/api\/v1\/avatars\/u1\?v=[0-9a-f]{12}$/);
       expect(global.fetch).toHaveBeenCalledWith(
         expect.objectContaining({ href: "https://lh3.googleusercontent.com/a/photo.jpg" }),
-        expect.objectContaining({ redirect: "error" }),
+        expect.objectContaining({ redirect: "manual" }),
       );
       const [profile] = await db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, "u1"));
       expect(profile?.avatarUrl).toBe(url);
@@ -194,6 +194,18 @@ describe("AvatarsService", () => {
       const [row] = await db.select().from(schema.userAvatars).where(eq(schema.userAvatars.userId, "u1"));
       expect(row?.bytes.equals(newer)).toBe(true);
       expect(url).toContain(row!.sha256.slice(0, 12));
+    });
+
+    it("rejects Google redirects without following them or replacing the existing photo", async () => {
+      const original = await svc.upload("u1", { mimeType: "image/jpeg", base64: JPEG_BASE64 });
+      vi.stubGlobal("fetch", vi.fn(async () => new Response(null, {
+        status: 302, headers: { Location: "https://other.example.test/photo.jpg" },
+      })));
+      await expect(svc.useGoogleImage("u1", "https://lh3.googleusercontent.com/a/photo.jpg"))
+        .rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      const profile = db.select().from(schema.userProfiles).where(eq(schema.userProfiles.userId, "u1")).get();
+      expect(profile?.avatarUrl).toBe(original);
     });
 
     it("throws (no silent success) and keeps the old photo when the Google fetch fails", async () => {

@@ -116,7 +116,7 @@ export class AvatarsService {
     const timeout = setTimeout(() => controller.abort(), GOOGLE_IMAGE_FETCH_TIMEOUT_MS);
     let response: Response;
     try {
-      response = await fetch(url, { redirect: "error", signal: controller.signal });
+      response = await fetch(url, { redirect: "manual", signal: controller.signal });
     } catch {
       throw ApiErrors.validation("No pudimos obtener la foto de Google.");
     } finally {

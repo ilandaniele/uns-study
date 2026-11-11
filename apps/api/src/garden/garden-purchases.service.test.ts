@@ -133,6 +133,23 @@ describe("GardenPurchasesService", () => {
     expect((await garden.get("u1")).seeds).toBe(30);
     expect(db.select().from(schema.gardenPayments).all()).toHaveLength(0);
   });
+  it("retains the newest provider timestamp even when status and credit are unchanged", async () => {
+    await checkout();
+    await shop.handlePayment("123");
+    payment = { ...payment, date_last_updated: "2026-10-25T17:00:00Z" };
+    await shop.handlePayment("123");
+
+    // This older response arrived after a newer confirmation of the full balance.
+    payment = {
+      ...payment,
+      transaction_amount_refunded: 2500,
+      date_last_updated: "2026-10-25T16:00:00Z",
+    };
+    await shop.handlePayment("123");
+    expect((await garden.get("u1")).seeds).toBe(130);
+    expect(db.select().from(schema.gardenPayments).get()?.updatedAt.toISOString())
+      .toBe("2026-10-25T17:00:00.000Z");
+  });
   it("disables checkout when webhook verification is unavailable and cascades account deletion", async () => {
     const disabled = new GardenPurchasesService(
       db,

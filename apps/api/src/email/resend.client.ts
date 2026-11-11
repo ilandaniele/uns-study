@@ -30,12 +30,12 @@ export class ResendClient {
   async sendBatch(msgs: ResendMessage[]): Promise<string[]> {
     if (msgs.length === 0) return [];
     if (msgs.length > RESEND_BATCH_MAX) throw new Error(`Resend batch is limited to ${RESEND_BATCH_MAX} messages.`);
-    const res = await this.fetchImpl("https://api.resend.com/emails/batch", {
+    const res = await this.fetchImpl.call(globalThis, "https://api.resend.com/emails/batch", {
       method: "POST",
       headers: { Authorization: `Bearer ${this.apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify(msgs),
       signal: AbortSignal.timeout(15_000),
-      redirect: "error",
+      redirect: "manual",
     });
     if (!res.ok) {
       const detail = (await res.text().catch(() => "")).slice(0, 300);

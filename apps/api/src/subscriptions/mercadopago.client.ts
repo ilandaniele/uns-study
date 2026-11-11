@@ -86,7 +86,8 @@ export class MercadoPagoClient {
   }
 
   private async request<T>(method: string, path: string, body?: unknown, extraHeaders: Record<string, string> = {}): Promise<T> {
-    const res = await this.fetchImpl(`${BASE_URL}${path}`, {
+    // Workers' native fetch rejects an instance receiver (Illegal invocation).
+    const res = await this.fetchImpl.call(globalThis, `${BASE_URL}${path}`, {
       method,
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
@@ -95,7 +96,8 @@ export class MercadoPagoClient {
       },
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: AbortSignal.timeout(TIMEOUT_MS),
-      redirect: "error",
+      // Workers supports follow/manual only. Never forward the token on redirects.
+      redirect: "manual",
     });
     if (!res.ok) throw new MpHttpError(`Mercado Pago ${method} ${path} failed (${res.status})`, res.status);
     return (await res.json()) as T;

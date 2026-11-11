@@ -27,24 +27,30 @@ export function SubscriptionPageClient() {
   const signedIn = Boolean(me?.user);
 
   const [sub, setSub] = useState<SubscriptionDto | null>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [polling, setPolling] = useState(returning);
 
-  const load = useCallback(async () => {
-    try {
-      const next = await fetchSubscription();
+  const load = useCallback(() => fetchSubscription()
+    .then((next) => {
       setSub(next);
+      setLoadError(null);
       return next;
-    } catch {
+    })
+    .catch(() => {
+      setLoadError("No pudimos consultar tu suscripción. Reintentá antes de iniciar otra compra.");
       return null;
-    }
-  }, []);
+    })
+    .finally(() => {
+      setSubscriptionLoading(false);
+    }), []);
 
   useEffect(() => {
-    if (signedIn) void fetchSubscription().then(setSub, () => undefined);
-  }, [signedIn]);
+    if (signedIn) void load();
+  }, [signedIn, load]);
 
   // Back from Mercado Pago: the webhook may land a few seconds later, so poll until authorized.
   useEffect(() => {
@@ -133,6 +139,19 @@ export function SubscriptionPageClient() {
           >
             Ingresá para suscribirte
           </Link>
+        ) : subscriptionLoading ? (
+          <p role="status" className="text-sm text-muted">Consultando tu suscripción…</p>
+        ) : loadError && !sub ? (
+          <div className="space-y-3">
+            <p role="alert" className="text-sm text-occupied">{loadError}</p>
+            <button
+              type="button"
+              onClick={() => { setSubscriptionLoading(true); void load(); }}
+              className="min-h-11 rounded-control border border-app px-4 text-sm font-semibold hover:bg-surface-2"
+            >
+              Reintentar consulta
+            </button>
+          </div>
         ) : authorized ? (
           <div className="space-y-3">
             <p className="text-sm font-semibold">{until ? `Activa hasta ${until}` : "Tu suscripción está activa"}</p>
@@ -148,6 +167,22 @@ export function SubscriptionPageClient() {
           <p role="status" className="text-sm text-muted">
             Estamos confirmando tu pago…
           </p>
+        ) : returning && sub?.status === "pending" ? (
+          <div className="space-y-3">
+            <p role="status" className="text-sm text-muted">
+              Mercado Pago todavía no confirmó la suscripción. No hace falta iniciar otra compra.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setSubscriptionLoading(true);
+                void load().then(() => refreshMe()).catch(() => undefined);
+              }}
+              className="min-h-11 rounded-control border border-app px-4 text-sm font-semibold hover:bg-surface-2"
+            >
+              Actualizar estado
+            </button>
+          </div>
         ) : (
           <button
             type="button"
