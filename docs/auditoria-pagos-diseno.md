@@ -45,3 +45,17 @@ La aprobación de AdSense, la actualización del índice de Google y las present
 ## Validación final de código
 
 `pnpm lint`, `pnpm typecheck` y `pnpm test` correctos (2.354 pruebas: API 1.581, web 685, contratos 56, base de datos 32). Build de Next correcto. Navegación privada del jardín y recuperación de consulta de Pro verificadas en los tres tamaños; confirmación demorada y actualización manual verificadas en escritorio. No se agregaron dependencias ni assets.
+
+## Resultado del despliegue y comprobación real
+
+Versión de código `14e6eac` desplegada mediante los workflows habituales:
+
+- [Staging — 43034899322](https://github.com/ilandaniele/uns-study/actions/runs/43034899322): CI, API, web y smoke correctos.
+- [Producción — 43036262035](https://github.com/ilandaniele/uns-study/actions/runs/43036262035): CI, API, web y smoke correctos.
+
+Después del despliegue, el botón de donación recibió HTTP 200 y una preferencia real de Mercado Pago en `www.mercadopago.com.ar`. El enlace respondió HTTP 200 en Chrome con un agente de usuario normal y referencia al sitio. Las solicitudes identificadas como automatización habían recibido 403; no se interpreta ese bloqueo como un pago rechazado. Una notificación sin firma recibió HTTP 401, como corresponde. Se generaron únicamente preferencias sin pagar; no se cargaron tarjetas ni se autorizaron suscripciones.
+
+La creación de la preferencia confirma que el transporte y las credenciales permiten abrir el checkout. **No confirma todavía un pago aprobado, la entrega real de su webhook, la acreditación efectiva de semillas ni la primera autorización/cobranza de Pro.** Esos pasos siguen pendientes de una prueba comercial con el proveedor. La prueba HTTP de acreditación descrita arriba utiliza exclusivamente datos sintéticos.
+
+También se verificaron en ambos dominios: salud de API y mapa (200), protección de jardín/privacidad sin sesión (401), sitemap, robots, noindex del jardín y los assets actuales (200).
+Las pruebas privadas de interfaz (API sustituida por la fixture sintética local) también pasaron sobre los frontends desplegados de dev y producción, en los tres tamaños.
