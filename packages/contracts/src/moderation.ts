@@ -73,6 +73,7 @@ export interface AnnouncementDto {
   startsAt: string;
   endsAt: string | null;
   active: boolean;
+  closesRoom?: boolean;
 }
 
 // ---- zod ----
@@ -136,4 +137,5 @@ export const announcementSchema = z.object({
   startsAt: z.string().datetime().optional(),
   endsAt: z.string().datetime().nullable().optional(),
   active: z.boolean().optional(),
+  closesRoom: z.boolean().optional(),
 });

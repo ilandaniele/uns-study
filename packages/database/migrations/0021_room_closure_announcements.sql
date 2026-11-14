@@ -1,0 +1,1 @@
+ALTER TABLE `announcements` ADD `closes_room` integer DEFAULT false NOT NULL;

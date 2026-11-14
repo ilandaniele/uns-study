@@ -32,6 +32,7 @@ import { useDisputeWon } from "@/features/room/useDisputeWon";
 import { useIncumbentChallenge } from "@/features/room/useIncumbentChallenge";
 import { useRoomAlerts } from "@/features/room/useRoomAlerts";
 import { ROOM_NOT_FOUND, useRoomState } from "@/features/room/useRoomState";
+import { RoomClosedNotice } from "@/features/room/RoomClosedNotice";
 import { useHouseInterstitial } from "@/features/ads/ad-overlay-store";
 import { useSeatActions } from "@/features/room/useSeatActions";
 import { useSeatDispute } from "@/features/room/useSeatDispute";
@@ -349,7 +350,13 @@ export function RoomPageClient({ slug }: { slug: string }) {
 
   // First visit on this browser (signed in or not): open the guide once, after the app-open ad closes.
   const howToAutoChecked = useRef(false);
+  const canAutoShowHowTo = map !== null && map.room.operatingHours?.open !== false;
   useEffect(() => {
+    if (!canAutoShowHowTo) {
+      if (!howToAutoOpen.current) return;
+      const timer = window.setTimeout(() => { howToAutoOpen.current = false; setShowHowTo(false); }, 0);
+      return () => window.clearTimeout(timer);
+    }
     if (adOverlayOpen || howToAutoChecked.current || !shouldShowHowToOnFirstVisit()) return;
     // Short delay so the map paints first and the guide reads as a welcome, not a blocker.
     // The ref is set inside the timer so a cancelled run (ad opening, Strict Mode) can retry.
@@ -359,7 +366,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
       setShowHowTo(true);
     }, 600);
     return () => window.clearTimeout(timer);
-  }, [adOverlayOpen]);
+  }, [adOverlayOpen, canAutoShowHowTo]);
 
   // Target seat for a pending "Ya tenés otro lugar marcado" confirmation — set from either the
   // seat detail's "Estoy acá" or the dispute-won banner's "Estoy acá" (D3: both go through the
@@ -586,6 +593,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
     <main
       className={`mx-auto flex max-w-7xl flex-col gap-4 p-4 lg:grid ${detail && !isLargeDesktop ? "pb-[62dvh]" : ""} lg:grid-cols-[auto_minmax(360px,1fr)] lg:items-start lg:gap-x-10`}
     >
+      <RoomClosedNotice room={map.room} />
       {error ? (
         <div className="order-0 flex items-center justify-between gap-3 rounded-xl border border-app bg-surface px-3 py-2 text-sm text-muted lg:col-span-full">
           <span>
@@ -735,7 +743,7 @@ export function RoomPageClient({ slug }: { slug: string }) {
 
       <HowToUseModal open={showHowTo} onClose={closeHowTo} />
       {mounted ? (
-        <IdentityPrompt user={me?.user ?? null} blocked={detail != null || challenge != null || disputeWon != null || showHowTo || confirmMove != null || adOverlayOpen} />
+        <IdentityPrompt user={me?.user ?? null} blocked={map.room.operatingHours?.open === false || detail != null || challenge != null || disputeWon != null || showHowTo || confirmMove != null || adOverlayOpen} />
       ) : null}
       {confirmMove && activeCheckIn ? (
         <MoveSeatDialog

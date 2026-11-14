@@ -90,6 +90,9 @@ export class RoomsService {
 function toRoomDto(row: typeof schema.rooms.$inferSelect, hours: RoomHours | null = null): RoomDto {
   const window = hours?.window(row.id);
   return { id: row.id, slug: row.slug, name: row.name, description: row.description, timezone: row.timezone,
-    ...(window ? { operatingHours: { open: window.open, opensAt: window.opensAt.toISOString(), closesAt: window.closesAt.toISOString() } } : {}),
+    ...(window ? { operatingHours: { open: window.open, opensAt: window.opensAt.toISOString(), closesAt: window.closesAt.toISOString(),
+      nextOpensAt: window.nextOpensAt?.toISOString() ?? null, nextChangeAt: window.nextChangeAt.toISOString(),
+      ...(window.closure ? { closure: { ...window.closure, endsAt: window.closure.endsAt?.toISOString() ?? null } } : {}),
+    } } : {}),
   };
 }

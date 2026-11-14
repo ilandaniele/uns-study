@@ -33,6 +33,9 @@ export class AnnouncementsService {
   }
 
   async create(input: AnnouncementInput, createdBy: string): Promise<AnnouncementDto> {
+    const startsAt = input.startsAt ? new Date(input.startsAt) : new Date();
+    const endsAt = input.endsAt ? new Date(input.endsAt) : null;
+    validateClosure(input.closesRoom, startsAt, endsAt);
     const [row] = await this.db
       .insert(schema.announcements)
       .values({
@@ -40,8 +43,9 @@ export class AnnouncementsService {
         title: input.title,
         body: input.body,
         active: input.active ?? true,
-        startsAt: input.startsAt ? new Date(input.startsAt) : new Date(),
-        endsAt: input.endsAt ? new Date(input.endsAt) : null,
+        closesRoom: input.closesRoom ?? false,
+        startsAt,
+        endsAt,
         createdBy,
       })
       .returning();
@@ -52,6 +56,9 @@ export class AnnouncementsService {
   async update(id: string, input: Partial<AnnouncementInput>): Promise<AnnouncementDto> {
     const [existing] = await this.db.select().from(schema.announcements).where(eq(schema.announcements.id, id)).limit(1);
     if (!existing) throw ApiErrors.notFound("Anuncio no encontrado.");
+    validateClosure(input.closesRoom ?? existing.closesRoom,
+      input.startsAt ? new Date(input.startsAt) : existing.startsAt,
+      input.endsAt === undefined ? existing.endsAt : input.endsAt ? new Date(input.endsAt) : null);
 
     const [row] = await this.db
       .update(schema.announcements)
@@ -60,6 +67,7 @@ export class AnnouncementsService {
         ...(input.title !== undefined ? { title: input.title } : {}),
         ...(input.body !== undefined ? { body: input.body } : {}),
         ...(input.active !== undefined ? { active: input.active } : {}),
+        ...(input.closesRoom !== undefined ? { closesRoom: input.closesRoom } : {}),
         ...(input.startsAt !== undefined ? { startsAt: new Date(input.startsAt) } : {}),
         ...(input.endsAt !== undefined ? { endsAt: input.endsAt ? new Date(input.endsAt) : null } : {}),
         updatedAt: new Date(),
@@ -85,5 +93,12 @@ function toDto(row: typeof schema.announcements.$inferSelect): AnnouncementDto {
     startsAt: new Date(row.startsAt).toISOString(),
     endsAt: row.endsAt ? new Date(row.endsAt).toISOString() : null,
     active: row.active,
+    closesRoom: row.closesRoom,
   };
+}
+
+function validateClosure(closesRoom: boolean | undefined, start: Date, end: Date | null): void {
+  if (closesRoom && end && end <= start) {
+    throw ApiErrors.validation("El fin del cierre debe ser posterior al inicio.");
+  }
 }

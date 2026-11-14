@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { schema } from "@sala/database";
-import { operatingWindow } from "./room-hours.js";
+import { operatingWindow, RoomHours } from "./room-hours.js";
 import { buildServices } from "../container.js";
 import { freshDb, getRoom, getSeats, insertUsers } from "../test-utils.js";
 import { FixedClock } from "../platform/clock.js";
@@ -39,6 +39,54 @@ describe("owner-confirmed room hours", () => {
     await insertUsers(db, ["u1", "viewer"]);
     return { db, services, room, seat, location: { latitude: room.latitude, longitude: room.longitude, accuracy: 10, capturedAt: new Date().toISOString() } };
   }
+
+  it("applies confirmed closures, caps existing stays and resumes at a confirmed opening", async () => {
+    const { db, services, room, seat, location } = await setup("2026-11-13T10:00:00-03:00");
+    const stay = await services.checkIns.checkIn({ userId: "u1", roomId: room.id, seatId: seat.id, location, showIdentity: false });
+    const closure = await services.announcements.create({ title: "Disposición de la UNS", body: "Mantenimiento de la sala.",
+      closesRoom: true, startsAt: "2026-11-13T14:00:00Z", endsAt: "2026-11-13T16:00:00Z" }, "u1");
+    const hours = new RoomHours(db);
+    expect(hours.window(room.id)?.closesAt.toISOString()).toBe("2026-11-13T14:00:00.000Z");
+    vi.setSystemTime(new Date("2026-11-13T14:00:00Z"));
+    const dto = (await services.rooms.getRoomMap(room.id)).room.operatingHours!;
+    expect(dto).toMatchObject({ open: false, nextOpensAt: "2026-11-13T16:00:00.000Z", closure: { id: closure.id } });
+    await expect(services.checkIns.assertPresence("u1", room.id, location)).rejects.toThrow("Disposición de la UNS");
+    await services.jobs.expiration.runSweep();
+    const ended = db.select().from(schema.checkIns).where(eq(schema.checkIns.id, stay.checkIn.id)).get();
+    expect(ended?.status).toBe("EXPIRED");
+    expect(ended?.expiresAt.toISOString()).toBe("2026-11-13T14:00:00.000Z");
+    vi.setSystemTime(new Date("2026-11-13T16:00:00Z"));
+    expect(hours.window(room.id)).toMatchObject({ open: true, opensAt: new Date("2026-11-13T16:00:00Z") });
+    expect(await services.checkIns.getActiveCheckIn("u1")).toBeNull();
+  });
+
+  it("combines overlapping closures and respects overnight hours before announcing reopening", async () => {
+    const { services, db, room } = await setup("2026-11-13T23:00:00-03:00");
+    await services.announcements.create({ title: "Cierre UNS", body: "Cerrada", closesRoom: true,
+      startsAt: "2026-11-14T01:00:00Z", endsAt: "2026-11-14T07:00:00Z" }, "u1");
+    await services.announcements.create({ title: "Cierre extendido", body: "Cerrada", closesRoom: true,
+      startsAt: "2026-11-14T06:00:00Z", endsAt: "2026-11-14T12:00:00Z" }, "u1");
+    expect(new RoomHours(db).window(room.id)?.nextOpensAt?.toISOString()).toBe("2026-11-14T12:00:00.000Z");
+  });
+
+  it("does not claim an opening for an indefinite closure and ignores inactive or unrelated announcements", async () => {
+    const { services, db, room } = await setup("2026-11-13T10:00:00-03:00");
+    await services.announcements.create({ title: "Cierre inactivo", body: "...", closesRoom: true, active: false }, "u1");
+    await services.announcements.create({ title: "Anuncio normal", body: "..." }, "u1");
+    expect(new RoomHours(db).window(room.id)?.open).toBe(true);
+    const notice = await services.announcements.create({ title: "Hasta nuevo aviso", body: "UNS", closesRoom: true }, "u1");
+    expect(new RoomHours(db).window(room.id)).toMatchObject({ open: false, nextOpensAt: null });
+    await services.announcements.update(notice.id, { active: false });
+    expect(new RoomHours(db).window(room.id)?.open).toBe(true);
+  });
+
+  it("provides the next morning after weekend closing and today before opening", async () => {
+    const { db, room } = await setup("2026-11-14T22:00:00-03:00");
+    const hours = new RoomHours(db);
+    expect(hours.window(room.id)?.nextOpensAt?.toISOString()).toBe("2026-11-15T11:00:00.000Z");
+    vi.setSystemTime(new Date("2026-11-15T07:00:00-03:00"));
+    expect(hours.window(room.id)?.nextOpensAt?.toISOString()).toBe("2026-11-15T11:00:00.000Z");
+  });
 
   it("production wiring hides stale presences and study statuses at 01:22, without ending login sessions", async () => {
     const { db, services, room, seat, location } = await setup("2026-10-23T01:22:00-03:00");

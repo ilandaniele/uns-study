@@ -128,6 +128,7 @@ export const announcements = sqliteTable(
     title: text("title").notNull(),
     body: text("body").notNull(),
     active: integer("active", { mode: "boolean" }).notNull().default(true),
+    closesRoom: integer("closes_room", { mode: "boolean" }).notNull().default(false),
     startsAt: integer("starts_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
     endsAt: integer("ends_at", { mode: "timestamp_ms" }),
     createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),

@@ -75,4 +75,14 @@ describe("AnnouncementsService", () => {
     active = await svc.listActive(roomId);
     expect(active).toEqual([]);
   });
+
+  it("rejects invalid closure windows both on creation and partial edits", async () => {
+    const input = { title: "Cierre", body: "UNS", closesRoom: true,
+      startsAt: "2026-11-14T12:00:00Z", endsAt: "2026-11-14T12:00:00Z" };
+    await expect(svc.create(input, "admin1")).rejects.toThrow("posterior");
+    const created = await svc.create({ ...input, endsAt: "2026-11-14T14:00:00Z" }, "admin1");
+    await expect(svc.update(created.id, { endsAt: "2026-11-14T11:00:00Z" })).rejects.toThrow("posterior");
+    await expect(svc.update(created.id, { startsAt: "2026-11-14T15:00:00Z" })).rejects.toThrow("posterior");
+    await expect(svc.update(created.id, { endsAt: null })).resolves.toMatchObject({ closesRoom: true, endsAt: null });
+  });
 });

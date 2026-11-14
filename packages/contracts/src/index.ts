@@ -49,7 +49,15 @@ export interface RoomTodayStatsDto {
 }
 
 export interface RoomDto {
-  operatingHours?: { open: boolean; opensAt: string; closesAt: string };
+  operatingHours?: {
+    open: boolean;
+    opensAt: string;
+    closesAt: string;
+    /** Next confirmed opening, accounting for extraordinary closures. Null = until further notice. */
+    nextOpensAt?: string | null;
+    nextChangeAt?: string;
+    closure?: { id: string; title: string; body: string; endsAt: string | null };
+  };
   id: string;
   slug: string;
   name: string;

@@ -2,6 +2,7 @@
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
 import { useRoomState } from "@/features/room/useRoomState";
+import { RoomClosedNotice } from "@/features/room/RoomClosedNotice";
 import { seatCodeLabel } from "@/features/room/format";
 import { useSimpleRoom } from "./useSimpleRoom";
 import { SimpleSeatConfirmation } from "./SimpleSeatConfirmation";
@@ -21,6 +22,7 @@ export function SimpleRoomPage({ slug, onPendingChange }: { slug: string; onPend
   const challenge = action.challenge ? <div className="mt-4"><TurnstileChallenge onToken={action.retryChallenge}/></div> : null;
   return <section aria-label="Sala en modo simple" className="mx-auto flex min-h-[65dvh] max-w-xl flex-col items-center justify-center px-5 py-12 text-center">
     <h1 className="sr-only">Sala · Modo simple</h1>
+    {closed && map ? <div className="mb-8 w-full text-left"><RoomClosedNotice room={map.room}/></div> : null}
     <div className="rounded-full p-4 shadow-[0_18px_40px_#0004] sm:p-5" style={{ background: "linear-gradient(135deg,#c9cdd0,#737a80 45%,#dce0e2 70%,#60676b)" }}>
       <div className="rounded-full bg-[#202327] p-2 shadow-inner">
         <button type="button" disabled={disabled} onClick={() => { if (active) void action.leave(); else void action.enter(); }}

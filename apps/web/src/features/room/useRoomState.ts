@@ -108,8 +108,9 @@ export function useRoomState(slug: string): RoomState {
   useEffect(() => {
     if (!hours) return;
     const now = Date.now();
-    let boundary = new Date(hours.open ? hours.closesAt : hours.opensAt).getTime();
-    if (!hours.open && boundary <= now) boundary += 24 * 60 * 60_000;
+    let boundary = new Date(hours.nextChangeAt ?? (hours.open ? hours.closesAt : hours.opensAt)).getTime();
+    // A stale snapshot or a throttled tab must recheck promptly, not wait another day.
+    if (!hours.nextChangeAt && !hours.open && boundary <= now) boundary += 24 * 60 * 60_000;
     const timer = setTimeout(() => { void load(); }, Math.max(1000, boundary - now + 100));
     const onVisible = () => { if (!document.hidden) void load(); };
     document.addEventListener("visibilitychange", onVisible);
@@ -155,6 +156,7 @@ export function useRoomState(slug: string): RoomState {
     socket.on(SocketEvents.SeatStateChanged, onSeatStateChanged);
     socket.on(SocketEvents.RoomSummaryChanged, onSummaryChanged);
     socket.on(SocketEvents.RoomDailyReset, onDailyReset);
+    socket.on(SocketEvents.AnnouncementChanged, onDailyReset);
     socket.on(SocketEvents.SeatDisputeOpened, onDisputeOpened);
     socket.on(SocketEvents.SeatDisputeResolved, onDisputeResolved);
     socket.on(SocketEvents.TableNicknameChanged, onTableNicknameChanged);
@@ -168,6 +170,7 @@ export function useRoomState(slug: string): RoomState {
       socket.off(SocketEvents.SeatStateChanged, onSeatStateChanged);
       socket.off(SocketEvents.RoomSummaryChanged, onSummaryChanged);
       socket.off(SocketEvents.RoomDailyReset, onDailyReset);
+      socket.off(SocketEvents.AnnouncementChanged, onDailyReset);
       socket.off(SocketEvents.SeatDisputeOpened, onDisputeOpened);
       socket.off(SocketEvents.SeatDisputeResolved, onDisputeResolved);
       socket.off(SocketEvents.TableNicknameChanged, onTableNicknameChanged);

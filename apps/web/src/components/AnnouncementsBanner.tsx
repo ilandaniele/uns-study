@@ -65,7 +65,8 @@ export function AnnouncementsBanner({ roomSlug, socket }: AnnouncementsBannerPro
     };
   }, [socket, load]);
 
-  const visible = announcements.filter((a) => !dismissed.has(a.id));
+  // Closure notices have their own persistent card, including in simple mode.
+  const visible = announcements.filter((a) => !a.closesRoom && !dismissed.has(a.id));
   if (visible.length === 0) return null;
 
   return (

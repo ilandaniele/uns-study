@@ -31,7 +31,7 @@ export function Hero({ summary, seats, operatingHours }: HeroProps) {
 
   if (operatingHours?.open === false) {
     headline = <>La sala está cerrada</>;
-    subline = ROOM_HOURS_COPY;
+    subline = operatingHours.closure?.body ?? ROOM_HOURS_COPY;
   } else if (!hasData) {
     headline = <>Todavía no hay datos de hoy</>;
     subline = "Todavía no hay reportes vigentes. Si estás en la sala, tocá tu lugar y marcá «Estoy acá».";
