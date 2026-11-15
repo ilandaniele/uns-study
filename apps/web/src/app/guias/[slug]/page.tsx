@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { AdSlot } from "@/components/AdSlot";
 import { BackButton } from "@/components/BackButton";
 import { GUIDES, getGuide } from "@/features/guides/guides";
-import { GUIDE_RESOURCES, GUIDE_RESOURCES_CHECKED, ROOM_GUIDE_RESOURCES_CHECKED } from "@/features/guides/guide-resources";
+import { GUIDE_RESOURCES, GUIDE_RESOURCES_CHECKED, GUIDE_SCOPE, ROOM_GUIDE_RESOURCES_CHECKED } from "@/features/guides/guide-resources";
 import { RoomGuideWalkthrough } from "@/features/guides/RoomGuideWalkthrough";
 
 export function generateStaticParams() {
@@ -53,6 +53,12 @@ export default async function GuidePage(props: Props) {
           </p>
         </header>
 
+        <aside aria-label="Alcance de esta guía" className="space-y-2 rounded-2xl border border-app bg-surface p-4 text-sm">
+          <p className="font-semibold">Para qué te sirve esta guía</p>
+          <p className="text-muted">{GUIDE_SCOPE[guide.slug]}</p>
+          <a href="#guide-resources" className="inline-flex min-h-11 items-center font-semibold text-primary underline underline-offset-4">Ver fuentes y qué aporta cada una</a>
+        </aside>
+
         <nav aria-label="Contenido de la guía" className="rounded-2xl border border-app bg-surface p-4">
           <h2 className="font-semibold">En esta guía</h2>
           <ol className="mt-2 list-decimal pl-5 text-sm">
@@ -78,19 +84,19 @@ export default async function GuidePage(props: Props) {
         ))}
       </article>
 
-      {/* A single labelled unit only after the complete article, away from reading controls. */}
-      <AdSlot placement="article" />
-
       <section aria-labelledby="guide-resources" className="space-y-3 rounded-2xl border border-app bg-surface p-5">
-        <h2 id="guide-resources" className="text-lg font-semibold">Lecturas complementarias</h2>
-        <p className="text-sm text-muted">Recursos para profundizar y contrastar las ideas de esta guía. Algunas lecturas están en inglés.</p>
+        <h2 id="guide-resources" className="scroll-mt-36 text-lg font-semibold">Fuentes y lecturas complementarias</h2>
+        <p className="text-sm text-muted">Cada nota indica qué tema permite contrastar. Los cronogramas y ejemplos de esta guía son propuestas para adaptar, no resultados de un estudio propio. Algunas lecturas están en inglés.</p>
         <ul className="space-y-2">
-          {(GUIDE_RESOURCES[guide.slug] ?? []).map((resource) => <li key={resource.url}><a href={resource.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center break-words text-sm font-semibold text-primary underline underline-offset-4">{resource.title}</a></li>)}
+          {(GUIDE_RESOURCES[guide.slug] ?? []).map((resource) => <li key={resource.url}><a href={resource.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center break-words text-sm font-semibold text-primary underline underline-offset-4">{resource.title}</a><p className="text-sm text-muted">{resource.note}</p></li>)}
         </ul>
         <p className="text-xs text-muted">Enlaces consultados el <time dateTime={resourcesChecked}>{formatDate(resourcesChecked)}</time>. No implican un aval de esas instituciones a Sala de Estudio.</p>
       </section>
 
       <p className="text-sm text-muted">¿Encontraste un error en esta guía? <Link href="/sugerencias" className="font-semibold text-primary underline underline-offset-4">Enviá una corrección</Link> o escribí a <a href="mailto:ilan.daniele@gmail.com" className="break-all text-primary underline underline-offset-4">ilan.daniele@gmail.com</a>. Podés hacerlo sin iniciar sesión.</p>
+
+      {/* Serving remains disabled pending approval; a future unit follows all reading material. */}
+      <AdSlot placement="article" />
 
       <nav aria-label="Otras guías" className="space-y-2 border-t border-app pt-4">
         <h2 className="text-base font-semibold text-main">Seguí leyendo</h2>

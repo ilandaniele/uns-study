@@ -10,7 +10,7 @@ export default function PrivacyPage() {
     <main className="mx-auto max-w-prose space-y-4 px-4 py-8 text-sm leading-relaxed text-main">
       <BackButton fallbackHref="/" />
       <h1 className="t-heading">Política de privacidad</h1>
-      <p className="text-xs text-muted">Actualizada el 29 de octubre de 2026.</p>
+      <p className="text-xs text-muted">Actualizada el 15 de noviembre de 2026.</p>
       <p>
         Sala de Estudio es un proyecto independiente de estudiantes para compartir en tiempo real la
         disponibilidad de lugares en la sala de estudio. No es un servicio oficial de la Universidad Nacional del
@@ -43,8 +43,10 @@ export default function PrivacyPage() {
         si hay dudas te pedimos confirmar el lugar. Mientras tenés un check-in activo y la app está visible, revisamos
         periódicamente la ubicación con el permiso del navegador. Si detectamos una salida a más de 50 metros,
         pausamos las horas y, tras una hora sin regreso confirmado, finalizamos el check-in. Si el navegador deja
-        de enviar ubicaciones válidas, las horas se pausan a los cinco minutos; los períodos sin comprobación no
-        se acreditan al regresar. Un identificador aleatorio de este navegador vincula el control al dispositivo
+        de enviar ubicaciones, por ejemplo al bloquear el celular, el tiempo sigue contando mientras esté vigente
+        «Estoy acá» y no haya una salida confirmada. No podemos detectar una salida mientras el navegador no informa
+        ubicación. El conteo termina al vencer el registro, marcar «Me voy» o cerrar la sala. Un identificador
+        aleatorio de este navegador vincula el control al dispositivo
         donde marcaste el lugar, para que otro dispositivo de tu cuenta no contradiga la ubicación. Guardamos
         ese identificador, los intervalos de estudio y los momentos de verificación o salida. No
         guardamos tus coordenadas exactas ni las mostramos a otras personas: sólo conservamos la precisión del GPS y si
@@ -78,8 +80,9 @@ export default function PrivacyPage() {
         del sitio usamos Google Analytics. También contamos aperturas por sección para mejorar la app: guardamos únicamente el día, la sección y un total agregado durante un máximo de 30 días, sin asociarlo con tu cuenta, IP, URL privada o mensajes. Este contador respeta las señales Do Not Track y Global Privacy Control del navegador.
       </p>
       <p>
-        En algunas páginas con contenido (como las guías de estudio y las novedades de la comunidad) mostramos anuncios de
-        Google AdSense. Google y sus socios usan cookies para mostrar anuncios según tus visitas anteriores a este y a
+        La carga de anuncios de Google AdSense está desactivada mientras el sitio espera aprobación. Si se habilita,
+        las unidades de la app se limitan a artículos publicados de las guías, identificadas como publicidad.
+        Al cargarse esos anuncios, Google y sus socios pueden usar cookies según tus visitas anteriores a este y a
         otros sitios. Podés desactivar la publicidad personalizada en la{" "}
         <a className="text-primary underline" href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer">
           configuración de anuncios de Google

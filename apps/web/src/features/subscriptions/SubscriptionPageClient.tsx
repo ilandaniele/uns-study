@@ -6,11 +6,9 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ApiRequestError } from "@/lib/api";
-import { BackButton } from "@/components/BackButton";
 import { refreshMe, useMe } from "@/lib/me-store";
 import { cancelSubscription, fetchSubscription, startCheckout } from "./api";
 import { CancelSubscriptionDialog } from "./CancelSubscriptionDialog";
-import { PRO_BENEFITS } from "./pro";
 
 const POLL_MS = 3000;
 const POLL_MAX = 10;
@@ -112,20 +110,8 @@ export function SubscriptionPageClient() {
     : null;
 
   return (
-    <main className="mx-auto max-w-prose space-y-6 px-4 py-8 text-main">
-      <BackButton fallbackHref="/perfil" />
-      <header className="space-y-2">
-        <h1 className="t-heading">Sala de Estudio Pro</h1>
-        <p className="text-sm text-muted">Sin anuncios y todas las herramientas de estudio</p>
-        {price !== undefined && <p className="text-lg font-semibold text-primary tabular-nums">${price.toLocaleString("es-AR")} por mes</p>}
-      </header>
-
-      <ul className="list-disc space-y-2 pl-5 text-sm">
-        {PRO_BENEFITS.map((b) => (
-          <li key={b}>{b}</li>
-        ))}
-        <li>Apoyás que la sala siga funcionando</li>
-      </ul>
+    <div className="space-y-6">
+      {price !== undefined && <p className="text-lg font-semibold text-primary tabular-nums">${price.toLocaleString("es-AR")} por mes</p>}
 
       <section className="border-t border-app pt-4">
         {meLoading ? (
@@ -202,6 +188,6 @@ export function SubscriptionPageClient() {
 
       <section id="donar" className="scroll-mt-24 rounded-2xl border border-app bg-surface p-5"><DonateCard /></section>
       {confirming && <CancelSubscriptionDialog pending={busy} onConfirm={() => void handleCancel()} onCancel={() => setConfirming(false)} />}
-    </main>
+    </div>
   );
 }

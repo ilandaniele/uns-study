@@ -1,20 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { GUIDES, getGuide, type Guide } from "./guides";
-import { GUIDE_RESOURCES } from "./guide-resources";
-
-function wordCount(guide: Guide): number {
-  const texts = guide.sections.flatMap((section) => [...section.paragraphs, ...(section.list ?? [])]);
-  return texts.join(" ").split(/\s+/).filter(Boolean).length;
-}
+import { GUIDES, getGuide } from "./guides";
+import { GUIDE_RESOURCES, GUIDE_SCOPE } from "./guide-resources";
 
 describe("guides", () => {
   it("has identified complementary resources for every real guide", () => {
     expect(Object.keys(GUIDE_RESOURCES).sort()).toEqual(GUIDES.map(g => g.slug).sort());
+    expect(Object.keys(GUIDE_SCOPE).sort()).toEqual(GUIDES.map(g => g.slug).sort());
     for (const guide of GUIDES) {
       expect(GUIDE_RESOURCES[guide.slug]?.length).toBeGreaterThan(0);
+      expect(GUIDE_SCOPE[guide.slug]?.trim()).toBeTruthy();
       for (const resource of GUIDE_RESOURCES[guide.slug] ?? []) {
         expect(resource.title.length).toBeGreaterThan(5);
         expect(new URL(resource.url).protocol).toBe("https:");
+        expect(resource.note.trim()).not.toBe("");
       }
     }
   });
@@ -26,11 +24,15 @@ describe("guides", () => {
     }
   });
 
-  it("has enough content in every guide", () => {
+  it("has readable sections without an arbitrary word quota", () => {
     for (const guide of GUIDES) {
-      expect(wordCount(guide), guide.slug).toBeGreaterThanOrEqual(700);
       expect(guide.sections.length, guide.slug).toBeGreaterThanOrEqual(4);
       expect(guide.sections.length, guide.slug).toBeLessThanOrEqual(7);
+      for (const section of guide.sections) {
+        expect(section.heading.trim(), guide.slug).not.toBe("");
+        expect(section.paragraphs.length, `${guide.slug}: ${section.heading}`).toBeGreaterThan(0);
+        for (const paragraph of section.paragraphs) expect(paragraph.trim(), guide.slug).not.toBe("");
+      }
     }
   });
 

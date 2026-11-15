@@ -14,18 +14,18 @@ export const GUIDES: readonly Guide[] = [
   ROOM_GUIDE,
   {
     slug: "tecnica-pomodoro",
-    title: "La técnica Pomodoro: cómo usarla de verdad para estudiar",
+    title: "Pomodoro para estudiar: bloques, pausas y una tarea concreta",
     description:
       "Aprendé a aplicar la técnica Pomodoro paso a paso, adaptar la duración de los bloques a tu materia y evitar los errores más comunes al estudiar en la facultad.",
     readingMinutes: 5,
-    updated: "2026-10-16",
+    updated: "2026-11-15",
     sections: [
       {
         heading: "Qué es y de dónde viene",
         paragraphs: [
           "La técnica Pomodoro la ideó Francesco Cirillo a fines de los años ochenta, cuando era estudiante universitario y le costaba sostener la atención. Usó un temporizador de cocina con forma de tomate (pomodoro en italiano) y se propuso algo mínimo: concentrarse en una sola tarea durante un rato corto y definido, sin interrupciones.",
           "La versión clásica es simple. Trabajás 25 minutos, descansás 5, y repetís. Después de cuatro bloques, tomás un descanso más largo, de entre 15 y 30 minutos. No tiene nada de mágico: lo que funciona es el contrato que hacés con vos mismo. Durante el bloque hay una sola cosa para hacer, y cuando suena la alarma, parás aunque estés a mitad de una idea.",
-          "Esa estructura ayuda por varias razones. Empezar cuesta menos cuando el compromiso es de solo 25 minutos. El final cercano reduce la tentación de revisar el celular. Y los descansos programados te dan permiso para desconectarte sin culpa, algo que cuando estudiás a ojo suele terminar en una hora de scroll.",
+          "Un temporizador puede servir para acotar una tarea y reservar pausas. No comprueba cuánto aprendiste ni garantiza que evites las distracciones. Al terminar cada bloque, anotá qué resolviste y qué duda quedó: esa evidencia es más útil que sumar bloques sin revisar el trabajo.",
         ],
       },
       {
@@ -53,9 +53,9 @@ export const GUIDES: readonly Guide[] = [
       {
         heading: "Cómo adaptar la duración de los bloques",
         paragraphs: [
-          "Los 25 minutos son un punto de partida, no una ley. Hay materias y tareas que piden otro ritmo. Para leer un texto denso, resolver problemas largos de física o escribir un informe, 25 minutos pueden quedar cortos justo cuando entraste en calor. En esos casos probá con 40 o 50 minutos de trabajo y 10 de descanso.",
+          "Los 25 minutos corresponden al esquema clásico. Los bloques de 40 o 50 minutos que proponemos acá son adaptaciones prácticas, no una regla del método original ni una duración óptima demostrada para toda persona. Si un corte interrumpe un problema largo, anotá el siguiente paso antes de descansar.",
           "En cambio, si estás cansado, si el tema te aburre muchísimo o si venís de una semana pesada, bajá a 15 minutos. Un bloque corto que sí cumplís vale más que uno largo que abandonás a los diez minutos. Con el tiempo, podés ir subiendo de a poco.",
-          "Una forma práctica de calibrar: probá una semana con una duración, anotá cuántos bloques completaste sin distraerte y cómo te sentiste al final del día. Si terminás agotado, acortá. Si sentís que cortabas justo cuando estabas rindiendo, alargá. El modo Foco de la app te deja configurar el temporizador para probar distintas duraciones sin tener que usar el celular.",
+          "Una forma práctica de ajustar el ritmo: probá durante varios días con una duración y registrá la tarea terminada, las interrupciones y si pudiste retomar después de la pausa. Cambiá una cosa por vez. El modo Foco de esta app permite organizar bloques y descansos desde la computadora o el celular; el temporizador básico es gratuito.",
         ],
       },
       {
@@ -82,20 +82,20 @@ export const GUIDES: readonly Guide[] = [
     description:
       "Descubrí cómo usar la práctica de recuperación, las flashcards y el repaso espaciado para retener mejor lo que estudiás, con un cronograma de ejemplo.",
     readingMinutes: 4,
-    updated: "2026-10-16",
+    updated: "2026-11-15",
     sections: [
       {
         heading: "Por qué releer no alcanza",
         paragraphs: [
           "La estrategia más común entre estudiantes es leer los apuntes una y otra vez, subrayar y armar resúmenes prolijos. Se siente productivo porque el material empieza a resultar familiar. El problema es justamente ese: la familiaridad se confunde con saber. Reconocer algo cuando lo ves es mucho más fácil que reproducirlo desde cero en un examen, donde nadie te muestra la respuesta.",
-          "La investigación en psicología cognitiva viene mostrando hace décadas que hay dos técnicas que rinden mucho más que releer: la práctica de recuperación (también llamada testing effect o efecto de evaluación) y el repaso espaciado. Ambas tienen algo en común: hacen que el estudio sea más incómodo en el momento, y por eso mismo dejan una huella más duradera.",
+          "Cornell distingue tres estrategias de estudio: recuperar sin mirar, distribuir las sesiones e intercalar problemas relacionados. Son propuestas para practicar y comprobar lo que recordás. Releer puede seguir siendo necesario para comprender algo nuevo o corregir un error; sentir dificultad, por sí solo, no demuestra que estés aprendiendo.",
           "En esta guía vas a ver cómo aplicarlas sin necesidad de herramientas especiales. Alcanza con papel, una lapicera y un poco de organización.",
         ],
       },
       {
         heading: "Práctica de recuperación: ponerte a prueba",
         paragraphs: [
-          "Practicar la recuperación significa intentar traer la información a la memoria sin mirar el material. Cada vez que lo lográs, o aun cuando fallás y después corregís, fortalecés ese recuerdo y lo hacés más fácil de encontrar la próxima vez. Es lo contrario de repasar pasivamente.",
+          "Practicar la recuperación significa intentar responder sin mirar el material y después contrastar con una respuesta fiable. Si te equivocás, corregí la respuesta antes de repetirla. Por ejemplo, escribí una definición, comparala con la bibliografía y señalá exactamente qué condición omitiste. Adivinar varias veces sin corregirte puede dejar el mismo error intacto.",
           "Hay muchas formas de hacerlo, y todas son simples:",
         ],
         list: [
@@ -117,9 +117,9 @@ export const GUIDES: readonly Guide[] = [
       {
         heading: "Repaso espaciado: separar las sesiones",
         paragraphs: [
-          "El efecto de espaciado dice que repasar en varias sesiones distribuidas en el tiempo produce mejor retención a largo plazo que concentrar todo el repaso en una sola tanda, aun cuando el tiempo total sea el mismo. Dejar pasar un intervalo permite que empieces a olvidar un poco, y el esfuerzo de recordar de nuevo es lo que consolida la memoria.",
+          "El repaso espaciado distribuye los encuentros con un tema en distintos momentos, en vez de concentrarlos en una sola sesión. Es una de las estrategias recomendadas por Cornell para la retención. No hay un intervalo que sirva igual para todos los temas: importan la dificultad, lo que ya sabés y cuándo necesitás usarlo.",
           "En la práctica, significa que conviene volver sobre cada tema varias veces con huecos crecientes: al día siguiente, a los pocos días, a la semana, y así. Cuando una tarjeta te sale fácil, la podés espaciar más; cuando te cuesta, volvé antes. Muchas aplicaciones de flashcards automatizan este cálculo, pero también podés hacerlo con cajas de cartón o un cuaderno.",
-          "Lo importante es que el repaso sea de recuperación y no de lectura. Volver a leer el capítulo a los tres días sirve mucho menos que cerrar el libro y ver qué recordás.",
+          "Combiná recuperación con corrección: intentá responder, identificá qué falta y volvé al material cuando sea necesario. Si todavía no entendés una relación, releerla con un ejemplo resuelto puede ser parte del trabajo. No reemplaces una duda de comprensión por repetir una tarjeta.",
         ],
       },
       {
@@ -127,7 +127,7 @@ export const GUIDES: readonly Guide[] = [
         paragraphs: [
           "Supongamos que hoy estudiás la unidad 2 de una materia y el parcial es en tres semanas. Un esquema posible sería el siguiente. El día cero hacés la lectura y armás las tarjetas. Al día siguiente, 15 o 20 minutos de recuperación sobre esas tarjetas. A los tres o cuatro días, otra sesión corta. A la semana, otra. Y a las dos semanas, un repaso general mezclado con las otras unidades.",
           "Mientras tanto, vas sumando unidades nuevas, así que cada día incluye un poco de material nuevo y un poco de repasos viejos. Se ve como más trabajo, pero cada sesión es corta y el conjunto te llega al parcial con la mayor parte ya asentada, no con la sensación de estar aprendiendo todo a la vez.",
-          "Si te quedan pocos días, igual podés aplicar la idea: dos o tres pasadas de recuperación separadas por unas horas o por una noche de sueño rinden más que una sola maratón.",
+          "Si te quedan pocos días, dividí el material y dejá oportunidades para volver a los errores entre sesiones. El cronograma anterior es un ejemplo para adaptar, no una predicción de la nota ni una receta que asegure retener todo.",
         ],
       },
       {
@@ -142,11 +142,11 @@ export const GUIDES: readonly Guide[] = [
   },
   {
     slug: "como-preparar-un-final",
-    title: "Cómo preparar un final: un plan realista, de la inscripción al examen",
+    title: "Cómo preparar un final: temas, práctica y un plan realista",
     description:
       "Guía para preparar un final universitario: hacé el inventario de temas, un calendario inverso, practicá con exámenes viejos y planificá las últimas 48 horas.",
     readingMinutes: 4,
-    updated: "2026-10-16",
+    updated: "2026-11-15",
     sections: [
       {
         heading: "Empezá por un inventario de temas",
@@ -159,7 +159,7 @@ export const GUIDES: readonly Guide[] = [
       {
         heading: "Un calendario hacia atrás",
         paragraphs: [
-          "Con la fecha del examen en la mano, planificá desde el final hacia el principio. Reservá los últimos días para repaso general y simulacros, y repartí hacia atrás el estudio de cada tema nuevo. Así descubrís pronto si el tiempo alcanza o si hay que recortar.",
+          "Además del estudio, comprobá en los canales oficiales la inscripción, los requisitos, la modalidad, el aula y la fecha del final. Con esa información, planificá hacia atrás: reservá momentos de práctica y repaso, y distribuí los temas según tus dificultades. Esta guía propone una organización; no informa trámites o requisitos de una cátedra específica.",
           "Una estructura razonable para varias semanas es la siguiente:",
         ],
         list: [
@@ -187,7 +187,7 @@ export const GUIDES: readonly Guide[] = [
       {
         heading: "Las últimas 48 horas",
         paragraphs: [
-          "Dos días antes, el objetivo cambia: ya no se trata de aprender temas nuevos, sino de consolidar lo que sabés y llegar con la cabeza despejada. Hacé una pasada general por tu lista de temas, con foco en recuperar lo que se te escapa y en armar una hoja de una carilla con fórmulas, definiciones o esquemas clave para mirar al final.",
+          "En las últimas 48 horas, revisá qué falta y qué es viable. Si todavía hay temas nuevos, priorizalos según el programa y tus dudas; no existe una regla que prohíba aprender algo a esa altura. Reservá también tiempo para comprobar lo ya estudiado y preparar la logística, en vez de abrir material sin un objetivo.",
           "El día anterior, estudiá menos de lo que te tienta. Repasá livianamente por la mañana o la tarde, resolvé un par de ejercicios de calentamiento y dejá la noche tranquila. Dejá preparado lo práctico: documento, birome, calculadora si está permitida, el recorrido y el horario. Chequeá de nuevo la fecha, la hora y el aula en los canales oficiales.",
           "Dormí lo que puedas. Un descanso razonable rinde más que sumar tres horas de estudio con sueño. Y el día del examen, comé algo, llegá con tiempo y, ya en la hoja, leé todas las consignas antes de empezar para decidir el orden.",
         ],
@@ -204,11 +204,11 @@ export const GUIDES: readonly Guide[] = [
   },
   {
     slug: "organizar-la-semana-de-estudio",
-    title: "Cómo organizar tu semana de estudio sin morir en el intento",
+    title: "Organizar la semana de estudio con tiempos reales",
     description:
       "Aprendé a planificar la semana universitaria con bloques de tiempo, equilibrar clases, trabajos y parciales, y revisar tu plan para que sea sostenible.",
     readingMinutes: 4,
-    updated: "2026-10-16",
+    updated: "2026-11-15",
     sections: [
       {
         heading: "Por qué planificar la semana y no solo el día",
@@ -222,7 +222,7 @@ export const GUIDES: readonly Guide[] = [
         heading: "Armá el esqueleto: lo que ya está fijo",
         paragraphs: [
           "Primero, volcá en el calendario todo lo que no se mueve: horarios de cursada, traslados, trabajo, compromisos familiares, entrenamientos, turnos médicos. Incluí los tiempos de viaje y de comida, que suelen olvidarse y después hacen que la cuenta no cierre.",
-          "Lo que queda en blanco es tu tiempo disponible real. Mirá cuánto es, porque probablemente sea menos de lo que imaginabas. Sumá las horas libres de cada día y restá una parte para comer, descansar y moverte; el número que queda es el que de verdad podés repartir entre las materias. Y no lo llenes por completo: dejá huecos para imprevistos, descanso y vida social. Una semana planificada al 100 % se rompe el martes y te deja la sensación de haber fracasado.",
+          "Lo que queda después de anotar clases, trabajo, viajes, comidas y descanso es tu disponibilidad para distribuir. No restes dos veces las actividades que ya pusiste en el calendario. Por ejemplo, una franja de 14:00 a 17:00 con media hora de viaje permite planear dos bloques y una pausa, no tres horas completas de ejercicios. Dejá además margen para imprevistos.",
           "Después anotá las fechas de entrega, parciales y trabajos prácticos de todas las materias, con al menos dos o tres semanas de visibilidad. Ese panorama te ayuda a ver cuándo se juntan varias cargas a la vez.",
         ],
       },
@@ -243,7 +243,7 @@ export const GUIDES: readonly Guide[] = [
       {
         heading: "Equilibrar la cursada diaria con los parciales",
         paragraphs: [
-          "El conflicto clásico es que las clases y los trabajos prácticos consumen la semana, y el estudio para el parcial queda para después. La solución más efectiva es asignar un pequeño bloque fijo y regular a cada materia, aun cuando falten semanas para el examen. Estudiar 30 o 40 minutos por día cuesta menos que una maratón de tres días y rinde más.",
+          "Cuando la cursada y los trabajos prácticos ocupan casi toda la semana, probá reservar un bloque breve para cada materia que después puedas ajustar. Es una opción de organización, no una cantidad de minutos que garantice rendimiento. Si un plan no entra en tus horarios, reducí el objetivo o buscá ayuda con la prioridad de los temas.",
           "Cuando se acerca un parcial, aumentá progresivamente su peso en el calendario y reducí el de otras materias sin abandonarlas. Evitá el todo o nada: si dejás una materia por completo dos semanas, retomarla cuesta mucho.",
           "Si tenés varias entregas juntas, priorizá según tres criterios: fecha límite, peso en la nota y esfuerzo requerido. A veces conviene sacarse de encima una tarea corta para liberar la cabeza. Y si hay un conflicto imposible, hablá con docentes a tiempo; suelen ser más flexibles cuando les avisás antes y no el día del vencimiento.",
         ],
@@ -261,7 +261,7 @@ export const GUIDES: readonly Guide[] = [
         paragraphs: [
           "Un error muy habitual es planificar como si fueras otra persona: seis horas diarias de estudio, levantarte a las cinco, cero descanso. Esos planes duran tres días. Diseñá uno que puedas sostener en una semana mala, y si una semana es buena, mejor.",
           "Otro error es no incluir el descanso ni el movimiento. Dormir, comer y hacer algo de actividad física no son extras, son lo que sostiene el rendimiento. También es frecuente cambiar de sistema cada semana buscando el método perfecto. Elegí uno simple y mantenelo al menos un mes antes de evaluar.",
-          "Por último, cuidá el lugar donde estudiás. Tener un sitio al que vas a trabajar, sea tu casa, una biblioteca o una sala de estudio, ayuda a entrar en modo estudio más rápido. Si usás una sala compartida, mirar antes si hay lugar te ahorra el viaje en vano y permite que ajustes el plan si está llena.",
+          "Elegí un lugar al que puedas llegar dentro del tiempo previsto. En esta app, revisar el mapa permite conocer reportes antes de salir, pero no garantiza encontrar una silla libre. Si hay muchos lugares sin datos, contemplá una alternativa de estudio en vez de tratar esos asientos como disponibles.",
         ],
       },
     ],
@@ -272,7 +272,7 @@ export const GUIDES: readonly Guide[] = [
     description:
       "Consejos prácticos para concentrarte en una sala de estudio compartida: elegir el lugar, manejar el celular y el ruido, y convivir respetando a los demás.",
     readingMinutes: 4,
-    updated: "2026-10-16",
+    updated: "2026-11-15",
     sections: [
       {
         heading: "Qué tiene de bueno y de difícil estudiar acompañado",
@@ -293,7 +293,7 @@ export const GUIDES: readonly Guide[] = [
       {
         heading: "El celular: tu mayor distractor",
         paragraphs: [
-          "Para la mayoría de los estudiantes, el principal enemigo de la concentración está en el bolsillo. La mera presencia del teléfono a la vista tienta a revisarlo, y cada interrupción tiene un costo de reenganche: retomar la tarea lleva varios minutos aunque la pausa haya sido de segundos.",
+          "Si el teléfono interrumpe tu trabajo, probá silenciar las aplicaciones que no necesitás y dejarlo fuera de la vista. No hay un tiempo de recuperación de la atención que sea igual para todas las interrupciones. Registrá qué te distrae en una sesión para decidir qué cambiar en la siguiente, sin asumir que todas las personas trabajan del mismo modo.",
           "Estas medidas ayudan bastante:",
         ],
         list: [
@@ -315,9 +315,9 @@ export const GUIDES: readonly Guide[] = [
       {
         heading: "Convivencia y buenas costumbres",
         paragraphs: [
-          "Una sala funciona bien cuando cada uno aporta un poco. Hablá bajo o salí al pasillo para conversar, poné el celular en silencio, evitá comer cosas ruidosas o de olor fuerte, y levantá tus residuos al irte. Cuidá también el mobiliario y dejá la mesa como la encontraste.",
+          "La sala Manuel Gil está identificada por la Biblioteca Central como una sala de lectura silenciosa. Salí del espacio de lectura para conversar, hacer llamadas o practicar explicaciones en voz alta. Seguí las indicaciones del lugar sobre alimentos y bebidas, cuidá el mobiliario y retirate con tus pertenencias y residuos.",
           "Un punto especialmente importante es el uso de los lugares. En una sala sin reservas, un asiento ocupado con una mochila y nadie sentado le quita un lugar a alguien que lo necesita. Si vas a ausentarte un buen rato, llevate tus cosas y dejá la silla libre. Una pausa breve para ir al baño o tomar agua es razonable, pero un almuerzo largo no lo es.",
-          "Cuando termines por el día, liberá tu lugar de verdad. En la app, marcar que ya no estás ahí permite que los demás vean ese asiento como libre y no pierdan tiempo buscando uno que en realidad está vacío. Cuanto más actualizada esté la información, más útil es para todos.",
+          "Cuando termines, llevate tus pertenencias y marcá «Me voy» para cerrar tu presencia. Que desaparezca tu avatar no sustituye una observación actual: el asiento puede tener otro reporte vigente o quedar sin datos. Si querés informar que está libre, comprobá que quedó vacío y sin pertenencias.",
         ],
       },
       {
@@ -334,14 +334,14 @@ export const GUIDES: readonly Guide[] = [
     slug: "descanso-sueno-y-rendimiento",
     title: "Descanso, sueño y rendimiento: lo que sostiene tu estudio",
     description:
-      "Por qué dormir bien, hacer pausas, moverte e hidratarte mejora lo que aprendés, y por qué las trasnochadas antes de un examen suelen jugar en tu contra.",
+      "Cómo reservar tiempo de descanso al planificar el estudio, qué recomienda el NHLBI sobre hábitos de sueño y cuándo conviene buscar orientación profesional.",
     readingMinutes: 4,
-    updated: "2026-10-16",
+    updated: "2026-11-15",
     sections: [
       {
         heading: "Estudiar más horas no siempre es estudiar mejor",
         paragraphs: [
-          "Hay una idea muy extendida entre estudiantes: cuanto más tiempo sentado frente a los libros, mejor. Sin embargo, el rendimiento cognitivo no es lineal. La atención, la memoria de trabajo y la capacidad de razonar se desgastan con el esfuerzo sostenido y con la falta de descanso. Pasadas ciertas horas, seguir estudiando rinde cada vez menos.",
+          "El tiempo sentado no basta para evaluar una sesión de estudio. Revisá si podés explicar un concepto, resolver un ejercicio o identificar una duda. Si el cansancio impide esas tareas, ajustar la carga y reservar descanso puede ser más útil que perseguir un total de horas. Esta página trata de organizar el estudio, no de evaluar tu salud.",
           "Cuidar el descanso no es una pérdida de tiempo ni un lujo, sino parte del método. Es lo que te permite sostener el estudio durante semanas, y no apenas durante una noche heroica.",
           "Esta guía reúne hábitos generales y bien conocidos sobre pausas, sueño, movimiento e hidratación. No reemplaza la consulta con profesionales de la salud: si tenés problemas persistentes de sueño, ansiedad o cansancio, hablalo con un médico o con los servicios de salud a tu alcance.",
         ],
@@ -355,10 +355,10 @@ export const GUIDES: readonly Guide[] = [
         ],
       },
       {
-        heading: "Sueño y consolidación de la memoria",
+        heading: "Reservar tiempo de sueño en tu plan",
         paragraphs: [
-          "Durante el sueño, el cerebro no se apaga: reorganiza lo que viviste y aprendiste durante el día. La investigación sobre el tema sugiere que dormir después de estudiar favorece la consolidación de los recuerdos, es decir, el proceso por el cual lo aprendido se vuelve más estable y fácil de recuperar. Además, dormir bien ayuda a que a la mañana siguiente tengas mejor atención y estado de ánimo.",
-          "Por eso, estudiar con sueño recortado tiene un doble costo: aprendés peor mientras estás cansado y dejás menos tiempo para consolidar lo aprendido. Un hábito sencillo es priorizar horarios de sueño bastante regulares, incluso en época de exámenes, en lugar de compensar con una noche larga los fines de semana.",
+          "El NHLBI recomienda reservar tiempo suficiente para dormir y mantener horarios regulares. Para organizar una semana de estudio, eso significa incluir el sueño en el calendario antes de repartir las tareas. No podemos deducir cuánto aprendiste ni diagnosticar un problema de memoria a partir de las horas que registra la app.",
+          "Por ejemplo, si necesitás terminar temprano para sostener tu rutina de sueño, elegí qué ejercicio o lectura vas a completar antes de ese límite. Lo que no entra queda anotado para otra sesión. El ejemplo sirve para planificar una carga posible; no fija una hora de acostarse ni una necesidad de sueño para todas las personas.",
           "Algunos hábitos generales que suelen ayudar:",
         ],
         list: [
@@ -372,7 +372,7 @@ export const GUIDES: readonly Guide[] = [
       {
         heading: "El costo de las trasnochadas",
         paragraphs: [
-          "La noche en vela antes del examen es casi un ritual universitario, pero tiene desventajas bien documentadas. Cuando dormís poco, empeoran la atención, la velocidad de razonamiento y la capacidad de recordar, justo lo que necesitás al rendir. Además, lo que estudiaste de madrugada tiene menos chances de consolidarse.",
+          "El NHLBI describe efectos de dormir insuficientemente sobre la atención y el funcionamiento diurno. Eso no permite predecir la nota de un examen ni comparar exactamente una hora de sueño con una hora de repaso. Si falta tiempo, elegí una tarea prioritaria y preservá tiempo para descansar.",
           "Esto no significa que nunca vayas a estar apurado. Si por algún motivo te quedaste corto de tiempo, es mejor priorizar: repasar lo más importante, dormir lo que puedas y llegar descansado. Una noche de sueño razonable suele rendir más que dos o tres horas extra de estudio con la cabeza fundida.",
           "El café y otras bebidas con cafeína pueden ayudar a corto plazo, pero no reemplazan el descanso, y en exceso pueden aumentar el nerviosismo y arruinar el sueño siguiente. Si dependés de ellos cada día, probablemente conviene revisar tu rutina de fondo.",
         ],
@@ -381,7 +381,7 @@ export const GUIDES: readonly Guide[] = [
         heading: "Movimiento, comida y agua",
         paragraphs: [
           "La actividad física regular está asociada con mejor estado de ánimo, menos estrés y mejor descanso. No hace falta entrenar duro: una caminata de veinte minutos, andar en bicicleta o estirar entre bloques ya suma. Si pasás horas sentado, levantate cada tanto para mover el cuerpo.",
-          "La hidratación también importa. Una botella de agua en la mesa facilita tomar con frecuencia, y evita que confundas la sed con cansancio. Con la comida, la idea general es comer a horarios razonables y evitar pasar muchas horas en ayunas o depender solo de snacks muy dulces, que dan un pico de energía seguido de una caída. Una fruta, frutos secos o un sándwich simple suelen ser buenos acompañantes de estudio.",
+          "Prever agua y un momento para comer evita que el plan de estudio dependa de saltear necesidades básicas. Respetá las reglas de alimentos y bebidas de la sala. Esta guía no recomienda una dieta ni explica el cansancio por un supuesto pico de azúcar: si tenés necesidades alimentarias o síntomas persistentes, consultá a un profesional.",
           "Tomar luz natural durante el día también suele ayudar a regular el reloj interno. Si estudiás todo el día en un lugar cerrado, salir un rato afuera en un descanso puede hacer una diferencia notable en cómo te sentís.",
         ],
       },
@@ -389,7 +389,7 @@ export const GUIDES: readonly Guide[] = [
         heading: "Cuidar la cabeza y armar una rutina sostenible",
         paragraphs: [
           "El estrés antes de los exámenes es normal, pero no tiene que ocupar toda tu vida. Reservá tiempo para actividades que disfrutes, charlá con amigos y no te aísles. Hablar de cómo te sentís con compañeros, familia o un profesional puede aliviar mucho más de lo que imaginás.",
-          "Una rutina sostenible suma estos elementos: sueño regular, pausas dentro de cada sesión, algo de movimiento diario, comidas e hidratación decentes y al menos un rato libre cada día. No tienen que ser perfectos; con que se cumplan la mayor parte de los días, ya cambian bastante tu rendimiento.",
+          "Una organización posible incluye horarios de sueño, pausas y momentos para comer y moverse. Adaptala a tu cursada, trabajo y necesidades personales. No hay un cambio de rutina que asegure una mejora de memoria o de notas; para un problema persistente de salud hace falta una evaluación fuera de esta app.",
           "Probá cambiar una sola cosa por vez. Por ejemplo, durante una semana, acostate treinta minutos antes. A la semana siguiente, sumá una caminata. Los pequeños cambios sostenidos funcionan mejor que una reforma total que abandonás al tercer día. Y recordá: descansar bien es también una forma de estudiar.",
         ],
       },
@@ -399,22 +399,22 @@ export const GUIDES: readonly Guide[] = [
     slug: "tomar-apuntes-en-clase",
     title: "Cómo tomar apuntes en clase: Cornell, papel y computadora",
     description:
-      "Aprendé a tomar apuntes que sirvan para estudiar: método Cornell, diferencia entre reescribir y repasar, y qué dice la evidencia sobre papel y notebook.",
+      "Organizá apuntes con el método Cornell, transformá notas en preguntas y compará papel y computadora según tus tareas y necesidades de acceso.",
     readingMinutes: 5,
-    updated: "2026-10-16",
+    updated: "2026-11-15",
     sections: [
       {
         heading: "Para qué sirven los apuntes",
         paragraphs: [
           "Tomar apuntes cumple dos funciones distintas. La primera es dejar un registro: lo que el profesor explicó, el ejemplo que resolvió en el pizarrón, la fecha del parcial que mencionó al pasar. La segunda es obligarte a procesar lo que escuchás mientras lo escuchás, porque para escribir algo con tus palabras primero tenés que entenderlo, al menos en parte.",
           "Hay un error muy común: querer copiarlo todo. Si escribís cada palabra, tu cabeza queda ocupada en transcribir y casi no queda lugar para pensar. Además, un apunte larguísimo y desordenado es difícil de estudiar después. Te sirve más un registro que seleccione, organice y simplifique, aunque te pierdas alguna frase.",
-          "La investigación sobre el tema es más matizada de lo que suelen sugerir los títulos de las notas periodísticas. En general, tomar apuntes ayuda a recordar más que solo escuchar, y repasarlos ayuda todavía más. Pero los resultados cambian según la materia, el tipo de clase y quién los toma, así que no hay un método que sea el mejor para todos. Lo razonable es probar y quedarte con lo que te funciona.",
+          "Para evaluar tus apuntes, probá usarlos al día siguiente sin tener la clase delante: ¿podés reconstruir el concepto y resolver el ejemplo? Si sólo reconocés las frases, agregá preguntas y corregí los huecos con la bibliografía. Esa comprobación permite ajustar tu sistema sin dar por hecho que un formato funciona igual para todas las personas.",
         ],
       },
       {
         heading: "El método Cornell",
         paragraphs: [
-          "El método Cornell lo desarrolló Walter Pauk, docente de la Universidad de Cornell, a mediados del siglo pasado. Divide la hoja en tres zonas: una columna angosta a la izquierda para pistas o preguntas, una zona amplia a la derecha para las notas de la clase y una franja abajo para el resumen. La idea es que el trabajo no termina cuando se acaba la clase. Hay pocos estudios que lo comparen con otros formatos, así que tomalo como un esquema razonable y no como una garantía.",
+          "La Universidad de Cornell atribuye este sistema a su profesor Walter Pauk. La hoja tiene tres zonas: preguntas o pistas a la izquierda, notas de clase a la derecha y un resumen abajo. Después de la clase, usás la columna de preguntas para recordar y comprobar lo explicado. Podés adaptar el formato a fórmulas, dibujos o texto según lo que necesites registrar.",
           "Una forma de usarlo, paso a paso:",
         ],
         list: [
@@ -436,8 +436,8 @@ export const GUIDES: readonly Guide[] = [
       {
         heading: "Notebook o papel",
         paragraphs: [
-          "El debate se hizo famoso a partir de un estudio de 2014 de Pam Mueller y Daniel Oppenheimer, que sugería que quienes escribían a mano entendían mejor los conceptos porque, al no poder transcribir todo, resumían. Es una explicación atractiva, pero conviene ser cuidadoso.",
-          "Más tarde, otros equipos intentaron repetir esos resultados y encontraron diferencias mucho menores o directamente no las encontraron. Hoy lo más honesto es decir que la evidencia no es concluyente. El papel puede tener una ligera ventaja en algunos contextos, pero lo que más parece pesar es qué hacés con lo que escribís y no el soporte.",
+          "Elegí el soporte según la tarea y tus necesidades de acceso. El papel facilita dibujar un esquema o una fórmula; la computadora permite buscar, ampliar texto y reorganizar material. También podés combinarlos. No usamos esta guía para declarar un ganador universal ni para atribuirte mejores resultados por escribir a mano.",
+          "Compará el resultado con tres preguntas: ¿cómo se define el concepto?, ¿en qué caso se aplica?, ¿qué error muestra el ejemplo de clase? Respondé antes de abrir las notas y usalas para corregirte. Si no encontrás una respuesta, agregá una referencia a la página del material o una duda para consulta.",
           "Lo que sí es bastante claro es el costo de la distracción: con la computadora abierta, las redes y el correo quedan a un clic y es fácil perder el hilo de la clase. Si usás notebook, silenciá las notificaciones y cerrá todo lo que no sea el documento.",
           "Una regla práctica: elegí lo que te permita escribir ideas con tus palabras en lugar de transcribir. Para materias con fórmulas o diagramas, el papel suele ser más cómodo. Para materias con mucho texto, el teclado alcanza si lo usás con disciplina.",
         ],
@@ -471,7 +471,7 @@ export const GUIDES: readonly Guide[] = [
     description:
       "Cómo estudiar materias de práctica: resolver sin mirar la solución, llevar un cuaderno de errores e intercalar tipos de problemas para rendir mejor.",
     readingMinutes: 5,
-    updated: "2026-10-16",
+    updated: "2026-11-15",
     sections: [
       {
         heading: "Por qué mirar la resolución engaña",
@@ -484,7 +484,7 @@ export const GUIDES: readonly Guide[] = [
       {
         heading: "Práctica activa: qué significa",
         paragraphs: [
-          "Estudiar una materia de ejercicios debería ocupar la mayor parte del tiempo en resolver problemas, no en leer teoría. La teoría se lee para poder resolver, y conviene volver a ella cuando un ejercicio te lo pide.",
+          "En materias de ejercicios necesitás combinar comprensión teórica y práctica. Antes de elegir una fórmula o un algoritmo, identificá sus condiciones de uso. Volvé a un ejemplo resuelto o a la bibliografía si no podés justificar un paso; resolver a ciegas tampoco permite comprobar que entendiste.",
           "En física, antes de hacer cuentas, escribí qué datos tenés, qué te piden y qué principio aplica. Resolver primero de forma simbólica y reemplazar los números al final te ayuda a detectar errores y a ver la estructura del problema.",
           "En programación, tomá un problema, escribí la solución sin copiar de ningún lado y recién después compará con otras versiones. Volver unos días más tarde a mejorar tu propio código funciona como un repaso espaciado.",
           "Algunas ideas para organizar la práctica:",
@@ -502,7 +502,7 @@ export const GUIDES: readonly Guide[] = [
         paragraphs: [
           "Cuando te trabás, la tentación de espiar la resolución aparece enseguida. Intentá postergarla. Pasar un rato incómodo frente al problema, probando caminos que no salen, es parte del aprendizaje y no una pérdida de tiempo. Eso sí, tampoco hace falta quedarse una hora sin avanzar.",
           "Un protocolo razonable es poner un límite. Si pasaron entre diez y quince minutos, releé el enunciado, dibujá un esquema, probá con un caso particular o resolvé una versión más simple. Si seguís trabado, mirá solo una pista, por ejemplo el primer paso, y volvé a intentar solo.",
-          "Cuando finalmente mirás la solución completa, no la copies. Cerrala, esperá un rato y resolvé el mismo ejercicio de nuevo desde cero. Si lo lográs, lo aprendiste; si no, todavía queda trabajo, y es mejor saberlo hoy que el día del examen.",
+          "Cuando consultes una solución, anotá por qué te faltaba ese paso y volvé a resolver sin copiar. Haber repetido un ejercicio una vez es una primera comprobación, no una prueba definitiva de dominio. Días después, intentá uno parecido que cambie una condición o un dato.",
         ],
       },
       {
@@ -544,11 +544,11 @@ export const GUIDES: readonly Guide[] = [
   },
   {
     slug: "ansiedad-ante-los-examenes",
-    title: "Ansiedad ante los exámenes: herramientas prácticas para manejarla",
+    title: "Nervios ante un examen: preparación y cuándo buscar apoyo",
     description:
       "Técnicas simples para llegar con más calma a un examen: preparación, respiración, reencuadre de pensamientos y una rutina para el día, más cuándo pedir ayuda.",
     readingMinutes: 4,
-    updated: "2026-10-16",
+    updated: "2026-11-15",
     sections: [
       {
         heading: "Sentir nervios es normal",
@@ -560,7 +560,7 @@ export const GUIDES: readonly Guide[] = [
       {
         heading: "Preparación: la base de la calma",
         paragraphs: [
-          "Gran parte de la ansiedad se alimenta de la incertidumbre: no saber cuánto sabés, qué va a venir, si llegás a tiempo. Reducir esa incertidumbre es la medida más concreta que tenés a mano.",
+          "La guía de Cornell sobre preocupación ante exámenes propone preparar el formato, practicar y organizar el tiempo durante la prueba. Estas acciones pueden reducir algunas incertidumbres académicas. La ansiedad tiene causas diversas: no implica que te hayas preparado mal ni se resuelve necesariamente con un calendario.",
           "Otra fuente de tranquilidad es tener un plan B: saber cuántas oportunidades de rendir tenés, cuándo es la próxima fecha y qué pasaría si te va mal. Conocer el peor escenario realista le quita fuerza a la imaginación catastrófica.",
           "Algunas estrategias que ayudan:",
         ],
@@ -576,7 +576,7 @@ export const GUIDES: readonly Guide[] = [
         heading: "Respiración y calma en el momento",
         paragraphs: [
           "Cuando sentís que los nervios suben, la respiración es una de las herramientas más accesibles. Respirar lento y profundo no elimina la ansiedad, pero suele ayudar a bajar un poco la agitación y a recuperar la atención.",
-          "Un ejercicio sencillo: inhalá por la nariz contando hasta cuatro, hacé una pausa breve y exhalá lentamente por la boca contando hasta seis. Repetilo unas cinco veces, con los hombros relajados. Podés practicarlo antes de dormir o mientras esperás para entrar, así no es la primera vez que lo probás justo cuando más lo necesitás.",
+          "Si te resulta cómodo, hacé una pausa breve y dejá que la respiración siga un ritmo tranquilo, sin forzar inhalaciones ni retener el aire. No es un tratamiento ni hace falta cumplir una cuenta de segundos. Si te incomoda o te marea, dejá el ejercicio y volvé a respirar normalmente.",
           "Otra ayuda es anclarte en lo que tenés alrededor: sentí los pies en el piso, el peso del cuerpo en la silla, y nombrá mentalmente tres cosas que ves. Es una forma de volver al presente cuando la cabeza se va a escenarios catastróficos.",
         ],
       },
@@ -585,7 +585,7 @@ export const GUIDES: readonly Guide[] = [
         paragraphs: [
           "Los pensamientos del tipo “voy a desaprobar”, “todos saben más que yo” o “si me va mal, arruiné todo” suelen sonar como hechos, pero son predicciones. Un primer paso es notarlos y ponerles nombre: “estoy anticipando lo peor”.",
           "Después podés cuestionarlos con preguntas concretas: ¿qué evidencia tengo? ¿Qué le diría a un amigo en mi lugar? ¿Qué es lo peor que puede pasar de forma realista y cómo lo manejaría? Muchas veces el resultado es una frase más equilibrada, como “estoy nervioso porque me importa; me preparé y voy a responder lo que pueda”.",
-          "También ayuda reinterpretar la activación física. Los latidos rápidos pueden leerse como señal de que tu cuerpo se está preparando para rendir y no como prueba de que algo anda mal. Y recordá que un examen es una instancia, no un juicio sobre tu valor como persona, y que casi siempre existe una próxima oportunidad.",
+          "Un examen no determina tu valor personal. Si los síntomas te preocupan o se repiten, no los atribuyas automáticamente a nervios normales: consultá con un profesional. Esta app no evalúa síntomas ni reemplaza ese acompañamiento.",
         ],
       },
       {
@@ -596,7 +596,7 @@ export const GUIDES: readonly Guide[] = [
         ],
         list: [
           "Dejá preparado la noche anterior lo que necesitás: documento, lapicera, calculadora, agua.",
-          "Dormí lo que puedas; si no conseguís dormir bien, no te alarmes, una noche mala pesa menos de lo que parece.",
+          "Reservá tiempo para descansar. Si dormir se vuelve un problema persistente, buscá orientación profesional.",
           "Desayunar algo liviano y llegar con tiempo de sobra evita correr y llegar agitado.",
           "No repases con compañeros ansiosos en la puerta, porque se contagian dudas; si te hace mal, alejate.",
           "Ya en el examen, leé todo primero, empezá por lo que mejor sabés y, si te bloqueás en una pregunta, pasá a otra y volvé después.",
@@ -617,13 +617,13 @@ export const GUIDES: readonly Guide[] = [
     description:
       "Guía para estudiar en grupo sin perder tiempo: cuándo ayuda y cuándo perjudica, qué roles repartir, cómo explicar a otros y cómo evitar que se disperse la charla.",
     readingMinutes: 5,
-    updated: "2026-10-16",
+    updated: "2026-11-15",
     sections: [
       {
         heading: "El grupo no es bueno ni malo en sí",
         paragraphs: [
           "Estudiar en grupo puede ser muy valioso o una excelente excusa para charlar durante tres horas. La diferencia casi nunca está en las personas sino en cómo se organiza la sesión. Un grupo con un objetivo claro, un tiempo acotado y tareas definidas rinde mucho; uno que se junta a ver qué sale suele terminar en café y quejas sobre la materia.",
-          "Antes de armar el grupo conviene preguntarse qué necesitás. Si todavía no leíste ni intentaste los ejercicios, probablemente sea mejor empezar solo. El grupo funciona mejor como segunda etapa, cuando ya tenés algo para contrastar.",
+          "Antes de reunirse, acuerden qué quieren resolver y qué trabajo individual necesita cada persona. Revisen también las reglas de colaboración de la cátedra: estudiar juntos no habilita a compartir respuestas en un examen ni a entregar trabajo ajeno como propio.",
           "También conviene revisar los resultados con honestidad. Después de dos o tres encuentros, preguntense si están aprendiendo más que estudiando por separado. Si la respuesta es no, achiquen el grupo, cambien el formato o dejen de juntarse para ese tema.",
         ],
       },
@@ -639,7 +639,7 @@ export const GUIDES: readonly Guide[] = [
         paragraphs: [
           "El grupo juega en contra cuando se usa para evitar el estudio individual. Si llegás sin haber visto el tema, vas a seguir lo que otros dicen sin procesarlo, y esa sensación de entender es engañosa. Tampoco rinde si el nivel es muy dispar y siempre explica la misma persona, o si hay demasiada gente y alguien queda al margen.",
           "Otras señales de alarma: que cada sesión empiece tarde, que no haya un tema previsto, que el celular esté siempre sobre la mesa o que se pase más tiempo en conversaciones laterales que en la materia. Si notás esto en tu grupo, no hace falta romperlo; alcanza con cambiar las reglas.",
-          "Una pauta práctica: usá el estudio individual para aprender y el grupal para contrastar, corregir y practicar. Los grupos de dos a cuatro personas suelen funcionar mejor que los grandes.",
+          "Como punto de partida, armen un grupo pequeño en el que todas las personas puedan intervenir. Revisen si el tamaño y el formato permiten trabajar; no hay una cantidad de integrantes que garantice mejores resultados.",
         ],
       },
       {
@@ -679,7 +679,7 @@ export const GUIDES: readonly Guide[] = [
         heading: "Un formato de sesión de ejemplo",
         paragraphs: [
           "Para dos horas con tres personas: los primeros diez minutos, definir objetivos; después, una hora de explicaciones y ejercicios con roles rotativos; un descanso de diez minutos; y por último una tanda de preguntas cruzadas sin apuntes. Cerrá anotando lo que cada uno debe reforzar por su cuenta.",
-          "Si se reúnen en un espacio compartido de estudio, cuidá el nivel de ruido para no molestar a los demás y elegí, si es posible, una zona pensada para trabajar en voz alta.",
+          "La sala Manuel Gil de Alem es silenciosa. Para preguntas cruzadas o simulacros orales, elijan un espacio donde se permita conversar o una reunión a distancia. En esta sala pueden coordinar trabajo individual en silencio, sin trasladar el debate a las mesas de lectura.",
           "Al armar el grupo, elegí compañeros con un compromiso parecido al tuyo, no necesariamente amigos. Conviene acordar desde el principio la frecuencia, la duración y qué pasa si alguien falta o llega sin preparar. Hablarlo temprano evita resentimientos más tarde.",
         ],
       },
@@ -691,13 +691,13 @@ export const GUIDES: readonly Guide[] = [
     description:
       "Entendé por qué postergás lo que tenés que estudiar y probá herramientas concretas: primeros pasos mínimos, intenciones de implementación y cambios en tu entorno.",
     readingMinutes: 5,
-    updated: "2026-10-16",
+    updated: "2026-11-15",
     sections: [
       {
         heading: "No es falta de voluntad",
         paragraphs: [
-          "Si postergás estudiar, es probable que te hayas dicho que sos vago o que te falta fuerza de voluntad. Esa explicación es cómoda pero poco útil. Gran parte de la investigación sobre procrastinación la describe más como un problema de manejo de emociones que de administración del tiempo.",
-          "La idea es sencilla: una tarea que te genera aburrimiento, miedo a no entender, ansiedad o inseguridad produce un malestar inmediato. Postergarla te da alivio al instante, aunque el costo llegue después. Ese alivio refuerza la conducta, y la próxima vez te resulta todavía más tentador evitar.",
+          "Postergar puede estar relacionado con una tarea poco clara, sobrecarga, frustración, cansancio o perfeccionismo. La guía de Cornell propone identificar el obstáculo y ajustar el trabajo. No alcanza con etiquetarte como una persona sin voluntad, ni podemos identificar una causa única desde esta página.",
+          "Probá distinguir dos situaciones: no saber cuál es el primer paso y no disponer del tiempo o los recursos necesarios. En el primer caso puede ayudar dividir la tarea. En el segundo, necesitás cambiar el plan o pedir apoyo; una técnica de productividad no crea horas disponibles ni resuelve una dificultad de salud.",
           "Entender este mecanismo ayuda a cambiar el enfoque. En lugar de pelearte con vos mismo, el objetivo pasa a ser reducir el malestar de empezar y facilitar el comienzo.",
         ],
       },
@@ -726,8 +726,8 @@ export const GUIDES: readonly Guide[] = [
       {
         heading: "Intenciones de implementación",
         paragraphs: [
-          "El psicólogo Peter Gollwitzer estudió una herramienta llamada intención de implementación. Consiste en decidir de antemano cuándo, dónde y cómo vas a actuar, con la forma “si ocurre X, entonces hago Y”. En vez de depender de la motivación del momento, dejás una decisión ya tomada.",
-          "Comparemos: “voy a estudiar más” es una intención vaga; “si son las 15:00 y volví de clase, entonces me siento en la sala de estudio y hago dos ejercicios de la guía 3” es un plan concreto. La investigación en este tema sugiere que este tipo de planes ayuda a cumplir metas, aunque no es una garantía y funciona mejor cuando la meta ya te importa.",
+          "Podés convertir una intención vaga en un plan de acción: cuándo vas a empezar, en qué lugar y con qué primera tarea. En esta guía lo usamos como una herramienta de organización, sin atribuirle un efecto garantizado sobre la motivación.",
+          "Por ejemplo, en vez de «voy a estudiar más», escribí «después de cursar, a las 15:00, voy a intentar los problemas 1 y 2 de la guía». Añadí una alternativa si no podés usar la sala o si el material no está disponible. La utilidad del plan se comprueba viendo si pudiste cumplirlo y qué obstáculo apareció.",
           "También podés planificar los obstáculos: “si me llega una notificación mientras estudio, entonces la dejo sin abrir hasta el descanso”. Escribí tus planes en un papel o en el celular, con un momento y un lugar específicos.",
         ],
       },
@@ -754,7 +754,7 @@ export const GUIDES: readonly Guide[] = [
       {
         heading: "Un plan para hoy",
         paragraphs: [
-          "Elegí la tarea que más estás evitando. Definí un primer paso de cinco minutos, escribí una intención con día, hora y lugar, y preparé el entorno: celular guardado, materiales a mano. Cuando llegue el momento, empezá sin evaluar si tenés ganas.",
+          "Elegí una tarea que estás evitando. Definí un primer paso de cinco minutos, escribí día, hora y lugar, y prepará el entorno: materiales a mano y las distracciones que puedas reducir. Cuando llegue el momento, probá ese primer paso y ajustá si encontrás un obstáculo concreto.",
           "Cuando termines el bloque, anotá qué hiciste, aunque haya sido poco. Registrar los avances, por chicos que sean, te da evidencia de que podés empezar, y eso vale más que cualquier promesa de que mañana sí.",
         ],
       },
@@ -766,7 +766,7 @@ export const GUIDES: readonly Guide[] = [
     description:
       "Cómo leer bibliografía universitaria con más provecho: pre-lectura, preguntas, resúmenes, mapas de síntesis y trucos para encarar fotocopias larguísimas.",
     readingMinutes: 4,
-    updated: "2026-10-16",
+    updated: "2026-11-15",
     sections: [
       {
         heading: "Leer en la facultad es otra cosa",
@@ -803,7 +803,7 @@ export const GUIDES: readonly Guide[] = [
         paragraphs: [
           "Resumir obliga a decidir qué es importante y a reformularlo, y eso es una forma de estudio. Después de cada sección, cerrá el texto y escribí en una o dos frases qué dijo. Si no podés, volvé a leerlo: acabás de descubrir dónde se te escapó la comprensión.",
           "Un resumen no es una versión recortada con las mismas frases del autor. Intentá usar tu vocabulario, mantené las definiciones técnicas imprescindibles y anotá siempre la referencia para poder volver al original. Al terminar el texto, juntá tus resúmenes parciales en uno de cinco o seis líneas.",
-          "Una prueba de calidad: pasado un día, intentá explicar el texto en voz alta usando solo tus resúmenes. Si te salen las ideas centrales y las relaciones entre ellas, el resumen cumplió su función; si no, falta reelaborar.",
+          "Una comprobación al día siguiente: intentá reconstruir la tesis, una razón que la sostiene y una limitación usando tu resumen. Si la comparación con el original muestra un error, corregilo y anotá la página. Podés hacer esta práctica por escrito y en silencio dentro de la sala; reservá la explicación en voz alta para un espacio apropiado.",
         ],
       },
       {
@@ -822,7 +822,7 @@ export const GUIDES: readonly Guide[] = [
         heading: "Fotocopias largas y bibliografía interminable",
         paragraphs: [
           "Frente a un fajo de doscientas páginas de fotocopias, lo peor es empezar por la página uno sin plan. Primero hojealo: fijate el índice, calculá cuántas páginas te quedan por día hasta la fecha del examen y repartilas, dejando margen para repasar.",
-          "Después priorizá. Preguntale al programa de la materia qué es obligatorio y qué complementario, y pensá qué ya cubrió la clase. Los capítulos centrales merecen lectura completa y con notas; los secundarios, una lectura de introducción, conclusiones y títulos. Eso no es hacer trampa sino administrar tu atención.",
+          "Consultá el programa para distinguir material obligatorio y complementario, y preguntá a la cátedra si no está claro. Explorar títulos, introducción y conclusiones ayuda a orientarte, pero no sustituye la lectura completa de una fuente requerida. No uses un resumen o esta guía como confirmación de que un capítulo no entra en el examen.",
           "Para sostener el ritmo, leé en bloques de 30 a 45 minutos con descansos, en un lugar con poca distracción. Anotá en la primera hoja de cada fotocopia una síntesis de tres líneas y las páginas importantes, y usá papelitos para marcar. Así, cuando vuelvas antes del examen, no tendrás que releer todo.",
           "Si un texto te resulta muy difícil, no te quedes trabado en cada palabra. Seguí leyendo para tener una idea general, buscá los términos clave en un diccionario especializado y volvé a leerlo una segunda vez. Muchas veces la segunda lectura es la que realmente funciona.",
         ],

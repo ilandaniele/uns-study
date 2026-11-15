@@ -27,3 +27,22 @@ test("a visitor can read the room information and navigate the guide without Jav
   await page.getByRole("link", { name: "Guías de estudio", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Ideas para estudiar mejor", exact: true })).toBeVisible();
 });
+
+test("public billing information and a contact alternative remain readable without JavaScript", async ({ page }) => {
+  await page.goto("/suscripcion");
+  await expect(page.getByRole("heading", { level: 1, name: "Sala de Estudio Pro", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Qué incluye Pro", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Precio, activación y cancelación", exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Consultar sobre una suscripción o un pago", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Sugerencias y contacto", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "ilan.daniele@gmail.com", exact: true })).toHaveAttribute("href", "mailto:ilan.daniele@gmail.com");
+});
+
+test("each article provides a direct path to the scope of its sources without JavaScript", async ({ page }) => {
+  await page.goto("/guias/descanso-sueno-y-rendimiento");
+  await expect(page.getByRole("complementary", { name: "Alcance de esta guía" })).toBeVisible();
+  await page.getByRole("link", { name: "Ver fuentes y qué aporta cada una", exact: true }).click();
+  await expect(page).toHaveURL(/#guide-resources$/);
+  await expect(page.getByRole("heading", { name: "Fuentes y lecturas complementarias", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "NHLBI · Healthy Sleep Habits", exact: true })).toHaveAttribute("href", "https://www.nhlbi.nih.gov/health/sleep-deprivation/healthy-sleep-habits");
+});
