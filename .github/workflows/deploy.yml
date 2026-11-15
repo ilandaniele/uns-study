@@ -61,12 +61,13 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # NEXT_PUBLIC_* are inlined at build time. They are public values kept in repository variables.
-      # Ads: empty = house ads only.
+      # AdSense verification stays configured; serving requires explicit activation after approval.
       - run: pnpm --filter @sala/web exec opennextjs-cloudflare build
         env:
           NEXT_PUBLIC_GAM_REWARDED_UNIT: ${{ vars.NEXT_PUBLIC_GAM_REWARDED_UNIT }}
           NEXT_PUBLIC_GAM_INTERSTITIAL_UNIT: ${{ vars.NEXT_PUBLIC_GAM_INTERSTITIAL_UNIT }}
           NEXT_PUBLIC_ADSENSE_CLIENT: ${{ vars.NEXT_PUBLIC_ADSENSE_CLIENT }}
+          NEXT_PUBLIC_ADSENSE_SERVING_ENABLED: ${{ vars.NEXT_PUBLIC_ADSENSE_SERVING_ENABLED || 'false' }}
           NEXT_PUBLIC_ADSENSE_SLOT_RAIL: ${{ vars.NEXT_PUBLIC_ADSENSE_SLOT_RAIL }}
           NEXT_PUBLIC_ADSENSE_SLOT_COMMUNITY_FEED: ${{ vars.NEXT_PUBLIC_ADSENSE_SLOT_COMMUNITY_FEED }}
           NEXT_PUBLIC_ADSENSE_SLOT_ROOM_BOTTOM: ${{ vars.NEXT_PUBLIC_ADSENSE_SLOT_ROOM_BOTTOM }}

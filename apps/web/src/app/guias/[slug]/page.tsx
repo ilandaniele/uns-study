@@ -5,6 +5,7 @@ import { AdSlot } from "@/components/AdSlot";
 import { BackButton } from "@/components/BackButton";
 import { GUIDES, getGuide } from "@/features/guides/guides";
 import { GUIDE_RESOURCES, GUIDE_RESOURCES_CHECKED, ROOM_GUIDE_RESOURCES_CHECKED } from "@/features/guides/guide-resources";
+import { RoomGuideWalkthrough } from "@/features/guides/RoomGuideWalkthrough";
 
 export function generateStaticParams() {
   return GUIDES.map((guide) => ({ slug: guide.slug }));
@@ -72,6 +73,7 @@ export default async function GuidePage(props: Props) {
                 ))}
               </ul>
             ) : null}
+            {guide.slug === "visitar-la-sala-de-estudio-uns" && section.heading === "Al llegar: informar lo que realmente ves" ? <RoomGuideWalkthrough /> : null}
           </section>
         ))}
       </article>

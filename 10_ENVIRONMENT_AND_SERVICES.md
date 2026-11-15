@@ -161,6 +161,8 @@ pnpm exec wrangler secret put RESEND_API_KEY
 
 Worker secrets apply immediately (a new Worker version is created). `/ads.txt` is generated from `NEXT_PUBLIC_ADSENSE_CLIENT`.
 
+AdSense serving is disabled by default while the site is awaiting approval. `NEXT_PUBLIC_ADSENSE_CLIENT` still provides ownership verification and `/ads.txt`; only an explicit build-time `NEXT_PUBLIC_ADSENSE_SERVING_ENABLED=true` enables display units on published guide articles. Set that public GitHub Actions repository variable only after confirming Google approval, account/consent setup and Auto ads settings, then rebuild through the Deploy workflow. Staging always sets it to `false`. This switch does not query Google or request a review. See [the dated review checklist](docs/adsense-review.md).
+
 ## Local development
 
 Claude should create clear commands, ideally:

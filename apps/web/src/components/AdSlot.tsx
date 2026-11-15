@@ -25,8 +25,8 @@ declare global {
 }
 
 /**
- * Renders a real AdSense ad unit when `NEXT_PUBLIC_ADSENSE_CLIENT` (and the matching slot env
- * for `placement`) is configured; renders nothing at all otherwise. The `adsbygoogle.js` loader
+ * Renders an AdSense unit only after explicit serving activation, with a configured client/slot
+ * and an allowed content route. Publisher verification does not activate serving. The loader
  * script is injected once per page via `next/script` (shared across multiple `AdSlot`s).
  */
 export function AdSlot({ placement }: { placement: AdPlacement }) {

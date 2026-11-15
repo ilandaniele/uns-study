@@ -6,6 +6,8 @@ export const GAM_REWARDED_UNIT = process.env.NEXT_PUBLIC_GAM_REWARDED_UNIT || ""
 export const GAM_INTERSTITIAL_UNIT = process.env.NEXT_PUBLIC_GAM_INTERSTITIAL_UNIT || "";
 export const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT || "";
 export const ADSENSE_SLOT_RAIL = process.env.NEXT_PUBLIC_ADSENSE_SLOT_RAIL || "";
+/** Manual activation after Google approves the site; verification remains independent. */
+export const ADSENSE_SERVING_ENABLED = process.env.NEXT_PUBLIC_ADSENSE_SERVING_ENABLED === "true";
 
 /**
  * Minimum gap between two app-open interstitials. Every open shows one (like Moovit); the short
@@ -44,8 +46,8 @@ export function isAdSenseContentPath(pathname: string | null | undefined): boole
 
 export type AdPlacement = "community-feed" | "rail" | "article" | "room-bottom";
 
-export function isAdSenseAllowed(placement: AdPlacement, pathname: string | null | undefined): boolean {
-  return placement === "article" && isAdSenseContentPath(pathname);
+export function isAdSenseAllowed(placement: AdPlacement, pathname: string | null | undefined, servingEnabled = ADSENSE_SERVING_ENABLED): boolean {
+  return servingEnabled && placement === "article" && isAdSenseContentPath(pathname);
 }
 
 export function isExcludedPath(pathname: string | null | undefined): boolean {

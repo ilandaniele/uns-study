@@ -14,6 +14,9 @@ test("a visitor can read the room information and navigate the guide without Jav
   await info.getByRole("link", { name: /Prepará tu visita/ }).click();
 
   await expect(page.getByRole("heading", { name: "Ir a la sala de Alem: cómo leer el mapa y colaborar", exact: true })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Un ejemplo, paso a paso" })).toBeVisible();
+  await expect(page.getByRole("img", { name: /Mesa de ejemplo con ocho asientos/ })).toBeVisible();
+  await expect(page.getByText("Los avisos de la UNS no se importan automáticamente", { exact: false })).toBeVisible();
   const contents = page.getByRole("navigation", { name: "Contenido de la guía" });
   await contents.getByRole("link", { name: "Por qué un lugar vuelve a Sin datos", exact: true }).click();
   await expect(page).toHaveURL(/#seccion-5$/);

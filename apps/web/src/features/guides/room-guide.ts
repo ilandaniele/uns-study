@@ -5,8 +5,8 @@ export const ROOM_GUIDE: Guide = {
   slug: "visitar-la-sala-de-estudio-uns",
   title: "Ir a la sala de Alem: cómo leer el mapa y colaborar",
   description: "Ubicación de la sala Manuel Gil en Bahía Blanca, horarios de referencia y ejemplos para interpretar el mapa, informar asientos y liberar tu lugar al salir.",
-  readingMinutes: 5,
-  updated: "2026-11-06",
+  readingMinutes: 7,
+  updated: "2026-11-15",
   sections: [
     {
       heading: "Qué sala muestra esta aplicación",
@@ -20,7 +20,8 @@ export const ROOM_GUIDE: Guide = {
       paragraphs: [
         "La app está configurada para abrir a las 08:00 todos los días, cerrar a las 00:00 de lunes a viernes y a las 22:00 los sábados, domingos y feriados. Son los horarios de referencia que usa para indicar si la sala está abierta y terminar las presencias al cierre.",
         "Las fuentes institucionales consultadas no coinciden en la apertura entre semana: la página de salas de lectura de la Biblioteca Central indica 07:00, mientras que la bienvenida a ingresantes de Enfoque U de 2025 menciona 08:00. No interpretamos esa diferencia como una confirmación de un cambio de horario. Si pensás ir temprano, en vacaciones o durante un feriado, comprobá los avisos de la Biblioteca Central. El horario del mostrador de préstamos tampoco es necesariamente el de la sala de lectura.",
-        "La etiqueta de apertura de la app es orientativa. Un cierre excepcional puede no estar cargado todavía. Consultar el mapa ayuda con la disponibilidad reportada; no sustituye un aviso de la institución sobre acceso al edificio.",
+        "Cuando la sala está cerrada según el horario o por un cierre excepcional cargado por el responsable de la app, aparece un cartel al entrar. Indica el motivo y la próxima apertura si se conoce. Un cierre excepcional sin fecha de finalización se muestra hasta nuevo aviso: no supone que se reabra automáticamente a las 08:00 del día siguiente.",
+        "La etiqueta de apertura de la app es orientativa. Los avisos de la UNS no se importan automáticamente y un cierre excepcional puede no estar cargado todavía. Consultar el mapa ayuda con la disponibilidad reportada; no sustituye un aviso de la institución sobre acceso al edificio.",
       ],
     },
     {

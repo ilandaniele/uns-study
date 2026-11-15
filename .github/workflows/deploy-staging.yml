@@ -77,6 +77,7 @@ jobs:
       - run: pnpm --filter @sala/web exec opennextjs-cloudflare build
         env:
           NEXT_PUBLIC_SITE_ENV: staging
+          NEXT_PUBLIC_ADSENSE_SERVING_ENABLED: 'false'
           NEXT_PUBLIC_APP_URL: https://dev.saladeestudio.com.ar
       - run: pnpm --filter @sala/web exec opennextjs-cloudflare deploy --env staging
         env:

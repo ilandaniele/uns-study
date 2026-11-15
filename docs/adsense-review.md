@@ -2,6 +2,30 @@
 
 Fecha: 26 de octubre de 2026.
 
+## Nueva revisión: 15 de noviembre de 2026
+
+La captura del propietario muestra otro rechazo **Low value content** y un límite de intentos: Google indica que podrá volver a solicitar revisión **a partir del 22 de noviembre de 2026**. Ese plazo no se modifica desde el código ni se evita eliminando y volviendo a agregar el sitio. No se ha enviado otra solicitud ni se declara obtenida la aprobación.
+
+### Qué se comprobó y qué cambia
+
+- La portada, el proyecto y las guías se leen sin cuenta y sin JavaScript. En el navegador de producción, antes de este cambio, la portada entregó 368 palabras visibles, la guía de la sala 1374 y la de Pomodoro 1243, sin errores de ejecución. Los artículos ya estaban publicados completos: no se repite como nuevo el arreglo del 6 de noviembre. Estas cantidades son evidencia de lectura, no requisitos de Google ni una explicación demostrada del rechazo.
+- La guía de la sala y la de Pomodoro seguían cargando `googlesyndication` y `doubleclick` después de hidratar, con dos elementos `ins.adsbygoogle` observados aunque el componente define una sola unidad manual. Esto requiere revisar también **Anuncios automáticos** en la cuenta; el número de elementos no demuestra que ambos hayan mostrado una impresión pagada.
+- La publicación de anuncios AdSense queda apagada por defecto. `NEXT_PUBLIC_ADSENSE_CLIENT` conserva la propiedad, el meta tag y `/ads.txt`; ya no basta para cargar el script. La variable pública de build `NEXT_PUBLIC_ADSENSE_SERVING_ENABLED` debe valer exactamente `true` para habilitar las unidades, además de las restricciones de rutas, slots y usuario sin anuncios. No es una consulta automática a Google y no se activa al llegar el 22 de noviembre. Staging la fija en `false`.
+- La guía de Alem suma un esquema original y accesible de selección de asiento, ejemplos de observación frente a presencia propia, y una secuencia de vencimiento 14:30 → 16:30. Los ejemplos se identifican como ilustrativos, no como ocupación actual. Es HTML/SVG de servidor, sin nuevas dependencias ni imágenes pesadas. La geometría del mapa real no cambia.
+- Se documenta el cartel de sala cerrada, incluida la diferencia entre próxima apertura conocida y cierre hasta nuevo aviso. La app no importa automáticamente disposiciones de la UNS. Sólo se actualiza la fecha del artículo modificado; las fechas de consulta de las fuentes conservan su valor anterior.
+
+Validación local: `pnpm lint`, `pnpm typecheck`, `pnpm test` y build de Next correctos; 700 tests de web. El recorrido público sin JavaScript pasa. Chrome y WebKit a 320, 440 y 1440 px muestran el esquema sin desbordamiento horizontal ni errores de ejecución. Con cliente y slot de prueba configurados y publicación desactivada, no se inserta la unidad ni se solicita la red publicitaria; el meta tag de propiedad sigue presente.
+
+### Pendientes de la cuenta y de la decisión editorial
+
+1. En **Inicio → Pagos** o **Acción** del aviso amarillo, comprobar la tarea concreta. La captura del aviso general no permite distinguir entre datos de pago, identidad pendiente o una tarea ya completada. Cargar lo que Google solicite exclusivamente dentro de su panel; no enviar identificación, dirección ni datos bancarios por chat o al repositorio. Es la cuenta de cobro de Google AdSense, independiente del checkout de Mercado Pago de la app.
+2. Leer y revisar la información publicada, en especial la exactitud de los datos locales. Google pide valor original y una buena experiencia; agregar artículos genéricos, cantidades de palabras o verificar Google Cloud no garantiza resolver esta clasificación. No se declara una revisión humana del propietario que todavía no haya ocurrido.
+3. Revisar **Anuncios → Por sitio → Editar** y desactivar anuncios automáticos o configurar exclusiones antes de reactivar la publicidad. Un script de Google ya cargado puede permanecer durante la navegación interna; la política de unidades manuales no controla por sí sola los anuncios automáticos de la cuenta.
+4. Cuando Google habilite el botón, desde el 22/11 según la captura, solicitar revisión una vez abordados los problemas. La propiedad ya figura verificada; no es necesario agregar otro dominio ni recrear la cuenta. No hay promesa de aprobación ni fecha de respuesta garantizada.
+5. **Sólo tras confirmar la aprobación del sitio**, configurar en GitHub → Settings → Secrets and variables → Actions → Variables `NEXT_PUBLIC_ADSENSE_SERVING_ENABLED=true` y ejecutar el workflow **Deploy** sobre `main` para reconstruir la web. Comprobar antes los slots y la configuración de privacidad/consentimiento para las regiones aplicables. Mantener staging sin anuncios. Quitar esa variable o ponerla en `false` y reconstruir vuelve a desactivarlos.
+
+Referencias consultadas el 15/11/2026: [sitio no listo para anuncios](https://support.google.com/adsense/answer/12176698?hl=es), [configurar la cuenta y pagos](https://support.google.com/adsense/answer/7402256?hl=es), [pantallas sin contenido del editor](https://support.google.com/publisherpolicies/answer/11112688?hl=es). Google admite verificar propiedad mediante Search Console; la propiedad y la autorización de `ads.txt` no equivalen a aceptación editorial.
+
 ## Nueva revisión: 6 de noviembre de 2026
 
 El propietario recibió nuevamente **Needs attention / Low value content**. Se revisaron las indicaciones actuales de Google y la versión pública, sin sesión. La propiedad seguía verificada: cambiar Google Cloud OAuth no resuelve este rechazo.
