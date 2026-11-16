@@ -57,9 +57,9 @@ Las 14 referencias anteriores respondían HTTP 200. La revisión de contenido ll
 
 Se conserva la identificación del responsable, el uso de IA declarado y el canal de correcciones. No se agregan biografías, credenciales, testimonios de estudiantes, estadísticas de éxito o reseñas profesionales que no existan.
 
-### Permiso de una fotografía externa pendiente de confirmar
+### Permiso de una fotografía externa confirmado por el titular
 
-El inventario previo de [recursos gráficos](legal/ASSETS.md) identifica `public/room/ceniza-recuerdo.webp` como una fotografía externa publicada por 8000 y acreditada a @elgordoceniza. Su exclusión del paquete de registro de software no acredita una licencia para publicarla en la web. Se solicita al propietario confirmar si cuenta con autorización; no se afirma que esa autorización exista ni que la foto sea la causa del rechazo de AdSense. Esta auditoría no puede certificar los derechos sobre el archivo a partir de su disponibilidad pública.
+El inventario de [recursos gráficos](legal/ASSETS.md) identifica `public/room/ceniza-recuerdo.webp` como una fotografía externa publicada por 8000 y acreditada a @elgordoceniza. El 15/11/2026 Ilan Daniele respondió «Sí, tengo autorización» a la consulta sobre el permiso del autor para publicarla. Queda registrada esa confirmación en [declarations.json](legal/declarations.json). No se aportó copia del permiso ni se verificaron sus condiciones de forma independiente. Se conserva la procedencia externa y su exclusión del registro y de la declaración de autoría propia. No se identifica la fotografía como causa demostrada del rechazo de AdSense.
 
 ## Límites y siguiente evaluación de AdSense
 

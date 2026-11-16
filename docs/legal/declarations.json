@@ -23,5 +23,17 @@
   "expresslyExcludedFromSubmission": [
     "apps/web/public/room/ceniza-recuerdo.webp"
   ],
+  "thirdPartyPermissions": [
+    {
+      "file": "apps/web/public/room/ceniza-recuerdo.webp",
+      "recordedOn": "2026-11-15",
+      "declaredBy": "Ilan Daniele",
+      "ownerStatement": "Sí, tengo autorización",
+      "declaredScope": "Permiso del autor para publicar la fotografía del recuerdo de Ceniza en la web del proyecto",
+      "evidenceType": "Confirmación del titular en conversación; no se aportó copia de la autorización",
+      "independentlyVerified": false,
+      "ownAuthorshipClaimed": false
+    }
+  ],
   "officialFilingSubmitted": false
 }
